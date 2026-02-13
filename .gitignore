@@ -1,0 +1,13 @@
+# Ignore the data folder
+data/
+maqa-dataset/
+
+# Ignore model weights and large files
+models/
+*.bin
+*.pt
+*.zip
+
+# Python caches
+__pycache__/
+.ipynb_checkpoints/

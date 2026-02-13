@@ -1,0 +1,8 @@
+transformers[torch]
+datasets
+pandas
+scikit-learn
+openpyxl
+arabic-reshaper
+python-bidi
+torch
