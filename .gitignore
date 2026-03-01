@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pt
+
+# Data
+data/
+datasets/
+
+# IDE
+.vs/
+.idea/
+.vscode/
+
+# Node
+node_modules/
+
+# Env
+.env
