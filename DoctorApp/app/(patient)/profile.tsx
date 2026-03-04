@@ -32,7 +32,7 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     try {
       await AsyncStorage.removeItem("isLoggedIn");
-      router.replace("/(auth)/welcome");
+      router.replace("../(auth)");
     } catch (error) {
       console.log("Error logging out:", error);
     }

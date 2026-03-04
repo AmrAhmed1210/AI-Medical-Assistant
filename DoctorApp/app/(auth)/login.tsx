@@ -23,68 +23,68 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
-    Keyboard.dismiss();
+    // Keyboard.dismiss();
 
-    if (!email || !password) {
-      Toast.show({
-        type: "error",
-        text1: "Please fill all fields",
-        position: "top",
-        topOffset: 60,
-      });
-      return;
-    }
-
-    try {
-      // Get stored user data
-      const userData = await AsyncStorage.getItem("user");
+    // if (!email || !password) {
+    //   Toast.show({
+    //     type: "error",
+    //     text1: "Please fill all fields",
+    //     position: "top",
+    //     topOffset: 60,
+    //   });
+    //   return router.push("/(patient)/home");
+    // }
+      router.push("/(doctor)");
+    // try {
+    //   // Get stored user data
+    //   const userData = await AsyncStorage.getItem("user");
       
-      if (userData) {
-        const user = JSON.parse(userData);
+    //   if (userData) {
+    //     const user = JSON.parse(userData);
         
-        // Check credentials (simple check for demo)
-        if (user.email === email) {
-          await AsyncStorage.setItem("isLoggedIn", "true");
+    //     // Check credentials (simple check for demo)
+    //     if (user.email === email) {
+    //       await AsyncStorage.setItem("isLoggedIn", "true");
           
-          Toast.show({
-            type: "success",
-            text1: `Welcome back ${user.firstName}! 👋`,
-            position: "top",
-            topOffset: 60,
-            visibilityTime: 2000,
-          });
+    //       Toast.show({
+    //         type: "success",
+    //         text1: `Welcome back ${user.firstName}! 👋`,
+    //         position: "top",
+    //         topOffset: 60,
+    //         visibilityTime: 2000,
+    //       });
           
-          setTimeout(() => {
-            router.replace("/home");
-          }, 2200);
-        } else {
-          Toast.show({
-            type: "error",
-            text1: "Invalid credentials",
-            text2: "Email or password is incorrect",
-            position: "top",
-            topOffset: 60,
-          });
-        }
-      } else {
-        // No account found
-        Toast.show({
-          type: "info",
-          text1: "No account found",
-          text2: "Please create a new account",
-          position: "top",
-          topOffset: 60,
-          visibilityTime: 3000,
-        });
-      }
-    } catch (error) {
-      Toast.show({
-        type: "error",
-        text1: "Something went wrong",
-        position: "top",
-        topOffset: 60,
-      });
-    }
+    //       setTimeout(() => {
+    //         router.replace("/home");
+    //       }, 2200);
+    //     } else {
+    //       Toast.show({
+    //         type: "error",
+    //         text1: "Invalid credentials",
+    //         text2: "Email or password is incorrect",
+    //         position: "top",
+    //         topOffset: 60,
+    //       });
+    //     }
+    //   } else {
+    //     // No account found
+    //     Toast.show({
+    //       type: "info",
+    //       text1: "No account found",
+    //       text2: "Please create a new account",
+    //       position: "top",
+    //       topOffset: 60,
+    //       visibilityTime: 3000,
+    //     });
+    //   }
+    // } catch (error) {
+    //   Toast.show({
+    //     type: "error",
+    //     text1: "Something went wrong",
+    //     position: "top",
+    //     topOffset: 60,
+    //   });
+    // }
   };
 
   return (

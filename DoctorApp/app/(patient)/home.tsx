@@ -31,7 +31,7 @@ export default function HomeScreen() {
           </Text>
         </View>
         
-        <TouchableOpacity onPress={() => router.push("/(tabs)/profile")}>
+        <TouchableOpacity onPress={() => router.push("/profile")} >
           <View style={styles.profileImage}>
             <Ionicons name="person" size={30} color={COLORS.primary} />
           </View>

@@ -15,19 +15,17 @@ export default function TabsLayout() {
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: "#999",
         tabBarStyle: {
-          height: 60,
-          paddingBottom: 8,
+          height: 65, // زودت الطول شوية عشان الشكل يكون أريح
+          paddingBottom: 10,
           paddingTop: 8,
           backgroundColor: '#fff',
           borderTopWidth: 1,
           borderTopColor: '#f0f0f0',
+          elevation: 0, // لإلغاء الظل الثقيل في أندرويد
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '500',
-        },
-        tabBarIconStyle: {
-          marginTop: 0,
         },
       }}
     >
@@ -51,14 +49,25 @@ export default function TabsLayout() {
         }}
       />
 
+      {/* شاشة الرسائل الجديدة */}
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: "Messages",
+          tabBarIcon: ({ color, size }: TabIconProps) => (
+            <Ionicons name="chatbubbles-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
       <Tabs.Screen
         name="chatbot"
         options={{
-          title: "AI chatbot",
+          title: "AI Bot",
           tabBarIcon: ({ color, size }: TabIconProps) => (
             <Ionicons
-              name="chatbubble-ellipses"
-              size={size}
+              name="medical"
+              size={size + 4} // تكبير أيقونة الـ AI شوية لتميزها
               color={color}
             />
           ),

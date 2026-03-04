@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import CustomButton from "../../components/CustomButton";
 import { COLORS } from "../../constants/colors";
 
-export default function WelcomeScreen() {
+export default function Index() {
   const router = useRouter();
 
   return (
