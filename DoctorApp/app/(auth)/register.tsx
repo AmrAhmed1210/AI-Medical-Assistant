@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
@@ -54,92 +55,54 @@ export default function RegisterScreen() {
     }, 100);
   };
 
-  const handleRegister = async () => {
-    Keyboard.dismiss(); // Dismiss keyboard when registering
+   // أضف هذا في الأعلى
 
-    // Check for empty fields
-    if (!firstName || !lastName || !email || !phone || !password || !confirmPassword) {
-      Toast.show({
-        type: "error",
-        text1: "Please fill all fields",
-        text2: "All fields are required to create an account",
-        position: "top",
-        topOffset: 60,
-      });
-      return;
-    }
+// ... داخل الكومبوننت
+const handleRegister = async () => {
+  Keyboard.dismiss();
 
-    // Check if email already exists
-    if (existingEmails.includes(email.toLowerCase())) {
-      Toast.show({
-        type: "error",
-        text1: "Account already exists",
-        text2: "Please login instead",
-        position: "top",
-        topOffset: 60,
-      });
-      return;
-    }
+  // 1. التحقق من الحقول (نفس الكود بتاعك)
+  if (!firstName || !lastName || !email || !phone || !password || !confirmPassword) {
+    // showToast("error", "Please fill all fields");
+    return;
+  }
 
-    // Check if passwords match
-    if (password !== confirmPassword) {
-      Toast.show({
-        type: "error",
-        text1: "Passwords do not match",
-        text2: "Make sure both passwords are identical",
-        position: "top",
-        topOffset: 60,
-      });
-      return;
-    }
+  try {
+    // 2. إرسال الطلب للسيرفر
+    // ملاحظة: استخدم IP جهازك بدلاً من localhost لو بتجرب من موبايل حقيقي
+    const response = await axios.post("http://10.81.152.117:5076/api/auth/register", {
+      name: `${firstName} ${lastName}`,
+      email: email.toLowerCase(),
+      passwordHash: password, // السيرفر بيشفرها عنده
+      role: "Patient"
+    });
 
-    // Check password length
-    if (password.length < 6) {
-      Toast.show({
-        type: "error",
-        text1: "Password too short",
-        text2: "Password must be at least 6 characters",
-        position: "top",
-        topOffset: 60,
-      });
-      return;
-    }
-
-    // Save user data
-    const user = {
-      firstName,
-      lastName,
-      email,
-      phone,
-    };
-
-    try {
-      await AsyncStorage.setItem("user", JSON.stringify(user));
+    if (response.data.token) {
+      // 3. حفظ البيانات والتوكن
+      await AsyncStorage.setItem("userToken", response.data.token);
+      await AsyncStorage.setItem("user", JSON.stringify(response.data));
       await AsyncStorage.setItem("isLoggedIn", "true");
-      await AsyncStorage.setItem("userName", firstName);
 
       Toast.show({
         type: "success",
-        text1: `Welcome ${firstName}! 👋`,
-        text2: "Your account has been created successfully",
-        position: "top",
-        topOffset: 60,
-        visibilityTime: 2500,
+        text1: `Welcome ${response.data.name}! 👋`,
+        text2: "Account created and connected to server",
       });
 
       setTimeout(() => {
         router.replace("/home");
-      }, 2600);
-    } catch (error) {
-      Toast.show({
-        type: "error",
-        text1: "Something went wrong",
-        text2: "Please try again",
-        position: "top",
-        topOffset: 60,
-      });
+      }, 2000);
     }
-  };
+  } catch (error: any) {
+    // 4. معالجة أخطاء السيرفر (مثل إيميل مكرر)
+    const errorMsg = error.response?.data || "Server connection failed";
+    Toast.show({
+      type: "error",
+      text1: "Registration Failed",
+      text2: errorMsg,
+    });
+  }
+};
 
   return (
     <KeyboardAvoidingView

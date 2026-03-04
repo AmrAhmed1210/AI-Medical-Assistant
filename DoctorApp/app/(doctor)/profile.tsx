@@ -6,7 +6,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { COLORS } from "../../constants/colors";
-import ProfileEdit from "../../components/profile-edit";
+import ProfileEdit from "../../components/Profile-edit";
 
 export default function DoctorProfile() {
   const router = useRouter();
