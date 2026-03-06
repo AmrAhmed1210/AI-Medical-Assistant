@@ -8,8 +8,7 @@ public class Hospital {
     public double Rating { get; set; }
     public int Reviews { get; set; }
     public string Image { get; set; } = string.Empty;
-    public string Status { get; set; } = "active"; // active | inactive
+    public string Status { get; set; } = "active"; 
     
-    // الربط مع الأطباء (Relationship)
     public List<Doctor> Doctors { get; set; } = new();
 }

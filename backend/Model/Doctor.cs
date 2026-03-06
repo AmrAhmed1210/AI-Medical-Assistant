@@ -9,5 +9,5 @@ public class Doctor {
     public int Reviews { get; set; }
     public decimal Fees { get; set; }
     public string Bio { get; set; } = string.Empty;
-    public string HospitalId { get; set; } = string.Empty; // للربط بالمستشفى
+    public string HospitalId { get; set; } = string.Empty; 
 }

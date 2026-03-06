@@ -1,11 +1,21 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
+import { View, StyleSheet } from "react-native";
 
 type TabIconProps = {
   color: string;
   size: number;
+  focused: boolean;
 };
+
+function TabIcon({ name, color, size, focused }: { name: any; color: string; size: number; focused: boolean }) {
+  return (
+    <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+      <Ionicons name={name} size={focused ? size + 1 : size} color={color} />
+    </View>
+  );
+}
 
 export default function TabsLayout() {
   return (
@@ -13,19 +23,23 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: "#999",
+        tabBarInactiveTintColor: "#BBBBC0",
         tabBarStyle: {
-          height: 65, // زودت الطول شوية عشان الشكل يكون أريح
+          height: 70,
           paddingBottom: 10,
-          paddingTop: 8,
-          backgroundColor: '#fff',
-          borderTopWidth: 1,
-          borderTopColor: '#f0f0f0',
-          elevation: 0, // لإلغاء الظل الثقيل في أندرويد
+          paddingTop: 6,
+          backgroundColor: "#fff",
+          borderTopWidth: 0,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 12,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
+          fontSize: 10,
+          fontWeight: "600",
+          marginTop: 2,
         },
       }}
     >
@@ -33,8 +47,8 @@ export default function TabsLayout() {
         name="home"
         options={{
           title: "Home",
-          tabBarIcon: ({ color, size }: TabIconProps) => (
-            <Ionicons name="home" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
+            <TabIcon name={focused ? "home" : "home-outline"} color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -43,19 +57,18 @@ export default function TabsLayout() {
         name="doctors"
         options={{
           title: "Find",
-          tabBarIcon: ({ color, size }: TabIconProps) => (
-            <Ionicons name="search" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
+            <TabIcon name={focused ? "search" : "search-outline"} color={color} size={size} focused={focused} />
           ),
         }}
       />
 
-      {/* شاشة الرسائل الجديدة */}
       <Tabs.Screen
         name="messages"
         options={{
           title: "Messages",
-          tabBarIcon: ({ color, size }: TabIconProps) => (
-            <Ionicons name="chatbubbles-outline" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
+            <TabIcon name={focused ? "chatbubbles" : "chatbubbles-outline"} color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -64,12 +77,8 @@ export default function TabsLayout() {
         name="chatbot"
         options={{
           title: "AI Bot",
-          tabBarIcon: ({ color, size }: TabIconProps) => (
-            <Ionicons
-              name="medical"
-              size={size + 4} // تكبير أيقونة الـ AI شوية لتميزها
-              color={color}
-            />
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
+            <TabIcon name={focused ? "medical" : "medical-outline"} color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -78,11 +87,32 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }: TabIconProps) => (
-            <Ionicons name="person" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
+            <TabIcon name={focused ? "person" : "person-outline"} color={color} size={size} focused={focused} />
           ),
+        }}
+      />
+
+      {/* Hidden screens - مش هتظهر في الـ tab bar */}
+      <Tabs.Screen
+        name="doctor-details"
+        options={{
+          href: null, // يخفيها من الـ tab bar تماماً
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconWrap: {
+    width: 36,
+    height: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 10,
+  },
+  iconWrapActive: {
+    backgroundColor: COLORS.primary + "18",
+  },
+});
