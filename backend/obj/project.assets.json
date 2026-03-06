@@ -3615,19 +3615,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\3omda\\.nuget\\packages\\": {}
+    "C:\\Users\\O.R\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\AI-Medical-Assistant\\backend\\backend.csproj",
+      "projectUniqueName": "E:\\AI_project\\backend\\backend.csproj",
       "projectName": "backend",
-      "projectPath": "C:\\AI-Medical-Assistant\\backend\\backend.csproj",
-      "packagesPath": "C:\\Users\\3omda\\.nuget\\packages\\",
-      "outputPath": "C:\\AI-Medical-Assistant\\backend\\obj\\",
+      "projectPath": "E:\\AI_project\\backend\\backend.csproj",
+      "packagesPath": "C:\\Users\\O.R\\.nuget\\packages\\",
+      "outputPath": "E:\\AI_project\\backend\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\3omda\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\O.R\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
