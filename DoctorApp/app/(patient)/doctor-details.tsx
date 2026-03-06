@@ -717,5 +717,5 @@ const styles = StyleSheet.create({
   successRow:     { flexDirection: "row", alignItems: "center", gap: 10 },
   successDetailTxt:{ fontSize: 13, color: "#555", fontWeight: "500" },
   doneBtn:        { backgroundColor: COLORS.primary, borderRadius: 18, paddingHorizontal: 44, paddingVertical: 13, marginTop: 18 },
-  doneBtnTxt:     { color: "#fff", fontSize: 15, fontWeight: "700" },
+  doneBtnTxt:     { color:"#fff", fontSize: 15, fontWeight: "700" },
 });
