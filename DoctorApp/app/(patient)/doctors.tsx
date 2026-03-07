@@ -7,6 +7,7 @@ import { useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import DoctorCard from "@/components/DoctorCard";
+import { useLanguage } from "../../hooks/useLanguage";
 
 const MOCK_DOCTORS = [
   { id: "1", name: "Dr. Sarah Ahmed",   specialty: "Cardiology",   rating: 4.8, reviewCount: 124, location: "Cairo, Egypt",      experience: "12 yrs", consultationFee: 50, isAvailable: true  },
@@ -21,6 +22,7 @@ const SPECIALTIES = ["All", "General", "Cardiology", "Dermatology", "Pediatrics"
 
 export default function DoctorsScreen() {
   const params = useLocalSearchParams<{ specialty?: string }>();
+  const { tr, isRTL } = useLanguage();
 
   const [doctors,    setDoctors]    = useState<any[]>([]);
   const [filtered,   setFiltered]   = useState<any[]>([]);
@@ -30,12 +32,9 @@ export default function DoctorsScreen() {
   const [search,     setSearch]     = useState("");
   const [activeSpec, setActiveSpec] = useState("All");
 
-  // لو جاي من الـ home بـ specialty معين، حدد الفلتر تلقائياً
   useEffect(() => {
     if (params.specialty) {
-      const match = SPECIALTIES.find(
-        (s) => s.toLowerCase() === params.specialty!.toLowerCase()
-      );
+      const match = SPECIALTIES.find((s) => s.toLowerCase() === params.specialty!.toLowerCase());
       if (match) setActiveSpec(match);
     }
   }, [params.specialty]);
@@ -66,8 +65,17 @@ export default function DoctorsScreen() {
     setFiltered(res);
   }, [search, activeSpec, doctors]);
 
+  // translated specialty chips
+  const specLabel = (s: string) => {
+    const map: Record<string, string> = {
+      All: tr("all"), General: tr("spec_general"), Cardiology: tr("spec_cardiology"),
+      Dermatology: tr("spec_dermatology"), Pediatrics: tr("spec_pediatrics"), Neurology: tr("spec_neurology"),
+    };
+    return map[s] ?? s;
+  };
+
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
-  if (error)   return (
+  if (error) return (
     <View style={styles.center}>
       <Text style={styles.errorTxt}>⚠️ {error}</Text>
       <TouchableOpacity style={styles.retryBtn} onPress={fetchDoctors}>
@@ -79,18 +87,19 @@ export default function DoctorsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Find Doctors</Text>
-        <Text style={styles.subtitle}>{filtered.length} doctors available</Text>
+        <Text style={[styles.title, isRTL && styles.textRight]}>{tr("find_doctor")}</Text>
+        <Text style={[styles.subtitle, isRTL && styles.textRight]}>{filtered.length} {tr("stats_doctors")}</Text>
       </View>
 
-      <View style={styles.searchBox}>
+      <View style={[styles.searchBox, isRTL && styles.rowReverse]}>
         <Ionicons name="search-outline" size={16} color="#BBB" />
         <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name or specialty..."
+          style={[styles.searchInput, isRTL && styles.textRight]}
+          placeholder={tr("search")}
           placeholderTextColor="#BBB"
           value={search}
           onChangeText={setSearch}
+          textAlign={isRTL ? "right" : "left"}
         />
         {search.length > 0 && (
           <TouchableOpacity onPress={() => setSearch("")}>
@@ -99,20 +108,15 @@ export default function DoctorsScreen() {
         )}
       </View>
 
-      {/* Filter chips */}
       <View style={styles.chipsWrapper}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
           {SPECIALTIES.map((s) => (
             <TouchableOpacity
               key={s}
               style={[styles.chip, activeSpec === s && styles.chipActive]}
               onPress={() => setActiveSpec(s)}
             >
-              <Text style={[styles.chipTxt, activeSpec === s && styles.chipTxtActive]}>{s}</Text>
+              <Text style={[styles.chipTxt, activeSpec === s && styles.chipTxtActive]}>{specLabel(s)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -134,8 +138,8 @@ export default function DoctorsScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="search-outline" size={48} color="#DDD" />
-            <Text style={styles.emptyTxt}>No doctors found</Text>
-            <Text style={styles.emptySubTxt}>Try a different search or filter</Text>
+            <Text style={styles.emptyTxt}>{tr("no_doctors")}</Text>
+            <Text style={styles.emptySubTxt}>{tr("try_different")}</Text>
           </View>
         }
       />
@@ -144,36 +148,27 @@ export default function DoctorsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:  { flex: 1, backgroundColor: "#F4F6FA" },
-  center:     { flex: 1, justifyContent: "center", alignItems: "center", gap: 12, backgroundColor: "#F4F6FA" },
-  errorTxt:   { color: "#e53935", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
-  retryBtn:   { backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 9, borderRadius: 18 },
-  retryTxt:   { color: "#fff", fontWeight: "600", fontSize: 13 },
-  header:     { paddingHorizontal: 18, paddingTop: 52, paddingBottom: 10 },
-  title:      { fontSize: 24, fontWeight: "800", color: "#1A1A1A", letterSpacing: -0.3 },
-  subtitle:   { fontSize: 12, color: "#AAA", marginTop: 2 },
-  searchBox:  {
+  container:   { flex: 1, backgroundColor: "#F4F6FA" },
+  center:      { flex: 1, justifyContent: "center", alignItems: "center", gap: 12, backgroundColor: "#F4F6FA" },
+  rowReverse:  { flexDirection: "row-reverse" },
+  textRight:   { textAlign: "right" },
+  errorTxt:    { color: "#e53935", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
+  retryBtn:    { backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 9, borderRadius: 18 },
+  retryTxt:    { color: "#fff", fontWeight: "600", fontSize: 13 },
+  header:      { paddingHorizontal: 18, paddingTop: 52, paddingBottom: 10 },
+  title:       { fontSize: 24, fontWeight: "800", color: "#1A1A1A", letterSpacing: -0.3 },
+  subtitle:    { fontSize: 12, color: "#AAA", marginTop: 2 },
+  searchBox:   {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: "#fff", borderRadius: 14,
     marginHorizontal: 18, paddingHorizontal: 14, paddingVertical: 11,
     shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  searchInput: { flex: 1, fontSize: 13, color: "#1A1A1A", padding: 0 },
-
-  /* الـ wrapper بيمنع الـ chips من الاتقطع */
-  chipsWrapper: { marginTop: 12, marginBottom: 0 },
-  chipsRow: {
-    paddingHorizontal: 18,
-    paddingVertical: 6,
-    gap: 8,
-    alignItems: "center",
-  },
-  chip: {
-    paddingHorizontal: 16, paddingVertical: 8,
-    borderRadius: 20, backgroundColor: "#fff",
-    borderWidth: 1.5, borderColor: "#E8E8E8",
-  },
+  searchInput:   { flex: 1, fontSize: 13, color: "#1A1A1A", padding: 0 },
+  chipsWrapper:  { marginTop: 12 },
+  chipsRow:      { paddingHorizontal: 18, paddingVertical: 6, gap: 8, alignItems: "center" },
+  chip:          { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1.5, borderColor: "#E8E8E8" },
   chipActive:    { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   chipTxt:       { fontSize: 13, color: "#777", fontWeight: "500" },
   chipTxtActive: { color: "#fff", fontWeight: "600" },

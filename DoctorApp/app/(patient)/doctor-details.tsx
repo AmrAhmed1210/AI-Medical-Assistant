@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView,
   Platform, Animated,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
@@ -99,11 +99,15 @@ export default function DoctorDetailsScreen() {
 
   useEffect(() => {
     if (!doctorId) return;
-    // امسح الـ reviews الغلط اللي اتحفظت بـ undefined
     AsyncStorage.removeItem("reviews_doctor_undefined");
     fetchDoctor();
-    loadReviews();
   }, [doctorId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadReviews();
+    }, [doctorId])
+  );
 
   const fetchDoctor = async () => {
     try {
@@ -117,10 +121,11 @@ export default function DoctorDetailsScreen() {
 
   const loadReviews = async () => {
     if (!doctorId || doctorId === "undefined") return;
+    setReviews([]); // امسح الـ reviews القديمة الأول
     try {
       const key = `reviews_doctor_${doctorId}`;
       const stored = await AsyncStorage.getItem(key);
-      if (stored) setReviews(JSON.parse(stored));
+      setReviews(stored ? JSON.parse(stored) : []);
     } catch {}
   };
 
