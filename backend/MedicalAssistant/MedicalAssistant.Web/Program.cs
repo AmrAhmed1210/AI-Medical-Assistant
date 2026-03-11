@@ -1,6 +1,7 @@
 using MedicalAssistant.Application.Services;
 using MedicalAssistant.Persistance.Data.DbContexts;
 using MedicalAssistant.Services.MappingProfiles;
+using MedicalAssistant.Services.Services;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
@@ -36,7 +37,7 @@ public class Program
 
         // Register Doctor Service
         builder.Services.AddScoped<IDoctorService, DoctorService>();
-
+        builder.Services.AddScoped<IReviewService, ReviewService>();
         // Optional: CORS (allow frontend requests)
         builder.Services.AddCors(options =>
         {

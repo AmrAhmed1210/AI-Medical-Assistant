@@ -1,5 +1,6 @@
 ﻿using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Domain.Entities;
+using MedicalAssistant.Domain.Entities.DoctorsModule;
 using MedicalAssistant.Persistance.Data.DbContexts;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Collections;
@@ -10,52 +11,41 @@ public class UnitOfWork : IUnitOfWork
 {
     private readonly MedicalAssistantDbContext _context;
     private IDbContextTransaction? _transaction;
-    private bool _disposed;
-
-    // قاموس لتخزين الـ Repositories المنشأة لضمان عدم تكرارها (Flyweight Pattern)
     private Hashtable? _repositories;
+    private bool _disposed;
 
     private IPatientRepository? _patients;
     private IAppointmentRepository? _appointments;
     private IDoctorRepository? _doctors;
+    private IReviewRepository? _reviews;
 
     public UnitOfWork(MedicalAssistantDbContext context)
     {
         _context = context;
     }
 
-    // --- تحقق الخصائص (Properties Implementation) ---
     public IPatientRepository Patients => _patients ??= new PatientRepository(_context);
     public IAppointmentRepository Appointments => _appointments ??= new AppointmentRepository(_context);
     public IDoctorRepository Doctors => _doctors ??= new DoctorRepository(_context);
+    public IReviewRepository Reviews => _reviews ??= new ReviewRepository(_context);
 
-    // --- تنفيذ الـ Generic Repository الوصول العام ---
     public IGenericRepository<TEntity> Repository<TEntity>() where TEntity : BaseEntity
     {
         _repositories ??= new Hashtable();
+        var typeName = typeof(TEntity).Name;
 
-        var type = typeof(TEntity).Name;
-
-        if (!_repositories.ContainsKey(type))
+        if (!_repositories.ContainsKey(typeName))
         {
-            var repositoryType = typeof(GenericRepository<>);
-            var repositoryInstance = Activator.CreateInstance(repositoryType.MakeGenericType(typeof(TEntity)), _context);
-            _repositories.Add(type, repositoryInstance);
+            var repositoryType = typeof(GenericRepository<>).MakeGenericType(typeof(TEntity));
+            var repositoryInstance = Activator.CreateInstance(repositoryType, _context);
+            _repositories.Add(typeName, repositoryInstance!);
         }
-
-        return (IGenericRepository<TEntity>)_repositories[type]!;
+        return (IGenericRepository<TEntity>)_repositories[typeName]!;
     }
 
-    public async Task<int> SaveChangesAsync()
-    {
-        return await _context.SaveChangesAsync();
-    }
+    public async Task<int> SaveChangesAsync() => await _context.SaveChangesAsync();
 
-    // --- إدارة العمليات (Transaction Management) ---
-    public async Task BeginTransactionAsync()
-    {
-        _transaction = await _context.Database.BeginTransactionAsync();
-    }
+    public async Task BeginTransactionAsync() => _transaction = await _context.Database.BeginTransactionAsync();
 
     public async Task CommitTransactionAsync()
     {
@@ -64,19 +54,8 @@ public class UnitOfWork : IUnitOfWork
             await _context.SaveChangesAsync();
             if (_transaction != null) await _transaction.CommitAsync();
         }
-        catch
-        {
-            await RollbackTransactionAsync();
-            throw;
-        }
-        finally
-        {
-            if (_transaction != null)
-            {
-                await _transaction.DisposeAsync();
-                _transaction = null;
-            }
-        }
+        catch { await RollbackTransactionAsync(); throw; }
+        finally { await DisposeTransactionAsync(); }
     }
 
     public async Task RollbackTransactionAsync()
@@ -84,22 +63,29 @@ public class UnitOfWork : IUnitOfWork
         if (_transaction != null)
         {
             await _transaction.RollbackAsync();
-            await _transaction.DisposeAsync();
-            _transaction = null;
+            await DisposeTransactionAsync();
         }
     }
 
-    // --- التخلص من الكائنات (Disposal) ---
+    private async Task DisposeTransactionAsync()
+    {
+        if (_transaction != null) { await _transaction.DisposeAsync(); _transaction = null; }
+    }
+
     public async ValueTask DisposeAsync()
     {
-        await _context.DisposeAsync();
-        if (_transaction != null) await _transaction.DisposeAsync();
+        if (!_disposed)
+        {
+            if (_transaction != null) await DisposeTransactionAsync();
+            await _context.DisposeAsync();
+            _disposed = true;
+        }
+        GC.SuppressFinalize(this);
     }
 
     public void Dispose()
     {
-        _context.Dispose();
-        _transaction?.Dispose();
+        if (!_disposed) { _transaction?.Dispose(); _context.Dispose(); _disposed = true; }
         GC.SuppressFinalize(this);
     }
 }

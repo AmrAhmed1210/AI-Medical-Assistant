@@ -6,11 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MedicalAssistant.Persistance.Repositories
 {
-    /// <summary>
-    /// Generic repository implementation.
-    /// Contains basic CRUD operations for database entities.
-    /// </summary>
-    /// <typeparam name="T">Entity type to work with</typeparam>
     public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity
     {
         protected readonly MedicalAssistantDbContext _context;

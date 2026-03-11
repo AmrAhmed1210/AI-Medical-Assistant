@@ -1,4 +1,6 @@
-﻿namespace MedicalAssistant.Domain.Entities.DoctorsModule;
+﻿using MedicalAssistant.Domain.Entities.ReviewsModule;
+
+namespace MedicalAssistant.Domain.Entities.DoctorsModule;
 
 public class Doctor : BaseEntity
 {
@@ -23,4 +25,7 @@ public class Doctor : BaseEntity
     public int SpecialtyId { get; set; }
 
     public Specialty Specialty { get; set; } = null!;
+
+    public ICollection<Review> Reviews { get; set; } = new List<Review>();
+
 }
