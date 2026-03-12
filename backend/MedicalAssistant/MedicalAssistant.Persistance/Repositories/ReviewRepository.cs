@@ -1,99 +1,105 @@
-﻿using MedicalAssistant.Domain.Contracts;
+﻿using AutoMapper;
+using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Domain.Entities.ReviewsModule;
-using MedicalAssistant.Persistance.Data.DbContexts;
-using Microsoft.EntityFrameworkCore;
+using MedicalAssistant.Services_Abstraction.Contracts;
+using MedicalAssistant.Shared.DTOs.ReviewDTOs;
 
-namespace MedicalAssistant.Persistance.Repositories
+namespace MedicalAssistant.Services.Services
 {
-    public class ReviewRepository : GenericRepository<Review>, IReviewRepository
+    public class ReviewService : IReviewService
     {
-        private readonly MedicalAssistantDbContext _context;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
 
-        public ReviewRepository(MedicalAssistantDbContext context) : base(context)
+        public ReviewService(IUnitOfWork unitOfWork, IMapper mapper)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
+            _mapper = mapper;
         }
 
-        public async Task<IEnumerable<Review>> GetByDoctorIdAsync(int doctorId)
+        public async Task<IEnumerable<ReviewDto>> GetReviewsByDoctorIdAsync(int doctorId)
         {
-            return await _context.Reviews
-                .Include(r => r.Doctor)
-                .Where(r => r.DoctorId == doctorId)
-                .OrderByDescending(r => r.CreatedAt)
-                .ToListAsync();
+            var reviews = await _unitOfWork.Reviews.GetByDoctorIdAsync(doctorId);
+            return _mapper.Map<IEnumerable<ReviewDto>>(reviews);
         }
 
-        public async Task<IEnumerable<Review>> GetRecentReviewsAsync(int count)
+        public async Task<ReviewDto?> GetReviewByIdAsync(int reviewId)
         {
-            return await _context.Reviews
-                .Include(r => r.Doctor)
-                .OrderByDescending(r => r.CreatedAt)
-                .Take(count)
-                .ToListAsync();
+            var review = await _unitOfWork.Reviews.GetByIdAsync(reviewId);
+            return review == null ? null : _mapper.Map<ReviewDto>(review);
         }
 
-        public async Task<IEnumerable<Review>> GetTopRatedReviewsAsync(int count)
+        public async Task<IEnumerable<ReviewDto>> GetRecentReviewsAsync(int count)
         {
-            return await _context.Reviews
-                .Include(r => r.Doctor)
-                .OrderByDescending(r => r.Rating)
-                .Take(count)
-                .ToListAsync();
+            var reviews = await _unitOfWork.Reviews.GetRecentReviewsAsync(count);
+            return _mapper.Map<IEnumerable<ReviewDto>>(reviews);
+        }
+
+        public async Task<IEnumerable<ReviewDto>> GetTopRatedReviewsAsync(int count)
+        {
+            var reviews = await _unitOfWork.Reviews.GetTopRatedReviewsAsync(count);
+            return _mapper.Map<IEnumerable<ReviewDto>>(reviews);
         }
 
         public async Task<double> GetDoctorAverageRatingAsync(int doctorId)
         {
-            return await _context.Reviews
-                .Where(r => r.DoctorId == doctorId)
-                .AverageAsync(r => (double?)r.Rating) ?? 0;
+            return await _unitOfWork.Reviews.GetDoctorAverageRatingAsync(doctorId);
         }
 
         public async Task<int> GetDoctorReviewsCountAsync(int doctorId)
         {
-            return await _context.Reviews
-                .CountAsync(r => r.DoctorId == doctorId);
+            return await _unitOfWork.Reviews.GetDoctorReviewsCountAsync(doctorId);
+        }
+
+        public async Task<(IEnumerable<ReviewDto> Items, int TotalCount)> GetPaginatedByDoctorAsync(int doctorId, int pageNumber, int pageSize)
+        {
+            var (items, totalCount) = await _unitOfWork.Reviews.GetPaginatedByDoctorAsync(doctorId, pageNumber, pageSize);
+            return (_mapper.Map<IEnumerable<ReviewDto>>(items), totalCount);
+        }
+
+        public async Task<ReviewDto> CreateReviewAsync(CreateReviewDto dto, string author)
+        {
+            if (await _unitOfWork.Reviews.HasUserReviewedDoctorAsync(dto.DoctorId, author))
+                throw new InvalidOperationException("You have already reviewed this doctor.");
+
+            var review = _mapper.Map<Review>(dto);
+            review.Author = author;
+            review.CreatedAt = DateTime.UtcNow;
+
+            await _unitOfWork.Reviews.AddAsync(review);
+            await _unitOfWork.SaveChangesAsync();
+
+            return _mapper.Map<ReviewDto>(review);
+        }
+
+        public async Task<bool> UpdateReviewAsync(int reviewId, UpdateReviewDto dto)
+        {
+            var review = await _unitOfWork.Reviews.GetByIdAsync(reviewId);
+            if (review == null)
+                return false;
+
+            review.Rating = dto.Rating;
+            review.Comment = dto.Comment;
+
+            _unitOfWork.Reviews.Update(review);
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteReviewAsync(int reviewId)
+        {
+            var review = await _unitOfWork.Reviews.GetByIdAsync(reviewId);
+            if (review == null)
+                return false;
+
+            _unitOfWork.Reviews.Delete(review);
+            await _unitOfWork.SaveChangesAsync();
+            return true;
         }
 
         public async Task<bool> HasUserReviewedDoctorAsync(int doctorId, string author)
         {
-            return await _context.Reviews
-                .AnyAsync(r => r.DoctorId == doctorId && r.Author == author);
-        }
-
-        public async Task<(IEnumerable<Review> Items, int TotalCount)> GetPaginatedByDoctorAsync(
-            int doctorId,
-            int pageNumber,
-            int pageSize)
-        {
-            var query = _context.Reviews
-                .Include(r => r.Doctor)
-                .Where(r => r.DoctorId == doctorId);
-
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .OrderByDescending(r => r.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return (items, totalCount);
-        }
-
-        public async Task<IEnumerable<Review>> GetReviewsWithDoctorAsync()
-        {
-            return await _context.Reviews
-                .Include(r => r.Doctor)
-                .OrderByDescending(r => r.CreatedAt)
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<Review>> SearchReviewsAsync(string keyword)
-        {
-            return await _context.Reviews
-                .Include(r => r.Doctor)
-                .Where(r => r.Comment.Contains(keyword))
-                .ToListAsync();
+            return await _unitOfWork.Reviews.HasUserReviewedDoctorAsync(doctorId, author);
         }
     }
 }
