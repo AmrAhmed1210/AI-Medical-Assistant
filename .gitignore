@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pt
+
+# IDE
+.vs/
+.idea/
+.vscode/
+
+# Node
+node_modules/
+
+# Env
+.env
+trocr_model/
+*.zip
