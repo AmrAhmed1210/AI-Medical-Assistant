@@ -1,16 +1,14 @@
+// app/(auth)/login.tsx
 import { useState } from "react";
 import {
   View, Text, TextInput, StyleSheet, KeyboardAvoidingView,
   Platform, ScrollView, TouchableOpacity, Keyboard, ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 import CustomButton from "../../components/CustomButton";
 import { COLORS } from "../../constants/colors";
-import axios from "axios";
-
-const API_URL = "http://192.168.43.216:5076/api";
+import { login } from "../../api";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -27,45 +25,14 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        email: email.toLowerCase().trim(),
-        passwordHash: password,
-      });
-      const data = response.data;
+      const user = await login({ email: email.toLowerCase().trim(), passwordHash: password });
 
-      if (data.token) {
-        // ── فصل الاسم لو الـ API رجّع name فقط ──
-        const fullName  = data.name ?? "";
-        const parts     = fullName.trim().split(" ");
-        const firstName = parts[0] ?? "";
-        const lastName  = parts.slice(1).join(" ") ?? "";
+      Toast.show({ type: "success", text1: `Welcome back ${user.firstName}! 👋`, position: "top", topOffset: 60, visibilityTime: 1500 });
+      setTimeout(() => {
+        if (user.role === "Doctor") router.replace("/(doctor)");
+        else router.replace("/(patient)/home");
+      }, 1600);
 
-        const userObj = {
-          ...data,
-          firstName,
-          lastName,
-          email: email.toLowerCase().trim(),
-          phone: data.phone ?? "",
-          name:  fullName,
-        };
-
-        await AsyncStorage.setItem("userToken",  data.token);
-        await AsyncStorage.setItem("token",      data.token);
-        await AsyncStorage.setItem("user",       JSON.stringify(userObj));
-        await AsyncStorage.setItem("userName",   fullName);
-        await AsyncStorage.setItem("isLoggedIn", "true");
-        await AsyncStorage.setItem("userRole",   data.role ?? "Patient");
-        // ─────────────────────────────────────────
-
-        Toast.show({
-          type: "success", text1: `Welcome back ${firstName}! 👋`,
-          position: "top", topOffset: 60, visibilityTime: 1500,
-        });
-        setTimeout(() => {
-          if (data.role === "Doctor") router.replace("/(doctor)");
-          else router.replace("/(patient)/home");
-        }, 1600);
-      }
     } catch (error: any) {
       const status = error.response?.status;
       const msg    = error.response?.data;
@@ -126,14 +93,11 @@ const styles = StyleSheet.create({
   title:          { fontSize: 32, fontWeight: "bold", marginBottom: 10, color: COLORS.primary },
   subtitle:       { fontSize: 16, color: "#666", marginBottom: 40 },
   inputContainer: { marginBottom: 30 },
-  input: {
-    height: 52, borderWidth: 1, borderColor: "#e5e5e5", borderRadius: 14,
-    paddingHorizontal: 15, marginBottom: 15, backgroundColor: "#fafafa", fontSize: 16,
-  },
-  passWrap:  { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#e5e5e5", borderRadius: 14, paddingHorizontal: 15, backgroundColor: "#fafafa" },
-  passInput: { flex: 1, height: 52, fontSize: 16 },
-  eyeBtn:    { padding: 10 },
-  regRow:    { flexDirection: "row", justifyContent: "center", marginTop: 20 },
-  regTxt:    { color: "#666", fontSize: 16 },
-  regLink:   { color: COLORS.primary, fontSize: 16, fontWeight: "600" },
+  input:          { height: 52, borderWidth: 1, borderColor: "#e5e5e5", borderRadius: 14, paddingHorizontal: 15, marginBottom: 15, backgroundColor: "#fafafa", fontSize: 16 },
+  passWrap:       { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#e5e5e5", borderRadius: 14, paddingHorizontal: 15, backgroundColor: "#fafafa" },
+  passInput:      { flex: 1, height: 52, fontSize: 16 },
+  eyeBtn:         { padding: 10 },
+  regRow:         { flexDirection: "row", justifyContent: "center", marginTop: 20 },
+  regTxt:         { color: "#666", fontSize: 16 },
+  regLink:        { color: COLORS.primary, fontSize: 16, fontWeight: "600" },
 });

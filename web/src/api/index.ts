@@ -1,0 +1,6 @@
+export { authApi } from './authApi'
+export { doctorApi } from './doctorApi'
+export { appointmentApi } from './appointmentApi'
+export { adminApi } from './adminApi'
+export { consultApi } from './consultApi'
+export { default as axiosInstance } from './axiosInstance'
