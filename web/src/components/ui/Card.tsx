@@ -1,52 +1,27 @@
-import React from 'react'
-import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import type { ReactNode } from 'react'
 
-interface CardProps {
-  children: React.ReactNode
-  className?: string
-  hover?: boolean
-  padding?: 'none' | 'sm' | 'md' | 'lg'
-  onClick?: () => void
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: ReactNode
 }
 
-const paddings = {
-  none: '',
-  sm: 'p-4',
-  md: 'p-5',
-  lg: 'p-6',
-}
+export const Card = ({ className = '', children, ...props }: CardProps) => (
+  <div className={`rounded-3xl border border-white/20 bg-white/80 backdrop-blur-xl shadow-xl ${className}`} {...props}>
+    {children}
+  </div>
+)
 
-export function Card({ children, className, hover, padding = 'md', onClick }: CardProps) {
-  const Comp = hover || onClick ? motion.div : 'div'
-  const motionProps = hover || onClick ? { whileHover: { y: -2 }, transition: { duration: 0.2 } } : {}
+export const CardHeader = ({ className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={`flex flex-col space-y-2 p-6 ${className}`} {...props} />
+)
 
-  return (
-    <Comp
-      className={cn(
-        'bg-white rounded-xl border border-gray-100 shadow-sm',
-        paddings[padding],
-        hover && 'cursor-pointer',
-        className
-      )}
-      onClick={onClick}
-      {...motionProps}
-    >
-      {children}
-    </Comp>
-  )
-}
+export const CardTitle = ({ className = '', ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+  <h3 className={`text-xl font-bold tracking-tight text-gray-900 ${className}`} {...props} />
+)
 
-export function CardHeader({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={cn('flex items-center justify-between mb-4', className)}>
-      {children}
-    </div>
-  )
-}
+export const CardDescription = ({ className = '', ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
+  <p className={`text-sm text-gray-500 ${className}`} {...props} />
+)
 
-export function CardTitle({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <h3 className={cn('text-base font-semibold text-gray-800', className)}>{children}</h3>
-  )
-}
+export const CardContent = ({ className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={`p-6 pt-0 ${className}`} {...props} />
+)
