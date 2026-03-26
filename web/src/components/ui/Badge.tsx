@@ -1,3 +1,5 @@
+// components/ui/Badge.tsx
+
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'admin'
 }
@@ -20,5 +22,72 @@ export const Badge = ({
     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${variants[variant]} ${className}`} {...props}>
       {children}
     </span>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+type AppointmentStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed' | string
+
+interface StatusBadgeProps {
+  status: AppointmentStatus
+}
+
+const statusConfig: Record<string, { label: string; variant: BadgeProps['variant']; dot: string }> = {
+  Pending: {
+    label: 'قيد الانتظار',
+    variant: 'warning',
+    dot: 'bg-white/70',
+  },
+  Confirmed: {
+    label: 'مؤكد',
+    variant: 'info',
+    dot: 'bg-white/70',
+  },
+  Completed: {
+    label: 'مكتمل',
+    variant: 'success',
+    dot: 'bg-white/70',
+  },
+  Cancelled: {
+    label: 'ملغي',
+    variant: 'danger',
+    dot: 'bg-white/70',
+  },
+}
+
+export const StatusBadge = ({ status }: StatusBadgeProps) => {
+  const config = statusConfig[status] ?? {
+    label: status,
+    variant: 'default' as const,
+    dot: 'bg-gray-400',
+  }
+
+  return (
+    <Badge variant={config.variant}>
+      <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
+      {config.label}
+    </Badge>
+  )
+}
+type UrgencyLevel = 'LOW' | 'MEDIUM' | 'HIGH'
+
+interface UrgencyBadgeProps {
+  level: UrgencyLevel
+}
+
+const urgencyConfig: Record<UrgencyLevel, { label: string; variant: BadgeProps['variant'] }> = {
+  LOW:    { label: 'منخفض', variant: 'success' },
+  MEDIUM: { label: 'متوسط', variant: 'warning' },
+  HIGH:   { label: 'عالي',  variant: 'danger'  },
+}
+
+export const UrgencyBadge = ({ level }: UrgencyBadgeProps) => {
+  const config = urgencyConfig[level] ?? { label: level, variant: 'default' as const }
+
+  return (
+    <Badge variant={config.variant}>
+      {config.label}
+    </Badge>
   )
 }

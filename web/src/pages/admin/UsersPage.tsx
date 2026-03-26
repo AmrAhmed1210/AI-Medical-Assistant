@@ -6,7 +6,6 @@ import {
   Mail, Lock, User, Stethoscope, Crown, Activity, RefreshCw,
   Database, Server, WifiOff
 } from 'lucide-react'
-import { adminApi } from '@/api/adminApi'
 import type { UserDto, UserRole, CreateUserRequest } from '@/lib/types'
 import {Card ,CardHeader,CardTitle,CardDescription , CardContent} from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -19,44 +18,7 @@ import { useUsers  } from '@/components/admin/users/useUsers'
 import { Pagination } from '@/components/ui/Pagination'
 import toast from 'react-hot-toast'
 
-function debounce<T extends (...args: any[]) => any>(func: T, wait: number) {
-  let timeout: ReturnType<typeof setTimeout> | null = null
-  return (...args: Parameters<T>) => {
-    if (timeout) clearTimeout(timeout)
-    timeout = setTimeout(() => func(...args), wait)
-  }
-}
 
-// ============================================================================
-// 📊 بيانات تجريبية (Mock Data) للاختبار
-// ============================================================================
-
-const MOCK_USERS: UserDto[] = [
-  {
-    userId: '1',
-    fullName: 'د. أحمد محمد علي',
-    email: 'ahmed@medbook.com',
-    role: 'Doctor',
-    isActive: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    userId: '2',
-    fullName: 'منى إبراهيم',
-    email: 'mona@medbook.com',
-    role: 'Patient',
-    isActive: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    userId: '3',
-    fullName: 'خالد محمود',
-    email: 'khaled@medbook.com',
-    role: 'Admin',
-    isActive: true,
-    createdAt: new Date().toISOString(),
-  },
-]
 
 // ============================================================================
 // 🎯 المكون الرئيسي: AdminUsers
@@ -65,22 +27,22 @@ const MOCK_USERS: UserDto[] = [
 const PAGE_SIZE = 10
 
 export default function AdminUsers() {
-  const [users, setUsers] = useState<UserDto[]>([])
-  const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | ''>('')
   const [loading, setLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking')
+ 
 
   const [form, setForm] = useState<CreateUserRequest>({
-    fullName: '', email: '', password: '', role: 'Patient',
+    fullName: '', email: '', passwordHash: '', role: 'Patient',
     specialityName: '', specialityNameAr: '', consultationFee: 0, yearsExperience: 0, bio: '',
   })
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof CreateUserRequest, string>>>({})
   const [addLoading, setAddLoading] = useState(false)
   const {
+  users,
+  total,
   fetchUsers,
   handleSearch,
   handleRoleFilter,
@@ -91,9 +53,7 @@ export default function AdminUsers() {
   page,
   handleRetry,
   handleUseMockData,
-
-
-
+  connectionStatus,
   
 
   } = useUsers()
@@ -148,6 +108,39 @@ export default function AdminUsers() {
       </motion.div>
     )
   }
+  
+const handleSubmitAddUser = async () => {
+  // validation بسيط
+  const errors: Partial<Record<keyof CreateUserRequest, string>> = {}
+  if (!form.fullName.trim()) errors.fullName = 'الاسم مطلوب'
+  if (!form.email.trim()) errors.email = 'البريد مطلوب'
+  if (!form.passwordHash || form.passwordHash.length < 8) errors.passwordHash = 'كلمة المرور 8 أحرف على الأقل'
+  
+  if (Object.keys(errors).length > 0) {
+    setFormErrors(errors)
+    return
+  }
+
+  setAddLoading(true)
+  await handleAddUser({       // ← ابعت الـ form data هنا
+    fullName: form.fullName,
+    email: form.email,
+    passwordHash: form.passwordHash,
+    role: form.role,
+  })
+  setAddLoading(false)
+  setShowAddModal(false)
+  setForm({ fullName: '', email: '', passwordHash: '', role: 'Patient'}) // reset
+}
+
+const handleToggleUser = useCallback(async (id: number) => {
+  await handleToggle(id)
+}, [handleToggle])
+
+const handleDeleteUser = useCallback(async (id: number) => {
+  await handleDelete(id)
+}, [handleDelete])
+
 
   // ── الواجهة الرئيسية ──────────────────────────────────────────────────
   return (
@@ -224,7 +217,7 @@ export default function AdminUsers() {
           <CardContent className="p-0">
             {loading ? (
               <div className="p-6"><div className="space-y-4">{[...Array(5)].map((_,i)=><div key={i} className="flex items-center gap-4 py-3"><Skeleton className="w-10 h-10 rounded-2xl" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-48" /></div><Skeleton className="h-6 w-16 rounded-full" /><Skeleton className="h-6 w-16 rounded-full" /></div>)}</div></div>
-            ) : <UserTable users={users} onToggle={handleToggle} onDelete={handleDelete} />}
+            ) : <UserTable users={users} onToggle={handleToggleUser} onDelete={handleDeleteUser} />}
           </CardContent>
 
           {/* الترقيم */}
@@ -235,7 +228,7 @@ export default function AdminUsers() {
       {/* مودال إضافة مستخدم */}
       <Modal open={showAddModal} onClose={()=>{setShowAddModal(false);setFormErrors({})}} title="✨ إضافة مستخدم جديد" size="lg" footer={<>
         <Button variant="outline" onClick={()=>{setShowAddModal(false);setFormErrors({})}}>إلغاء</Button>
-        <Button variant="primary" onClick={handleAddUser} loading={addLoading}><Check className="w-4 h-4" /> إنشاء الحساب</Button>
+        <Button variant="primary" onClick={handleSubmitAddUser} loading={addLoading}><Check className="w-4 h-4" /> إنشاء الحساب</Button>
       </>}>
         <div className="space-y-5">
           <motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-800 flex gap-3">
@@ -254,7 +247,7 @@ export default function AdminUsers() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">كلمة المرور *</label>
-              <Input type="password" value={form.password} onChange={(e)=>setField('password',e.target.value)} placeholder="•••••••• (8 أحرف على الأقل)" icon={<Lock className="w-4 h-4" />} error={formErrors.password} />
+              <Input type="password" value={form.passwordHash} onChange={(e)=>setField('passwordHash',e.target.value)} placeholder="•••••••• (8 أحرف على الأقل)" icon={<Lock className="w-4 h-4" />} error={formErrors.passwordHash} />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">الدور *</label>

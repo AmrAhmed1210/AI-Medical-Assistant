@@ -36,10 +36,11 @@ export const useAppointmentStore = create<AppointmentState>((set, get) => ({
     return updated
   },
 
+  // ✅ بيدور على id أو appointmentId عشان يدعم الاتنين
   updateLocal: (id, update) =>
     set((state) => ({
       appointments: state.appointments.map((a) =>
-        a.appointmentId === id ? { ...a, ...update } : a
+        (a.id === id || a.id === id) ? { ...a, ...update } : a
       ),
     })),
 }))

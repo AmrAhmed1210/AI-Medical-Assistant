@@ -7,7 +7,7 @@ import { ROLE_CONFIG } from './constants'
 
 interface UserTableProps {
   users: UserDto[]
-  onToggle: (id: string) => void
+  onToggle: (id: string) => Promise<void>
   onDelete: (id: string) => void
 }
 
@@ -58,7 +58,7 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
         <AnimatePresence mode="popLayout">
           {users.map((user, index) => (
             <motion.tr
-              key={user.userId}
+              key={user.id}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -68,9 +68,9 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
               <TableCell className="font-medium">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">
-                    {user.fullName.charAt(0)}
+                    {user.name.charAt(0)}
                   </div>
-                  <span className="text-gray-900 font-semibold">{user.fullName}</span>
+                  <span className="text-gray-900 font-semibold">{user.name}</span>
                 </div>
               </TableCell>
               <TableCell>
@@ -87,7 +87,7 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => onToggle(user.userId)}
+                    onClick={() => onToggle(user.id)}
                     className={`p-2.5 rounded-xl transition-all duration-200 ${
                       user.isActive 
                         ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
@@ -100,7 +100,7 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => { if(confirm('هل أنت متأكد من حذف هذا المستخدم؟')) onDelete(user.userId) }}
+                    onClick={() => { if(confirm('هل أنت متأكد من حذف هذا المستخدم؟')) onDelete(user.id) }}
                     className="p-2.5 rounded-xl bg-red-100 text-red-600 hover:bg-red-200 transition-all duration-200"
                     title="حذف المستخدم"
                   >

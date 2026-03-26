@@ -20,11 +20,11 @@ export function AppointmentTable({ appointments, onConfirm, onCancel, onComplete
   const handleAction = async () => {
     if (!actionItem) return
     const { appointment, action } = actionItem
-    setLoadingId(appointment.appointmentId)
+    setLoadingId(appointment.id)
     try {
-      if (action === 'confirm') await onConfirm?.(appointment.appointmentId)
-      if (action === 'cancel') await onCancel?.(appointment.appointmentId)
-      if (action === 'complete') await onComplete?.(appointment.appointmentId)
+      if (action === 'confirm') await onConfirm?.(appointment.id)
+      if (action === 'cancel') await onCancel?.(appointment.id)
+      if (action === 'complete') await onComplete?.(appointment.id)
     } finally {
       setLoadingId(null)
       setActionItem(null)
@@ -59,7 +59,7 @@ export function AppointmentTable({ appointments, onConfirm, onCancel, onComplete
                 </td>
               </tr>
             ) : appointments.map((appt) => (
-              <tr key={appt.appointmentId} className="hover:bg-gray-50/80 transition-colors">
+              <tr key={appt.id} className="hover:bg-gray-50/80 transition-colors">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center">
@@ -68,9 +68,8 @@ export function AppointmentTable({ appointments, onConfirm, onCancel, onComplete
                     <span className="font-medium text-gray-800">{appt.patientName}</span>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-gray-600">{appt.specialityName}</td>
                 <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formatDateTime(appt.scheduledAt)}</td>
-                <td className="px-4 py-3 text-gray-600">{formatCurrency(appt.fee)}</td>
+              
                 <td className="px-4 py-3"><StatusBadge status={appt.status} /></td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1">
@@ -81,7 +80,7 @@ export function AppointmentTable({ appointments, onConfirm, onCancel, onComplete
                       <>
                         <button
                           onClick={() => setActionItem({ appointment: appt, action: 'confirm' })}
-                          disabled={loadingId === appt.appointmentId}
+                          disabled={loadingId === appt.id}
                           className="p-1.5 rounded-lg text-green-500 hover:bg-green-50"
                           title="تأكيد"
                         >
@@ -89,7 +88,7 @@ export function AppointmentTable({ appointments, onConfirm, onCancel, onComplete
                         </button>
                         <button
                           onClick={() => setActionItem({ appointment: appt, action: 'cancel' })}
-                          disabled={loadingId === appt.appointmentId}
+                          disabled={loadingId === appt.id}
                           className="p-1.5 rounded-lg text-red-400 hover:bg-red-50"
                           title="إلغاء"
                         >
@@ -100,7 +99,7 @@ export function AppointmentTable({ appointments, onConfirm, onCancel, onComplete
                     {appt.status === 'Confirmed' && (
                       <button
                         onClick={() => setActionItem({ appointment: appt, action: 'complete' })}
-                        disabled={loadingId === appt.appointmentId}
+                        disabled={loadingId === appt.id}
                         className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50"
                         title="إكمال"
                       >
@@ -133,8 +132,6 @@ export function AppointmentTable({ appointments, onConfirm, onCancel, onComplete
             <div className="grid grid-cols-2 gap-4">
               <div><p className="text-xs text-gray-400 mb-1">المريض</p><p className="font-medium">{detailItem.patientName}</p></div>
               <div><p className="text-xs text-gray-400 mb-1">الطبيب</p><p className="font-medium">{detailItem.doctorName}</p></div>
-              <div><p className="text-xs text-gray-400 mb-1">التخصص</p><p className="font-medium">{detailItem.specialityName}</p></div>
-              <div><p className="text-xs text-gray-400 mb-1">الرسوم</p><p className="font-medium">{formatCurrency(detailItem.fee)}</p></div>
               <div><p className="text-xs text-gray-400 mb-1">الموعد</p><p className="font-medium">{formatDateTime(detailItem.scheduledAt)}</p></div>
               <div><p className="text-xs text-gray-400 mb-1">الحالة</p><StatusBadge status={detailItem.status} /></div>
             </div>

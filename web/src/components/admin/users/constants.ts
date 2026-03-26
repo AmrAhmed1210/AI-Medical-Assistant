@@ -21,24 +21,24 @@ export const ROLE_FILTERS: Array<{ value: UserRole | ''; label: string; emoji: s
 // ── بيانات تجريبية للاختبار ───────────────────────────────────────
 export const MOCK_USERS: UserDto[] = [
   {
-    userId: '1',
-    fullName: 'د. أحمد محمد علي',
+    id: '1',
+    name: 'د. أحمد محمد علي',
     email: 'ahmed@medbook.com',
     role: 'Doctor',
     isActive: true,
    
   },
   {
-    userId: '2',
-    fullName: 'منى إبراهيم',
+    id: '2',
+    name: 'منى إبراهيم',
     email: 'mona@medbook.com',
     role: 'Patient',
     isActive: true,
 
   },
   {
-    userId: '3',
-    fullName: 'خالد محمود',
+    id: '3',
+    name: 'خالد محمود',
     email: 'khaled@medbook.com',
     role: 'Admin',
     isActive: true,

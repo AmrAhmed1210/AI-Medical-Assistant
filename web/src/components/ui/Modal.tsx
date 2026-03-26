@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
+import { X, Loader2 } from 'lucide-react'
 import { Card } from './Card'
+import { Button } from './Button'
 
 interface ModalProps {
   open: boolean
@@ -60,5 +62,74 @@ export const Modal = ({
         </>
       )}
     </AnimatePresence>
+  )
+}
+
+// ============================================================================
+// ConfirmDialog
+// ============================================================================
+
+interface ConfirmDialogProps {
+  open: boolean
+  onClose: () => void
+  onConfirm: () => void | Promise<void>
+  title: string
+  message: string
+  confirmLabel?: string
+  cancelLabel?: string
+  variant?: 'primary' | 'danger'
+}
+
+export const ConfirmDialog = ({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  message,
+  confirmLabel = 'تأكيد',
+  cancelLabel = 'إلغاء',
+  variant = 'primary',
+}: ConfirmDialogProps) => {
+  const [loading, setLoading] = useState(false)
+
+  const handleConfirm = async () => {
+    setLoading(true)
+    try {
+      await onConfirm()
+    } finally {
+      setLoading(false)
+      onClose()
+    }
+  }
+
+  const btnVariant = {
+    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
+    danger:  'bg-red-500  hover:bg-red-600  text-white',
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      size="sm"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            {cancelLabel}
+          </Button>
+          <button
+            onClick={handleConfirm}
+            disabled={loading}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 ${btnVariant[variant]}`}
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {confirmLabel}
+          </button>
+        </>
+      }
+    >
+      <p className="text-sm text-gray-600 whitespace-pre-line">{message}</p>
+    </Modal>
   )
 }

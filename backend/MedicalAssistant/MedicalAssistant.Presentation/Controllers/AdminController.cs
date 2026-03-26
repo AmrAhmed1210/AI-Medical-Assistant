@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Mvc;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.Admin;
 
-namespace MedicalAssistant.Presentation.Controllers;
+namespace MedicalAssistant.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/admin")]
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
@@ -15,25 +15,97 @@ public class AdminController : ControllerBase
         _adminService = adminService;
     }
 
+    // ===============================
+    // 📊 Stats
+    // ===============================
     [HttpGet("stats")]
     public async Task<ActionResult<SystemStatsDto>> GetStats()
     {
-        var stats = await _adminService.GetSystemStatsAsync();
-        return Ok(stats);
+        var result = await _adminService.GetSystemStatsAsync();
+        return Ok(result);
     }
 
+    // ===============================
+    // 👥 Users
+    // ===============================
     [HttpGet("users")]
-    public async Task<ActionResult<IEnumerable<UserManagementDto>>> GetUsers()
+    public async Task<IActionResult> GetUsers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null,
+        [FromQuery] string? role = null)
     {
-        var users = await _adminService.GetAllUsersAsync();
-        return Ok(users);
+        try
+        {
+            var result = await _adminService.GetUsersAsync(page, pageSize, search, role);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Server error", details = ex.Message });
+        }
     }
 
-    [HttpPost("users/{id}/toggle-status")]
-    public async Task<IActionResult> ToggleStatus(int id)
+    // ===============================
+    // 🔄 Toggle
+    // ===============================
+    [HttpPut("users/{id}/toggle")]
+    public async Task<IActionResult> ToggleUser(int id)
     {
-        var result = await _adminService.ToggleUserStatusAsync(id);
-        if (!result) return NotFound();
-        return Ok();
+        try
+        {
+            var success = await _adminService.ToggleUserStatusAsync(id);
+
+            if (!success)
+                return NotFound(new { message = "User not found" });
+
+            return Ok(new { message = "User status updated" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Toggle failed", details = ex.Message });
+        }
+    }
+
+    // ===============================
+    // ❌ Delete
+    // ===============================
+    [HttpDelete("users/{id}")]
+    public async Task<IActionResult> DeleteUser(int id)
+    {
+        try
+        {
+            var success = await _adminService.DeleteUserAsync(id);
+
+            if (!success)
+                return NotFound(new { message = "User not found" });
+
+            return Ok(new { message = "User deleted" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Delete failed", details = ex.Message });
+        }
+    }
+
+    // ===============================
+    // ➕ Create
+    // ===============================
+    [HttpPost("users")]
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+    {
+        try
+        {
+            if (request == null)
+                return BadRequest(new { message = "Invalid request" });
+
+            var user = await _adminService.CreateUserAsync(request);
+
+            return Ok(user);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Create failed", details = ex.Message });
+        }
     }
 }

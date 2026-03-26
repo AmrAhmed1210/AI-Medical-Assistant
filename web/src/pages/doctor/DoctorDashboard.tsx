@@ -46,7 +46,7 @@ export default function DoctorDashboard() {
               <p className="text-sm text-gray-400 text-center py-8">لا توجد مواعيد اليوم</p>
             ) : dashboard?.todayAppointmentsList?.slice(0, 5).map((appt) => (
               <motion.div
-                key={appt.appointmentId}
+                key={appt.id}
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"

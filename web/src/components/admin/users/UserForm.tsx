@@ -53,11 +53,11 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
           <label className="block text-sm font-semibold text-gray-700 mb-2">كلمة المرور *</label>
           <Input
             type="password"
-            value={form.password}
-            onChange={(e) => onChange('password', e.target.value)}
+            value={form.passwordHash}
+            onChange={(e) => onChange('passwordHash', e.target.value)}
             placeholder="•••••••• (8 أحرف على الأقل)"
             icon={<Lock className="w-4 h-4" />}
-            error={errors.password}
+            error={errors.passwordHash}
           />
         </div>
         <div>
