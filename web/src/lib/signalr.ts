@@ -1,6 +1,6 @@
 import * as signalR from '@microsoft/signalr'
 
-const HUB_URL = import.meta.env.VITE_SIGNALR_HUB_URL || 'http://localhost:5000/hubs/consult'
+const HUB_URL = import.meta.env.VITE_SIGNALR_HUB_URL || 'http://localhost:5194/hubs/consult'
 
 let connection: signalR.HubConnection | null = null
 

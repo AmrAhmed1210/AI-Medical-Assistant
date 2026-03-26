@@ -13,11 +13,11 @@ export function useAuth() {
   const login = useCallback(async (data: LoginRequest) => {
     setLoading(true)
     try {
-      // const res = await authApi.login(data)
-      // setAuth(res.user, res.token)
-      // toast.success(`مرحباً ${res.user.fullName}`)
-      if (true) navigate(ROUTES.ADMIN_DASHBOARD)
-      else if (false) navigate(ROUTES.DOCTOR_DASHBOARD)
+      const res = await authApi.login(data)
+      setAuth(res.user, res.token)
+      toast.success(`مرحباً ${res.user.fullName}`)
+      if (res.user.role === 'Admin') navigate(ROUTES.ADMIN_DASHBOARD)
+      else if (res.user.role === 'Doctor') navigate(ROUTES.DOCTOR_DASHBOARD)
       else navigate('/')
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'بيانات الدخول غير صحيحة'

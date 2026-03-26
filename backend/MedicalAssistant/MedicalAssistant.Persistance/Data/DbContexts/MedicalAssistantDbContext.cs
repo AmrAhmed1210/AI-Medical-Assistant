@@ -2,6 +2,8 @@
 using MedicalAssistant.Domain.Entities.DoctorsModule;
 using MedicalAssistant.Domain.Entities.PatientModule;
 using MedicalAssistant.Domain.Entities.ReviewsModule;
+using MedicalAssistant.Domain.Entities.UserModule;
+using MedicalAssistant.Domain.Entities.AdminModule;
 using MedicalAssistant.Infrastructure.Data.Configurations.DoctorsModule;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,5 +34,7 @@ namespace MedicalAssistant.Persistance.Data.DbContexts
         public DbSet<Patient> Patients { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<Review> Reviews { get; set; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<Admin> Admins { get; set; }
     }
 }

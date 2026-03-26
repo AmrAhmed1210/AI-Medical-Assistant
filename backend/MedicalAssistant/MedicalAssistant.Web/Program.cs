@@ -14,31 +14,40 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Add services to the container
+        // --- 1. Add services to the container ---
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
-
-        // Add DbContext
+        
+        // --- 2. Add DbContext ---
         builder.Services.AddDbContext<MedicalAssistantDbContext>(options =>
         {
             options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
         });
 
-        // Register Modules
+        // --- 3. Register Modules ---
         builder.Services.AddPatientModule();
 
-        // AutoMapper
-        // Use this syntax for AutoMapper 13+ in .NET 8
+
+        builder.Services.AddScoped<IAuthService, AuthService>();
+
+        // --- 4. AutoMapper Configuration ---
         builder.Services.AddAutoMapper(cfg =>
         {
             cfg.AddProfile<DoctorProfile>();
+            // إذا قمت بإنشاء AdminProfile لاحقاً، أضفه هنا:
+            // cfg.AddProfile<AdminProfile>(); 
         }, typeof(DoctorProfile).Assembly);
 
-        // Register Doctor Service
+        // --- 5. Dependency Injection (Service Registration) ---
+        // خدمات الأطباء والمراجعات
         builder.Services.AddScoped<IDoctorService, DoctorService>();
         builder.Services.AddScoped<IReviewService, ReviewService>();
-        // Optional: CORS (allow frontend requests)
+
+        // تسجيل خدمة الأدمن الجديدة (السطر المطلوب)
+        builder.Services.AddScoped<IAdminService, AdminService>();
+
+        // --- 6. CORS Policy ---
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", policy =>
@@ -51,7 +60,7 @@ public class Program
 
         var app = builder.Build();
 
-        // Configure the HTTP request pipeline
+        // --- 7. Configure the HTTP request pipeline ---
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
@@ -60,10 +69,11 @@ public class Program
 
         app.UseHttpsRedirection();
 
-        app.UseCors("AllowAll"); // <-- enable CORS
+        app.UseCors("AllowAll"); // Enable CORS for Frontend
 
         app.UseAuthorization();
 
+        // ربط الـ Controllers بالـ Routes
         app.MapControllers();
 
         app.Run();
