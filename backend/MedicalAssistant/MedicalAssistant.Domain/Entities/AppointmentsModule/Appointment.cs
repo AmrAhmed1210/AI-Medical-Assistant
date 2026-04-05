@@ -16,7 +16,7 @@ namespace MedicalAssistant.Domain.Entities.AppointmentsModule
         // Appointment date and time
         public DateTime AppointmentDate { get; set; }
         public TimeSpan AppointmentTime { get; set; }
-
+        public DateTime ScheduledAt { get; set; }
         // Status (Pending, Confirmed, Cancelled)
         public string Status { get; set; } = "Pending";
 

@@ -4,16 +4,19 @@ using MedicalAssistant.Persistance.Data.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace MedicalAssistant.Persistance.Migrations
+namespace MedicalAssistant.Persistance.Data.Migrations
 {
     [DbContext(typeof(MedicalAssistantDbContext))]
-    partial class MedicalAssistantDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260404232202_New Tables")]
+    partial class NewTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,41 +24,6 @@ namespace MedicalAssistant.Persistance.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("MedicalAssistant.Domain.Entities.AnalysisModule.AnalysisResult", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Disclaimer")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("MessageId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SessionId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("SymptomsJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("UrgencyLevel")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("UrgencyScore")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AnalysisResults");
-                });
 
             modelBuilder.Entity("MedicalAssistant.Domain.Entities.AppointmentsModule.Appointment", b =>
                 {
@@ -156,36 +124,6 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.HasIndex("SpecialtyId");
 
                     b.ToTable("Doctors", (string)null);
-                });
-
-            modelBuilder.Entity("MedicalAssistant.Domain.Entities.DoctorsModule.DoctorAvailability", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<byte>("DayOfWeek")
-                        .HasColumnType("tinyint");
-
-                    b.Property<int>("DoctorId")
-                        .HasColumnType("int");
-
-                    b.Property<TimeSpan>("EndTime")
-                        .HasColumnType("time");
-
-                    b.Property<bool>("IsAvailable")
-                        .HasColumnType("bit");
-
-                    b.Property<TimeSpan>("StartTime")
-                        .HasColumnType("time");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DoctorId");
-
-                    b.ToTable("DoctorAvailabilities");
                 });
 
             modelBuilder.Entity("MedicalAssistant.Domain.Entities.DoctorsModule.Specialty", b =>
@@ -388,17 +326,6 @@ namespace MedicalAssistant.Persistance.Migrations
                         .IsRequired();
 
                     b.Navigation("Specialty");
-                });
-
-            modelBuilder.Entity("MedicalAssistant.Domain.Entities.DoctorsModule.DoctorAvailability", b =>
-                {
-                    b.HasOne("MedicalAssistant.Domain.Entities.DoctorsModule.Doctor", "Doctor")
-                        .WithMany()
-                        .HasForeignKey("DoctorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Doctor");
                 });
 
             modelBuilder.Entity("MedicalAssistant.Domain.Entities.ReviewsModule.Review", b =>
