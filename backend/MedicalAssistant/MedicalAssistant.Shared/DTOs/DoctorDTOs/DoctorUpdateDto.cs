@@ -2,8 +2,13 @@
 
 public class DoctorUpdateDto
 {
-    public string Specialty { get; set; } = string.Empty;
+    public int SpecialtyId { get; set; }
+
     public string? Bio { get; set; }
+
     public decimal? ConsultFee { get; set; }
+
     public int? YearsExperience { get; set; }
+
+    public string? Location { get; set; }
 }

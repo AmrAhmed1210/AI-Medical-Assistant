@@ -18,6 +18,7 @@ public class UnitOfWork : IUnitOfWork
     private IAppointmentRepository? _appointments;
     private IDoctorRepository? _doctors;
     private IReviewRepository? _reviews;
+    private IAdminRepository? _admins;
 
     public UnitOfWork(MedicalAssistantDbContext context)
     {
@@ -28,6 +29,7 @@ public class UnitOfWork : IUnitOfWork
     public IAppointmentRepository Appointments => _appointments ??= new AppointmentRepository(_context);
     public IDoctorRepository Doctors => _doctors ??= new DoctorRepository(_context);
     public IReviewRepository Reviews => _reviews ??= new ReviewRepository(_context);
+    public IAdminRepository Admins => _admins ??= new AdminRepository(_context);
 
     public IGenericRepository<TEntity> Repository<TEntity>() where TEntity : BaseEntity
     {

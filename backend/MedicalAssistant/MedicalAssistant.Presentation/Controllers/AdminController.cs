@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.Admin;
+using MedicalAssistant.Shared.DTOs.Common;
 
 namespace MedicalAssistant.API.Controllers;
 
+[Authorize(Roles = "Admin")]
 [ApiController]
 [Route("api/admin")]
 public class AdminController : ControllerBase
@@ -15,9 +18,6 @@ public class AdminController : ControllerBase
         _adminService = adminService;
     }
 
-    // ===============================
-    // 📊 Stats
-    // ===============================
     [HttpGet("stats")]
     public async Task<ActionResult<SystemStatsDto>> GetStats()
     {
@@ -25,87 +25,55 @@ public class AdminController : ControllerBase
         return Ok(result);
     }
 
-    // ===============================
-    // 👥 Users
-    // ===============================
     [HttpGet("users")]
-    public async Task<IActionResult> GetUsers(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10,
+    public async Task<ActionResult<PagedResult<UserManagementDto>>> GetUsers(
+        [FromQuery] string? role = null,
         [FromQuery] string? search = null,
-        [FromQuery] string? role = null)
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
-        try
-        {
-            var result = await _adminService.GetUsersAsync(page, pageSize, search, role);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Server error", details = ex.Message });
-        }
+        var result = await _adminService.GetUsersAsync(page, pageSize, search, role);
+        return Ok(result);
     }
 
-    // ===============================
-    // 🔄 Toggle
-    // ===============================
+    [HttpPost("users")]
+    public async Task<ActionResult<UserManagementDto>> CreateUser([FromBody] CreateUserRequest request)
+    {
+        if (request == null) return BadRequest();
+        var user = await _adminService.CreateUserAsync(request);
+        return Ok(user);
+    }
+
     [HttpPut("users/{id}/toggle")]
     public async Task<IActionResult> ToggleUser(int id)
     {
-        try
-        {
-            var success = await _adminService.ToggleUserStatusAsync(id);
-
-            if (!success)
-                return NotFound(new { message = "User not found" });
-
-            return Ok(new { message = "User status updated" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Toggle failed", details = ex.Message });
-        }
+        var success = await _adminService.ToggleUserStatusAsync(id);
+        if (!success) return NotFound();
+        return NoContent();
     }
 
-    // ===============================
-    // ❌ Delete
-    // ===============================
     [HttpDelete("users/{id}")]
     public async Task<IActionResult> DeleteUser(int id)
     {
-        try
-        {
-            var success = await _adminService.DeleteUserAsync(id);
-
-            if (!success)
-                return NotFound(new { message = "User not found" });
-
-            return Ok(new { message = "User deleted" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Delete failed", details = ex.Message });
-        }
+        var success = await _adminService.DeleteUserAsync(id);
+        if (!success) return NotFound();
+        return NoContent();
     }
 
-    // ===============================
-    // ➕ Create
-    // ===============================
-    [HttpPost("users")]
-    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request)
+    [HttpGet("models")]
+    public async Task<ActionResult<IEnumerable<ModelVersionDto>>> ListModels()
     {
-        try
-        {
-            if (request == null)
-                return BadRequest(new { message = "Invalid request" });
+        var models = await _adminService.ListModelVersionsAsync();
+        return Ok(models);
+    }
 
-            var user = await _adminService.CreateUserAsync(request);
+    [HttpPost("reload-model")]
+    public async Task<IActionResult> ReloadModel([FromBody] ReloadModelRequest request)
+    {
+        if (request == null || string.IsNullOrEmpty(request.AgentName))
+            return BadRequest();
 
-            return Ok(user);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "Create failed", details = ex.Message });
-        }
+        await _adminService.ReloadAiModelAsync(request.AgentName);
+        return Ok(new { message = "Model reload signal sent successfully" });
     }
 }

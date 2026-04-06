@@ -1,25 +1,26 @@
 using MedicalAssistant.Shared.DTOs.Admin;
+using MedicalAssistant.Shared.DTOs.Common;
 
-namespace MedicalAssistant.Services_Abstraction.Contracts;
-
-public interface IAdminService
+namespace MedicalAssistant.Services_Abstraction.Contracts
 {
-    // 📊 Stats
-    Task<SystemStatsDto> GetSystemStatsAsync();
+    public interface IAdminService
+    {
+        Task<SystemStatsDto> GetSystemStatsAsync();
 
-    // 👥 Users
-    Task<object> GetUsersAsync(
-        int page = 1,
-        int pageSize = 10,
-        string? search = null,
-        string? role = null);
+        Task<PagedResult<UserManagementDto>> GetUsersAsync(
+            int page = 1,
+            int pageSize = 20,
+            string? search = null,
+            string? role = null); 
 
-    // 🔄 Toggle
-    Task<bool> ToggleUserStatusAsync(int userId);
+        Task<UserManagementDto> CreateUserAsync(CreateUserRequest request);
 
-    // ❌ Delete
-    Task<bool> DeleteUserAsync(int id);
+        Task<bool> ToggleUserStatusAsync(int userId);
 
-    // ➕ Create
-    Task<object> CreateUserAsync(CreateUserRequest request);
+        Task<bool> DeleteUserAsync(int id);
+
+        Task<IEnumerable<ModelVersionDto>> ListModelVersionsAsync();
+
+        Task ReloadAiModelAsync(string agentName); 
+    }
 }

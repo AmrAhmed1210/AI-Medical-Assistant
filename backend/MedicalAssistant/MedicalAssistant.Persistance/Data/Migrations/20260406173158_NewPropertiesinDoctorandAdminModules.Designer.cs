@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MedicalAssistant.Persistance.Data.Migrations
 {
     [DbContext(typeof(MedicalAssistantDbContext))]
-    [Migration("20260325194138_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260406173158_NewPropertiesinDoctorandAdminModules")]
+    partial class NewPropertiesinDoctorandAdminModules
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,46 @@ namespace MedicalAssistant.Persistance.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("MedicalAssistant.Domain.Entities.AnalysisModule.AnalysisResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Disclaimer")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PatientId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SessionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SymptomsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UrgencyLevel")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("UrgencyScore")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientId");
+
+                    b.ToTable("AnalysisResults");
+                });
 
             modelBuilder.Entity("MedicalAssistant.Domain.Entities.AppointmentsModule.Appointment", b =>
                 {
@@ -54,6 +94,9 @@ namespace MedicalAssistant.Persistance.Data.Migrations
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("ScheduledAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -79,48 +122,80 @@ namespace MedicalAssistant.Persistance.Data.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Bio")
-                        .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<decimal>("ConsultationFee")
+                    b.Property<decimal?>("ConsultFee")
+                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(10,2)");
 
-                    b.Property<int>("Experience")
-                        .HasColumnType("int");
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
-                    b.Property<string>("ImageUrl")
+                    b.Property<string>("License")
                         .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<string>("PhotoUrl")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
-
-                    b.Property<bool>("IsAvailable")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Location")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<double>("Rating")
-                        .HasColumnType("float");
-
-                    b.Property<int>("ReviewCount")
-                        .HasColumnType("int");
 
                     b.Property<int>("SpecialtyId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("YearsExperience")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("License")
+                        .IsUnique();
 
                     b.HasIndex("SpecialtyId");
 
-                    b.ToTable("Doctors", (string)null);
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("Doctor Profiles", (string)null);
+                });
+
+            modelBuilder.Entity("MedicalAssistant.Domain.Entities.DoctorsModule.DoctorAvailability", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<byte>("DayOfWeek")
+                        .HasColumnType("tinyint");
+
+                    b.Property<int>("DoctorId")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("bit");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorId");
+
+                    b.ToTable("DoctorAvailabilities");
                 });
 
             modelBuilder.Entity("MedicalAssistant.Domain.Entities.DoctorsModule.Specialty", b =>
@@ -130,6 +205,9 @@ namespace MedicalAssistant.Persistance.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -248,6 +326,11 @@ namespace MedicalAssistant.Persistance.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
                     b.Property<string>("Discriminator")
                         .IsRequired()
                         .HasMaxLength(5)
@@ -255,29 +338,48 @@ namespace MedicalAssistant.Persistance.Data.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)")
+                        .HasColumnName("PasswordHash");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Role")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("Users", (string)null);
 
                     b.HasDiscriminator().HasValue("User");
 
@@ -292,6 +394,17 @@ namespace MedicalAssistant.Persistance.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasDiscriminator().HasValue("Admin");
+                });
+
+            modelBuilder.Entity("MedicalAssistant.Domain.Entities.AnalysisModule.AnalysisResult", b =>
+                {
+                    b.HasOne("MedicalAssistant.Domain.Entities.PatientModule.Patient", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
                 });
 
             modelBuilder.Entity("MedicalAssistant.Domain.Entities.AppointmentsModule.Appointment", b =>
@@ -321,7 +434,26 @@ namespace MedicalAssistant.Persistance.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MedicalAssistant.Domain.Entities.UserModule.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Specialty");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MedicalAssistant.Domain.Entities.DoctorsModule.DoctorAvailability", b =>
+                {
+                    b.HasOne("MedicalAssistant.Domain.Entities.DoctorsModule.Doctor", "Doctor")
+                        .WithMany("Availabilities")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
                 });
 
             modelBuilder.Entity("MedicalAssistant.Domain.Entities.ReviewsModule.Review", b =>
@@ -337,6 +469,8 @@ namespace MedicalAssistant.Persistance.Data.Migrations
 
             modelBuilder.Entity("MedicalAssistant.Domain.Entities.DoctorsModule.Doctor", b =>
                 {
+                    b.Navigation("Availabilities");
+
                     b.Navigation("Reviews");
                 });
 
