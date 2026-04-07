@@ -14,6 +14,9 @@ namespace MedicalAssistant.Domain.Contracts
         // --- مديول الأطباء ---
         IDoctorRepository Doctors { get; }
 
+        // --- مديول الجلسات ---
+        ISessionRepository Sessions { get; }
+
         // --- مديول المراجعات (تم الإصلاح هنا) ---
         // قمنا بتغيير النوع من object إلى IReviewRepository لكي تظهر الميثودات في الـ Service
         IReviewRepository Reviews { get; }

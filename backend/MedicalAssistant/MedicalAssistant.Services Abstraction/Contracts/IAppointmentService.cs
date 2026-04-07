@@ -12,5 +12,8 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
         Task<AppointmentDto?> UpdateAppointmentAsync(UpdateAppointmentDto dto);
         Task<bool> DeleteAppointmentAsync(int id);
         Task<PaginatedResultDto<AppointmentDto>> GetPaginatedAppointmentsAsync(int pageNumber, int pageSize);
+        Task<AppointmentDto?> ConfirmAppointmentAsync(int id);
+        Task<AppointmentDto?> CancelAppointmentAsync(int id, string reason);
+        Task<AppointmentDto?> CompleteAppointmentAsync(int id, string? notes);
     }
 }

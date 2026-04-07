@@ -23,8 +23,8 @@ namespace MedicalAssistant.Services.Services
             {
                 PatientId = dto.PatientId,
                 DoctorId = dto.DoctorId,
-                AppointmentDate = dto.AppointmentDate,
-                AppointmentTime = dto.AppointmentTime,
+                SessionId = dto.SessionId,
+                ScheduledAt = dto.ScheduledAt,
                 Status = "Pending",
                 Notes = dto.Notes,
                 CreatedAt = DateTime.UtcNow
@@ -58,10 +58,13 @@ namespace MedicalAssistant.Services.Services
             if (appointment == null) return null;
             appointment.PatientId = dto.PatientId;
             appointment.DoctorId = dto.DoctorId;
-            appointment.AppointmentDate = dto.AppointmentDate;
-            appointment.AppointmentTime = dto.AppointmentTime;
+            appointment.SessionId = dto.SessionId;
+            appointment.ScheduledAt = dto.ScheduledAt;
             appointment.Status = dto.Status;
+            appointment.Reason = dto.Reason;
             appointment.Notes = dto.Notes;
+            appointment.IsDeleted = dto.IsDeleted;
+            appointment.UpdatedAt = dto.UpdatedAt ?? DateTime.UtcNow;
             _appointmentRepo.Update(appointment);
             await _unitOfWork.SaveChangesAsync();
             return MapToDto(appointment);
@@ -71,7 +74,10 @@ namespace MedicalAssistant.Services.Services
         {
             var appointment = await _appointmentRepo.GetByIdAsync(id);
             if (appointment == null) return false;
-            _appointmentRepo.Delete(appointment);
+            // soft delete
+            appointment.IsDeleted = true;
+            appointment.UpdatedAt = DateTime.UtcNow;
+            _appointmentRepo.Update(appointment);
             await _unitOfWork.SaveChangesAsync();
             return true;
         }
@@ -88,6 +94,42 @@ namespace MedicalAssistant.Services.Services
             };
         }
 
+        // New operations: confirm, cancel, complete
+        public async Task<AppointmentDto?> ConfirmAppointmentAsync(int id)
+        {
+            var appt = await _appointmentRepo.GetByIdAsync(id);
+            if (appt == null) return null;
+            appt.Status = "Confirmed";
+            appt.UpdatedAt = DateTime.UtcNow;
+            _appointmentRepo.Update(appt);
+            await _unitOfWork.SaveChangesAsync();
+            return MapToDto(appt);
+        }
+
+        public async Task<AppointmentDto?> CancelAppointmentAsync(int id, string reason)
+        {
+            var appt = await _appointmentRepo.GetByIdAsync(id);
+            if (appt == null) return null;
+            appt.Status = "Cancelled";
+            appt.Reason = reason;
+            appt.UpdatedAt = DateTime.UtcNow;
+            _appointmentRepo.Update(appt);
+            await _unitOfWork.SaveChangesAsync();
+            return MapToDto(appt);
+        }
+
+        public async Task<AppointmentDto?> CompleteAppointmentAsync(int id, string? notes)
+        {
+            var appt = await _appointmentRepo.GetByIdAsync(id);
+            if (appt == null) return null;
+            appt.Status = "Completed";
+            appt.Notes = notes ?? appt.Notes;
+            appt.UpdatedAt = DateTime.UtcNow;
+            _appointmentRepo.Update(appt);
+            await _unitOfWork.SaveChangesAsync();
+            return MapToDto(appt);
+        }
+
         private static AppointmentDto MapToDto(Appointment appointment)
         {
             return new AppointmentDto
@@ -95,11 +137,14 @@ namespace MedicalAssistant.Services.Services
                 Id = appointment.Id,
                 PatientId = appointment.PatientId,
                 DoctorId = appointment.DoctorId,
-                AppointmentDate = appointment.AppointmentDate,
-                AppointmentTime = appointment.AppointmentTime,
+                SessionId = appointment.SessionId,
+                ScheduledAt = appointment.ScheduledAt,
                 Status = appointment.Status,
+                Reason = appointment.Reason,
                 Notes = appointment.Notes,
-                CreatedAt = appointment.CreatedAt
+                IsDeleted = appointment.IsDeleted,
+                CreatedAt = appointment.CreatedAt,
+                UpdatedAt = appointment.UpdatedAt
             };
         }
     }

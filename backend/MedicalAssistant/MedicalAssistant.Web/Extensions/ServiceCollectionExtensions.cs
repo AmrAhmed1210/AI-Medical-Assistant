@@ -16,10 +16,14 @@ namespace MedicalAssistant.Web.Extensions
             // Unit of Work + repositories
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+            services.AddScoped<ISessionRepository, SessionRepository>();
+            services.AddScoped<IMessageRepository, MessageRepository>();
 
             // Services
             services.AddScoped<IPatientService, PatientService>();
             services.AddScoped<IAppointmentService, AppointmentService>();
+            services.AddScoped<ISessionService, SessionService>();
+            services.AddScoped<IMessageService, MessageService>();
 
             return services;
         }

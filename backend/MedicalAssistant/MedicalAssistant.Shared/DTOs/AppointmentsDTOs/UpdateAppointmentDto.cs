@@ -10,12 +10,14 @@ namespace MedicalAssistant.Shared.DTOs.AppointmentsDTOs
         public int PatientId { get; set; }
         [Required]
         public int DoctorId { get; set; }
+        public int? SessionId { get; set; }
         [Required]
-        public DateTime AppointmentDate { get; set; }
-        [Required]
-        public TimeSpan AppointmentTime { get; set; }
+        public DateTime ScheduledAt { get; set; }
         [Required]
         public string Status { get; set; } = "Pending";
+        public string? Reason { get; set; }
         public string? Notes { get; set; }
+        public bool IsDeleted { get; set; }
+        public DateTime? UpdatedAt { get; set; }
     }
 }

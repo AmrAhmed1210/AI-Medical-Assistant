@@ -22,10 +22,12 @@ namespace MedicalAssistant.Persistance.Data.Configurations
                    .HasForeignKey(a => a.DoctorId)
                    .OnDelete(DeleteBehavior.Restrict);
 
-            // Date and time required
-            builder.Property(a => a.AppointmentDate)
-                   .IsRequired();
-            builder.Property(a => a.AppointmentTime)
+            // SessionId optional (no navigation configured)
+            builder.Property(a => a.SessionId)
+                   .IsRequired(false);
+
+            // ScheduledAt required
+            builder.Property(a => a.ScheduledAt)
                    .IsRequired();
 
             // Status required, max length 20
@@ -34,14 +36,29 @@ namespace MedicalAssistant.Persistance.Data.Configurations
                    .HasMaxLength(20)
                    .HasDefaultValue("Pending");
 
+            // Reason optional
+            builder.Property(a => a.Reason)
+                   .HasMaxLength(500)
+                   .IsRequired(false);
+
             // Notes optional, can be long
             builder.Property(a => a.Notes)
-                   .HasMaxLength(1000);
+                   .HasMaxLength(1000)
+                   .IsRequired(false);
 
-            // CreatedAt required, default now
+            // Soft delete flag
+            builder.Property(a => a.IsDeleted)
+                   .IsRequired()
+                   .HasDefaultValue(false);
+
+            // CreatedAt required, default now (UTC)
             builder.Property(a => a.CreatedAt)
                    .IsRequired()
                    .HasDefaultValueSql("GETUTCDATE()");
+
+            // UpdatedAt nullable
+            builder.Property(a => a.UpdatedAt)
+                   .IsRequired(false);
         }
     }
 }

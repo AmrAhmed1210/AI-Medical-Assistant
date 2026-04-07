@@ -13,17 +13,28 @@ namespace MedicalAssistant.Domain.Entities.AppointmentsModule
         public int DoctorId { get; set; }
         public virtual Doctor Doctor { get; set; } = default!;
 
-        // Appointment date and time
-        public DateTime AppointmentDate { get; set; }
-        public TimeSpan AppointmentTime { get; set; }
+        // Linked AI session (optional)
+        public int? SessionId { get; set; }
 
-        // Status (Pending, Confirmed, Cancelled)
+        // Combined scheduled date & time
+        public DateTime ScheduledAt { get; set; }
+
+        // Status (Pending, Confirmed, Cancelled, Completed)
         public string Status { get; set; } = "Pending";
 
-        // Optional notes
+        // Cancellation reason
+        public string? Reason { get; set; }
+
+        // Doctor completion notes
         public string? Notes { get; set; }
+
+        // Soft delete flag
+        public bool IsDeleted { get; set; } = false;
 
         // Created at
         public DateTime CreatedAt { get; set; }
+
+        // Updated at (status change timestamp)
+        public DateTime? UpdatedAt { get; set; }
     }
 }
