@@ -1,147 +1,104 @@
-using MedicalAssistant.Services_Abstraction.Contracts;
-using MedicalAssistant.Shared.DTOs.Admin;
+using AutoMapper;
 using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Domain.Entities.UserModule;
-using MedicalAssistant.Domain.Entities.DoctorsModule;
-using MedicalAssistant.Domain.Entities.PatientModule;
+using MedicalAssistant.Domain.Entities.AppointmentsModule;
+using MedicalAssistant.Domain.Entities.AnalysisModule;
+using MedicalAssistant.Services_Abstraction.Contracts;
+using MedicalAssistant.Shared.DTOs.Admin;
+using MedicalAssistant.Shared.DTOs.Common;
 
-
-namespace MedicalAssistant.Services.Services;
-
-public class AdminService : IAdminService
+namespace MedicalAssistant.Services.Services
 {
-    private readonly IUnitOfWork _unitOfWork;
-
-    public AdminService(IUnitOfWork unitOfWork)
+    public class AdminService : IAdminService
     {
-        _unitOfWork = unitOfWork;
-    }
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IMapper _mapper;
 
-    // ===============================
-    // 📊 Stats
-    // ===============================
-    public async Task<SystemStatsDto> GetSystemStatsAsync()
-    {
-        var usersCount = await _unitOfWork.Repository<User>().CountAsync();
-        var doctorsCount = await _unitOfWork.Repository<Doctor>().CountAsync();
-        var patientsCount = await _unitOfWork.Repository<Patient>().CountAsync();
-
-        return new SystemStatsDto
+        public AdminService(IUnitOfWork unitOfWork, IMapper mapper)
         {
-            TotalUsers = usersCount,
-            TotalDoctors = doctorsCount,
-            TotalPatients = patientsCount,
-            TotalAppointments = 0
-        };
-    }
-
-    // ===============================
-    // 👥 Get Users (Pagination + Filter)
-    // ===============================
-    public async Task<object> GetUsersAsync(
-        int page = 1,
-        int pageSize = 10,
-        string? search = null,
-        string? role = null)
-    {
-        var users = await _unitOfWork.Repository<User>().GetAllAsync();
-
-        var query = users.AsQueryable();
-
-        // 🔍 search
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            search = search.ToLower();
-            query = query.Where(u =>
-                u.FullName.ToLower().Contains(search) ||
-                u.Email.ToLower().Contains(search));
+            _unitOfWork = unitOfWork;
+            _mapper = mapper;
         }
 
-        // 🎯 role filter
-        if (!string.IsNullOrWhiteSpace(role))
+        public async Task<SystemStatsDto> GetSystemStatsAsync()
         {
-            query = query.Where(u => u.Role == role);
-        }
+            var users = await _unitOfWork.Repository<User>().GetAllAsync();
+            var appointments = await _unitOfWork.Repository<Appointment>().GetAllAsync();
+            var sessions = await _unitOfWork.Repository<AnalysisResult>().GetAllAsync();
 
-        var total = query.Count();
-
-        var data = query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(u => new
+            return new SystemStatsDto
             {
-                id = u.Id,
-                name = u.FullName,
-                email = u.Email,
-                role = u.Role,
-                isActive = u.IsActive
-            })
-            .ToList();
+                TotalUsers = users.Count(),
+                TotalDoctors = users.Count(u => u.Role == "Doctor"),
+                TotalPatients = users.Count(u => u.Role == "Patient"),
+                TotalAppointments = appointments.Count(),
+                TotalSessions = sessions.Select(s => s.SessionId).Distinct().Count(),
+                ActiveModels = 0,
+                AvgResponseTimeMs = 0,
+                HighUrgencyToday = sessions.Count(s => s.UrgencyLevel == "HIGH" && s.CreatedAt.Date == DateTime.UtcNow.Date)
+            };
+        }
 
-        return new
+        public async Task<PagedResult<UserManagementDto>> GetUsersAsync(int page, int pageSize, string? search, string? role)
         {
-            items = data,
-            total = total
-        };
-    }
+            var allUsers = await _unitOfWork.Repository<User>().GetAllAsync();
+            var query = allUsers.Where(u => !u.IsDeleted);
 
-    // ===============================
-    // 🔄 Toggle
-    // ===============================
-    public async Task<bool> ToggleUserStatusAsync(int userId)
-    {
-        var repo = _unitOfWork.Repository<User>();
-        var user = await repo.GetByIdAsync(userId);
+            if (!string.IsNullOrEmpty(role))
+                query = query.Where(u => u.Role.Equals(role, StringComparison.OrdinalIgnoreCase));
 
-        if (user == null) return false;
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(u => u.FullName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                                         u.Email.Contains(search, StringComparison.OrdinalIgnoreCase));
 
-        user.IsActive = !user.IsActive;
+            var total = query.Count();
+            var items = query.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
-        await _unitOfWork.SaveChangesAsync();
-        return true;
-    }
+            return new PagedResult<UserManagementDto>
+            {
+                Items = _mapper.Map<IEnumerable<UserManagementDto>>(items),
+                Total = total
+            };
+        }
 
-    // ===============================
-    // ❌ Delete
-    // ===============================
-    public async Task<bool> DeleteUserAsync(int id)
-    {
-        var repo = _unitOfWork.Repository<User>();
-        var user = await repo.GetByIdAsync(id);
-
-        if (user == null) return false;
-
-        repo.Delete(user);
-        await _unitOfWork.SaveChangesAsync();
-
-        return true;
-    }
-
-    // ===============================
-    // ➕ Create
-    // ===============================
-    public async Task<object> CreateUserAsync(CreateUserRequest request)
-    {
-        var user = new User
+        public async Task<UserManagementDto> CreateUserAsync(CreateUserRequest request)
         {
-            FullName = request.FullName,
-            PasswordHash = request.PasswordHash,
-            Email = request.Email,
-            Role = request.Role,
-            IsActive = true
-        };
+            var user = _mapper.Map<User>(request);
+            await _unitOfWork.Repository<User>().AddAsync(user);
+            await _unitOfWork.SaveChangesAsync();
+            return _mapper.Map<UserManagementDto>(user);
+        }
 
-        await _unitOfWork.Repository<User>().AddAsync(user);
-        await _unitOfWork.SaveChangesAsync();
-
-        return new
+        public async Task<bool> ToggleUserStatusAsync(int userId)
         {
-            id = user.Id,
-            name = user.FullName,
-            passwordHash = user.PasswordHash,
-            email = user.Email,
-            role = user.Role,
-            isActive = user.IsActive
-        };
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+            if (user == null) return false;
+
+            user.IsActive = !user.IsActive;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteUserAsync(int id)
+        {
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(id);
+            if (user == null) return false;
+
+            user.IsDeleted = true;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
+
+        public Task<IEnumerable<ModelVersionDto>> ListModelVersionsAsync()
+        {
+            return Task.FromResult(Enumerable.Empty<ModelVersionDto>());
+        }
+
+        public Task ReloadAiModelAsync(string agentName)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

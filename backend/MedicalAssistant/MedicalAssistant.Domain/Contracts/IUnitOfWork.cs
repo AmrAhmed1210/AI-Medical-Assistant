@@ -2,16 +2,12 @@
 
 namespace MedicalAssistant.Domain.Contracts
 {
-
-    public interface IUnitOfWork : IAsyncDisposable
+    public interface IUnitOfWork : IAsyncDisposable, IDisposable
     {
-        // --- مديول المرضى ---
         IPatientRepository Patients { get; }
 
-        // --- مديول الحجوزات ---
         IAppointmentRepository Appointments { get; }
 
-        // --- مديول الأطباء ---
         IDoctorRepository Doctors { get; }
 
         // --- مديول الجلسات ---
@@ -21,15 +17,12 @@ namespace MedicalAssistant.Domain.Contracts
         // قمنا بتغيير النوع من object إلى IReviewRepository لكي تظهر الميثودات في الـ Service
         IReviewRepository Reviews { get; }
 
-        // الوصول العام لأي مستودع
+        IAdminRepository Admins { get; }
+
         IGenericRepository<TEntity> Repository<TEntity>() where TEntity : BaseEntity;
 
-        /// <summary>
-        /// Saves all changes to the database.
-        /// </summary>
         Task<int> SaveChangesAsync();
 
-        // --- إدارة العمليات (Transaction Management) ---
         Task BeginTransactionAsync();
         Task CommitTransactionAsync();
         Task RollbackTransactionAsync();

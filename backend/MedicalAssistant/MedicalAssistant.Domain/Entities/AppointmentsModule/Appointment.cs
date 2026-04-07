@@ -13,11 +13,15 @@ namespace MedicalAssistant.Domain.Entities.AppointmentsModule
         public int DoctorId { get; set; }
         public virtual Doctor Doctor { get; set; } = default!;
 
+        // Optional split date & time
+        public DateTime? AppointmentDate { get; set; }
+        public TimeSpan? AppointmentTime { get; set; }
+
+        // Combined scheduled date & time (used by APIs & frontend)
+        public DateTime ScheduledAt { get; set; }
+
         // Linked AI session (optional)
         public int? SessionId { get; set; }
-
-        // Combined scheduled date & time
-        public DateTime ScheduledAt { get; set; }
 
         // Status (Pending, Confirmed, Cancelled, Completed)
         public string Status { get; set; } = "Pending";

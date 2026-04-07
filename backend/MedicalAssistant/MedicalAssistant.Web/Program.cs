@@ -1,6 +1,6 @@
-using MedicalAssistant.Application.Services;
 using MedicalAssistant.Persistance.Data.DbContexts;
-using MedicalAssistant.Services.MappingProfiles;
+using MedicalAssistant.Persistance.Repositories;
+using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Services.Services;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Web.Extensions;
@@ -14,53 +14,38 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // --- 1. Add services to the container ---
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
-        
-        // --- 2. Add DbContext ---
-        builder.Services.AddDbContext<MedicalAssistantDbContext>(options =>
-        {
-            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
-        });
 
-        // --- 3. Register Modules ---
+        builder.Services.AddDbContext<MedicalAssistantDbContext>(options =>
+            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
         builder.Services.AddPatientModule();
 
-
+        builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+        builder.Services.AddScoped<IAdminRepository, AdminRepository>();
         builder.Services.AddScoped<IAuthService, AuthService>();
-
-        // --- 4. AutoMapper Configuration ---
-        builder.Services.AddAutoMapper(cfg =>
-        {
-            cfg.AddProfile<DoctorProfile>();
-            // إذا قمت بإنشاء AdminProfile لاحقاً، أضفه هنا:
-            // cfg.AddProfile<AdminProfile>(); 
-        }, typeof(DoctorProfile).Assembly);
-
-        // --- 5. Dependency Injection (Service Registration) ---
-        // خدمات الأطباء والمراجعات
         builder.Services.AddScoped<IDoctorService, DoctorService>();
         builder.Services.AddScoped<IReviewService, ReviewService>();
-
-        // تسجيل خدمة الأدمن الجديدة (السطر المطلوب)
         builder.Services.AddScoped<IAdminService, AdminService>();
 
-        // --- 6. CORS Policy ---
+        // AutoMapper (single registration)
+        builder.Services.AddAutoMapper(
+            typeof(DoctorService).Assembly,
+            typeof(AdminService).Assembly
+        );
+
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", policy =>
-            {
                 policy.AllowAnyOrigin()
                       .AllowAnyMethod()
-                      .AllowAnyHeader();
-            });
+                      .AllowAnyHeader());
         });
 
         var app = builder.Build();
 
-        // --- 7. Configure the HTTP request pipeline ---
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
@@ -68,12 +53,11 @@ public class Program
         }
 
         app.UseHttpsRedirection();
+        app.UseCors("AllowAll");
 
-        app.UseCors("AllowAll"); // Enable CORS for Frontend
-
+        app.UseAuthentication();
         app.UseAuthorization();
 
-        // ربط الـ Controllers بالـ Routes
         app.MapControllers();
 
         app.Run();
