@@ -82,12 +82,13 @@ export const STATUS_CONFIG: Record<AppointmentStatus, {
   bg: string
 }> = {
   Pending: { label: 'قيد الانتظار', color: 'text-amber-700', bg: 'bg-amber-100' },
-  Confirmed: { label: 'مؤكد', color: 'text-green-700', bg: 'bg-green-100' },
-  Cancelled: { label: 'ملغي', color: 'text-gray-600', bg: 'bg-gray-100' },
-  Completed: { label: 'مكتمل', color: 'text-blue-700', bg: 'bg-blue-100' },
+  Confirmed: { label: 'Confirmed', color: 'text-green-700', bg: 'bg-green-100' },
+  Cancelled: { label: 'Cancelled', color: 'text-gray-600', bg: 'bg-gray-100' },
+  Completed: { label: 'Completed', color: 'text-blue-700', bg: 'bg-blue-100' },
 }
 
-export const DAY_NAMES_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
+export const DAY_NAMES_AR = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+export const DAY_NAMES_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 export function getInitials(name: string) {
   return name

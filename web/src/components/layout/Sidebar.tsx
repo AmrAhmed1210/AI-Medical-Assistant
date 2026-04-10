@@ -18,20 +18,20 @@ interface NavItem {
 }
 
 const doctorNav: NavItem[] = [
-  { to: ROUTES.DOCTOR_DASHBOARD, icon: <LayoutDashboard size={18} />, label: 'لوحة التحكم' },
-  { to: ROUTES.DOCTOR_APPOINTMENTS, icon: <Calendar size={18} />, label: 'المواعيد' },
-  { to: ROUTES.DOCTOR_PATIENTS, icon: <Users size={18} />, label: 'المرضى' },
-  { to: ROUTES.DOCTOR_REPORTS, icon: <FileText size={18} />, label: 'تقارير AI' },
-  { to: ROUTES.DOCTOR_CHAT, icon: <MessageSquare size={18} />, label: 'المحادثات' },
-  { to: ROUTES.DOCTOR_SCHEDULE, icon: <Clock size={18} />, label: 'الجدول الزمني' },
-  { to: ROUTES.DOCTOR_PROFILE, icon: <User size={18} />, label: 'ملفي الشخصي' },
+  { to: ROUTES.DOCTOR_DASHBOARD, icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
+  { to: ROUTES.DOCTOR_APPOINTMENTS, icon: <Calendar size={18} />, label: 'Appointments' },
+  { to: ROUTES.DOCTOR_PATIENTS, icon: <Users size={18} />, label: 'Patients' },
+  { to: ROUTES.DOCTOR_REPORTS, icon: <FileText size={18} />, label: 'AI Reports' },
+  { to: ROUTES.DOCTOR_CHAT, icon: <MessageSquare size={18} />, label: 'Messages' },
+  { to: ROUTES.DOCTOR_SCHEDULE, icon: <Clock size={18} />, label: 'Schedule' },
+  { to: ROUTES.DOCTOR_PROFILE, icon: <User size={18} />, label: 'My Profile' },
 ]
 
 const adminNav: NavItem[] = [
-  { to: ROUTES.ADMIN_DASHBOARD, icon: <LayoutDashboard size={18} />, label: 'لوحة التحكم' },
-  { to: ROUTES.ADMIN_USERS, icon: <Users size={18} />, label: 'المستخدمون' },
-  { to: ROUTES.ADMIN_STATISTICS, icon: <TrendingUp size={18} />, label: 'الإحصائيات' },
-  { to: ROUTES.ADMIN_MODELS, icon: <Cpu size={18} />, label: 'نماذج AI' },
+  { to: ROUTES.ADMIN_DASHBOARD, icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
+  { to: ROUTES.ADMIN_USERS, icon: <Users size={18} />, label: 'Users' },
+  { to: ROUTES.ADMIN_STATISTICS, icon: <TrendingUp size={18} />, label: 'Statistics' },
+  { to: ROUTES.ADMIN_MODELS, icon: <Cpu size={18} />, label: 'AI Models' },
 ]
 
 export function Sidebar() {
@@ -44,15 +44,15 @@ export function Sidebar() {
     try { await authApi.logout() } catch { /* silent */ }
     logout()
     navigate(ROUTES.LOGIN)
-    toast.success('تم تسجيل الخروج')
+    toast.success('Logged out successfully')
   }
 
   return (
     <motion.aside
-      initial={{ x: 256 }}
+      initial={{ x: -256 }}
       animate={{ x: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="fixed top-0 right-0 h-screen w-64 bg-white border-l border-gray-100 flex flex-col z-30 shadow-sm"
+      className="fixed top-0 left-0 h-screen w-64 bg-white border-r border-gray-100 flex flex-col z-30 shadow-sm"
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
@@ -61,7 +61,7 @@ export function Sidebar() {
         </div>
         <div>
           <p className="text-base font-bold text-gray-800">MedBook</p>
-          <p className="text-xs text-gray-400">منصة طبية ذكية</p>
+          <p className="text-xs text-gray-400">Smart Medical Platform</p>
         </div>
       </div>
 
@@ -72,7 +72,7 @@ export function Sidebar() {
           role === 'Admin' ? 'bg-purple-50 text-purple-700' : 'bg-primary-50 text-primary-700'
         )}>
           {role === 'Admin' ? <Shield size={14} /> : <User size={14} />}
-          {role === 'Admin' ? 'مدير النظام' : 'طبيب'}
+          {role === 'Admin' ? 'System Admin' : 'Doctor'}
         </div>
       </div>
 
@@ -100,20 +100,20 @@ export function Sidebar() {
         <div className="flex items-center gap-3 px-2 py-2 mb-1">
           <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
             <span className="text-primary-700 text-xs font-semibold">
-              {user?.fullName?.charAt(0) || 'U'}
+              {user?.name?.charAt(0) || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-800 truncate">{user?.fullName}</p>
+            <p className="text-sm font-medium text-gray-800 truncate">{user?.name}</p>
             <p className="text-xs text-gray-400 truncate">{user?.email}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium"
         >
           <LogOut size={16} />
-          تسجيل الخروج
+          Log Out
         </button>
       </div>
     </motion.aside>

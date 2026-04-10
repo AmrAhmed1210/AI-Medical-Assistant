@@ -2,11 +2,11 @@
 
 public class AvailabilityDto
 {
-    // من 0 (الأحد) إلى 6 (السبت) ليتوافق مع الـ Entity
+    // From 0 (Sunday) to 6 (Saturday) to match the Entity
     public byte DayOfWeek { get; set; }
 
-    // يفضل استقبال الوقت كـ string بتنسيق "HH:mm" (مثل "09:00")
-    // والـ AutoMapper هيحولها لـ TimeSpan في الـ Service
+    // Prefer receiving time as string in format "HH:mm" (e.g., "09:00")
+    // AutoMapper will convert it to TimeSpan in the Service
     public string StartTime { get; set; } = string.Empty;
 
     public string EndTime { get; set; } = string.Empty;

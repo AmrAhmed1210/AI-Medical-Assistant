@@ -14,9 +14,9 @@ export default function DoctorSchedule() {
   const handleSave = async (data: typeof availability) => {
     try {
       await updateAvailability(data)
-      toast.success('تم حفظ الجدول بنجاح')
+      toast.success('Schedule saved successfully')
     } catch {
-      toast.error('فشل حفظ الجدول')
+      toast.error('Failed to save schedule')
     }
   }
 
@@ -27,14 +27,14 @@ export default function DoctorSchedule() {
           <Clock size={20} className="text-primary-600" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">الجدول الزمني</h1>
-          <p className="text-sm text-gray-500">إدارة أوقات الاستقبال الأسبوعية</p>
+          <h1 className="text-xl font-bold text-gray-800">Schedule</h1>
+          <p className="text-sm text-gray-500">Manage your weekly reception times</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>أوقات التوافر الأسبوعي</CardTitle>
+          <CardTitle>Weekly Availability</CardTitle>
         </CardHeader>
         {isLoadingProfile ? <PageLoader /> : (
           <AvailabilityEditor availability={availability} onSave={handleSave} />
