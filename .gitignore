@@ -13,3 +13,5 @@ node_modules/
 
 # Env
 .env
+trocr_model/
+*.zip

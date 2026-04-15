@@ -3,9 +3,6 @@ using MedicalAssistant.Shared.DTOs.SessionDTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using System.Threading.Tasks;
-using System.Collections.Generic; // Required for List
-using System;
 
 namespace MedicalAssistant.Presentation.Controllers
 {
@@ -23,11 +20,13 @@ namespace MedicalAssistant.Presentation.Controllers
             _messageService = messageService;
         }
 
+        // GET /api/sessions
         [HttpGet]
         public async Task<IActionResult> GetSessions()
         {
-            // user id ?? ??? JWT (??? ????? ??? int)
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                           ?? User.FindFirstValue("PatientId");
+
             if (!int.TryParse(userIdClaim, out var userId))
                 return Unauthorized();
 
@@ -35,6 +34,7 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(sessions);
         }
 
+        // GET /api/sessions/{id}
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetSession(int id)
         {
@@ -42,31 +42,32 @@ namespace MedicalAssistant.Presentation.Controllers
             if (session == null)
                 return NotFound();
 
-            // ???? ??????? ?? ??????
+            // إضافة الرسائل للـ SessionDetailDto
             session.Messages = (await _messageService.GetMessagesForSessionAsync(id)).ToList();
             return Ok(session);
         }
 
+        // DELETE /api/sessions/{id}
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteSession(int id)
         {
             var ok = await _sessionService.DeleteSessionAsync(id);
-            if (!ok)
-                return NotFound();
-
+            if (!ok) return NotFound();
             return NoContent();
         }
 
+        // POST /api/sessions
         [HttpPost]
         public async Task<IActionResult> StartSession([FromBody] CreateMessageDto? body)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                           ?? User.FindFirstValue("PatientId");
+
             if (!int.TryParse(userIdClaim, out var userId))
                 return Unauthorized();
 
-            var session = await _sessionService.CreateSessionAsync(userId, "Chest pain consultation");
+            var session = await _sessionService.CreateSessionAsync(userId, "New consultation");
 
-            // ?? ??? ??? ????? ?? ??????? ??????
             if (body != null && !string.IsNullOrWhiteSpace(body.Content))
             {
                 await _messageService.SendMessageAsync(session.Id, userId, "user", body.Content);
@@ -75,13 +76,16 @@ namespace MedicalAssistant.Presentation.Controllers
             return CreatedAtAction(nameof(GetSession), new { id = session.Id }, session);
         }
 
+        // POST /api/sessions/{id}/message
         [HttpPost("{id:int}/message")]
         public async Task<IActionResult> SendMessage(int id, [FromBody] CreateMessageDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.Content))
                 return BadRequest(new { message = "Message content is required" });
 
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                           ?? User.FindFirstValue("PatientId");
+
             if (!int.TryParse(userIdClaim, out var userId))
                 return Unauthorized();
 

@@ -1,0 +1,99 @@
+.insane-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 30px;
+  background: radial-gradient(circle at top right, #f8fafc, #eff6ff);
+}
+
+/* بطاقات الـ Glassmorphism */
+.glass-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-card::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.05) 0%, transparent 70%);
+}
+
+/* تصميم الرسم البياني المجنون */
+.insane-chart-container {
+  background: #0f172a;
+  border-radius: 30px;
+  padding: 40px;
+  color: white;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.insane-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 15px;
+  height: 200px;
+  margin-top: 40px;
+}
+
+.insane-bar {
+  flex: 1;
+  background: linear-gradient(to top, #2563eb, #60a5fa);
+  border-radius: 12px 12px 4px 4px;
+  position: relative;
+  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.insane-bar:hover {
+  filter: brightness(1.3);
+  transform: scaleX(1.1);
+}
+
+.insane-bar::after {
+  content: attr(data-value);
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 800;
+  color: #60a5fa;
+}
+
+/* قائمة التخصصات بـ Progress Circles */
+.specialty-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.progress-track {
+  flex: 1;
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #10b981);
+  border-radius: 20px;
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
+}

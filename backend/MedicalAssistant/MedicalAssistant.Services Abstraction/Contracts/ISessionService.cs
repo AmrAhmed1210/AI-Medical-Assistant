@@ -1,6 +1,4 @@
 using MedicalAssistant.Shared.DTOs.SessionDTOs;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace MedicalAssistant.Services_Abstraction.Contracts
 {
