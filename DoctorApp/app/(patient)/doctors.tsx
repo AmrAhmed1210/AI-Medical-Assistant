@@ -2,30 +2,25 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   TextInput, TouchableOpacity, RefreshControl, ScrollView,
+  Platform, StatusBar,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import DoctorCard from "@/components/DoctorCard";
-import { useLanguage } from "../../hooks/useLanguage";
+import { useLanguage } from "../../context/LanguageContext";
+import { getAllDoctors, Doctor } from "../../services/doctorService";
 
-const MOCK_DOCTORS = [
-  { id: "1", name: "Dr. Sarah Ahmed",   specialty: "Cardiology",   rating: 4.8, reviewCount: 124, location: "Cairo, Egypt",      experience: "12 yrs", consultationFee: 50, isAvailable: true  },
-  { id: "2", name: "Dr. Mohamed Ali",   specialty: "Dermatology",  rating: 4.6, reviewCount: 89,  location: "Giza, Egypt",       experience: "8 yrs",  consultationFee: 40, isAvailable: true  },
-  { id: "3", name: "Dr. Nour Hassan",   specialty: "Pediatrics",   rating: 4.9, reviewCount: 210, location: "Alexandria, Egypt", experience: "15 yrs", consultationFee: 60, isAvailable: false },
-  { id: "4", name: "Dr. Ahmed Karim",   specialty: "Neurology",    rating: 4.7, reviewCount: 67,  location: "Cairo, Egypt",      experience: "10 yrs", consultationFee: 70, isAvailable: true  },
-  { id: "5", name: "Dr. Layla Mostafa", specialty: "General",      rating: 4.5, reviewCount: 145, location: "Cairo, Egypt",      experience: "6 yrs",  consultationFee: 30, isAvailable: true  },
-  { id: "6", name: "Dr. Omar Farouk",   specialty: "Cardiology",   rating: 4.3, reviewCount: 55,  location: "Giza, Egypt",       experience: "9 yrs",  consultationFee: 55, isAvailable: false },
-];
+const SPECIALTIES = ["All", "Cardiology", "Dermatology", "Neurology", "Orthopedics", "Pediatrics", "Gynecology", "Ophthalmology", "ENT"];
 
-const SPECIALTIES = ["All", "General", "Cardiology", "Dermatology", "Pediatrics", "Neurology"];
+const STATUS_BAR_HEIGHT = Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 44;
 
 export default function DoctorsScreen() {
   const params = useLocalSearchParams<{ specialty?: string }>();
   const { tr, isRTL } = useLanguage();
 
-  const [doctors,    setDoctors]    = useState<any[]>([]);
-  const [filtered,   setFiltered]   = useState<any[]>([]);
+  const [doctors,    setDoctors]    = useState<Doctor[]>([]);
+  const [filtered,   setFiltered]   = useState<Doctor[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error,      setError]      = useState("");
@@ -42,10 +37,10 @@ export default function DoctorsScreen() {
   const fetchDoctors = useCallback(async () => {
     try {
       setError("");
-      await new Promise((r) => setTimeout(r, 400));
-      setDoctors(MOCK_DOCTORS);
+      const data = await getAllDoctors();
+      setDoctors(data);
     } catch (e: any) {
-      setError(e.message || "Failed to load");
+      setError(e.message || "Failed to load doctors");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -65,15 +60,6 @@ export default function DoctorsScreen() {
     setFiltered(res);
   }, [search, activeSpec, doctors]);
 
-  // translated specialty chips
-  const specLabel = (s: string) => {
-    const map: Record<string, string> = {
-      All: tr("all"), General: tr("spec_general"), Cardiology: tr("spec_cardiology"),
-      Dermatology: tr("spec_dermatology"), Pediatrics: tr("spec_pediatrics"), Neurology: tr("spec_neurology"),
-    };
-    return map[s] ?? s;
-  };
-
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
   if (error) return (
     <View style={styles.center}>
@@ -86,9 +72,16 @@ export default function DoctorsScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F4F6FA" />
+
       <View style={styles.header}>
-        <Text style={[styles.title, isRTL && styles.textRight]}>{tr("find_doctor")}</Text>
-        <Text style={[styles.subtitle, isRTL && styles.textRight]}>{filtered.length} {tr("stats_doctors")}</Text>
+        <View>
+          <Text style={[styles.title, isRTL && styles.textRight]}>{tr("find_doctor")}</Text>
+          <Text style={[styles.subtitle, isRTL && styles.textRight]}>{filtered.length} {tr("stats_doctors")}</Text>
+        </View>
+        <View style={styles.headerAvatar}>
+          <Ionicons name="search" size={18} color={COLORS.primary} />
+        </View>
       </View>
 
       <View style={[styles.searchBox, isRTL && styles.rowReverse]}>
@@ -116,7 +109,7 @@ export default function DoctorsScreen() {
               style={[styles.chip, activeSpec === s && styles.chipActive]}
               onPress={() => setActiveSpec(s)}
             >
-              <Text style={[styles.chipTxt, activeSpec === s && styles.chipTxtActive]}>{specLabel(s)}</Text>
+              <Text style={[styles.chipTxt, activeSpec === s && styles.chipTxtActive]}>{s}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -125,7 +118,11 @@ export default function DoctorsScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <DoctorCard doctor={item} />}
+        renderItem={({ item }) => <DoctorCard doctor={{
+          ...item,
+          id: String(item.id),
+          experience: `${(item as any).experience ?? 0} yrs`,
+        }} />}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -148,17 +145,26 @@ export default function DoctorsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: "#F4F6FA" },
+  container:   { flex: 1, backgroundColor: "#F4F6FA", paddingTop: STATUS_BAR_HEIGHT },
   center:      { flex: 1, justifyContent: "center", alignItems: "center", gap: 12, backgroundColor: "#F4F6FA" },
   rowReverse:  { flexDirection: "row-reverse" },
   textRight:   { textAlign: "right" },
   errorTxt:    { color: "#e53935", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
   retryBtn:    { backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 9, borderRadius: 18 },
   retryTxt:    { color: "#fff", fontWeight: "600", fontSize: 13 },
-  header:      { paddingHorizontal: 18, paddingTop: 52, paddingBottom: 10 },
-  title:       { fontSize: 24, fontWeight: "800", color: "#1A1A1A", letterSpacing: -0.3 },
+  header: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14,
+  },
+  headerAvatar: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: COLORS.primary + "15",
+    justifyContent: "center", alignItems: "center",
+    borderWidth: 1.5, borderColor: COLORS.primary + "30",
+  },
+  title:       { fontSize: 22, fontWeight: "800", color: "#1A1A1A", letterSpacing: -0.3 },
   subtitle:    { fontSize: 12, color: "#AAA", marginTop: 2 },
-  searchBox:   {
+  searchBox: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: "#fff", borderRadius: 14,
     marginHorizontal: 18, paddingHorizontal: 14, paddingVertical: 11,
@@ -166,7 +172,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
   searchInput:   { flex: 1, fontSize: 13, color: "#1A1A1A", padding: 0 },
-  chipsWrapper:  { marginTop: 12 },
+  chipsWrapper:  { marginTop: 8, marginBottom: 4 },
   chipsRow:      { paddingHorizontal: 18, paddingVertical: 6, gap: 8, alignItems: "center" },
   chip:          { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1.5, borderColor: "#E8E8E8" },
   chipActive:    { backgroundColor: COLORS.primary, borderColor: COLORS.primary },

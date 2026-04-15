@@ -5,40 +5,32 @@ namespace MedicalAssistant.Domain.Entities.AppointmentsModule
 {
     public class Appointment : BaseEntity
     {
-        // Patient who booked the appointment
         public int PatientId { get; set; }
         public virtual Patient Patient { get; set; } = default!;
 
-        // Doctor for the appointment
         public int DoctorId { get; set; }
         public virtual Doctor Doctor { get; set; } = default!;
 
-        // Optional split date & time
-        public DateTime? AppointmentDate { get; set; }
-        public TimeSpan? AppointmentTime { get; set; }
+        /// <summary>
+        /// Date as string e.g. "7 Mar 2026" — matches frontend format
+        /// </summary>
+        public string Date { get; set; } = string.Empty;
 
-        // Combined scheduled date & time (used by APIs & frontend)
-        public DateTime ScheduledAt { get; set; }
+        /// <summary>
+        /// Time as string e.g. "10:00 AM"
+        /// </summary>
+        public string Time { get; set; } = string.Empty;
 
-        // Linked AI session (optional)
-        public int? SessionId { get; set; }
+        /// <summary>
+        /// Payment method: "visa" or "cash"
+        /// </summary>
+        public string PaymentMethod { get; set; } = "cash";
 
-        // Status (Pending, Confirmed, Cancelled, Completed)
+        // Status: Pending, Confirmed, Cancelled
         public string Status { get; set; } = "Pending";
 
-        // Cancellation reason
-        public string? Reason { get; set; }
-
-        // Doctor completion notes
         public string? Notes { get; set; }
 
-        // Soft delete flag
-        public bool IsDeleted { get; set; } = false;
-
-        // Created at
         public DateTime CreatedAt { get; set; }
-
-        // Updated at (status change timestamp)
-        public DateTime? UpdatedAt { get; set; }
     }
 }

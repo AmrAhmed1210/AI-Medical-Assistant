@@ -1,6 +1,5 @@
 ﻿using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Domain.Entities;
-using MedicalAssistant.Domain.Entities.DoctorsModule;
 using MedicalAssistant.Persistance.Data.DbContexts;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Collections;
@@ -19,19 +18,19 @@ public class UnitOfWork : IUnitOfWork
     private IDoctorRepository? _doctors;
     private IReviewRepository? _reviews;
     private ISessionRepository? _sessions;
-    private IAdminRepository? _admins;
+    private IMessageRepository? _messages;
 
     public UnitOfWork(MedicalAssistantDbContext context)
     {
         _context = context;
     }
 
-    public IPatientRepository Patients => _patients ??= new PatientRepository(_context);
+    public IPatientRepository Patients       => _patients    ??= new PatientRepository(_context);
     public IAppointmentRepository Appointments => _appointments ??= new AppointmentRepository(_context);
-    public IDoctorRepository Doctors => _doctors ??= new DoctorRepository(_context);
-    public IReviewRepository Reviews => _reviews ??= new ReviewRepository(_context);
-    public ISessionRepository Sessions => _sessions ??= new SessionRepository(_context);
-    public IAdminRepository Admins => _admins ??= new AdminRepository(_context);
+    public IDoctorRepository Doctors         => _doctors     ??= new DoctorRepository(_context);
+    public IReviewRepository Reviews         => _reviews     ??= new ReviewRepository(_context);
+    public ISessionRepository Sessions       => _sessions    ??= new SessionRepository(_context);
+    public IMessageRepository Messages       => _messages    ??= new MessageRepository(_context);
 
     public IGenericRepository<TEntity> Repository<TEntity>() where TEntity : BaseEntity
     {

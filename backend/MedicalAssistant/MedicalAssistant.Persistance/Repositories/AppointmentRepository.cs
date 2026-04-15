@@ -5,29 +5,54 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MedicalAssistant.Persistance.Repositories
 {
-    public class AppointmentRepository(MedicalAssistantDbContext context) : GenericRepository<Appointment>(context), IAppointmentRepository
+    public class AppointmentRepository(MedicalAssistantDbContext context)
+        : GenericRepository<Appointment>(context), IAppointmentRepository
     {
         public async Task<IEnumerable<Appointment>> GetByPatientIdAsync(int patientId)
         {
-            return await _dbSet.Where(a => a.PatientId == patientId && !a.IsDeleted).ToListAsync();
+            return await _dbSet
+                .Where(a => a.PatientId == patientId)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Appointment>> GetByPatientIdWithDoctorAsync(int patientId)
+        {
+            return await _dbSet
+                .Where(a => a.PatientId == patientId)
+                .Include(a => a.Doctor)
+                    .ThenInclude(d => d.Specialty)
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync();
         }
 
         public async Task<IEnumerable<Appointment>> GetByDoctorIdAsync(int doctorId)
         {
-            return await _dbSet.Where(a => a.DoctorId == doctorId && !a.IsDeleted).ToListAsync();
+            return await _dbSet
+                .Where(a => a.DoctorId == doctorId)
+                .ToListAsync();
         }
 
         public async Task<Appointment?> GetByIdAsync(int id)
         {
-            return await _dbSet.FirstOrDefaultAsync(a => a.Id == id && !a.IsDeleted);
+            return await _dbSet.FirstOrDefaultAsync(a => a.Id == id);
         }
 
-        public async Task<(IEnumerable<Appointment> Items, int TotalCount)> GetPaginatedAsync(int pageNumber, int pageSize)
+        public async Task<Appointment?> GetByIdWithDoctorAsync(int id)
         {
-            var totalCount = await _dbSet.Where(a => !a.IsDeleted).CountAsync();
+            return await _dbSet
+                .Include(a => a.Doctor)
+                    .ThenInclude(d => d.Specialty)
+                .FirstOrDefaultAsync(a => a.Id == id);
+        }
+
+        public async Task<(IEnumerable<Appointment> Items, int TotalCount)> GetPaginatedAsync(
+            int pageNumber, int pageSize)
+        {
+            var totalCount = await _dbSet.CountAsync();
             var items = await _dbSet
-                .Where(a => !a.IsDeleted)
-                .OrderByDescending(a => a.ScheduledAt)
+                .Include(a => a.Doctor)
+                    .ThenInclude(d => d.Specialty)
+                .OrderByDescending(a => a.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

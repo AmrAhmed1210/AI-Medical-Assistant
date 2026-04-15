@@ -1,9 +1,10 @@
-using MedicalAssistant.Shared.DTOs.Auth;
+using MedicalAssistant.Shared.DTOs.AuthDTOs;
 
-namespace MedicalAssistant.Services_Abstraction.Contracts;
-
-public interface IAuthService
+namespace MedicalAssistant.Services_Abstraction.Contracts
 {
-    Task<AuthResponseDto?> LoginAsync(LoginDto loginDto);
-    Task<bool> RegisterAdminAsync(RegisterDto registerDto);
+    public interface IAuthService
+    {
+        Task<AuthResponseDto> RegisterAsync(RegisterDto dto);
+        Task<AuthResponseDto> LoginAsync(LoginDto dto);
+    }
 }

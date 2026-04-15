@@ -1,4 +1,3 @@
-// app/(auth)/login.tsx
 import { useState } from "react";
 import {
   View, Text, TextInput, StyleSheet, KeyboardAvoidingView,
@@ -6,9 +5,8 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
-import CustomButton from "../../components/CustomButton";
 import { COLORS } from "../../constants/colors";
-import { login } from "../../api";
+import { loginApi, saveSession } from "../../services/authService";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -19,37 +17,50 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     Keyboard.dismiss();
+
     if (!email.trim() || !password.trim()) {
       Toast.show({ type: "error", text1: "Please fill all fields", position: "top", topOffset: 60 });
       return;
     }
+
     setLoading(true);
     try {
-      const user = await login({ email: email.toLowerCase().trim(), passwordHash: password });
+      const auth = await loginApi({
+        email:        email.toLowerCase().trim(),
+        passwordHash: password,
+      });
 
-      Toast.show({ type: "success", text1: `Welcome back ${user.firstName}! 👋`, position: "top", topOffset: 60, visibilityTime: 1500 });
+      await saveSession(auth);
+
+      Toast.show({
+        type: "success",
+        text1: `Welcome back ${auth.name}! 👋`,
+        position: "top",
+        topOffset: 60,
+        visibilityTime: 1500,
+      });
+
       setTimeout(() => {
-        if (user.role === "Doctor") router.replace("/(doctor)");
-        else router.replace("/(patient)/home");
+        router.replace(auth.role === "Doctor" ? "/(doctor)" : "/(patient)/home");
       }, 1600);
 
-    } catch (error: any) {
-      const status = error.response?.status;
-      const msg    = error.response?.data;
-      if (status === 401 || status === 400) {
-        Toast.show({ type: "error", text1: "Invalid credentials", text2: "Email or password is incorrect", position: "top", topOffset: 60 });
-      } else if (!error.response) {
-        Toast.show({ type: "error", text1: "Cannot reach server", text2: "Check your connection and try again", position: "top", topOffset: 60 });
-      } else {
-        Toast.show({ type: "error", text1: "Login failed", text2: typeof msg === "string" ? msg : "Something went wrong", position: "top", topOffset: 60 });
-      }
+    } catch (err: any) {
+      Toast.show({
+        type: "error",
+        text1: err.message || "Login failed",
+        position: "top",
+        topOffset: 60,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.white }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: COLORS.white }}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Welcome Back! 👋</Text>
         <Text style={styles.subtitle}>Login to your account</Text>
@@ -66,16 +77,23 @@ export default function LoginScreen() {
               style={styles.passInput} value={password} onChangeText={setPassword}
               editable={!loading} onSubmitEditing={handleLogin} returnKeyType="done"
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+            <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={styles.eyeBtn}>
               <Text>{showPassword ? "👁️" : "👁️‍🗨️"}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {loading
-          ? <ActivityIndicator size="large" color={COLORS.primary} style={{ marginVertical: 10 }} />
-          : <CustomButton title="Login" onPress={handleLogin} />
-        }
+        <TouchableOpacity
+          style={[styles.btn, loading && styles.btnDisabled]}
+          onPress={handleLogin}
+          disabled={loading}
+          activeOpacity={0.8}
+        >
+          {loading
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={styles.btnText}>Login</Text>
+          }
+        </TouchableOpacity>
 
         <View style={styles.regRow}>
           <Text style={styles.regTxt}>Don't have an account? </Text>
@@ -93,11 +111,17 @@ const styles = StyleSheet.create({
   title:          { fontSize: 32, fontWeight: "bold", marginBottom: 10, color: COLORS.primary },
   subtitle:       { fontSize: 16, color: "#666", marginBottom: 40 },
   inputContainer: { marginBottom: 30 },
-  input:          { height: 52, borderWidth: 1, borderColor: "#e5e5e5", borderRadius: 14, paddingHorizontal: 15, marginBottom: 15, backgroundColor: "#fafafa", fontSize: 16 },
-  passWrap:       { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#e5e5e5", borderRadius: 14, paddingHorizontal: 15, backgroundColor: "#fafafa" },
-  passInput:      { flex: 1, height: 52, fontSize: 16 },
-  eyeBtn:         { padding: 10 },
-  regRow:         { flexDirection: "row", justifyContent: "center", marginTop: 20 },
-  regTxt:         { color: "#666", fontSize: 16 },
-  regLink:        { color: COLORS.primary, fontSize: 16, fontWeight: "600" },
+  input: {
+    height: 52, borderWidth: 1, borderColor: "#e5e5e5", borderRadius: 14,
+    paddingHorizontal: 15, marginBottom: 15, backgroundColor: "#fafafa", fontSize: 16,
+  },
+  passWrap:    { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#e5e5e5", borderRadius: 14, paddingHorizontal: 15, backgroundColor: "#fafafa" },
+  passInput:   { flex: 1, height: 52, fontSize: 16 },
+  eyeBtn:      { padding: 10 },
+  btn:         { height: 52, backgroundColor: COLORS.primary, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  btnDisabled: { opacity: 0.6 },
+  btnText:     { color: "#fff", fontSize: 16, fontWeight: "600" },
+  regRow:      { flexDirection: "row", justifyContent: "center", marginTop: 20 },
+  regTxt:      { color: "#666", fontSize: 16 },
+  regLink:     { color: COLORS.primary, fontSize: 16, fontWeight: "600" },
 });

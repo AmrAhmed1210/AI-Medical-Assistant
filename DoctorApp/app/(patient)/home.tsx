@@ -1,25 +1,23 @@
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar,
+  TouchableOpacity, StatusBar, ActivityIndicator,
 } from "react-native";
 import { COLORS } from "../../constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useLanguage } from "../../hooks/useLanguage";
-
-const MOCK_POPULAR = [
-  { id: "1", name: "Dr. Sarah Ahmed",  specialty: "Cardiology",  rating: 4.8, reviews: 124 },
-  { id: "2", name: "Dr. Mohamed Ali",  specialty: "Dermatology", rating: 4.6, reviews: 89  },
-  { id: "3", name: "Dr. Nour Hassan",  specialty: "Pediatrics",  rating: 4.9, reviews: 210 },
-];
+import { useLanguage } from "../../context/LanguageContext";
+import { getAllDoctors, Doctor } from "../../services/doctorService";
+import { getMyAppointments, Appointment } from "../../services/appointmentService";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { tr, isRTL, lang } = useLanguage();
-  const [userName,    setUserName]    = useState("");
-  const [nextBooking, setNextBooking] = useState<any>(null);
+  const { tr, isRTL } = useLanguage();
+  const [userName,     setUserName]     = useState("");
+  const [popularDocs,  setPopularDocs]  = useState<Doctor[]>([]);
+  const [nextBooking,  setNextBooking]  = useState<Appointment | null>(null);
+  const [loadingDocs,  setLoadingDocs]  = useState(true);
 
   const CATEGORIES = [
     { icon: "heart-outline",   label: tr("spec_cardiology"),  specialty: "Cardiology"  },
@@ -32,22 +30,37 @@ export default function HomeScreen() {
 
   useEffect(() => {
     AsyncStorage.getItem("userName").then((n) => { if (n) setUserName(n); });
+    fetchPopularDoctors();
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem("user").then(async (raw) => {
-        const email = raw ? (JSON.parse(raw).email ?? "guest") : "guest";
-        const bRaw = await AsyncStorage.getItem(`bookings_${email}`);
-        if (bRaw) {
-          const list = JSON.parse(bRaw);
-          setNextBooking(list.length > 0 ? list[0] : null);
-        } else {
-          setNextBooking(null);
-        }
-      });
+      fetchNextBooking();
     }, [])
   );
+
+  const fetchPopularDoctors = async () => {
+    try {
+      const data = await getAllDoctors();
+      // أعلى 3 دكاترة تقييماً
+      const sorted = [...data].sort((a, b) => b.rating - a.rating).slice(0, 3);
+      setPopularDocs(sorted);
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
+  const fetchNextBooking = async () => {
+    try {
+      const appts = await getMyAppointments();
+      const active = appts.find(a => a.status !== "cancelled");
+      setNextBooking(active ?? null);
+    } catch {
+      setNextBooking(null);
+    }
+  };
 
   const firstName = userName ? userName.split(" ")[0] : "Guest";
   const goToSpecialty = (specialty: string) =>
@@ -111,9 +124,9 @@ export default function HomeScreen() {
       {/* Stats */}
       <View style={styles.statsRow}>
         {[
-          { val: "200+", lbl: tr("stats_doctors"),     accent: false },
+          { val: "200+", lbl: tr("stats_doctors"),      accent: false },
           { val: "98%",  lbl: tr("stats_satisfaction"), accent: true  },
-          { val: "10k+", lbl: tr("stats_patients"),    accent: false },
+          { val: "10k+", lbl: tr("stats_patients"),     accent: false },
         ].map((s, i) => (
           <View key={i} style={[styles.statCard, s.accent && styles.statCardAccent]}>
             <Text style={[styles.statNum, s.accent && styles.statNumAccent]}>{s.val}</Text>
@@ -145,33 +158,37 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {MOCK_POPULAR.map((doc) => (
-        <TouchableOpacity
-          key={doc.id}
-          style={styles.docCard}
-          activeOpacity={0.82}
-          onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: doc.id } })}
-        >
-          <View style={styles.docAvatar}>
-            <Text style={styles.docAvatarTxt}>{doc.name.charAt(4)}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.docName, isRTL && styles.textRight]}>{doc.name}</Text>
-            <Text style={[styles.docSpec, isRTL && styles.textRight]}>{doc.specialty}</Text>
-            <View style={[styles.ratingRow, isRTL && styles.rowReverse]}>
-              <Ionicons name="star" size={11} color="#FFB300" />
-              <Text style={styles.ratingVal}>{doc.rating}</Text>
-              <Text style={styles.ratingCnt}>({doc.reviews})</Text>
-            </View>
-          </View>
+      {loadingDocs ? (
+        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
+      ) : (
+        popularDocs.map((doc) => (
           <TouchableOpacity
-            style={styles.bookBtn}
-            onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: doc.id } })}
+            key={doc.id}
+            style={styles.docCard}
+            activeOpacity={0.82}
+            onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(doc.id) } })}
           >
-            <Text style={styles.bookTxt}>{tr("book")}</Text>
+            <View style={styles.docAvatar}>
+              <Text style={styles.docAvatarTxt}>{doc.name.charAt(0)}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.docName, isRTL && styles.textRight]}>{doc.name}</Text>
+              <Text style={[styles.docSpec, isRTL && styles.textRight]}>{doc.specialty}</Text>
+              <View style={[styles.ratingRow, isRTL && styles.rowReverse]}>
+                <Ionicons name="star" size={11} color="#FFB300" />
+                <Text style={styles.ratingVal}>{doc.rating}</Text>
+                <Text style={styles.ratingCnt}>({doc.reviewCount})</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.bookBtn}
+              onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(doc.id) } })}
+            >
+              <Text style={styles.bookTxt}>{tr("book")}</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
-      ))}
+        ))
+      )}
     </ScrollView>
   );
 }

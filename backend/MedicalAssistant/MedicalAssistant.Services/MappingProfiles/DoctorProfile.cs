@@ -1,34 +1,22 @@
 ﻿using AutoMapper;
-using AutoMapper;
 using MedicalAssistant.Domain.Entities.DoctorsModule;
 using MedicalAssistant.Shared.DTOs.DoctorDTOs;
 
-namespace MedicalAssistant.Services.MappingProfiles
+namespace MedicalAssistant.Services.MappingProfiles;
+
+public class DoctorProfile : Profile
 {
-    public class DoctorProfile : Profile
+    public DoctorProfile()
     {
-        public DoctorProfile()
-        {
-            CreateMap<Doctor, DoctorDTO>()
-                .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.User.FullName))
-                .ForMember(dest => dest.Specialty, opt => opt.MapFrom(src => src.Specialty.Name))
-                .ForMember(dest => dest.PhotoUrl, opt => opt.MapFrom(src => src.PhotoUrl ?? string.Empty))
-                .ForMember(dest => dest.ConsultFee, opt => opt.MapFrom(src => src.ConsultFee ?? 0));
+        // Mapping من Doctor Entity إلى DoctorDTO (لعرض القوائم)
+        CreateMap<Doctor, DoctorDTO>()
+            .ForMember(dest => dest.Specialty, opt => opt.MapFrom(src => src.Specialty.Name))
+            .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.ImageUrl ?? string.Empty));
 
-            CreateMap<Doctor, DoctorDetailsDTO>()
-                .IncludeBase<Doctor, DoctorDTO>()
-                .ForMember(dest => dest.Bio, opt => opt.MapFrom(src => src.Bio))
-                .ForMember(dest => dest.YearsExperience, opt => opt.MapFrom(src => src.YearsExperience))
-                .ForMember(dest => dest.License, opt => opt.MapFrom(src => src.License))
-                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User.Email));
-
-            CreateMap<DoctorUpdateDto, Doctor>()
-                .ForMember(dest => dest.SpecialtyId, opt => opt.MapFrom(src => src.SpecialtyId))
-                .ForMember(dest => dest.Bio, opt => opt.MapFrom(src => src.Bio))
-                .ForMember(dest => dest.ConsultFee, opt => opt.MapFrom(src => src.ConsultFee))
-                .ForMember(dest => dest.YearsExperience, opt => opt.MapFrom(src => src.YearsExperience))
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.UserId, opt => opt.Ignore());
-        }
+        // Mapping من Doctor Entity إلى DoctorDetailsDTO (لعرض التفاصيل)
+        CreateMap<Doctor, DoctorDetailsDTO>()
+            .IncludeBase<Doctor, DoctorDTO>()  // يستخدم mapping من DoctorDTO
+            .ForMember(dest => dest.Bio, opt => opt.MapFrom(src => src.Bio))
+            .ForMember(dest => dest.Experience, opt => opt.MapFrom(src => src.Experience));
     }
 }
