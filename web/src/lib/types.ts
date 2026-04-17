@@ -61,10 +61,11 @@ export type SystemStatsDto = {
   totalDoctors: number
   totalPatients: number
   totalAppointments: number
-  sessionsToday?: number
-  urgencyDistribution?: Record<string, number>
-  sessionsPerDay?: Array<{ date: string; count: number }>
-  userGrowth?: Array<{ date: string; count: number }>
+  sessionsToday: number
+  sessionsThisWeek: number
+  urgencyDistribution: Record<string, number>
+  sessionsPerDay: Array<{ date: string; count: number }>
+  userGrowth: Array<{ date: string; count: number }>
 }
 
 // ── استجابة مصفوفة ────────────────────────────────────────────────────

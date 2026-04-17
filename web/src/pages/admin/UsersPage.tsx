@@ -1,38 +1,28 @@
-import { useEffect, useState, useCallback, useMemo, use } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Search, UserPlus, Filter, Trash2, ToggleLeft, ToggleRight,
-  X, Check, AlertCircle, Loader2, ChevronLeft, ChevronRight,
-  Mail, Lock, User, Stethoscope, Crown, Activity, RefreshCw,
-  Database, Server, WifiOff
+  Search, UserPlus, Filter, Check, AlertCircle, Loader2,
+  Mail, Lock, User, Stethoscope, Activity, RefreshCw,
+  Database, WifiOff, X, Hash, ChevronRight, Layers, Crown
 } from 'lucide-react'
 import type { UserDto, UserRole, CreateUserRequest } from '@/lib/types'
-import {Card ,CardHeader,CardTitle,CardDescription , CardContent} from '@/components/ui/Card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { UserTable } from '@/components/admin/users/UserTable'
-import { useUsers  } from '@/components/admin/users/useUsers'
+import { useUsers } from '@/components/admin/users/useUsers'
 import { Pagination } from '@/components/ui/Pagination'
 import toast from 'react-hot-toast'
-
-
-
-// ============================================================================
-// 🎯 المكون الرئيسي: AdminUsers
-// ============================================================================
 
 const PAGE_SIZE = 10
 
 export default function AdminUsers() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | ''>('')
-  const [loading, setLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [error, setError] = useState<string | null>(null)
- 
 
   const [form, setForm] = useState<CreateUserRequest>({
     fullName: '', email: '', passwordHash: '', role: 'Patient',
@@ -40,242 +30,197 @@ export default function AdminUsers() {
   })
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof CreateUserRequest, string>>>({})
   const [addLoading, setAddLoading] = useState(false)
-  const {
-  users,
-  total,
-  fetchUsers,
-  handleSearch,
-  handleRoleFilter,
-  handleToggle,
-  handleDelete,
-  handleAddUser,
-  setPage,
-  page,
-  handleRetry,
-  handleUseMockData,
-  connectionStatus,
-  
 
+  const {
+    users, total, loading, fetchUsers, handleSearch, handleRoleFilter,
+    handleToggle, handleDelete, handleAddUser, setPage, page,
+    handleRetry, handleUseMockData, connectionStatus, error
   } = useUsers()
 
   const setField = (key: keyof CreateUserRequest, val: unknown) => {
     setForm(p => ({ ...p, [key]: val })); setFormErrors(p => ({ ...p, [key]: undefined }))
   }
-  // ── حالة الاتصال بالخادم ─────────────────────────────────────────────
+
   if (connectionStatus === 'error' && users.length === 0 && !loading) {
     return (
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-red-50/30 p-8 flex items-center justify-center"
-        dir="rtl"
-      >
-        <Card className="max-w-2xl w-full border-0 shadow-2xl">
-          <CardContent className="p-8 text-center space-y-6">
-            <motion.div 
-              className="p-6 rounded-3xl bg-gradient-to-br from-red-50 to-rose-100 border-2 border-red-200 shadow-xl shadow-red-500/20 inline-block"
-              animate={{ rotate: [0, -5, 5, 0] }}
-              transition={{ duration: 0.5 }}
-            >
-              <WifiOff className="w-16 h-16 text-red-500" />
-            </motion.div>
-            
-            <div className="space-y-3">
-              <h3 className="text-2xl font-black text-gray-900">تعذر الاتصال بالخادم</h3>
-              <p className="text-gray-600">{error}</p>
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-                <p className="font-semibold mb-1">💡 الحلول المقترحة:</p>
-                <ul className="text-right space-y-1 list-disc list-inside">
-                  <li>تأكد أن الـ Backend شغال على http://localhost:5194</li>
-                  <li>تحقق من CORS settings</li>
-                  <li>تأكد من صحة الـ API endpoint</li>
-                </ul>
-              </div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
+        <Card className="max-w-lg w-full border-0 shadow-2xl bg-white/80 backdrop-blur-xl">
+          <CardContent className="p-10 text-center space-y-6">
+            <div className="p-6 rounded-3xl bg-rose-50 border-2 border-rose-100 shadow-xl shadow-rose-500/10 inline-block font-black">
+               <WifiOff size={48} className="text-rose-500" />
             </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-              <Button onClick={handleRetry} variant="primary" size="lg" className="gap-2">
-                <RefreshCw className="w-5 h-5" />
-                إعادة المحاولة
-              </Button>
-              <Button onClick={handleUseMockData} variant="success" size="lg" className="gap-2">
-                <Database className="w-5 h-5" />
-                استخدام بيانات تجريبية
-              </Button>
-            </div>
+            <h3 className="text-3xl font-black text-slate-900">System Link Broken</h3>
+            <Button onClick={handleRetry} className="w-full h-14 rounded-2xl">Re-establish Link</Button>
+            <Button onClick={handleUseMockData} variant="outline" className="w-full h-14 rounded-2xl border-2">Switch to Demo Mode</Button>
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
     )
   }
-  
-const handleSubmitAddUser = async () => {
-  // validation بسيط
-  const errors: Partial<Record<keyof CreateUserRequest, string>> = {}
-  if (!form.fullName.trim()) errors.fullName = 'الاسم مطلوب'
-  if (!form.email.trim()) errors.email = 'البريد مطلوب'
-  if (!form.passwordHash || form.passwordHash.length < 8) errors.passwordHash = 'كلمة المرور 8 أحرف على الأقل'
-  
-  if (Object.keys(errors).length > 0) {
-    setFormErrors(errors)
-    return
+
+  const handleSubmitAddUser = async () => {
+    const errors: Partial<Record<keyof CreateUserRequest, string>> = {}
+    if (!form.fullName.trim()) errors.fullName = 'Required'
+    if (!form.email.trim()) errors.email = 'Required'
+    if (!form.passwordHash || form.passwordHash.length < 8) errors.passwordHash = '8+ characters'
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      return
+    }
+
+    setAddLoading(true)
+    await handleAddUser(form)
+    setAddLoading(false)
+    setShowAddModal(false)
+    setForm({ fullName: '', email: '', passwordHash: '', role: 'Patient'})
   }
 
-  setAddLoading(true)
-  await handleAddUser({       // ← ابعت الـ form data هنا
-    fullName: form.fullName,
-    email: form.email,
-    passwordHash: form.passwordHash,
-    role: form.role,
-  })
-  setAddLoading(false)
-  setShowAddModal(false)
-  setForm({ fullName: '', email: '', passwordHash: '', role: 'Patient'}) // reset
-}
-
-const handleToggleUser = useCallback(async (id: number) => {
-  await handleToggle(id)
-}, [handleToggle])
-
-const handleDeleteUser = useCallback(async (id: number) => {
-  await handleDelete(id)
-}, [handleDelete])
-
-
-  // ── الواجهة الرئيسية ──────────────────────────────────────────────────
   return (
-    <motion.div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 p-4 md:p-6 lg:p-8" initial={{opacity:0}} animate={{opacity:1}} dir="rtl">
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} className="min-h-screen bg-[#f1f5f9] p-4 md:p-10 space-y-10">
       
-      {/* الهيدر */}
-      <motion.div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 mb-6 border-b-2 border-gray-100" initial={{y:-20,opacity:0}} animate={{y:0,opacity:1}}>
-        <div className="space-y-1">
-          <motion.h1 className="text-3xl font-black bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent" initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.1}}>
-            إدارة المستخدمين
-          </motion.h1>
-          <motion.p className="text-sm text-gray-500 font-medium flex items-center gap-2" initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.2}}>
-            <Activity className="w-4 h-4" />
-            إجمالي <span className="font-bold text-gray-900">{total.toLocaleString('ar-EG')}</span> مستخدم
-            {connectionStatus === 'connected' && <Check className="w-4 h-4 text-green-500 mr-1" />}
-            {connectionStatus === 'error' && <AlertCircle className="w-4 h-4 text-red-500 mr-1" />}
-          </motion.p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleUseMockData} className="gap-2">
-            <Database className="w-4 h-4" />
-            بيانات تجريبية
-          </Button>
-          <Button variant="primary" size="md" icon={<UserPlus className="w-4 h-4" />} onClick={() => setShowAddModal(true)} className="shadow-xl hover:shadow-2xl">
-            إضافة مستخدم
-          </Button>
-        </div>
-      </motion.div>
-
-      {/* البطاقة الرئيسية */}
-      <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{delay:0.2}}>
-        <Card className="border-0 shadow-2xl hover:shadow-3xl transition-shadow duration-300">
-          
-          {/* شريط حالة الاتصال */}
-          <div className={`px-5 py-3 border-b border-gray-100 flex items-center gap-2 ${
-            connectionStatus === 'connected' ? 'bg-green-50' : 
-            connectionStatus === 'error' ? 'bg-red-50' : 'bg-amber-50'
-          }`}>
-            {connectionStatus === 'connected' ? (
-              <><Check className="w-4 h-4 text-green-600" /><span className="text-sm text-green-700">متصل بالخادم</span></>
-            ) : connectionStatus === 'error' ? (
-              <><AlertCircle className="w-4 h-4 text-red-600" /><span className="text-sm text-red-700">غير متصل - {error}</span></>
-            ) : (
-              <><Loader2 className="w-4 h-4 text-amber-600 animate-spin" /><span className="text-sm text-amber-700">جاري الاتصال...</span></>
-            )}
+      {/* Header with Glassmorphism */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+             <div className="p-3 bg-white rounded-2xl shadow-lg text-blue-600"><Layers size={24} /></div>
+             <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Account Ecosystem</h1>
           </div>
+          <p className="text-slate-500 font-bold ml-14">Orchestrate and monitor all medical personnel and client profiles.</p>
+        </div>
+        <div className="flex gap-4">
+          <Button variant="primary" onClick={() => setShowAddModal(true)} className="h-14 px-8 rounded-2xl gap-3 shadow-2xl shadow-blue-500/40 text-lg">
+            <UserPlus size={22} /> Provision New Account
+          </Button>
+        </div>
+      </div>
 
-          {/* الفلاتر */}
-          <div className="flex flex-wrap items-center gap-3 p-5 border-b border-gray-100 bg-white/50 rounded-t-3xl">
-            <div className="relative flex-1 min-w-48 max-w-md">
-              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => handleSearch(e.target.value)}
-                placeholder="🔍 بحث بالاسم أو البريد الإلكتروني..."
-                className="w-full pr-10 pl-4 py-3 text-sm border border-gray-200 rounded-2xl bg-white/80 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-400 transition-all duration-200"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-gray-400" />
-              <div className="flex items-center gap-1.5 bg-gray-100/80 rounded-2xl p-1">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+        
+        {/* SIDEBAR FILTERS: Vertical Stacking */}
+        <div className="xl:col-span-3 space-y-8">
+          <div className="bg-white/60 backdrop-blur-xl border border-white p-2 rounded-[32px] shadow-xl">
+             <div className="p-6 pb-2"><h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Filter Spectrum</h3></div>
+             <div className="space-y-1.5 p-2">
                 {(['', 'Admin', 'Doctor', 'Patient'] as const).map(role => (
-                  <motion.button key={role} whileHover={{scale:1.05}} whileTap={{scale:0.95}} onClick={() => handleRoleFilter(role)} className={`px-4 py-2 text-xs font-semibold rounded-xl transition-all duration-200 ${roleFilter===role?'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30':'text-gray-600 hover:bg-white hover:shadow-md'}`}>
-                    {role===''?'📋 الكل':role==='Admin'?'👑 مدراء':role==='Doctor'?'🩺 أطباء':'👤 مرضى'}
+                  <motion.button
+                    key={role}
+                    whileHover={{ x: 5 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleRoleFilter(role)}
+                    className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all duration-300 font-black text-sm ${
+                      roleFilter === role 
+                      ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30' 
+                      : 'text-slate-500 hover:bg-white hover:text-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                       {role === '' ? <Layers size={18} /> : role === 'Admin' ? <Crown size={18} /> : role === 'Doctor' ? <Stethoscope size={18} /> : <User size={18} />}
+                       {role === '' ? 'Omni View' : `${role}s`}
+                    </div>
+                    {roleFilter === role && <ChevronRight size={18} />}
                   </motion.button>
                 ))}
-              </div>
-            </div>
-            {(search || roleFilter) && <Button variant="ghost" size="sm" onClick={()=>{setSearch('');setRoleFilter('');fetchUsers(1,'','')}} className="text-gray-500 hover:text-gray-700"><X className="w-4 h-4" /> مسح</Button>}
+             </div>
           </div>
 
-          {/* الجدول */}
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="p-6"><div className="space-y-4">{[...Array(5)].map((_,i)=><div key={i} className="flex items-center gap-4 py-3"><Skeleton className="w-10 h-10 rounded-2xl" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-48" /></div><Skeleton className="h-6 w-16 rounded-full" /><Skeleton className="h-6 w-16 rounded-full" /></div>)}</div></div>
-            ) : <UserTable users={users} onToggle={handleToggleUser} onDelete={handleDeleteUser} />}
-          </CardContent>
+          {/* Quick Stats Block */}
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden">
+             <div className="relative z-10 space-y-4">
+                <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Total Registry</p>
+                <h4 className="text-5xl font-black tracking-tighter">{total.toLocaleString()}</h4>
+                <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
+                   <motion.div initial={{width:0}} animate={{width:'75%'}} className="h-full bg-blue-500" />
+                </div>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Storage allocation: 75% capacity</p>
+             </div>
+             <div className="absolute -bottom-10 -right-10 opacity-10 rotate-12"><Activity size={180} /></div>
+          </div>
+        </div>
 
-          {/* الترقيم */}
-          {!loading && total > PAGE_SIZE && <div className="border-t border-gray-100 bg-gray-50/50 rounded-b-3xl"><Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={(p:any)=>{setPage(p);fetchUsers(p)}} /></div>}
-        </Card>
-      </motion.div>
+        {/* MAIN CONTENT AREA */}
+        <div className="xl:col-span-9 space-y-8">
+          <Card className="border-0 shadow-2xl rounded-[40px] overflow-hidden bg-white/90 backdrop-blur-2xl">
+            {/* Horizontal Search Only */}
+            <div className="p-8 border-b bg-white/40 flex items-center justify-between gap-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={22} />
+                <Input 
+                  value={search}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  placeholder="Global search into the matrix..."
+                  className="h-16 pl-16 pr-6 bg-slate-50 border-0 focus:ring-blue-500/20 text-lg rounded-3xl"
+                />
+              </div>
+              <Button variant="outline" onClick={handleRetry} className="h-16 w-16 rounded-3xl p-0 shrink-0">
+                 <RefreshCw size={24} className={loading ? 'animate-spin' : ''} />
+              </Button>
+            </div>
 
-      {/* مودال إضافة مستخدم */}
-      <Modal open={showAddModal} onClose={()=>{setShowAddModal(false);setFormErrors({})}} title="✨ إضافة مستخدم جديد" size="lg" footer={<>
-        <Button variant="outline" onClick={()=>{setShowAddModal(false);setFormErrors({})}}>إلغاء</Button>
-        <Button variant="primary" onClick={handleSubmitAddUser} loading={addLoading}><Check className="w-4 h-4" /> إنشاء الحساب</Button>
-      </>}>
-        <div className="space-y-5">
-          <motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-800 flex gap-3">
-            <div className="flex-shrink-0 p-1.5 bg-blue-100 rounded-xl"><AlertCircle className="w-4 h-4" /></div>
-            <p>فقط مدير النظام يمكنه إضافة مستخدمين جدد. سيتم إرسال بيانات الدخول إلى البريد الإلكتروني للمستخدم.</p>
-          </motion.div>
+            <CardContent className="p-0">
+               {loading ? (
+                 <div className="p-10 space-y-6">
+                   {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-[32px]" />)}
+                 </div>
+               ) : (
+                 <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{duration:0.5}}>
+                    <UserTable users={users} onToggle={handleToggle} onDelete={handleDelete} />
+                 </motion.div>
+               )}
+            </CardContent>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">الاسم الكامل *</label>
-              <Input type="text" value={form.fullName} onChange={(e)=>setField('fullName',e.target.value)} placeholder="د. أحمد محمد علي" icon={<User className="w-4 h-4" />} error={formErrors.fullName} />
+            {!loading && total > PAGE_SIZE && (
+              <div className="p-8 bg-slate-50 border-t flex justify-end">
+                <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+              </div>
+            )}
+          </Card>
+        </div>
+      </div>
+
+      <Modal open={showAddModal} onClose={() => setShowAddModal(false)} title="System Provisioning" size="lg">
+        <div className="space-y-8 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Full Legal Entity Name</label>
+              <Input value={form.fullName} onChange={e => setField('fullName', e.target.value)} icon={<User size={18} />} error={formErrors.fullName} className="h-14 rounded-2xl" />
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">البريد الإلكتروني *</label>
-              <Input type="email" value={form.email} onChange={(e)=>setField('email',e.target.value)} placeholder="user@medbook.com" icon={<Mail className="w-4 h-4" />} error={formErrors.email} />
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Electronic Mail</label>
+              <Input type="email" value={form.email} onChange={e => setField('email', e.target.value)} icon={<Mail size={18} />} error={formErrors.email} className="h-14 rounded-2xl" />
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">كلمة المرور *</label>
-              <Input type="password" value={form.passwordHash} onChange={(e)=>setField('passwordHash',e.target.value)} placeholder="•••••••• (8 أحرف على الأقل)" icon={<Lock className="w-4 h-4" />} error={formErrors.passwordHash} />
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Secure Passkey</label>
+              <Input type="password" value={form.passwordHash} onChange={e => setField('passwordHash', e.target.value)} icon={<Lock size={18} />} error={formErrors.passwordHash} className="h-14 rounded-2xl" />
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">الدور *</label>
-              <Select value={form.role} onChange={(e)=>setField('role',e.target.value as UserRole)}>
-                <option value="Patient">👤 مريض</option>
-                <option value="Doctor">🩺 طبيب</option>
-                <option value="Admin">👑 مدير نظام</option>
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Operational Authority</label>
+              <Select value={form.role} onChange={e => setField('role', e.target.value as UserRole)} className="h-14 rounded-2xl font-bold">
+                <option value="Patient">Patient</option>
+                <option value="Doctor">Doctor</option>
+                <option value="Admin">Administrator</option>
               </Select>
             </div>
           </div>
 
           <AnimatePresence>
             {form.role === 'Doctor' && (
-              <motion.div initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}} exit={{opacity:0,height:0}} className="border-t border-gray-100 pt-5 space-y-4">
-                <div className="flex items-center gap-2 pb-2"><Stethoscope className="w-5 h-5 text-emerald-500" /><p className="text-sm font-bold text-gray-800">بيانات الطبيب المهنية</p></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-semibold text-gray-700 mb-2">التخصص (إنجليزي) *</label><Input type="text" value={form.specialityName} onChange={(e)=>setField('specialityName',e.target.value)} placeholder="Cardiology" error={formErrors.specialityName} /></div>
-                  <div><label className="block text-sm font-semibold text-gray-700 mb-2">التخصص (عربي) *</label><Input type="text" value={form.specialityNameAr} onChange={(e)=>setField('specialityNameAr',e.target.value)} placeholder="أمراض القلب والأوعية الدموية" error={formErrors.specialityNameAr} /></div>
-                  <div><label className="block text-sm font-semibold text-gray-700 mb-2">سنوات الخبرة</label><Input type="number" min={0} max={50} value={form.yearsExperience||''} onChange={(e)=>setField('yearsExperience',Number(e.target.value)||0)} placeholder="مثال: 10" /></div>
-                  <div><label className="block text-sm font-semibold text-gray-700 mb-2">رسوم الاستشارة (ج.م)</label><Input type="number" min={0} value={form.consultationFee||''} onChange={(e)=>setField('consultationFee',Number(e.target.value)||0)} placeholder="مثال: 500" /></div>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">نبذة تعريفية</label>
-                  <textarea rows={3} value={form.bio} onChange={(e)=>setField('bio',e.target.value)} placeholder="اكتب نبذة مختصرة عن خبرة الطبيب وإنجازاته..." className="w-full px-4 py-3 text-sm border border-gray-200 rounded-2xl bg-white/50 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-400 transition-all duration-200 resize-none" />
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="p-8 rounded-[32px] bg-slate-50 border border-slate-100 space-y-6">
+                <div className="flex items-center gap-2 text-blue-600 font-black uppercase text-xs tracking-widest"><Stethoscope size={18} /> Medical Certification</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Input value={form.specialityName} onChange={e => setField('specialityName', e.target.value)} placeholder="Speciality (EN)" className="h-12 rounded-xl" />
+                  <Input value={form.specialityNameAr} onChange={e => setField('specialityNameAr', e.target.value)} placeholder="الخصص (AR)" className="h-12 rounded-xl" />
+                  <Input type="number" value={form.yearsExperience} onChange={e => setField('yearsExperience', Number(e.target.value))} placeholder="Experience Years" className="h-12 rounded-xl" />
+                  <Input type="number" value={form.consultationFee} onChange={e => setField('consultationFee', Number(e.target.value))} placeholder="Fee (EGP)" className="h-12 rounded-xl" />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
+
+          <div className="flex justify-end gap-3 pt-6">
+            <Button variant="outline" onClick={() => setShowAddModal(false)} className="h-14 px-8 rounded-2xl font-bold">Cancel</Button>
+            <Button variant="primary" onClick={handleSubmitAddUser} className="h-14 px-10 rounded-2xl font-black shadow-xl shadow-blue-500/20">Finalize Creation</Button>
+          </div>
         </div>
       </Modal>
     </motion.div>

@@ -35,22 +35,22 @@ interface StatusBadgeProps {
 
 const statusConfig: Record<string, { label: string; variant: BadgeProps['variant']; dot: string }> = {
   Pending: {
-    label: 'قيد الانتظار',
+    label: 'Pending',
     variant: 'warning',
     dot: 'bg-white/70',
   },
   Confirmed: {
-    label: 'مؤكد',
+    label: 'Confirmed',
     variant: 'info',
     dot: 'bg-white/70',
   },
   Completed: {
-    label: 'مكتمل',
+    label: 'Completed',
     variant: 'success',
     dot: 'bg-white/70',
   },
   Cancelled: {
-    label: 'ملغي',
+    label: 'Cancelled',
     variant: 'danger',
     dot: 'bg-white/70',
   },
@@ -70,6 +70,7 @@ export const StatusBadge = ({ status }: StatusBadgeProps) => {
     </Badge>
   )
 }
+
 type UrgencyLevel = 'LOW' | 'MEDIUM' | 'HIGH'
 
 interface UrgencyBadgeProps {
@@ -77,9 +78,9 @@ interface UrgencyBadgeProps {
 }
 
 const urgencyConfig: Record<UrgencyLevel, { label: string; variant: BadgeProps['variant'] }> = {
-  LOW:    { label: 'منخفض', variant: 'success' },
-  MEDIUM: { label: 'متوسط', variant: 'warning' },
-  HIGH:   { label: 'عالي',  variant: 'danger'  },
+  LOW:    { label: 'Low',    variant: 'success' },
+  MEDIUM: { label: 'Medium', variant: 'warning' },
+  HIGH:   { label: 'High',   variant: 'danger'  },
 }
 
 export const UrgencyBadge = ({ level }: UrgencyBadgeProps) => {

@@ -101,20 +101,15 @@ export function useUsers(
       setConnectionStatus('connected')
 
     } catch (err: any) {
-      console.error(err)
+      console.warn('Network error in useUsers, falling back to mock data.', err)
 
-      const msg =
-        err?.response?.data?.message ||
-        err?.message ||
-        'فشل الاتصال بالخادم'
-
-      setError(msg)
+      // ── Automatic Mock Fallback ──────────────────────────────────────
+      setUsers(MOCK_USERS)
+      setTotal(MOCK_USERS.length)
       setConnectionStatus('error')
-
-      toast.error(msg)
-
-      setUsers([])
-      setTotal(0)
+      setError('Server unreachable. Running in Demo Mode with mock data.')
+      
+      // We don't toast error here to avoid annoying the user since we have a fallback
     }
     finally {
       setLoading(false)

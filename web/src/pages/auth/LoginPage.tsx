@@ -3,39 +3,66 @@ import { motion } from 'framer-motion'
 import { Eye, EyeOff, Mail, Lock, HeartPulse } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useNavigate } from 'react-router-dom'
+import { authApi } from '@/api/authApi'
+import { toast } from 'react-hot-toast'
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
+  const [loginRole, setLoginRole] = useState<'Admin' | 'Doctor'>('Doctor')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
 
   const setAuth = useAuthStore(state => state.setAuth)
   const navigate = useNavigate()
 
-  const login = async (_: { email: string; password: string }) => {
-    setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsLoading(false)
-    setAuth({
-      id: 'test-id',
-      firstName: 'Doctor',
-      lastName: 'User',
-      email: email || 'doctor@medbook.com',
-      role: 'Doctor'
-    } as any, 'fake-auth-token')
-    navigate('/')
+  const handleQuickLogin = (role: 'Admin' | 'Doctor') => {
+    setLoginRole(role)
+    if (role === 'Admin') {
+      setEmail('hassanmohamed5065@gmail.com')
+      setPassword('123456789')
+    } else {
+      setEmail('doctor@medbook.com')
+      setPassword('123456789')
+    }
   }
 
-  const validate = () => {
-    setErrors({})
-    return true
+  const login = async (credentials: { email: string; password: string }) => {
+    setIsLoading(true)
+    // Simulated delay for realistic feel
+    await new Promise(resolve => setTimeout(resolve, 800))
+    
+    try {
+      // ── Open Access Bypass (Development Mode) ──────────────────────────
+      // This allows entering any credentials and getting the selected role
+      const mockName = loginRole === 'Admin' ? 'Hassan Mohamed' : 'Dr. User'
+      const mockToken = 'dev-token-' + Math.random().toString(36).substr(2)
+      
+      setAuth({
+        id: 'dev-user-id',
+        firstName: mockName.split(' ')[0],
+        lastName: mockName.split(' ')[1] || '',
+        email: credentials.email || (loginRole === 'Admin' ? 'admin@medbook.com' : 'doctor@medbook.com'),
+        role: loginRole as any
+      }, mockToken)
+
+      toast.success(`Welcome to Dev Mode, ${mockName}!`)
+
+      if (loginRole === 'Admin') {
+        navigate('/admin/dashboard')
+      } else {
+        navigate('/')
+      }
+    } catch (err: any) {
+      toast.error('Something went wrong')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
     await login({ email, password })
   }
 
@@ -59,17 +86,41 @@ export default function LoginPage() {
               initial={{ scale: 0.5, rotate: -15, opacity: 0 }}
               animate={{ scale: 1, rotate: 0, opacity: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
-              className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-tr from-primary-600 to-primary-400 rounded-3xl shadow-xl shadow-primary-500/30 mb-6"
+              className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-tr from-emerald-600 to-teal-500 rounded-3xl shadow-xl shadow-emerald-500/30 mb-6"
             >
               <HeartPulse size={36} className="text-white" />
             </motion.div>
-            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">Welcome to MedBook</h1>
-            <p className="text-sm text-slate-500 mt-2 font-medium">Smart Medical Consultation Platform</p>
+            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">MedBook Portal</h1>
+            <p className="text-sm text-slate-500 mt-2 font-medium">Please choose your access level</p>
+          </div>
+
+          {/* Role Selection Tabs */}
+          <div className="flex p-1 bg-slate-200/50 backdrop-blur-md rounded-2xl mb-6">
+            <button
+              onClick={() => handleQuickLogin('Doctor')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                loginRole === 'Doctor' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <HeartPulse size={16} />
+              Doctor
+            </button>
+            <button
+              onClick={() => handleQuickLogin('Admin')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                loginRole === 'Admin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Lock size={16} />
+              Admin
+            </button>
           </div>
 
           {/* Card */}
           <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-slate-200/50 border border-white p-8">
-            <h2 className="text-xl font-bold text-slate-800 mb-6">Sign In</h2>
+            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+              Sign In as <span className={loginRole === 'Admin' ? 'text-indigo-600' : 'text-emerald-600'}>{loginRole}</span>
+            </h2>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
@@ -83,7 +134,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })) }}
-                    placeholder="doctor@medbook.com"
+                    placeholder={loginRole === 'Admin' ? 'admin@medbook.com' : 'doctor@medbook.com'}
                     className={`w-full pl-11 pr-4 py-3 text-sm bg-slate-50 border rounded-2xl focus:outline-none focus:ring-4 focus:ring-primary-500/20 focus:bg-white transition-all ${
                       errors.email ? 'border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-500/20' : 'border-slate-200 focus:border-primary-500 hover:border-slate-300'
                     }`}
@@ -120,11 +171,6 @@ export default function LoginPage() {
                     {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                {errors.password && (
-                  <motion.p initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="mt-2 text-xs font-medium text-red-500">
-                    {errors.password}
-                  </motion.p>
-                )}
               </div>
 
               <motion.button
@@ -132,7 +178,9 @@ export default function LoginPage() {
                 disabled={isLoading}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
-                className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-primary-500/30 mt-4 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3 group"
+                className={`w-full py-3.5 text-white rounded-2xl font-bold text-sm transition-all shadow-lg mt-4 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-3 group ${
+                  loginRole === 'Admin' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/30' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/30'
+                }`}
               >
                 {isLoading ? (
                   <>
@@ -141,7 +189,7 @@ export default function LoginPage() {
                   </>
                 ) : (
                   <>
-                    Sign In
+                    Sign In as {loginRole}
                     <motion.div
                       initial={{ x: -5, opacity: 0 }}
                       animate={{ x: 0, opacity: 1 }}

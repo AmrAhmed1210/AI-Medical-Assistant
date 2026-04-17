@@ -14,7 +14,7 @@ namespace MedicalAssistant;
 
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
@@ -105,6 +105,39 @@ public class Program
         });
 
         var app = builder.Build();
+        
+        // ── Seeding Admin User ────────────────────────────────────────────────
+        try 
+        {
+            using (var scope = app.Services.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<MedicalAssistantDbContext>();
+                var adminEmail = "hassanmohamed5065@gmail.com";
+                
+                var adminExists = await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()
+                    .AnyAsync(u => u.Email == adminEmail);
+
+                if (!adminExists)
+                {
+                    var admin = new MedicalAssistant.Domain.Entities.UserModule.User
+                    {
+                        FullName = "Hassan Mohamed",
+                        Email = adminEmail,
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456789"),
+                        Role = "Admin",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().AddAsync(admin);
+                    await context.SaveChangesAsync();
+                    Console.WriteLine("✅ Created Admin User: " + adminEmail);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("⚠️ Seeding failed: " + ex.Message);
+        }
 
         if (app.Environment.IsDevelopment())
         {

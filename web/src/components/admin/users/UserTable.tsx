@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, User, Trash2, ToggleLeft, ToggleRight, Check, X, Crown, Stethoscope } from 'lucide-react'
+import { Mail, User, Trash2, ToggleLeft, ToggleRight, Check, X, Crown, Stethoscope, ShieldCheck } from 'lucide-react'
 import type { UserDto, UserRole } from '@/lib/types'
 import { Badge } from '@/components/ui/Badge'
 import { Table, TableHeader, TableRow, TableHead, TableCell } from '@/components/ui/Table'
@@ -14,10 +14,10 @@ interface UserTableProps {
 export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
   
   const getRoleBadge = (role: string) => {
-    const config = ROLE_CONFIG[role as UserRole] || { variant: 'info', label: 'غير معروف', icon: null }
+    const config = ROLE_CONFIG[role as UserRole] || { variant: 'info', label: 'Unknown', icon: null }
     const Icon = role === 'Admin' ? Crown : role === 'Doctor' ? Stethoscope : User
     return (
-      <Badge variant={config.variant}>
+      <Badge variant={config.variant} className="px-3 py-1 text-[10px] font-black uppercase tracking-tighter shadow-sm">
         <Icon className="w-3 h-3" />
         {config.label}
       </Badge>
@@ -25,19 +25,20 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
   }
   
   const getStatusBadge = (isActive: boolean) => (
-    <Badge variant={isActive ? 'success' : 'danger'}>
-      {isActive ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-      {isActive ? 'نشط' : 'معطل'}
-    </Badge>
+    <div className={`flex items-center gap-1.5 ${isActive ? 'text-emerald-500' : 'text-slate-300'}`}>
+      <div className={`w-2 h-2 rounded-full animate-pulse ${isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+      <span className="text-[11px] font-bold uppercase">{isActive ? 'Online' : 'Offline'}</span>
+    </div>
   )
   
   if (!users || users.length === 0) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="p-4 rounded-2xl bg-gray-100/80 mb-4">
-          <User className="w-8 h-8 text-gray-400" />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="p-8 rounded-[40px] bg-slate-50 mb-6 shadow-inner">
+          <User className="w-12 h-12 text-slate-300" />
         </div>
-        <p className="text-sm text-gray-500 font-medium">لا توجد مستخدمين لعرضهم</p>
+        <h4 className="text-xl font-bold text-slate-800">No Entities Found</h4>
+        <p className="text-slate-400 mt-1">Refine your search parameters or add a new record.</p>
       </motion.div>
     )
   }
@@ -45,13 +46,11 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
   return (
     <Table>
       <TableHeader>
-        <TableRow>
-          <TableHead className="rounded-r-2xl">المستخدم</TableHead>
-          <TableHead>البريد الإلكتروني</TableHead>
-          <TableHead>الدور</TableHead>
-          <TableHead>الحالة</TableHead>
-          <TableHead>تاريخ الإنشاء</TableHead>
-          <TableHead className="rounded-l-2xl text-center">الإجراءات</TableHead>
+        <TableRow className="bg-slate-50/50 border-0">
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest rounded-tr-3xl">Professional Profile</TableHead>
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest">Authority & Status</TableHead>
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest">System Logs</TableHead>
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest text-center rounded-tl-3xl">Operations</TableHead>
         </TableRow>
       </TableHeader>
       <tbody>
@@ -59,52 +58,71 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
           {users.map((user, index) => (
             <motion.tr
               key={user.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, x: -30 }}
               transition={{ delay: index * 0.05 }}
-              className="group"
+              className="group border-b border-slate-50/80 hover:bg-blue-50/30 transition-all duration-500"
             >
-              <TableCell className="font-medium">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">
-                    {user.name.charAt(0)}
+              <TableCell className="px-8 py-6">
+                <div className="flex items-center gap-4">
+                  {/* Legendary Avatar */}
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl font-black shadow-xl shadow-blue-500/30 group-hover:scale-110 transition-transform duration-500">
+                      {user.name.charAt(0)}
+                    </div>
+                    {user.isActive && <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-4 border-white shadow-lg" />}
                   </div>
-                  <span className="text-gray-900 font-semibold">{user.name}</span>
+                  
+                  {/* STACKED INFO: Name under each other */}
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-lg font-black text-slate-800 tracking-tight group-hover:text-blue-600 transition-colors">{user.name}</span>
+                    <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
+                      <Mail size={12} className="shrink-0" />
+                      {user.email}
+                    </div>
+                  </div>
                 </div>
               </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Mail className="w-4 h-4 text-gray-400" />
-                  {user.email}
+
+              <TableCell className="px-8 py-6">
+                <div className="flex flex-col items-start gap-2">
+                  {getRoleBadge(user.role)}
+                  {getStatusBadge(user.isActive)}
                 </div>
               </TableCell>
-              <TableCell>{getRoleBadge(user.role)}</TableCell>
-              <TableCell>{getStatusBadge(user.isActive)}</TableCell>
-              <TableCell className="text-gray-500">{new Date().toLocaleDateString('ar-EG')}</TableCell>
-              <TableCell>
-                <div className="flex items-center justify-center gap-2">
+
+              <TableCell className="px-8 py-6">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-bold text-slate-700">Creation Date</span>
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-black uppercase">
+                     <ShieldCheck size={12} className="text-blue-400" /> 
+                     Verified Dec 2024
+                  </div>
+                </div>
+              </TableCell>
+
+              <TableCell className="px-8 py-6">
+                <div className="flex items-center justify-center gap-3">
                   <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.12, rotate: 5 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => onToggle(user.id)}
-                    className={`p-2.5 rounded-xl transition-all duration-200 ${
+                    className={`p-3 rounded-2xl transition-all duration-500 shadow-md hover:shadow-xl ${
                       user.isActive 
-                        ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
-                        : 'bg-green-100 text-green-600 hover:bg-green-200'
+                        ? 'bg-white border border-amber-100 text-amber-500 hover:bg-amber-500 hover:text-white' 
+                        : 'bg-white border border-emerald-100 text-emerald-500 hover:bg-emerald-500 hover:text-white'
                     }`}
-                    title={user.isActive ? 'تعطيل المستخدم' : 'تفعيل المستخدم'}
                   >
-                    {user.isActive ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+                    {user.isActive ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
                   </motion.button>
                   <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => { if(confirm('هل أنت متأكد من حذف هذا المستخدم؟')) onDelete(user.id) }}
-                    className="p-2.5 rounded-xl bg-red-100 text-red-600 hover:bg-red-200 transition-all duration-200"
-                    title="حذف المستخدم"
+                    whileHover={{ scale: 1.12, rotate: -5 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => { if(confirm('Permanently wipe this entry?')) onDelete(user.id) }}
+                    className="p-3 rounded-2xl bg-white border border-rose-100 text-rose-500 hover:bg-rose-500 hover:text-white shadow-md hover:shadow-xl transition-all duration-500"
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 size={20} />
                   </motion.button>
                 </div>
               </TableCell>

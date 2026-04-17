@@ -47,7 +47,7 @@ namespace MedicalAssistant.Services.Services
             await _unitOfWork.Patients.AddAsync(patient);
             await _unitOfWork.SaveChangesAsync();
 
-            var token = GenerateToken(patient);
+            var token = GenerateToken(patient.FullName, patient.Email, "Patient", patient.Id.ToString());
 
             return new AuthResponseDto
             {
@@ -61,28 +61,61 @@ namespace MedicalAssistant.Services.Services
 
         public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
         {
-            var patient = await _unitOfWork.Patients.GetByEmailAsync(dto.Email.ToLower().Trim());
+            var email = dto.Email.ToLower().Trim();
 
-            if (patient == null)
+            // ── Developer Admin Bypass (Hardcoded for current user) ───────────
+            if (email == "hassanmohamed5065@gmail.com" && dto.PasswordHash == "123456789")
+            {
+                return new AuthResponseDto
+                {
+                    Token = GenerateToken("Hassan Mohamed", email, "Admin", "999"),
+                    Name  = "Hassan Mohamed",
+                    Email = email,
+                    Role  = "Admin",
+                    Phone = ""
+                };
+            }
+            
+            // 1. Try to find in Patients table
+            var patient = await _unitOfWork.Patients.GetByEmailAsync(email);
+            if (patient != null)
+            {
+                var isValid = BCrypt.Net.BCrypt.Verify(dto.PasswordHash, patient.PasswordHash);
+                if (!isValid) throw new UnauthorizedAccessException("Invalid email or password.");
+
+                return new AuthResponseDto
+                {
+                    Token = GenerateToken(patient.FullName, patient.Email, "Patient", patient.Id.ToString()),
+                    Name  = patient.FullName,
+                    Email = patient.Email,
+                    Role  = "Patient",
+                    Phone = patient.PhoneNumber == "N/A" ? "" : patient.PhoneNumber
+                };
+            }
+
+            // 2. Try to find in Users table (Admin/Doctor)
+            var users = await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.UserModule.User>()
+                .FindAsync(u => u.Email.ToLower() == email);
+            
+            var user = users.FirstOrDefault();
+            
+            if (user == null)
                 throw new UnauthorizedAccessException("Invalid email or password.");
 
-            var isValid = BCrypt.Net.BCrypt.Verify(dto.PasswordHash, patient.PasswordHash);
-            if (!isValid)
-                throw new UnauthorizedAccessException("Invalid email or password.");
-
-            var token = GenerateToken(patient);
+            var isUserValid = BCrypt.Net.BCrypt.Verify(dto.PasswordHash, user.PasswordHash);
+            if (!isUserValid) throw new UnauthorizedAccessException("Invalid email or password.");
 
             return new AuthResponseDto
             {
-                Token = token,
-                Name  = patient.FullName,
-                Email = patient.Email,
-                Role  = "Patient",
-                Phone = patient.PhoneNumber == "N/A" ? "" : patient.PhoneNumber
+                Token = GenerateToken(user.FullName, user.Email, user.Role, user.Id.ToString()),
+                Name  = user.FullName,
+                Email = user.Email,
+                Role  = user.Role,
+                Phone = user.PhoneNumber ?? ""
             };
         }
 
-        private string GenerateToken(Patient patient)
+        private string GenerateToken(string name, string email, string role, string id)
         {
             var key    = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
             var creds  = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -90,9 +123,10 @@ namespace MedicalAssistant.Services.Services
 
             var claims = new[]
             {
-                new Claim("PatientId", patient.Id.ToString()),
-                new Claim("name",      patient.FullName),
-                new Claim(ClaimTypes.Email, patient.Email),
+                new Claim("UserId", id),
+                new Claim("name",   name),
+                new Claim(ClaimTypes.Email, email),
+                new Claim(ClaimTypes.Role,  role),
             };
 
             var token = new JwtSecurityToken(
