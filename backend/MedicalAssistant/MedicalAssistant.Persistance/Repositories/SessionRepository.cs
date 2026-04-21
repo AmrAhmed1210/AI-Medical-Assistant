@@ -12,7 +12,7 @@ namespace MedicalAssistant.Persistance.Repositories
             return await _dbSet.Where(s => s.UserId == userId && !s.IsDeleted).ToListAsync();
         }
 
-        public async Task<Session?> GetByIdAsync(int id)
+        public new async Task<Session?> GetByIdAsync(int id)
         {
             return await _dbSet.FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
         }

@@ -1,4 +1,5 @@
 ﻿using MedicalAssistant.Domain.Entities.ReviewsModule;
+using MedicalAssistant.Domain.Entities.UserModule;
 
 namespace MedicalAssistant.Domain.Entities.DoctorsModule;
 
@@ -18,6 +19,8 @@ public class Doctor : BaseEntity
 
     public bool IsAvailable { get; set; }
 
+    public bool IsScheduleVisible { get; set; } = true;
+
     public string Bio { get; set; } = string.Empty;
 
     public string ImageUrl { get; set; } = "default-doctor.png";
@@ -25,6 +28,10 @@ public class Doctor : BaseEntity
     public int SpecialtyId { get; set; }
 
     public Specialty Specialty { get; set; } = null!;
+
+    public int? UserId { get; set; }
+
+    public User? User { get; set; }
 
     public ICollection<Review> Reviews { get; set; } = new List<Review>();
 

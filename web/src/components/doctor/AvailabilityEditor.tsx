@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { AvailabilityDto } from '@/lib/types'
+import type { AvailabilityDto, DayOfWeek } from '@/lib/types'
 import { DAY_NAMES_AR } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Clock, Save } from 'lucide-react'
@@ -13,12 +13,12 @@ interface AvailabilityEditorProps {
 }
 
 const DEFAULT_AVAILABILITY: AvailabilityDto[] = DAY_NAMES_AR.map((dayName, i) => ({
-  dayOfWeek: i,
+  dayOfWeek: i as DayOfWeek,
   dayName,
   startTime: '09:00',
   endTime: '17:00',
   slotDurationMinutes: 30,
-  isActive: i >= 0 && i <= 4, // Sun-Thu active by default
+  isAvailable: false, // Inactive by default
 }))
 
 export function AvailabilityEditor({ availability, onSave, isSaving }: AvailabilityEditorProps) {
@@ -52,7 +52,7 @@ export function AvailabilityEditor({ availability, onSave, isSaving }: Availabil
             transition={{ delay: idx * 0.05 }}
             className={cn(
               'flex flex-wrap items-center gap-4 p-4 rounded-xl border-2 transition-all shadow-sm',
-              slot.isActive
+              slot.isAvailable
                 ? 'border-primary-300 bg-gradient-to-r from-primary-50 to-blue-50'
                 : 'border-gray-200 bg-gray-50 opacity-50'
             )}
@@ -64,19 +64,19 @@ export function AvailabilityEditor({ availability, onSave, isSaving }: Availabil
               >
                 <input
                   type="checkbox"
-                  checked={slot.isActive}
-                  onChange={(e) => update(slot.dayOfWeek, 'isActive', e.target.checked)}
+                  checked={slot.isAvailable}
+                  onChange={(e) => update(slot.dayOfWeek, 'isAvailable', e.target.checked)}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-gray-300 peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-primary-600 peer-checked:to-primary-500 after:content-[''] after:absolute after:top-0.5 after:right-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-[-20px] shadow-sm" />
               </motion.label>
-              <span className={cn('text-sm font-semibold', slot.isActive ? 'text-gray-800' : 'text-gray-500')}>
+              <span className={cn('text-sm font-semibold', slot.isAvailable ? 'text-gray-800' : 'text-gray-500')}>
                 {slot.dayName}
               </span>
             </div>
 
             <AnimatePresence>
-              {slot.isActive && (
+              {slot.isAvailable && (
                 <>
                   <motion.div
                     className="flex items-center gap-2"

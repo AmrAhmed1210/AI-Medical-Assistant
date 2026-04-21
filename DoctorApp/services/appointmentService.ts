@@ -1,5 +1,5 @@
 import { API } from "../constants/api";
-import { getToken } from "./authService";
+import { apiFetch } from "./http";
 
 // ============================================
 // Types
@@ -29,33 +29,21 @@ export interface BookAppointmentPayload {
 // Book Appointment
 // ============================================
 export const bookAppointment = async (payload: BookAppointmentPayload): Promise<Appointment> => {
-  const token = await getToken();
-  const res = await fetch(API.appointments.book, {
-    method:  "POST",
-    headers: {
-      "Content-Type":  "application/json",
-      "Authorization": `Bearer ${token}`,
+  return apiFetch<Appointment>(
+    API.appointments.book,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
     },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Booking failed");
-  return data;
+    true
+  );
 };
 
 // ============================================
 // Get My Appointments
 // ============================================
 export const getMyAppointments = async (): Promise<Appointment[]> => {
-  const token = await getToken();
-  const res = await fetch(API.appointments.my, {
-    headers: { "Authorization": `Bearer ${token}` },
-  });
-
-  if (!res.ok) throw new Error("Failed to load appointments");
-
-  const data = await res.json();
+  const data = await apiFetch<any>(API.appointments.my, { method: "GET" }, true);
   // Handle both array and single object response
   return Array.isArray(data) ? data : [data];
 };
@@ -64,11 +52,5 @@ export const getMyAppointments = async (): Promise<Appointment[]> => {
 // Cancel Appointment
 // ============================================
 export const cancelAppointment = async (id: number): Promise<void> => {
-  const token = await getToken();
-  const res = await fetch(API.appointments.cancel(id), {
-    method:  "DELETE",
-    headers: { "Authorization": `Bearer ${token}` },
-  });
-
-  if (!res.ok) throw new Error("Failed to cancel appointment");
+  await apiFetch<unknown>(API.appointments.cancel(id), { method: "DELETE" }, true);
 };

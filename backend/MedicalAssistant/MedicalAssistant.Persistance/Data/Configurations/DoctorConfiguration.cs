@@ -1,4 +1,5 @@
 ﻿using MedicalAssistant.Domain.Entities.DoctorsModule;
+using MedicalAssistant.Domain.Entities.UserModule;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -32,5 +33,10 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
                .WithMany(s => s.Doctors)
                .HasForeignKey(d => d.SpecialtyId)
                .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(d => d.User)
+               .WithMany()
+               .HasForeignKey(d => d.UserId)
+               .OnDelete(DeleteBehavior.SetNull);
     }
 }

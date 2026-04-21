@@ -15,17 +15,17 @@ export function ModelVersionTable({ models, onReload, reloadingAgent }: ModelVer
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-50 border-b border-slate-100">
-            <th className="px-6 py-4 text-left font-bold text-slate-600 uppercase tracking-wider">Agent Intelligence</th>
-            <th className="px-6 py-4 text-left font-bold text-slate-600 uppercase tracking-wider">Core Version</th>
-            <th className="px-6 py-4 text-left font-bold text-slate-600 uppercase tracking-wider">Storage Path</th>
-            <th className="px-6 py-4 text-left font-bold text-slate-600 uppercase tracking-wider">Status</th>
-            <th className="px-6 py-4 text-left font-bold text-slate-600 uppercase tracking-wider">Deployment Date</th>
-            <th className="px-6 py-4 text-center font-bold text-slate-600 uppercase tracking-wider">Operations</th>
+            <th className="px-6 py-4 text-left font-bold text-slate-600 uppercase tracking-wider">Agent / الوكيل</th>
+            <th className="px-6 py-4 text-left font-bold text-slate-600 uppercase tracking-wider">Version / الإصدار</th>
+            <th className="px-6 py-4 text-left font-bold text-slate-600 uppercase tracking-wider">File Path / مسار الملف</th>
+            <th className="px-6 py-4 text-left font-bold text-slate-600 uppercase tracking-wider">Status / الحالة</th>
+            <th className="px-6 py-4 text-left font-bold text-slate-600 uppercase tracking-wider">Deployed At / تاريخ النشر</th>
+            <th className="px-6 py-4 text-center font-bold text-slate-600 uppercase tracking-wider">Actions / إجراءات</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-50">
           {models.map((m) => (
-            <tr key={m.modelId} className="hover:bg-slate-50 transition-colors group">
+            <tr key={m.id} className="hover:bg-slate-50 transition-colors group">
               <td className="px-6 py-4 font-bold text-slate-800">{m.agentName}</td>
               <td className="px-6 py-4">
                 <span className="font-mono text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg border border-slate-200">{m.version}</span>
@@ -46,7 +46,7 @@ export function ModelVersionTable({ models, onReload, reloadingAgent }: ModelVer
                   </span>
                 )}
               </td>
-              <td className="px-6 py-4 text-slate-500 text-xs font-medium">{formatDateTime(m.deployedAt)}</td>
+              <td className="px-6 py-4 text-slate-500 text-xs font-medium">{formatDateTime(m.loadedAt || m.createdAt)}</td>
               <td className="px-6 py-4">
                 <div className="flex justify-center">
                   <button
@@ -60,7 +60,7 @@ export function ModelVersionTable({ models, onReload, reloadingAgent }: ModelVer
                     )}
                   >
                     <RefreshCw size={14} className={reloadingAgent === m.agentName ? 'animate-spin' : ''} />
-                    {reloadingAgent === m.agentName ? 'Hot Reloading...' : 'Hot Reload'}
+                    {reloadingAgent === m.agentName ? 'Reloading... / جارٍ التحميل' : 'Hot Reload / إعادة تحميل'}
                   </button>
                 </div>
               </td>

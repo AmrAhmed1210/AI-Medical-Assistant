@@ -10,4 +10,9 @@ public class SystemStatsDto
     public int ActiveModels { get; set; }
     public double AvgResponseTimeMs { get; set; }
     public int HighUrgencyToday { get; set; }
+    public int SessionsToday { get; set; }
+    public int SessionsThisWeek { get; set; }
+    public Dictionary<string, int> UrgencyDistribution { get; set; } = new();
+    public List<DateCountDto> SessionsPerDay { get; set; } = new();
+    public List<DateCountDto> UserGrowth { get; set; } = new();
 }

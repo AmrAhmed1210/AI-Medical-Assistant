@@ -16,8 +16,10 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
         Task<UserManagementDto> CreateUserAsync(CreateUserRequest request);
 
         Task<bool> ToggleUserStatusAsync(int userId);
+        Task<bool> DeactivateUserAsync(int userId, string role);
+        Task<bool> ActivateUserAsync(int userId, string role);
 
-        Task<bool> DeleteUserAsync(int id);
+        Task<bool> DeleteUserAsync(int id, string role);
 
         Task<IEnumerable<ModelVersionDto>> ListModelVersionsAsync();
 

@@ -4,7 +4,6 @@ namespace MedicalAssistant.Domain.Entities.AnalysisModule;
 
 public class AnalysisResult : BaseEntity
 {
-    // ربط التقرير بالمريض (مهم جداً للـ DoctorService)
     public int PatientId { get; set; }
     public Patient Patient { get; set; } = null!;
 

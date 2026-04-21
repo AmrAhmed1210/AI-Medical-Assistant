@@ -1,7 +1,24 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
+import { useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Toast from "react-native-toast-message";
 import { View, StyleSheet } from "react-native";
+import {
+  addNotification,
+  createAppointmentUpdatedNotification,
+  createScheduleReadyNotification,
+} from "../../services/notificationService";
+import {
+  onAppointmentUpdated,
+  onNotificationReceived,
+  onScheduleReady,
+  onScheduleUpdated,
+  subscribeToDoctorSchedule,
+  startSignalRConnection,
+  stopSignalRConnection,
+} from "../../services/signalr";
 
 type TabIconProps = {
   color: string;
@@ -18,6 +35,135 @@ function TabIcon({ name, color, size, focused }: { name: any; color: string; siz
 }
 
 export default function TabsLayout() {
+  useEffect(() => {
+    let mounted = true;
+
+    const tryConnect = async () => {
+      // Wait a bit for auth to settle
+      await new Promise(r => setTimeout(r, 1000));
+
+      const token = await AsyncStorage.getItem("token");
+      if (!token || !mounted) return;
+
+      const conn = await startSignalRConnection();
+      if (!conn || !mounted) return;
+
+      try {
+        const subscribed = await AsyncStorage.getItem("subscribedDoctors");
+        const list: number[] = subscribed ? JSON.parse(subscribed) : [];
+        await Promise.all(
+          list.map((doctorId) => subscribeToDoctorSchedule(Number(doctorId)).catch(() => undefined))
+        );
+      } catch {
+        // ignore subscription restore issues
+      }
+
+      let lastScheduleDoctorId: number | null = null;
+      let lastScheduleTs = 0;
+      const pushScheduleNotification = (doctorId: number, doctorName: string) => {
+        const now = Date.now();
+        if (lastScheduleDoctorId === doctorId && now - lastScheduleTs < 1500) return;
+        lastScheduleDoctorId = doctorId;
+        lastScheduleTs = now;
+        addNotification(createScheduleReadyNotification(doctorName));
+        Toast.show({
+          type: "success",
+          text1: "Schedule Updated",
+          text2: `Dr. ${doctorName} has updated availability`,
+          position: "top",
+          topOffset: 60,
+        });
+      };
+
+      const handleScheduleEvent = async (data: any) => {
+        if (!mounted) return;
+        const payload = data ?? {};
+        const doctorId = Number(payload?.doctorId ?? payload?.DoctorId);
+        const doctorName = String(payload?.doctorName ?? payload?.DoctorName ?? "Doctor");
+        const subscribed = await AsyncStorage.getItem("subscribedDoctors");
+        const list: number[] = subscribed ? JSON.parse(subscribed) : [];
+        if (!list.includes(doctorId)) return;
+        pushScheduleNotification(doctorId, doctorName);
+      };
+
+      onAppointmentUpdated((data) => {
+        if (!mounted) return;
+        const status = String(data?.status ?? "").toLowerCase();
+        const message = data?.message || "Appointment updated";
+        const title = status === "confirmed"
+          ? "Appointment Confirmed"
+          : status === "cancelled"
+            ? "Appointment Cancelled"
+            : "Appointment Updated";
+        addNotification(
+          createAppointmentUpdatedNotification(
+            title,
+            message,
+            status === "confirmed"
+              ? "appointment_confirmed"
+              : status === "cancelled"
+                ? "appointment_cancelled"
+                : "appointment_updated"
+          )
+        );
+        Toast.show({
+          type: "info",
+          text1: title,
+          text2: data.status ? `Status: ${data.status}` : undefined,
+          position: "top",
+          topOffset: 60,
+        });
+      });
+
+      onScheduleReady(handleScheduleEvent);
+      onScheduleUpdated(handleScheduleEvent);
+      onNotificationReceived((payload) => {
+        if (!mounted) return;
+        const category = payload?.category ?? payload?.Category;
+        const data = payload?.data ?? payload?.Data ?? {};
+        if (category === "schedule_updated" || category === "schedule_ready") {
+          const doctorId = Number(data?.doctorId ?? data?.DoctorId);
+          const doctorName = String(data?.doctorName ?? data?.DoctorName ?? "Doctor");
+
+          AsyncStorage.getItem("subscribedDoctors")
+            .then((subscribed) => {
+              const list: number[] = subscribed ? JSON.parse(subscribed) : [];
+              if (!list.includes(doctorId)) return;
+              pushScheduleNotification(doctorId, doctorName);
+            })
+            .catch(() => undefined);
+          return;
+        }
+
+        if (
+          category === "appointment_confirmed" ||
+          category === "appointment_reminder" ||
+          category === "missed_appointment" ||
+          category === "rebook_offer" ||
+          category === "rebook_confirmed"
+        ) {
+          const title = String(payload?.title ?? payload?.Title ?? "Appointment");
+          const message = String(payload?.message ?? payload?.Message ?? "You have a new appointment update.");
+          addNotification(createAppointmentUpdatedNotification(title, message, category));
+          Toast.show({
+            type: "info",
+            text1: title,
+            text2: message,
+            position: "top",
+            topOffset: 60,
+          });
+        }
+      });
+    };
+
+    tryConnect();
+
+    return () => {
+      mounted = false;
+      stopSignalRConnection();
+    };
+  }, []);
+
   return (
     <Tabs
       screenOptions={{
@@ -93,11 +239,16 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Hidden screens - مش هتظهر في الـ tab bar */}
       <Tabs.Screen
         name="doctor-details"
         options={{
-          href: null, // يخفيها من الـ tab bar تماماً
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="followed-doctors"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

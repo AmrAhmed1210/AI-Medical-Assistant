@@ -28,7 +28,7 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
       {/* Basic Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">الاسم الكامل *</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name / الاسم الكامل *</label>
           <Input
             type="text"
             value={form.fullName}
@@ -39,7 +39,7 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">البريد الإلكتروني *</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Email / البريد الإلكتروني *</label>
           <Input
             type="email"
             value={form.email}
@@ -50,25 +50,25 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">كلمة المرور *</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Password / كلمة المرور *</label>
           <Input
             type="password"
-            value={form.passwordHash}
-            onChange={(e) => onChange('passwordHash', e.target.value)}
+            value={form.password}
+            onChange={(e) => onChange('password', e.target.value)}
             placeholder="•••••••• (8 أحرف على الأقل)"
             icon={<Lock className="w-4 h-4" />}
-            error={errors.passwordHash}
+            error={errors.password}
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">الدور *</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">Role / الدور *</label>
           <Select
             value={form.role}
             onChange={(e) => onChange('role', e.target.value as UserRole)}
           >
-            <option value="Patient">👤 مريض</option>
-            <option value="Doctor">🩺 طبيب</option>
-            <option value="Admin">👑 مدير نظام</option>
+            <option value="Patient">👤 Patient / مريض</option>
+            <option value="Doctor">🩺 Doctor / طبيب</option>
+            <option value="Admin">👑 Admin / مدير نظام</option>
           </Select>
         </div>
       </div>
@@ -84,12 +84,12 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
           >
             <div className="flex items-center gap-2 pb-2">
               <Stethoscope className="w-5 h-5 text-emerald-500" />
-              <p className="text-sm font-bold text-gray-800">بيانات الطبيب المهنية</p>
+              <p className="text-sm font-bold text-gray-800">Doctor Professional Info / بيانات الطبيب المهنية</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">التخصص (إنجليزي) *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Specialty (EN) / التخصص بالإنجليزي *</label>
                 <Input
                   type="text"
                   value={form.specialityName}
@@ -99,7 +99,7 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">التخصص (عربي) *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Specialty (AR) / التخصص بالعربي *</label>
                 <Input
                   type="text"
                   value={form.specialityNameAr}
@@ -109,30 +109,32 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">سنوات الخبرة</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Years of Experience / سنوات الخبرة</label>
                 <Input
                   type="number"
                   min={0}
-                  max={50}
-                  value={form.yearsExperience || ''}
-                  onChange={(e) => onChange('yearsExperience', Number(e.target.value) || 0)}
+                  max={60}
+                  value={form.yearsExperience === undefined ? '' : form.yearsExperience}
+                  onChange={(e) => onChange('yearsExperience', Number(e.target.value))}
                   placeholder="مثال: 10"
+                  error={errors.yearsExperience}
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">رسوم الاستشارة (ج.م)</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Consultation Fee (EGP) / رسوم الاستشارة</label>
                 <Input
                   type="number"
                   min={0}
-                  value={form.consultationFee || ''}
-                  onChange={(e) => onChange('consultationFee', Number(e.target.value) || 0)}
+                  value={form.consultationFee === undefined ? '' : form.consultationFee}
+                  onChange={(e) => onChange('consultationFee', Number(e.target.value))}
                   placeholder="مثال: 500"
+                  error={errors.consultationFee}
                 />
               </div>
             </div>
             
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">نبذة تعريفية</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Bio / نبذة تعريفية</label>
               <textarea
                 rows={3}
                 value={form.bio}
@@ -140,6 +142,9 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
                 placeholder="اكتب نبذة مختصرة عن خبرة الطبيب وإنجازاته..."
                 className="w-full px-4 py-3 text-sm border border-gray-200 rounded-2xl bg-white/50 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-400 transition-all duration-200 resize-none"
               />
+              {errors.bio && (
+                <p className="mt-1 text-sm text-red-500">{errors.bio}</p>
+              )}
             </div>
           </motion.div>
         )}

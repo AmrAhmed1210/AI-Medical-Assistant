@@ -10,10 +10,55 @@ import { PageLoader } from '@/components/ui/LoadingSpinner'
 import { formatDateTime } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/config'
+import { useEffect } from 'react'
+import { useAuthStore } from '@/store/authStore'
+import { startConnection } from '@/lib/signalr'
+import { useNotificationStore } from '@/store/notificationStore'
+import toast from 'react-hot-toast'
 
 export default function DoctorDashboard() {
-  const { dashboard, isLoading } = useDoctorDashboard()
+  const { dashboard, isLoading, refresh } = useDoctorDashboard()
   const navigate = useNavigate()
+  const { token } = useAuthStore()
+  const { addNotification } = useNotificationStore()
+
+  useEffect(() => {
+    let active = true
+    let cleanup: (() => void) | undefined
+
+    const bindRealtime = async () => {
+      if (!token) return
+      try {
+        const conn = await startConnection(token)
+        if (!active) return
+
+        const onNotificationReceived = (payload: any) => {
+          const category = payload?.category ?? payload?.Category
+          const title = payload?.title ?? payload?.Title ?? 'Update'
+          const message = payload?.message ?? payload?.Message ?? 'You have a new update'
+          
+          if (category === 'new_booking' || category === 'appointment_update') {
+            addNotification('info', title, message)
+            toast.success(message)
+            refresh?.()
+          }
+        }
+
+        conn.on('NotificationReceived', onNotificationReceived)
+        cleanup = () => {
+          conn.off('NotificationReceived', onNotificationReceived)
+        }
+      } catch (err) {
+        console.error('SignalR error in dashboard:', err)
+      }
+    }
+
+    bindRealtime()
+    return () => {
+      active = false
+      cleanup?.()
+    }
+  }, [token, addNotification, refresh])
 
   if (isLoading) return <PageLoader />
 

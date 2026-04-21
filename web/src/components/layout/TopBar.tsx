@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Bell, Search, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNotificationStore } from '@/store/notificationStore'
+import { useAuthStore } from '@/store/authStore'
+import { startConnection } from '@/lib/signalr'
 import { cn } from '@/lib/utils'
 import { formatTimeAgo } from '@/lib/utils'
 
@@ -11,7 +13,57 @@ interface TopBarProps {
 
 export function TopBar({ title }: TopBarProps) {
   const [showNotif, setShowNotif] = useState(false)
-  const { notifications, unreadCount, markAllRead, removeNotification } = useNotificationStore()
+  const { notifications, unreadCount, markAllRead, removeNotification, addNotification } = useNotificationStore()
+  const { token } = useAuthStore()
+
+  useEffect(() => {
+    let cleanup: (() => void) | undefined
+    let active = true
+
+    const bindRealtime = async () => {
+      if (!token) return
+      try {
+        const conn = await startConnection(token)
+        if (!active) return
+
+        const onNotificationReceived = (payload: any) => {
+          const category = String(payload?.category ?? payload?.Category ?? '').toLowerCase()
+          const title = String(payload?.title ?? payload?.Title ?? 'Notification')
+          const message = String(payload?.message ?? payload?.Message ?? '')
+          const level =
+            category.includes('cancel') ? 'warning' :
+            category.includes('confirm') || category.includes('booking') ? 'success' :
+            category.includes('error') ? 'error' : 'info'
+
+          addNotification(level, title, message)
+        }
+
+        const onAppointmentUpdated = (payload: any) => {
+          const status = String(payload?.status ?? '').toLowerCase()
+          const type =
+            status === 'confirmed' ? 'success' :
+            status === 'cancelled' ? 'warning' : 'info'
+          addNotification(type, 'Appointment Update', String(payload?.message ?? 'Appointment updated'))
+        }
+
+        conn.on('NotificationReceived', onNotificationReceived)
+        conn.on('AppointmentUpdated', onAppointmentUpdated)
+
+        cleanup = () => {
+          conn.off('NotificationReceived', onNotificationReceived)
+          conn.off('AppointmentUpdated', onAppointmentUpdated)
+        }
+      } catch {
+        // realtime is optional
+      }
+    }
+
+    bindRealtime()
+    return () => {
+      active = false
+      cleanup?.()
+    }
+  }, [addNotification, token])
 
   return (
     <header className="fixed top-0 right-0 left-64 h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 z-20 shadow-sm">
@@ -64,8 +116,9 @@ export function TopBar({ title }: TopBarProps) {
                   ) : notifications.map((n) => (
                     <div
                       key={n.id}
+                      onClick={() => removeNotification(n.id)}
                       className={cn(
-                        'flex items-start gap-3 p-3 hover:bg-gray-50',
+                        'w-full text-left flex items-start gap-3 p-3 hover:bg-gray-50 cursor-pointer',
                         !n.read && 'bg-blue-50/40'
                       )}
                     >
@@ -81,7 +134,10 @@ export function TopBar({ title }: TopBarProps) {
                         <p className="text-xs text-gray-400 mt-1">{formatTimeAgo(n.createdAt)}</p>
                       </div>
                       <button
-                        onClick={() => removeNotification(n.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeNotification(n.id)
+                        }}
                         className="text-gray-300 hover:text-gray-500 flex-shrink-0"
                       >
                         <X size={12} />

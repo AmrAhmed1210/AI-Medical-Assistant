@@ -8,4 +8,5 @@ public class DoctorAvailability : BaseEntity
     public TimeSpan StartTime { get; set; }
     public TimeSpan EndTime { get; set; }
     public bool IsAvailable { get; set; } = true;
+    public int SlotDurationMinutes { get; set; } = 30;
 }

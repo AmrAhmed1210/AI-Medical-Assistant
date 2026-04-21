@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   TextInput, TouchableOpacity, RefreshControl, ScrollView,
   Platform, StatusBar,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "../../constants/colors";
 import DoctorCard from "@/components/DoctorCard";
 import { useLanguage } from "../../context/LanguageContext";
-import { getAllDoctors, Doctor } from "../../services/doctorService";
+import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor } from "../../services/doctorService";
+import { onDoctorCreated, onDoctorUpdated, startSignalRConnection } from "../../services/signalr";
 
 const SPECIALTIES = ["All", "Cardiology", "Dermatology", "Neurology", "Orthopedics", "Pediatrics", "Gynecology", "Ophthalmology", "ENT"];
 
@@ -26,6 +28,8 @@ export default function DoctorsScreen() {
   const [error,      setError]      = useState("");
   const [search,     setSearch]     = useState("");
   const [activeSpec, setActiveSpec] = useState("All");
+  const [highlightedDoctorId, setHighlightedDoctorId] = useState<string | null>(null);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (params.specialty) {
@@ -36,18 +40,118 @@ export default function DoctorsScreen() {
 
   const fetchDoctors = useCallback(async () => {
     try {
-      setError("");
-      const data = await getAllDoctors();
-      setDoctors(data);
-    } catch (e: any) {
-      setError(e.message || "Failed to load doctors");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+      setLoading(true)
+      setError("")
+      const data = await getAllDoctors()
+      const enriched = await Promise.all(
+        data.map(async (doctor) => {
+          try {
+            const [details, reviews] = await Promise.all([
+              getDoctorById(doctor.id),
+              getReviewsByDoctor(doctor.id).catch(() => []),
+            ])
+            const avgRating = reviews.length > 0
+              ? reviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / reviews.length
+              : Number((details as any).rating ?? doctor.rating ?? 0)
 
-  useEffect(() => { fetchDoctors(); }, [fetchDoctors]);
+            return {
+              ...doctor,
+              bio: details.bio ?? "",
+              photoUrl: (details as any).photoUrl ?? null,
+              rating: Number.isFinite(avgRating) ? Number(avgRating.toFixed(1)) : 0,
+              reviewCount: reviews.length > 0 ? reviews.length : Number((details as any).reviewCount ?? doctor.reviewCount ?? 0),
+            }
+          } catch {
+            return doctor
+          }
+        })
+      )
+      setDoctors(enriched)
+    } catch (e: any) {
+      console.error('Failed to fetch doctors:', e)
+      setError("Failed to load doctors. Check your connection.")
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [])
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchDoctors();
+    }, [fetchDoctors])
+  );
+
+  useEffect(() => {
+    let unsubCreated: (() => void) | undefined;
+    let unsubUpdated: (() => void) | undefined;
+    let mounted = true;
+
+    const bindRealtime = async () => {
+      try {
+        // Wait for auth to settle
+        await new Promise(r => setTimeout(r, 1500))
+
+        const token = await AsyncStorage.getItem('token')
+        if (!token || !mounted) return
+
+        const conn = await startSignalRConnection();
+        if (!conn || !mounted) return;
+
+        unsubCreated = onDoctorCreated(() => {
+          fetchDoctors().catch(() => undefined);
+        });
+
+        unsubUpdated = onDoctorUpdated(async (payload) => {
+          const doctorId = payload?.doctorId;
+          if (!doctorId) return;
+          try {
+            const details: any = await getDoctorById(doctorId);
+            if (!mounted) return;
+
+            setDoctors((prev) =>
+              prev.map((d) =>
+                d.id === doctorId
+                  ? {
+                      ...d,
+                      name: details.name ?? details.fullName ?? d.name,
+                      specialty: details.specialty ?? d.specialty,
+                      consultationFee: details.consultationFee ?? details.consultFee ?? d.consultationFee,
+                      imageUrl: details.imageUrl ?? details.photoUrl ?? d.imageUrl,
+                      isAvailable: typeof details.isAvailable === "boolean" ? details.isAvailable : d.isAvailable,
+                      bio: details.bio ?? "",
+                      photoUrl: details.photoUrl ?? null,
+                    }
+                  : d
+              )
+            );
+
+            setHighlightedDoctorId(String(doctorId));
+            if (highlightTimeoutRef.current) {
+              clearTimeout(highlightTimeoutRef.current);
+            }
+            highlightTimeoutRef.current = setTimeout(() => {
+              setHighlightedDoctorId(null);
+            }, 3500);
+          } catch {
+            // If targeted update fails, leave current list untouched.
+          }
+        });
+      } catch {
+        // realtime is optional; fallback to manual refresh
+      }
+    };
+
+    bindRealtime();
+    return () => {
+      mounted = false;
+      unsubCreated?.();
+      unsubUpdated?.();
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, [fetchDoctors]);
 
   useEffect(() => {
     let res = doctors;
@@ -63,7 +167,8 @@ export default function DoctorsScreen() {
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
   if (error) return (
     <View style={styles.center}>
-      <Text style={styles.errorTxt}>⚠️ {error}</Text>
+      <Ionicons name="cloud-offline-outline" size={48} color="#e53935" />
+      <Text style={styles.errorTxt}>{error}</Text>
       <TouchableOpacity style={styles.retryBtn} onPress={fetchDoctors}>
         <Text style={styles.retryTxt}>Retry</Text>
       </TouchableOpacity>
@@ -118,11 +223,21 @@ export default function DoctorsScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => <DoctorCard doctor={{
-          ...item,
-          id: String(item.id),
-          experience: `${(item as any).experience ?? 0} yrs`,
-        }} />}
+        renderItem={({ item }) => {
+          const years = (item as any).yearsExperience ?? (item as any).experience ?? 0;
+          const hasSchedule = ((item as any).hasSchedule ?? true) && ((item as any).isScheduleVisible ?? true);
+          return (
+            <DoctorCard
+              doctor={{
+                ...item,
+                id: String(item.id),
+                experience: `${years} yrs`,
+                hasSchedule,
+              }}
+              highlight={String(item.id) === highlightedDoctorId}
+            />
+          );
+        }}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={

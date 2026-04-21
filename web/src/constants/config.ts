@@ -1,5 +1,5 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
-export const SIGNALR_HUB_URL = import.meta.env.VITE_SIGNALR_HUB_URL || 'http://localhost:5000/hubs/consult'
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5194'
+export const SIGNALR_HUB_URL = import.meta.env.VITE_SIGNALR_HUB_URL || 'http://localhost:5194/hubs/consult'
 export const APP_NAME = import.meta.env.VITE_APP_NAME || 'MedBook'
 
 export const TOKEN_KEY = 'medbook_token'
@@ -25,5 +25,6 @@ export const ROUTES = {
   DOCTOR_APPOINTMENTS: '/doctor/appointments',
   DOCTOR_PATIENTS: '/doctor/patients',
   DOCTOR_REPORTS: '/doctor/reports',
+  DOCTOR_REVIEWS: '/doctor/reviews',
   DOCTOR_CHAT: '/doctor/chat',
 }

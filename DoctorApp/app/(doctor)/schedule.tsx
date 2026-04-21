@@ -29,7 +29,6 @@ const scheduleData: Record<number, { time: string; patient: string; type: string
     { time: "10:00 AM", patient: "Anna Lee", type: "Consultation" },
     { time: "01:00 PM", patient: "John Smith", type: "Review" },
   ],
-  // ... يمكنك إضافة باقي الأيام هنا
 };
 
 export default function DoctorSchedule() {

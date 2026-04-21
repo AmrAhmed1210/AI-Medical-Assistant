@@ -4,11 +4,12 @@ import type { UserDto, UserRole } from '@/lib/types'
 import { Badge } from '@/components/ui/Badge'
 import { Table, TableHeader, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { ROLE_CONFIG } from './constants'
+import { formatDateTime } from '@/lib/utils'
 
 interface UserTableProps {
   users: UserDto[]
-  onToggle: (id: string) => Promise<void>
-  onDelete: (id: string) => void
+  onToggle: (id: number) => Promise<void>
+  onDelete: (id: number) => void
 }
 
 export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
@@ -47,10 +48,10 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
     <Table>
       <TableHeader>
         <TableRow className="bg-slate-50/50 border-0">
-          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest rounded-tr-3xl">Professional Profile</TableHead>
-          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest">Authority & Status</TableHead>
-          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest">System Logs</TableHead>
-          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest text-center rounded-tl-3xl">Operations</TableHead>
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest rounded-tr-3xl">User / المستخدم</TableHead>
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest">Role & Status / الدور والحالة</TableHead>
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest">Created At / تاريخ الإنشاء</TableHead>
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest text-center rounded-tl-3xl">Actions / إجراءات</TableHead>
         </TableRow>
       </TableHeader>
       <tbody>
@@ -94,10 +95,10 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
 
               <TableCell className="px-8 py-6">
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs font-bold text-slate-700">Creation Date</span>
+                  <span className="text-xs font-bold text-slate-700">Registered</span>
                   <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-black uppercase">
                      <ShieldCheck size={12} className="text-blue-400" /> 
-                     Verified Dec 2024
+                     {user.createdAt ? formatDateTime(user.createdAt) : '—'}
                   </div>
                 </div>
               </TableCell>

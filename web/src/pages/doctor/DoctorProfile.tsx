@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Camera, Save, Star, Clock, DollarSign } from 'lucide-react'
+import { Camera, Save, Star, Clock, DollarSign, MessageSquare, ThumbsUp } from 'lucide-react'
 import { useDoctorProfile } from '@/hooks/useDoctor'
 import { useDoctorStore } from '@/store/doctorStore'
 import { doctorApi } from '@/api/doctorApi'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { PageLoader } from '@/components/ui/LoadingSpinner'
+import type { ReviewDto } from '@/lib/types'
 import toast from 'react-hot-toast'
 
 export default function DoctorProfile() {
@@ -19,10 +20,12 @@ export default function DoctorProfile() {
     bio: profile?.bio ?? '',
     yearsExperience: profile?.yearsExperience ?? 0,
     consultationFee: profile?.consultFee ?? 0,
-    isAvailable: true, // Default to available since it's not in the DTO
+    isAvailable: profile?.isAvailable ?? false,
   })
   const [saving, setSaving] = useState(false)
   const [photoUploading, setPhotoUploading] = useState(false)
+  const [reviews, setReviews] = useState<ReviewDto[]>([])
+  const [reviewsLoading, setReviewsLoading] = useState(false)
 
   // Sync form with profile
   useEffect(() => {
@@ -32,10 +35,26 @@ export default function DoctorProfile() {
         bio: profile.bio ?? '',
         yearsExperience: profile.yearsExperience ?? 0,
         consultationFee: profile.consultFee ?? 0,
-        isAvailable: true, // Default to available since it's not in the DTO
+        isAvailable: profile.isAvailable ?? false,
       })
     }
   }, [profile])
+
+  // Fetch reviews
+  useEffect(() => {
+    const fetchReviews = async () => {
+      setReviewsLoading(true)
+      try {
+        const data = await doctorApi.getReviews()
+        setReviews(data)
+      } catch {
+        // silently fail
+      } finally {
+        setReviewsLoading(false)
+      }
+    }
+    fetchReviews()
+  }, [])
 
   if (isLoading) return <PageLoader />
 
@@ -121,7 +140,12 @@ export default function DoctorProfile() {
                 <div className="flex items-center justify-center gap-1">
                   <div className="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
                     <Star size={14} className="text-amber-500 fill-amber-500" />
-                    <span className="text-sm font-semibold text-amber-700">{((profile as any)?.rating ?? 4.5).toFixed(1)}</span>
+                    <span className="text-sm font-semibold text-amber-700">
+                      {reviews.length > 0 
+                        ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
+                        : ((profile as any)?.rating ?? 4.5).toFixed(1)}
+                    </span>
+                    <span className="text-xs text-amber-600">({reviews.length} reviews)</span>
                   </div>
                 </div>
 
@@ -239,6 +263,79 @@ export default function DoctorProfile() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Reviews Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="mt-8"
+      >
+        <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-gray-50/30 to-white">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+              <div className="p-2 bg-amber-50 rounded-xl">
+                <MessageSquare size={20} className="text-amber-600" />
+              </div>
+              Patient Reviews
+              {reviews.length > 0 && (
+                <span className="text-sm font-normal text-gray-500 ml-2">
+                  ({reviews.length} total)
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <div className="px-6 pb-6">
+            {reviewsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+              </div>
+            ) : reviews.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <ThumbsUp size={48} className="mx-auto mb-3 text-gray-300" />
+                <p>No reviews yet. Complete appointments to receive reviews!</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {reviews.map((review) => (
+                  <motion.div
+                    key={review.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center text-primary-700 font-semibold">
+                        {review.patientName?.charAt(0) ?? 'P'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-gray-900">
+                            {review.patientName ?? 'Anonymous'}
+                          </span>
+                          <div className="flex items-center gap-0.5">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                size={12}
+                                className={i < review.rating ? 'text-amber-500 fill-amber-500' : 'text-gray-300'}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-gray-700 text-sm">{review.comment}</p>
+                        <p className="text-gray-400 text-xs mt-2">
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
+      </motion.div>
     </div>
   )
 }

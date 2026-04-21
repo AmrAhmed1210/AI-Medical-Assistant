@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace MedicalAssistant.Presentation.Controllers
 {
     [ApiController]
-    [Route("auth")]
+    [Route("api/auth")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -49,6 +49,15 @@ namespace MedicalAssistant.Presentation.Controllers
             {
                 return Unauthorized(new { message = ex.Message });
             }
+        }
+
+        // POST /auth/logout
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            // JWT is stateless, just return success
+            // Frontend will clear the token from localStorage
+            return Ok(new { message = "Logged out successfully" });
         }
     }
 }

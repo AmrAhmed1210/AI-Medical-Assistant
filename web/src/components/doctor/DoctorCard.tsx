@@ -29,7 +29,7 @@ export function DoctorCard({ doctor, onClick }: DoctorCardProps) {
           <p className="text-sm text-primary-600">{doctor.specialityNameAr}</p>
           <div className="flex items-center gap-1 mt-1">
             <Star size={13} className="text-amber-400 fill-amber-400" />
-            <span className="text-xs text-gray-600">{doctor.rating.toFixed(1)}</span>
+            <span className="text-xs text-gray-600">{(doctor.rating ?? 0).toFixed(1)}</span>
           </div>
         </div>
         <div className={cn(
@@ -44,7 +44,7 @@ export function DoctorCard({ doctor, onClick }: DoctorCardProps) {
         </div>
         <div className="flex items-center gap-1.5 text-xs text-gray-500">
           <DollarSign size={12} />
-          {doctor.consultationFee} ج.م
+          {doctor.consultFee} ج.م
         </div>
       </div>
     </div>

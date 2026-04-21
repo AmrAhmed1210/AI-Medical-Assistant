@@ -83,7 +83,7 @@ export default function MessagesScreen() {
               <View style={styles.onlineBadge} />
             </View>
 
-            {/* Details Section - تم استبدال div بـ View هنا */}
+            {/* Details Section */}
             <View style={styles.convoDetails}>
               <View style={styles.convoHeader}>
                 <Text style={styles.doctorName}>{convo.name}</Text>

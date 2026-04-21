@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,8 +10,10 @@ namespace MedicalAssistant.Shared.DTOs.ReviewDTOs
     {
         public string Id { get; set; } = string.Empty;
         public string Author { get; set; } = string.Empty;
+        public string? PatientName { get; set; }
         public int Rating { get; set; }
         public string Comment { get; set; } = string.Empty;
-        public DateTime Date { get; set; } // Use DateTime instead of string for proper date handling
+        public DateTime CreatedAt { get; set; }
+        public bool IsMine { get; set; }
     }
 }

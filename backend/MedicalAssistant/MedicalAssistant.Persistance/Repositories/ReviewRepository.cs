@@ -1,4 +1,4 @@
-﻿using MedicalAssistant.Domain.Contracts;
+using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Domain.Entities.ReviewsModule;
 using MedicalAssistant.Persistance.Data.DbContexts;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +7,7 @@ namespace MedicalAssistant.Persistance.Repositories
 {
     public class ReviewRepository : GenericRepository<Review>, IReviewRepository
     {
-        private readonly MedicalAssistantDbContext _context;
+        private new readonly MedicalAssistantDbContext _context;
 
         public ReviewRepository(MedicalAssistantDbContext context) : base(context)
         {
@@ -57,8 +57,52 @@ namespace MedicalAssistant.Persistance.Repositories
 
         public async Task<bool> HasUserReviewedDoctorAsync(int doctorId, string author)
         {
+            var normalizedAuthor = (author ?? string.Empty).Trim().ToLower();
+            if (string.IsNullOrWhiteSpace(normalizedAuthor))
+            {
+                return false;
+            }
+
             return await _context.Reviews
-                .AnyAsync(r => r.DoctorId == doctorId && r.Author == author);
+                .AnyAsync(r =>
+                    r.DoctorId == doctorId &&
+                    (
+                        ((r.Author ?? string.Empty).Trim().ToLower() == normalizedAuthor) ||
+                        ((r.PatientName ?? string.Empty).Trim().ToLower() == normalizedAuthor)
+                    ));
+        }
+
+        public async Task<bool> HasUserReviewedDoctorAsync(int doctorId, int patientId)
+        {
+            return await _context.Reviews
+                .AnyAsync(r => r.DoctorId == doctorId && r.PatientId == patientId);
+        }
+
+        public async Task<Review?> GetByDoctorAndAuthorAsync(int doctorId, string author)
+        {
+            var normalizedAuthor = (author ?? string.Empty).Trim().ToLower();
+            if (string.IsNullOrWhiteSpace(normalizedAuthor))
+            {
+                return null;
+            }
+
+            return await _context.Reviews
+                .Where(r =>
+                    r.DoctorId == doctorId &&
+                    (
+                        ((r.Author ?? string.Empty).Trim().ToLower() == normalizedAuthor) ||
+                        ((r.PatientName ?? string.Empty).Trim().ToLower() == normalizedAuthor)
+                    ))
+                .OrderByDescending(r => r.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<Review?> GetByDoctorAndPatientIdAsync(int doctorId, int patientId)
+        {
+            return await _context.Reviews
+                .Where(r => r.DoctorId == doctorId && r.PatientId == patientId)
+                .OrderByDescending(r => r.CreatedAt)
+                .FirstOrDefaultAsync();
         }
 
         public async Task<(IEnumerable<Review> Items, int TotalCount)> GetPaginatedByDoctorAsync(

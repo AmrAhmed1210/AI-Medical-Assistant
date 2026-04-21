@@ -26,6 +26,10 @@ namespace MedicalAssistant.Persistance.Data.Configurations
                    .IsRequired()
                    .HasDefaultValue(false);
 
+            // Match the User global query filter to avoid unexpected results
+            // when the required User navigation is filtered out
+            builder.HasQueryFilter(s => !s.IsDeleted);
+
             builder.Property(s => s.CreatedAt)
                    .IsRequired()
                    .HasDefaultValueSql("GETUTCDATE()");

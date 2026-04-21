@@ -8,15 +8,21 @@ public class DoctorProfile : Profile
 {
     public DoctorProfile()
     {
-        // Mapping من Doctor Entity إلى DoctorDTO (لعرض القوائم)
         CreateMap<Doctor, DoctorDTO>()
             .ForMember(dest => dest.Specialty, opt => opt.MapFrom(src => src.Specialty.Name))
-            .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.ImageUrl ?? string.Empty));
+            .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.ImageUrl ?? string.Empty))
+            .ForMember(dest => dest.YearsExperience, opt => opt.MapFrom(src => src.Experience))
+            .ForMember(dest => dest.IsProfileComplete, opt => opt.MapFrom(src =>
+                !string.IsNullOrWhiteSpace(src.Bio)
+                && !string.IsNullOrWhiteSpace(src.ImageUrl)
+                && src.ImageUrl != "default-doctor.png"))
+            .ForMember(dest => dest.IsMobileEnabled, opt => opt.MapFrom(src => src.IsAvailable))
+            .ForMember(dest => dest.HasSchedule, opt => opt.Ignore());
 
-        // Mapping من Doctor Entity إلى DoctorDetailsDTO (لعرض التفاصيل)
         CreateMap<Doctor, DoctorDetailsDTO>()
-            .IncludeBase<Doctor, DoctorDTO>()  // يستخدم mapping من DoctorDTO
+            .IncludeBase<Doctor, DoctorDTO>()  
             .ForMember(dest => dest.Bio, opt => opt.MapFrom(src => src.Bio))
-            .ForMember(dest => dest.Experience, opt => opt.MapFrom(src => src.Experience));
+            .ForMember(dest => dest.Experience, opt => opt.MapFrom(src => src.Experience))
+            .ForMember(dest => dest.Schedule, opt => opt.Ignore());
     }
 }

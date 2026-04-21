@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace MedicalAssistant.Presentation.Controllers
 {
     [ApiController]
-    [Route("profile")]
+    [Route("api/profile")]
     [Authorize]
     public class ProfileController(IPatientService patientService) : ControllerBase
     {
@@ -32,7 +32,8 @@ namespace MedicalAssistant.Presentation.Controllers
                 name = patient.FullName,
                 email = patient.Email,
                 phone = patient.PhoneNumber,
-                role = "Patient"
+                role = "Patient",
+                dateOfBirth = patient.DateOfBirth.ToString("yyyy-MM-dd")
             });
         }
 
@@ -62,7 +63,7 @@ namespace MedicalAssistant.Presentation.Controllers
                 FullName = dto.Name ?? existing.FullName,
                 PhoneNumber = dto.Phone ?? existing.PhoneNumber,
                 Email = existing.Email,
-                DateOfBirth = existing.DateOfBirth,
+                DateOfBirth = dto.BirthDate ?? dto.DateOfBirth ?? existing.DateOfBirth,
                 Gender = existing.Gender,
                 IsActive = existing.IsActive
             };
@@ -77,7 +78,9 @@ namespace MedicalAssistant.Presentation.Controllers
                 {
                     message = "Profile updated",
                     name = updated.FullName,
-                    phone = updated.PhoneNumber
+                    phone = updated.PhoneNumber,
+                    birthDate = updated.DateOfBirth.ToString("yyyy-MM-dd"),
+                    dateOfBirth = updated.DateOfBirth.ToString("yyyy-MM-dd")
                 });
             }
             catch (InvalidOperationException ex)
@@ -94,5 +97,7 @@ namespace MedicalAssistant.Presentation.Controllers
     {
         public string? Name { get; set; }
         public string? Phone { get; set; }
+        public DateTime? BirthDate { get; set; }
+        public DateTime? DateOfBirth { get; set; }
     }
 }

@@ -8,8 +8,11 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../../context/LanguageContext";
-import { getAllDoctors, Doctor } from "../../services/doctorService";
+import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor } from "../../services/doctorService";
 import { getMyAppointments, Appointment } from "../../services/appointmentService";
+import { NotificationBell } from "../../components/NotificationBell";
+import { startSignalRConnection, onScheduleReady, onScheduleUpdated } from "../../services/signalr";
+import { addNotification, createScheduleReadyNotification } from "../../services/notificationService";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -18,6 +21,7 @@ export default function HomeScreen() {
   const [popularDocs,  setPopularDocs]  = useState<Doctor[]>([]);
   const [nextBooking,  setNextBooking]  = useState<Appointment | null>(null);
   const [loadingDocs,  setLoadingDocs]  = useState(true);
+  const [followedIds,  setFollowedIds]  = useState<number[]>([]);
 
   const CATEGORIES = [
     { icon: "heart-outline",   label: tr("spec_cardiology"),  specialty: "Cardiology"  },
@@ -30,21 +34,111 @@ export default function HomeScreen() {
 
   useEffect(() => {
     AsyncStorage.getItem("userName").then((n) => { if (n) setUserName(n); });
+    loadFollowedDoctors();
     fetchPopularDoctors();
+    fetchNextBooking();
   }, []);
 
   useFocusEffect(
     useCallback(() => {
+      loadFollowedDoctors();
+      fetchPopularDoctors();
       fetchNextBooking();
     }, [])
   );
 
+  useEffect(() => {
+    let mounted = true;
+    const setupSignalR = async () => {
+      const conn = await startSignalRConnection();
+      if (!conn || !mounted) return;
+
+      onScheduleReady(async (data: any) => {
+        const eventDoctorId = Number(data?.doctorId ?? data?.DoctorId);
+        const eventDoctorName = String(data?.doctorName ?? data?.DoctorName ?? 'Doctor');
+        const subscribed = await AsyncStorage.getItem('subscribedDoctors')
+        const list = subscribed ? JSON.parse(subscribed) : []
+        if (list.includes(eventDoctorId)) {
+          addNotification(createScheduleReadyNotification(eventDoctorName));
+          fetchPopularDoctors();
+        }
+      });
+
+      onScheduleUpdated(async (data: any) => {
+        const eventDoctorId = Number(data?.doctorId ?? data?.DoctorId);
+        const eventDoctorName = String(data?.doctorName ?? data?.DoctorName ?? 'Doctor');
+        const subscribed = await AsyncStorage.getItem('subscribedDoctors')
+        const list = subscribed ? JSON.parse(subscribed) : []
+        if (list.includes(eventDoctorId)) {
+          addNotification(createScheduleReadyNotification(eventDoctorName));
+          fetchPopularDoctors();
+        }
+      });
+    };
+    setupSignalR();
+    return () => { mounted = false; };
+  }, []);
+
+  const loadFollowedDoctors = async () => {
+    try {
+      const stored = await AsyncStorage.getItem("followedDoctors");
+      const ids = stored ? JSON.parse(stored) : [];
+      setFollowedIds(Array.isArray(ids) ? ids.map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id)) : []);
+    } catch {
+      setFollowedIds([]);
+    }
+  };
+
+  const toggleFollowDoctor = async (doctorId: number) => {
+    try {
+      const next = followedIds.includes(doctorId)
+        ? followedIds.filter((id) => id !== doctorId)
+        : [...followedIds, doctorId];
+      setFollowedIds(next);
+      await AsyncStorage.setItem("followedDoctors", JSON.stringify(next));
+    } catch {
+      // ignore storage failure
+    }
+  };
+
   const fetchPopularDoctors = async () => {
     try {
+      setLoadingDocs(true);
       const data = await getAllDoctors();
-      // أعلى 3 دكاترة تقييماً
-      const sorted = [...data].sort((a, b) => b.rating - a.rating).slice(0, 3);
-      setPopularDocs(sorted);
+      const candidates = [...data]
+        .sort((a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0))
+        .slice(0, 12);
+      const enriched = await Promise.all(
+        candidates.map(async (doc) => {
+          try {
+            const [details, reviews] = await Promise.all([
+              getDoctorById(doc.id),
+              getReviewsByDoctor(doc.id).catch(() => []),
+            ]);
+
+            const avg = reviews.length > 0
+              ? reviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / reviews.length
+              : Number((details as any).rating ?? doc.rating ?? 0);
+
+            return {
+              ...doc,
+              rating: Number.isFinite(avg) ? Number(avg.toFixed(1)) : 0,
+              reviewCount: reviews.length > 0
+                ? reviews.length
+                : Number((details as any).reviewCount ?? doc.reviewCount ?? 0),
+              isAvailable: typeof (details as any).isAvailable === "boolean"
+                ? (details as any).isAvailable
+                : doc.isAvailable,
+            };
+          } catch {
+            return doc;
+          }
+        })
+      );
+      const ranked = [...enriched].sort(
+        (a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0)
+      );
+      setPopularDocs(ranked);
     } catch {
       // silently fail
     } finally {
@@ -55,7 +149,8 @@ export default function HomeScreen() {
   const fetchNextBooking = async () => {
     try {
       const appts = await getMyAppointments();
-      const active = appts.find(a => a.status !== "cancelled");
+      // Only show PENDING appointments in the home banner as requested
+      const active = appts.find(a => a.status?.toLowerCase() === "pending");
       setNextBooking(active ?? null);
     } catch {
       setNextBooking(null);
@@ -80,9 +175,12 @@ export default function HomeScreen() {
           <Text style={[styles.greeting, isRTL && styles.textRight]}>{tr("greeting")}</Text>
           <Text style={[styles.userName, isRTL && styles.textRight]}>{firstName}</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push("/(patient)/profile")} style={styles.avatarBtn}>
-          <Ionicons name="person-outline" size={20} color={COLORS.primary} />
-        </TouchableOpacity>
+        <View style={[styles.headerRight, isRTL && styles.rowReverse]}>
+          <NotificationBell isRTL={isRTL} />
+          <TouchableOpacity onPress={() => router.push("/(patient)/profile")} style={styles.avatarBtn}>
+            <Ionicons name="person-outline" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Upcoming Booking Banner */}
@@ -161,33 +259,55 @@ export default function HomeScreen() {
       {loadingDocs ? (
         <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
       ) : (
-        popularDocs.map((doc) => (
-          <TouchableOpacity
-            key={doc.id}
-            style={styles.docCard}
-            activeOpacity={0.82}
-            onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(doc.id) } })}
-          >
-            <View style={styles.docAvatar}>
-              <Text style={styles.docAvatarTxt}>{doc.name.charAt(0)}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.docName, isRTL && styles.textRight]}>{doc.name}</Text>
-              <Text style={[styles.docSpec, isRTL && styles.textRight]}>{doc.specialty}</Text>
-              <View style={[styles.ratingRow, isRTL && styles.rowReverse]}>
-                <Ionicons name="star" size={11} color="#FFB300" />
-                <Text style={styles.ratingVal}>{doc.rating}</Text>
-                <Text style={styles.ratingCnt}>({doc.reviewCount})</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.bookBtn}
-              onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(doc.id) } })}
-            >
-              <Text style={styles.bookTxt}>{tr("book")}</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        ))
+        <View style={styles.popularList}>
+          {popularDocs.map((doc) => {
+            const isFollowed = followedIds.includes(Number(doc.id));
+            return (
+              <TouchableOpacity
+                key={doc.id}
+                style={styles.docCard}
+                activeOpacity={0.82}
+                onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(doc.id) } })}
+              >
+                <View style={styles.docAvatar}>
+                  <Text style={styles.docAvatarTxt}>{doc.name.charAt(0)}</Text>
+                  {doc.isAvailable && <View style={styles.onlineIndicator} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.docName, isRTL && styles.textRight]}>{doc.name}</Text>
+                  <Text style={[styles.docSpec, isRTL && styles.textRight]}>{doc.specialty}</Text>
+                  <View style={[styles.ratingRow, isRTL && styles.rowReverse]}>
+                    <Ionicons name="star" size={11} color="#FFB300" />
+                    <Text style={styles.ratingVal}>{doc.rating}</Text>
+                    <Text style={styles.ratingCnt}>({doc.reviewCount})</Text>
+                  </View>
+                </View>
+
+                <View style={styles.docActionsCol}>
+                  <TouchableOpacity
+                    style={[styles.followBtn, isFollowed && styles.followBtnActive]}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      toggleFollowDoctor(Number(doc.id)).catch(() => undefined);
+                    }}
+                  >
+                    <Ionicons
+                      name={isFollowed ? "heart" : "heart-outline"}
+                      size={14}
+                      color={isFollowed ? "#fff" : "#E11D48"}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.bookBtn}
+                    onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(doc.id) } })}
+                  >
+                    <Text style={styles.bookTxt}>{tr("book")}</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       )}
     </ScrollView>
   );
@@ -250,18 +370,24 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary + "15", justifyContent: "center", alignItems: "center",
   },
   catLabel: { fontSize: 10, color: "#555", fontWeight: "500" },
+  popularList: { paddingHorizontal: 18, paddingBottom: 4 },
   docCard: {
     flexDirection: "row", alignItems: "center", backgroundColor: "#fff",
-    marginHorizontal: 18, marginBottom: 10, borderRadius: 16, padding: 12, gap: 10,
+    marginBottom: 10, borderRadius: 16, padding: 12, gap: 10,
     shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
   },
-  docAvatar:    { width: 50, height: 50, borderRadius: 25, backgroundColor: COLORS.primary + "20", justifyContent: "center", alignItems: "center" },
+  headerRight:  { flexDirection: "row", alignItems: "center", gap: 8 },
+  docAvatar:    { width: 50, height: 50, borderRadius: 25, backgroundColor: COLORS.primary + "20", justifyContent: "center", alignItems: "center", position: "relative" },
   docAvatarTxt: { fontSize: 20, fontWeight: "700", color: COLORS.primary },
+  onlineIndicator: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#4CAF50", position: "absolute", bottom: 2, right: 2, borderWidth: 2, borderColor: "#fff" },
   docName:      { fontSize: 14, fontWeight: "700", color: "#1A1A1A" },
   docSpec:      { fontSize: 11, color: COLORS.primary, fontWeight: "500", marginTop: 1 },
   ratingRow:    { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 3 },
   ratingVal:    { fontSize: 11, fontWeight: "600", color: "#333" },
   ratingCnt:    { fontSize: 10, color: "#AAA" },
+  docActionsCol:{ alignItems: "center", gap: 8 },
+  followBtn:    { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: "#FBCFE8", alignItems: "center", justifyContent: "center", backgroundColor: "#FFF1F2" },
+  followBtnActive: { backgroundColor: "#E11D48", borderColor: "#E11D48" },
   bookBtn:      { backgroundColor: COLORS.primary, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18 },
   bookTxt:      { color: "#fff", fontWeight: "700", fontSize: 12 },
   bookingBanner: {

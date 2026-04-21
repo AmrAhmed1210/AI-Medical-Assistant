@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Cpu, RefreshCw, Zap, Shield, Database, Activity } from 'lucide-react'
+import { Cpu, RefreshCw, Zap, Shield, Database, Activity, Loader2 } from 'lucide-react'
 import { adminApi } from '@/api/adminApi'
 import type { ModelVersionDto } from '@/lib/types'
 import { ModelVersionTable } from '@/components/admin/ModelVersionTable'
@@ -59,14 +59,14 @@ export default function ModelManagementPage() {
             <Cpu size={28} strokeWidth={2.5} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-800 tracking-tight">AI Model Forge</h1>
-            <p className="text-slate-500 font-medium">Core intelligence unit orchestration</p>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tight">AI Model Management / إدارة نماذج الذكاء الاصطناعي</h1>
+            <p className="text-slate-500 font-medium">Monitor and manage deployed AI models / متابعة وإدارة النماذج المنشورة</p>
           </div>
         </div>
         <div className="flex gap-3">
            <Button variant="outline" onClick={loadModels} className="gap-2">
              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-             Synchronize
+             Refresh / تحديث
            </Button>
         </div>
       </div>
@@ -77,7 +77,7 @@ export default function ModelManagementPage() {
           <CardContent className="p-6 flex items-center gap-4">
             <div className="p-3 bg-emerald-500 rounded-2xl text-white shadow-lg"><Zap size={20} /></div>
             <div>
-              <p className="text-sm font-bold text-emerald-800 uppercase tracking-wider">System Status</p>
+              <p className="text-sm font-bold text-emerald-800 uppercase tracking-wider">System Status / حالة النظام</p>
               <p className="text-xl font-black text-emerald-950">OPTIMAL</p>
             </div>
           </CardContent>
@@ -86,7 +86,7 @@ export default function ModelManagementPage() {
           <CardContent className="p-6 flex items-center gap-4">
             <div className="p-3 bg-blue-500 rounded-2xl text-white shadow-lg"><Shield size={20} /></div>
             <div>
-              <p className="text-sm font-bold text-blue-800 uppercase tracking-wider">Core Security</p>
+              <p className="text-sm font-bold text-blue-800 uppercase tracking-wider">Security / الأمان</p>
               <p className="text-xl font-black text-blue-950">ENCRYPTED</p>
             </div>
           </CardContent>
@@ -95,7 +95,7 @@ export default function ModelManagementPage() {
           <CardContent className="p-6 flex items-center gap-4">
             <div className="p-3 bg-indigo-500 rounded-2xl text-white shadow-lg"><Database size={20} /></div>
             <div>
-              <p className="text-sm font-bold text-indigo-800 uppercase tracking-wider">Storage Link</p>
+              <p className="text-sm font-bold text-indigo-800 uppercase tracking-wider">Storage / التخزين</p>
               <p className="text-xl font-black text-indigo-950">STABLE</p>
             </div>
           </CardContent>
@@ -105,11 +105,11 @@ export default function ModelManagementPage() {
       <Card className="border-0 shadow-2xl rounded-3xl overflow-hidden bg-white/80 backdrop-blur-xl">
         <CardHeader className="p-6 border-b border-slate-100 flex flex-row items-center justify-between bg-white/40">
           <div>
-            <CardTitle className="text-xl font-bold">Active Neuron Layers</CardTitle>
+            <CardTitle className="text-xl font-bold">Deployed Models / النماذج المنشورة</CardTitle>
             <p className="text-sm text-slate-500 mt-1 font-medium">Inventory of deployed agent models and versions</p>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-xl text-xs font-bold text-slate-600">
-             <Activity size={14} className="text-blue-500" /> {models.length} Layers Found
+             <Activity size={14} className="text-blue-500" /> {models.length} Models Found / نماذج موجودة
           </div>
         </CardHeader>
         <div className="p-0">

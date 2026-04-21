@@ -42,7 +42,6 @@ namespace MedicalAssistant.Presentation.Controllers
             if (session == null)
                 return NotFound();
 
-            // إضافة الرسائل للـ SessionDetailDto
             session.Messages = (await _messageService.GetMessagesForSessionAsync(id)).ToList();
             return Ok(session);
         }

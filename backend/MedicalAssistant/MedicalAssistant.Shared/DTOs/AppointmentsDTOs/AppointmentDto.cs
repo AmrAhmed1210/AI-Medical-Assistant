@@ -12,6 +12,11 @@ namespace MedicalAssistant.Shared.DTOs.AppointmentsDTOs
         public string DoctorName { get; set; } = string.Empty;
 
         /// <summary>
+        /// Patient name — populated from navigation property
+        /// </summary>
+        public string PatientName { get; set; } = string.Empty;
+
+        /// <summary>
         /// Doctor specialty name
         /// </summary>
         public string Specialty { get; set; } = string.Empty;
@@ -27,6 +32,11 @@ namespace MedicalAssistant.Shared.DTOs.AppointmentsDTOs
         public string Time { get; set; } = string.Empty;
 
         /// <summary>
+        /// Combined datetime string derived from Date + Time.
+        /// </summary>
+        public string ScheduledAt { get; set; } = string.Empty;
+
+        /// <summary>
         /// Payment method: "visa" or "cash"
         /// </summary>
         public string PaymentMethod { get; set; } = string.Empty;
@@ -37,5 +47,7 @@ namespace MedicalAssistant.Shared.DTOs.AppointmentsDTOs
         public string Status { get; set; } = string.Empty;
 
         public string? Notes { get; set; }
+        public bool IsFreeRebook { get; set; }
+        public bool CanRebook { get; set; }
     }
 }

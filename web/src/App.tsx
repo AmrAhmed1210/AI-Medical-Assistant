@@ -23,6 +23,11 @@ const DoctorAppointments = lazy(() => import('@/pages/doctor/DoctorAppointments'
 const DoctorPatients = lazy(() => import('@/pages/doctor/DoctorPatients'))
 const DoctorReports = lazy(() => import('@/pages/doctor/DoctorReports'))
 const DoctorChat = lazy(() => import('@/pages/doctor/DoctorChat'))
+const DoctorReviews = lazy(() => import('@/pages/doctor/DoctorReviews'))
+
+// Public pages
+const DoctorsList = lazy(() => import('@/pages/doctor/DoctorsList'))
+const DoctorDetails = lazy(() => import('@/pages/doctor/DoctorDetails'))
 
 // Auth Guard
 function AuthGuard() {
@@ -68,6 +73,8 @@ export default function App() {
           {/* Public routes */}
           <Route element={<PublicGuard />}>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/doctors" element={<DoctorsList />} />
+            <Route path="/doctor/:id" element={<DoctorDetails />} />
           </Route>
 
           {/* Protected routes */}
@@ -90,6 +97,7 @@ export default function App() {
                 <Route path="/doctor/appointments" element={<DoctorAppointments />} />
                 <Route path="/doctor/patients" element={<DoctorPatients />} />
                 <Route path="/doctor/reports" element={<DoctorReports />} />
+                <Route path="/doctor/reviews" element={<DoctorReviews />} />
                 <Route path="/doctor/chat" element={<DoctorChat />} />
               </Route>
 

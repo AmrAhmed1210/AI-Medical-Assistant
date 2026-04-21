@@ -2,7 +2,7 @@
 using MedicalAssistant.Domain.Entities.UserModule;
 using MedicalAssistant.Shared.DTOs.Admin;
 
-namespace MedicalAssistant.Application.MappingProfiles
+namespace MedicalAssistant.Services.MappingProfiles
 {
     public class AdminProfile : Profile
     {

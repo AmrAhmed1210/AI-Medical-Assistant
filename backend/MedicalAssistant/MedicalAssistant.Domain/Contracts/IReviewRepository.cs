@@ -1,4 +1,4 @@
-﻿using MedicalAssistant.Domain.Entities;
+using MedicalAssistant.Domain.Entities;
 using MedicalAssistant.Domain.Entities.ReviewsModule;
 
 namespace MedicalAssistant.Domain.Contracts
@@ -16,6 +16,10 @@ namespace MedicalAssistant.Domain.Contracts
         Task<int> GetDoctorReviewsCountAsync(int doctorId);
 
         Task<bool> HasUserReviewedDoctorAsync(int doctorId, string author);
+        Task<bool> HasUserReviewedDoctorAsync(int doctorId, int patientId);
+
+        Task<Review?> GetByDoctorAndAuthorAsync(int doctorId, string author);
+        Task<Review?> GetByDoctorAndPatientIdAsync(int doctorId, int patientId);
 
         Task<(IEnumerable<Review> Items, int TotalCount)> GetPaginatedByDoctorAsync(
             int doctorId,

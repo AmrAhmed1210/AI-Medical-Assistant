@@ -4,6 +4,7 @@ import type { UserDto, UserRole } from '@/lib/types'
 import toast from 'react-hot-toast'
 import { debounce } from '@/lib/utils/debounce'
 import { MOCK_USERS, PAGE_SIZE } from './constants'
+import { startConnection } from '@/lib/signalr'
 
 interface UseUsersOptions {
   initialSearch?: string
@@ -26,6 +27,14 @@ export function useUsers(
 
   const [connectionStatus, setConnectionStatus] =
     useState<'checking' | 'connected' | 'error'>('checking')
+  const [newUserNotification, setNewUserNotification] = useState<{
+    userId: number
+    name: string
+    email: string
+    role: string
+    message: string
+    timestamp: string
+  } | null>(null)
 
   /* ---------------- fetch users ---------------- */
 
@@ -57,43 +66,10 @@ export function useUsers(
         role: role || undefined
       })
 
-      if (Array.isArray(res)) {
-
-        let mapped = res.map((u: any) => ({
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          role: u.role,
-          isActive: u.isActive
-        }))
-
-        // ✅ search
-        if (q?.trim()) {
-          const lower = q.toLowerCase()
-          mapped = mapped.filter(u =>
-            u.name?.toLowerCase().includes(lower) ||
-            u.email?.toLowerCase().includes(lower)
-          )
-        }
-
-        // ✅ filter
-        if (role) {
-          mapped = mapped.filter(u => u.role === role)
-        }
-
-        const start = (p - 1) * PAGE_SIZE
-        const paginated = mapped.slice(start, start + PAGE_SIZE)
-
-        setUsers(paginated)
-        setTotal(mapped.length)
-      }
-
-      else if (res?.items) {
+      if (res?.items) {
         setUsers(res.items)
         setTotal(res.total ?? res.items.length)
-      }
-
-      else {
+      } else {
         setUsers([])
         setTotal(0)
       }
@@ -145,11 +121,11 @@ export function useUsers(
 
   const handleToggle = useCallback(async (id: number) => {
     try {
-      await adminApi.toggleUser(id as unknown as string)
+      await adminApi.toggleUser(id)
 
       setUsers(prev =>
         prev.map(u =>
-          u.id === (id as unknown as string)
+          u.id === id
             ? { ...u, isActive: !u.isActive }
             : u
         )
@@ -169,9 +145,9 @@ export function useUsers(
     if (!confirm('هل أنت متأكد؟')) return
 
     try {
-      await adminApi.deleteUser(id as unknown as string)
+      await adminApi.deleteUser(id)
 
-      setUsers(prev => prev.filter(u => u.id !== (id as unknown as string)))
+      setUsers(prev => prev.filter(u => u.id !== id))
       setTotal(t => t - 1)
 
       toast.success('تم الحذف')
@@ -206,46 +182,94 @@ export function useUsers(
     fetchUsers(1, search, roleFilter)
   }, []) // أول تحميل
 
+  /* SignalR: Listen for new user registrations */
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    let cleanup: (() => void) | undefined
+
+    startConnection(token).then((conn) => {
+      conn.on('NewUserRegistered', (data) => {
+        // Add new user to the top of the list
+        setUsers(prev => [{
+          id: data.userId,
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          isActive: true,
+          createdAt: data.timestamp,
+        }, ...prev])
+
+        setTotal(prev => prev + 1)
+        setNewUserNotification(data)
+
+        // Show toast notification
+        toast.success(
+          `New ${data.role} registered: ${data.name}`,
+          {
+            icon: '👤',
+            duration: 5000
+          }
+        )
+      })
+
+      cleanup = () => conn.off('NewUserRegistered')
+    }).catch(() => {
+      // SignalR optional - app works without it
+    })
+
+    return () => cleanup?.()
+  }, [])
 
   useEffect(() => {
     fetchUsers(page, search, roleFilter)
   }, [page])
 
 
- const handleAddUser = useCallback(async (data: {
-  fullName: string
-  email: string
-  passwordHash: string
-  role: UserRole
-}) => {
-  try {
-    setLoading(true)
+  const handleAddUser = useCallback(async (data: {
+    fullName: string
+    email: string
+    password: string
+    role: UserRole
+    specialityName?: string
+    specialityNameAr?: string
+    yearsExperience?: number
+    consultationFee?: number
+    bio?: string
+  }) => {
+    try {
+      setLoading(true)
 
-    const newUser = await adminApi.createUser({
-      fullName : data.fullName,
-      email: data.email,
-      passwordHash: data.passwordHash,
-      role: data.role
-    })
+      const newUser = await adminApi.createUser({
+        fullName: data.fullName,
+        email: data.email,
+        password: data.password,
+        role: data.role,
+        specialityName: data.specialityName,
+        specialityNameAr: data.specialityNameAr,
+        yearsExperience: data.yearsExperience,
+        consultationFee: data.consultationFee,
+        bio: data.bio
+      })
 
-    // تحديث الليستة (أفضل UX)
-    setUsers(prev => [newUser, ...prev])
-    setTotal(prev => prev + 1)
+      // تحديث الليستة (أفضل UX)
+      setUsers(prev => [newUser, ...prev])
+      setTotal(prev => prev + 1)
 
-    toast.success('تم إنشاء المستخدم بنجاح')
+      toast.success('تم إنشاء المستخدم بنجاح')
 
-  } catch (err: any) {
-    const msg =
-      err?.response?.data?.message ||
-      err?.message ||
-      'فشل إنشاء المستخدم'
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'فشل إنشاء المستخدم'
 
-    toast.error(msg)
-  } finally {
-    setLoading(false)
-  }
-}, [])
-
+      toast.error(msg)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   return {
     users,
@@ -267,5 +291,7 @@ export function useUsers(
     handleAddUser,
     setPage,
     PAGE_SIZE,
+    newUserNotification,
+    setNewUserNotification,
   }
 }

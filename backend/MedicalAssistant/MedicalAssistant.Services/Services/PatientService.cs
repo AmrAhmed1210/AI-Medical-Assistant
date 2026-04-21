@@ -2,14 +2,14 @@ using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Domain.Entities.PatientModule;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.PatientDTOs;
+using MedicalAssistant.Shared.DTOs.DoctorDTOs;
+using MedicalAssistant.Domain.Entities.UserModule;
+using MedicalAssistant.Domain.Entities.DoctorsModule;
+using AutoMapper;
 
 namespace MedicalAssistant.Services.Services
 {
-    /// <summary>
-    /// Patient service implementation.
-    /// Contains business rules for creating/updating/searching and managing patients.
-    /// </summary>
-    public class PatientService(IUnitOfWork unitOfWork) : IPatientService
+    public class PatientService(IUnitOfWork unitOfWork, IMapper mapper) : IPatientService
     {
         public async Task<IEnumerable<PatientDto>> GetAllPatientsAsync()
         {
@@ -197,6 +197,50 @@ namespace MedicalAssistant.Services.Services
         {
             if (string.IsNullOrWhiteSpace(phoneNumber)) return Task.FromResult(false);
             return unitOfWork.Patients.PhoneNumberExistsAsync(phoneNumber.Trim());
+        }
+
+        public async Task<IEnumerable<DoctorDTO>> GetFollowedDoctorsAsync(int patientId)
+        {
+            var follows = await unitOfWork.Repository<FollowedDoctor>()
+                .FindAsync(f => f.PatientId == patientId);
+            
+            var doctorIds = follows.Select(f => f.DoctorId).ToList();
+            
+            var doctors = await unitOfWork.Repository<Doctor>()
+                .FindAsync(d => doctorIds.Contains(d.Id));
+            
+            return mapper.Map<IEnumerable<DoctorDTO>>(doctors);
+        }
+
+        public async Task<bool> FollowDoctorAsync(int patientId, int doctorId)
+        {
+            var exists = (await unitOfWork.Repository<FollowedDoctor>()
+                .FindAsync(f => f.PatientId == patientId && f.DoctorId == doctorId)).Any();
+            
+            if (exists) return true;
+
+            var follow = new FollowedDoctor
+            {
+                PatientId = patientId,
+                DoctorId = doctorId,
+                FollowedAt = DateTime.UtcNow
+            };
+
+            await unitOfWork.Repository<FollowedDoctor>().AddAsync(follow);
+            await unitOfWork.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> UnfollowDoctorAsync(int patientId, int doctorId)
+        {
+            var follow = (await unitOfWork.Repository<FollowedDoctor>()
+                .FindAsync(f => f.PatientId == patientId && f.DoctorId == doctorId)).FirstOrDefault();
+            
+            if (follow == null) return false;
+
+            unitOfWork.Repository<FollowedDoctor>().Delete(follow);
+            await unitOfWork.SaveChangesAsync();
+            return true;
         }
 
         private static PatientDto MapToDto(Patient patient)

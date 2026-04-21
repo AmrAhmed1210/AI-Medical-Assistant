@@ -19,8 +19,11 @@ namespace MedicalAssistant.Persistance.Repositories
         {
             return await _dbSet
                 .Where(a => a.PatientId == patientId)
+                .Include(a => a.Patient)
                 .Include(a => a.Doctor)
                     .ThenInclude(d => d.Specialty)
+                .Include(a => a.Doctor)
+                    .ThenInclude(d => d.User)
                 .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
         }
@@ -29,10 +32,16 @@ namespace MedicalAssistant.Persistance.Repositories
         {
             return await _dbSet
                 .Where(a => a.DoctorId == doctorId)
+                .Include(a => a.Patient)
+                .Include(a => a.Doctor)
+                    .ThenInclude(d => d.Specialty)
+                .Include(a => a.Doctor)
+                    .ThenInclude(d => d.User)
+                .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
         }
 
-        public async Task<Appointment?> GetByIdAsync(int id)
+        public new async Task<Appointment?> GetByIdAsync(int id)
         {
             return await _dbSet.FirstOrDefaultAsync(a => a.Id == id);
         }
@@ -40,8 +49,11 @@ namespace MedicalAssistant.Persistance.Repositories
         public async Task<Appointment?> GetByIdWithDoctorAsync(int id)
         {
             return await _dbSet
+                .Include(a => a.Patient)
                 .Include(a => a.Doctor)
                     .ThenInclude(d => d.Specialty)
+                .Include(a => a.Doctor)
+                    .ThenInclude(d => d.User)
                 .FirstOrDefaultAsync(a => a.Id == id);
         }
 
@@ -52,6 +64,8 @@ namespace MedicalAssistant.Persistance.Repositories
             var items = await _dbSet
                 .Include(a => a.Doctor)
                     .ThenInclude(d => d.Specialty)
+                .Include(a => a.Doctor)
+                    .ThenInclude(d => d.User)
                 .OrderByDescending(a => a.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)

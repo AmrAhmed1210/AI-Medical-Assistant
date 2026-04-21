@@ -13,7 +13,7 @@ namespace MedicalAssistant.Domain.Contracts
 
         Task<IEnumerable<Appointment>> GetByDoctorIdAsync(int doctorId);
 
-        Task<Appointment?> GetByIdAsync(int id);
+        new Task<Appointment?> GetByIdAsync(int id);
 
         /// <summary>
         /// Returns single appointment including Doctor + Specialty navigation

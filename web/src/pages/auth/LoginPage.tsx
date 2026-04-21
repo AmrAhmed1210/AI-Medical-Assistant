@@ -30,32 +30,43 @@ export default function LoginPage() {
 
   const login = async (credentials: { email: string; password: string }) => {
     setIsLoading(true)
-    // Simulated delay for realistic feel
-    await new Promise(resolve => setTimeout(resolve, 800))
     
     try {
-      // ── Open Access Bypass (Development Mode) ──────────────────────────
-      // This allows entering any credentials and getting the selected role
-      const mockName = loginRole === 'Admin' ? 'Hassan Mohamed' : 'Dr. User'
-      const mockToken = 'dev-token-' + Math.random().toString(36).substr(2)
+      const response = await authApi.login(credentials)
       
-      setAuth({
-        id: 'dev-user-id',
-        firstName: mockName.split(' ')[0],
-        lastName: mockName.split(' ')[1] || '',
-        email: credentials.email || (loginRole === 'Admin' ? 'admin@medbook.com' : 'doctor@medbook.com'),
-        role: loginRole as any
-      }, mockToken)
+      // Transform user data to match our store format
+      const user = {
+        id: parseInt(response.user.id, 10),
+        name: response.user.fullName,
+        email: response.user.email,
+        role: response.user.role,
+        isActive: true
+      }
 
-      toast.success(`Welcome to Dev Mode, ${mockName}!`)
+      setAuth(user, response.accessToken)
+      toast.success(`مرحباً بك يا ${response.user.fullName}!`)
 
-      if (loginRole === 'Admin') {
+      // Navigate based on role
+      if (response.user.role === 'Admin') {
         navigate('/admin/dashboard')
-      } else {
+      } else if (response.user.role === 'Doctor') {
         navigate('/')
+      } else {
+        navigate('/appointments')
       }
     } catch (err: any) {
-      toast.error('Something went wrong')
+      console.error('Login error:', err)
+      const errorMessage = err.response?.data?.message || 'فشل تسجيل الدخول. يرجى التحقق من بياناتك.'
+      toast.error(errorMessage)
+      
+      // Set field errors if available
+      if (err.response?.data?.errors) {
+        const apiErrors = err.response.data.errors
+        setErrors({
+          email: apiErrors.Email?.[0],
+          password: apiErrors.Password?.[0]
+        })
+      }
     } finally {
       setIsLoading(false)
     }

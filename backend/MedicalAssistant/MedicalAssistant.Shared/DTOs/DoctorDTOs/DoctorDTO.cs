@@ -17,5 +17,10 @@ namespace MedicalAssistant.Shared.DTOs.DoctorDTOs
         public decimal ConsultationFee { get; set; }
         public bool IsAvailable { get; set; }
         public string ImageUrl { get; set; } = string.Empty;
+        public int YearsExperience { get; set; }
+        public bool IsProfileComplete { get; set; }
+        public bool IsMobileEnabled { get; set; }
+        public bool HasSchedule { get; set; }
+        public bool IsScheduleVisible { get; set; } = true;
     }
 }

@@ -7,16 +7,17 @@ export type UserRole = 'Admin' | 'Doctor' | 'Patient'
 
 // ── مستخدم (يتطابق مع رد الـ API من Swagger) ─────────────────────────
 export type UserDto = {
-  id: string
+  id: number
   name: string
   email: string
-  role: string
+  role: UserRole
   isActive: boolean
+  createdAt?: string
 }
 
 // ── مستخدم (تنسيق داخلي للتطبيق - للراحة في المكونات) ─────────────────
 export type MappedUserDto = {
-  id: string
+  id: number
   name: string
   email: string
   role: UserRole
@@ -26,7 +27,7 @@ export type MappedUserDto = {
 
 // ── دالة تحويل من تنسيق الـ API للتنسيق الداخلي ───────────────────────
 export const mapUserDto = (user: UserDto): MappedUserDto => ({
-  id: String(user.id),
+  id: user.id,
   name: user.name,
   email: user.email,
   role: user.role as UserRole,
@@ -35,7 +36,7 @@ export const mapUserDto = (user: UserDto): MappedUserDto => ({
 
 // ── دالة تحويل عكسي (من الداخلي للـ API) ──────────────────────────────
 export const unmapUserDto = (user: MappedUserDto): Omit<UserDto, 'createdAt'> => ({
-  id: user.id,
+  id: user.id as number,
   name: user.name,
   email: user.email,
   role: user.role,
@@ -46,8 +47,9 @@ export const unmapUserDto = (user: MappedUserDto): Omit<UserDto, 'createdAt'> =>
 export type CreateUserRequest = {
   fullName: string
   email: string
-  passwordHash: string
+  password: string
   role: UserRole
+  phoneNumber?: string
   specialityName?: string
   specialityNameAr?: string
   consultationFee?: number
@@ -60,10 +62,14 @@ export type SystemStatsDto = {
   totalUsers: number
   totalDoctors: number
   totalPatients: number
+  totalSessions: number
   totalAppointments: number
+  activeModels: number
+  avgResponseTimeMs: number
+  highUrgencyToday: number
   sessionsToday: number
   sessionsThisWeek: number
-  urgencyDistribution: Record<string, number>
+  urgencyDistribution: { LOW: number; MEDIUM: number; HIGH: number; EMERGENCY: number }
   sessionsPerDay: Array<{ date: string; count: number }>
   userGrowth: Array<{ date: string; count: number }>
 }
@@ -166,6 +172,10 @@ export interface AppointmentDto {
   patientName: string
   doctorName: string
   scheduledAt: string
+  date?: string
+  time?: string
+  specialty?: string
+  paymentMethod?: string
   status: AppointmentStatus
   notes: string | null
 }
@@ -242,6 +252,10 @@ export interface DoctorDetailDto {
   yearsExperience: number | null
   createdAt: string
   updatedAt: string | null
+  isAvailable?: boolean
+  isScheduleVisible?: boolean
+  specialityNameAr?: string
+  rating?: number
 }
 
 // Patients ───────────────────────────────────────────────────────────────────
@@ -266,9 +280,12 @@ export interface PatientSummaryDto {
 
 export interface AvailabilityDto {
   dayOfWeek: DayOfWeek
+  dayName?: string
   startTime: string   // "09:00"
   endTime: string     // "17:00"
   isAvailable: boolean
+  isActive?: boolean
+  slotDurationMinutes?: number
 }
 
 // ============================================================================
@@ -318,4 +335,27 @@ export interface ApiErrorResponse {
   error: ErrorCode
   message: string
   traceId: string
+}
+
+export type NotificationType = 'info' | 'success' | 'warning' | 'error'
+export interface NotificationDto {
+  id: string
+  type: NotificationType
+  title: string
+  message: string
+  read: boolean
+  createdAt: string
+}
+
+// ============================================================================
+// 👨‍⚕️ Reviews
+// ============================================================================
+
+export interface ReviewDto {
+  id: string
+  author: string
+  patientName?: string
+  rating: number
+  comment: string
+  createdAt: string | Date
 }

@@ -41,16 +41,20 @@ const MOCK_STATS: SystemStatsDto = {
 } as any
 
 export default function AdminStatistics() {
-  const [stats, setStats] = useState<SystemStatsDto | null>(MOCK_STATS)
+  const [stats, setStats] = useState<SystemStatsDto | null>(null)
   const [loading, setLoading] = useState(true)
+  const [usingMock, setUsingMock] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'traffic' | 'urgency'>('overview')
 
   useEffect(() => {
+    setLoading(true)
+    setUsingMock(false)
     adminApi.getStats()
       .then(setStats)
       .catch((err) => {
         console.warn('Stats API Fail, Using Mock.', err)
         setStats(MOCK_STATS)
+        setUsingMock(true)
       })
       .finally(() => setLoading(false))
   }, [])
@@ -74,16 +78,21 @@ export default function AdminStatistics() {
         <div className="space-y-2">
           <div className="flex items-center gap-3">
              <div className="p-3 bg-white rounded-2xl shadow-lg text-blue-600"><BarChart3 size={24} /></div>
-             <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Strategic Insights</h1>
+             <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Statistics / الإحصائيات والتقارير</h1>
+             {usingMock && (
+               <div className="ml-4 px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-lg border border-amber-200">
+                 ⚠️ Demo Data / بيانات تجريبية
+               </div>
+             )}
           </div>
           <p className="text-slate-500 font-bold ml-14 flex items-center gap-2">
              <Sparkles size={16} className="text-amber-500" />
-             AI-driven performance metrics and behavioral analysis
+             AI-driven performance metrics and behavioral analysis / تحليلات ذكية لأداء النظام وسلوك المستخدمين
           </p>
         </div>
         <div className="flex items-center gap-4 bg-white/50 backdrop-blur-md px-6 py-3 rounded-2xl border border-white">
            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-           <span className="text-xs font-black uppercase text-slate-600">Real-time Stream Active</span>
+           <span className="text-xs font-black uppercase text-slate-600">Real-time Stream Active / البث المباشر نشط</span>
         </div>
       </div>
 
@@ -95,9 +104,9 @@ export default function AdminStatistics() {
              <div className="p-6 pb-2"><h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Analysis Matrix</h3></div>
              <div className="space-y-1.5 p-2">
                 {[
-                  { id: 'overview', label: 'Ecosystem Overview', icon: Target },
-                  { id: 'traffic', label: 'Traffic Velocity', icon: Activity },
-                  { id: 'urgency', label: 'Safety Breakdown', icon: Zap },
+                  { id: 'overview', label: 'Overview / نظرة عامة', icon: Target },
+                  { id: 'traffic', label: 'Session Traffic / حركة الجلسات', icon: Activity },
+                  { id: 'urgency', label: 'Case Distribution / توزيع الحالات', icon: Zap },
                 ].map(tab => (
                   <motion.button
                     key={tab.id}
@@ -140,9 +149,9 @@ export default function AdminStatistics() {
           {/* Top Quick Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { label: 'Weekly Sessions', value: stats?.sessionsThisWeek ?? 0, delta: '+12%', icon: Activity, color: 'text-blue-600' },
-              { label: 'Doc Verification', value: stats?.totalDoctors ?? 0, delta: '+4', icon: Target, color: 'text-emerald-600' },
-              { label: 'Patient Reach', value: stats?.totalPatients ?? 0, delta: '+84', icon: Users, color: 'text-indigo-600' },
+              { label: 'Weekly Sessions / جلسات الأسبوع', value: stats?.sessionsThisWeek ?? 0, delta: '+12%', icon: Activity, color: 'text-blue-600' },
+              { label: 'Registered Doctors / الأطباء المسجلون', value: stats?.totalDoctors ?? 0, delta: '+4', icon: Target, color: 'text-emerald-600' },
+              { label: 'Total Patients / إجمالي المرضى', value: stats?.totalPatients ?? 0, delta: '+84', icon: Users, color: 'text-indigo-600' },
             ].map((m, idx) => (
               <motion.div key={m.label} initial={{opacity:0, y:20}} animate={{opacity:1, y:0}} transition={{delay: idx * 0.1}}>
                 <Card className="border-0 shadow-2xl rounded-[32px] bg-white/80 overflow-hidden group">
@@ -176,8 +185,8 @@ export default function AdminStatistics() {
                 <Card className="border-0 shadow-2xl rounded-[40px] p-8 bg-white overflow-hidden">
                    <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
-                         <h3 className="text-2xl font-black text-slate-800">Growth Trajectory</h3>
-                         <p className="text-slate-400 font-medium">Monthly acquisition of new system entities</p>
+                         <h3 className="text-2xl font-black text-slate-800">Growth Chart / منحنى النمو</h3>
+                         <p className="text-slate-400 font-medium">Monthly acquisition of new system entities / الاستحواذ الشهري على كيانات النظام الجديدة</p>
                       </div>
                       <div className="flex items-center gap-4">
                          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
@@ -206,8 +215,8 @@ export default function AdminStatistics() {
               {activeTab === 'traffic' && (
                 <Card className="border-0 shadow-2xl rounded-[40px] p-8 bg-white overflow-hidden">
                    <div className="mb-10">
-                      <h3 className="text-2xl font-black text-slate-800">Daily Traffic Velocity</h3>
-                      <p className="text-slate-400 font-medium">Operational load across the weekly spectrum</p>
+                      <h3 className="text-2xl font-black text-slate-800">Daily Sessions / الجلسات اليومية</h3>
+                      <p className="text-slate-400 font-medium">Operational load across the weekly spectrum / العبء التشغيلي عبر طيف الأسبوع</p>
                    </div>
                    <ResponsiveContainer width="100%" height={380}>
                       <BarChart data={stats?.sessionsPerDay ?? []}>

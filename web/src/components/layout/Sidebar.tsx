@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import {
   LayoutDashboard, Calendar, Users, FileText, MessageSquare,
   Clock, User, BarChart2, Settings, LogOut, Shield,
-  Cpu, TrendingUp,
+  Cpu, TrendingUp, Star,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
@@ -22,6 +22,7 @@ const doctorNav: NavItem[] = [
   { to: ROUTES.DOCTOR_APPOINTMENTS, icon: <Calendar size={18} />, label: 'Appointments' },
   { to: ROUTES.DOCTOR_PATIENTS, icon: <Users size={18} />, label: 'Patients' },
   { to: ROUTES.DOCTOR_REPORTS, icon: <FileText size={18} />, label: 'AI Reports' },
+  { to: ROUTES.DOCTOR_REVIEWS, icon: <Star size={18} />, label: 'Reviews' },
   { to: ROUTES.DOCTOR_CHAT, icon: <MessageSquare size={18} />, label: 'Messages' },
   { to: ROUTES.DOCTOR_SCHEDULE, icon: <Clock size={18} />, label: 'Schedule' },
   { to: ROUTES.DOCTOR_PROFILE, icon: <User size={18} />, label: 'My Profile' },

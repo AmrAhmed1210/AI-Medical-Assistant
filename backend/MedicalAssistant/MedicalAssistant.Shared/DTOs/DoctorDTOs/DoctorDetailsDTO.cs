@@ -5,5 +5,6 @@ namespace MedicalAssistant.Shared.DTOs.DoctorDTOs
     {
         public int Experience { get; set; }
         public string Bio { get; set; } = string.Empty;
+        public DoctorScheduleDto? Schedule { get; set; }
     }
 }

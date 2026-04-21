@@ -8,13 +8,13 @@ export const adminApi = {
   getUsers: (params?: { role?: string; page?: number; pageSize?: number; search?: string }) =>
     axiosInstance.get<{ items: UserDto[]; total: number }>('/api/admin/users', { params }).then((r) => r.data),
 
-  toggleUser: (id: string) =>
+  toggleUser: (id: number) =>
     axiosInstance.put(`/api/admin/users/${id}/toggle`).then((r) => r.data),
 
   createUser: (data: CreateUserRequest) =>
     axiosInstance.post<UserDto>('/api/admin/users', data).then((r) => r.data),
 
-  deleteUser: (id: string) =>
+  deleteUser: (id: number) =>
     axiosInstance.delete(`/api/admin/users/${id}`).then((r) => r.data),
 
   getModels: () =>

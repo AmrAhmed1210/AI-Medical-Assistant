@@ -67,13 +67,7 @@ export const URGENCY_CONFIG: Record<UrgencyLevel, {
     border: 'border-red-300',
     pulse: false,
   },
-  EMERGENCY: {
-    label: 'طوارئ',
-    color: 'text-white',
-    bg: 'bg-red-900',
-    border: 'border-red-900',
-    pulse: true,
-  },
+
 }
 
 export const STATUS_CONFIG: Record<AppointmentStatus, {

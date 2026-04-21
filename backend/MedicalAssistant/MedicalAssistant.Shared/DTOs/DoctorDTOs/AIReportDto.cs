@@ -5,7 +5,6 @@ namespace MedicalAssistant.Shared.DTOs.DoctorDTOs;
 
 public class AIReportDto
 {
-    // التعديل: تغيير النوع من Guid إلى int ليتوافق مع قاعدة البيانات
     public int Id { get; set; }
 
     public int PatientId { get; set; }

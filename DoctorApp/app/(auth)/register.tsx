@@ -20,6 +20,7 @@ export default function RegisterScreen() {
   const [phone,               setPhone]               = useState("");
   const [password,            setPassword]            = useState("");
   const [confirmPassword,     setConfirmPassword]     = useState("");
+  const [dateOfBirth,         setDateOfBirth]         = useState("");
   const [showPassword,        setShowPassword]        = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading,             setLoading]             = useState(false);
@@ -31,7 +32,7 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     Keyboard.dismiss();
 
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !password || !confirmPassword) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim() || !password || !confirmPassword || !dateOfBirth.trim()) {
       Toast.show({ type: "error", text1: "Please fill all fields", position: "top", topOffset: 60 });
       return;
     }
@@ -50,12 +51,16 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      const phoneNumber = phone.trim();
+
       const auth = await registerApi({
-        name:         `${firstName.trim()} ${lastName.trim()}`,
+        fullName:     fullName,
         email:        email.toLowerCase().trim(),
-        passwordHash: password,
+        password:     password,
         role:         "Patient",
-        phone:        phone.trim(),
+        phoneNumber:  phoneNumber,
+        dateOfBirth:  dateOfBirth,
       });
 
       await saveSession(auth);
@@ -130,13 +135,21 @@ export default function RegisterScreen() {
           onFocus={() => handleFocus(3)} blurOnSubmit={false} editable={!loading}
         />
 
+        <TextInput
+          ref={r => { inputsRef.current[4] = r; }}
+          placeholder="Date of Birth (YYYY-MM-DD or DD/MM/YYYY)"
+          style={styles.input} value={dateOfBirth} onChangeText={setDateOfBirth}
+          returnKeyType="next" onSubmitEditing={() => focusNext(4)}
+          onFocus={() => handleFocus(4)} blurOnSubmit={false} editable={!loading}
+        />
+
         <View style={styles.passWrap}>
           <TextInput
-            ref={r => { inputsRef.current[4] = r; }}
+            ref={r => { inputsRef.current[5] = r; }}
             placeholder="Password" secureTextEntry={!showPassword}
             style={styles.passInput} value={password} onChangeText={setPassword}
-            returnKeyType="next" onSubmitEditing={() => focusNext(4)}
-            onFocus={() => handleFocus(4)} blurOnSubmit={false} editable={!loading}
+            returnKeyType="next" onSubmitEditing={() => focusNext(5)}
+            onFocus={() => handleFocus(5)} blurOnSubmit={false} editable={!loading}
           />
           <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={styles.eyeBtn}>
             <Ionicons name={showPassword ? "eye-off" : "eye"} size={22} color="#888" />
@@ -145,11 +158,11 @@ export default function RegisterScreen() {
 
         <View style={styles.passWrap}>
           <TextInput
-            ref={r => { inputsRef.current[5] = r; }}
+            ref={r => { inputsRef.current[6] = r; }}
             placeholder="Confirm Password" secureTextEntry={!showConfirmPassword}
             style={styles.passInput} value={confirmPassword} onChangeText={setConfirmPassword}
             returnKeyType="done" onSubmitEditing={handleRegister}
-            onFocus={() => handleFocus(5)} editable={!loading}
+            onFocus={() => handleFocus(6)} editable={!loading}
           />
           <TouchableOpacity onPress={() => setShowConfirmPassword(p => !p)} style={styles.eyeBtn}>
             <Ionicons name={showConfirmPassword ? "eye-off" : "eye"} size={22} color="#888" />

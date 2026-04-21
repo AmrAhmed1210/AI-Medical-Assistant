@@ -11,7 +11,11 @@ namespace MedicalAssistant.Domain.Entities.ReviewsModule
     {
         public int DoctorId { get; set; }
 
+        public int? PatientId { get; set; }
+
         public string Author { get; set; } = string.Empty;
+
+        public string? PatientName { get; set; }
 
         public int Rating { get; set; }
 

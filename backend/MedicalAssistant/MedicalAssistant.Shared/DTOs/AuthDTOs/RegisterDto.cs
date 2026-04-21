@@ -5,7 +5,7 @@ namespace MedicalAssistant.Shared.DTOs.AuthDTOs
     public class RegisterDto
     {
         [Required]
-        public string Name { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
 
         [Required]
         [EmailAddress]
@@ -13,10 +13,12 @@ namespace MedicalAssistant.Shared.DTOs.AuthDTOs
 
         [Required]
         [MinLength(6)]
-        public string PasswordHash { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
 
         public string Role { get; set; } = "Patient";
 
-        public string Phone { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+
+        public DateTime? DateOfBirth { get; set; }
     }
 }

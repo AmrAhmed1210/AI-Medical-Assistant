@@ -14,7 +14,14 @@ export function useAuth() {
     setLoading(true)
     try {
       const res = await authApi.login(data)
-      setAuth(res.user, res.token)
+      const userDto: import('@/lib/types').UserDto = {
+        id: parseInt(res.user.id, 10),
+        name: res.user.fullName,
+        email: res.user.email,
+        role: res.user.role,
+        isActive: true
+      }
+      setAuth(userDto, res.accessToken)
       toast.success(`مرحباً ${res.user.fullName}`)
       if (res.user.role === 'Admin') navigate(ROUTES.ADMIN_DASHBOARD)
       else if (res.user.role === 'Doctor') navigate(ROUTES.DOCTOR_DASHBOARD)

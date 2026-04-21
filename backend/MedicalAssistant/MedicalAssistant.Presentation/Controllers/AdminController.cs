@@ -52,10 +52,29 @@ public class AdminController : ControllerBase
         return NoContent();
     }
 
-    [HttpDelete("users/{id}")]
-    public async Task<IActionResult> DeleteUser(int id)
+    [HttpPatch("users/{id}/deactivate")]
+    public async Task<IActionResult> DeactivateUser(int id, [FromQuery] string role)
     {
-        var success = await _adminService.DeleteUserAsync(id);
+        if (string.IsNullOrWhiteSpace(role)) return BadRequest(new { message = "Role is required." });
+        var success = await _adminService.DeactivateUserAsync(id, role);
+        if (!success) return NotFound();
+        return NoContent();
+    }
+
+    [HttpPatch("users/{id}/activate")]
+    public async Task<IActionResult> ActivateUser(int id, [FromQuery] string role)
+    {
+        if (string.IsNullOrWhiteSpace(role)) return BadRequest(new { message = "Role is required." });
+        var success = await _adminService.ActivateUserAsync(id, role);
+        if (!success) return NotFound();
+        return NoContent();
+    }
+
+    [HttpDelete("users/{id}")]
+    public async Task<IActionResult> DeleteUser(int id, [FromQuery] string role)
+    {
+        if (string.IsNullOrWhiteSpace(role)) return BadRequest(new { message = "Role is required." });
+        var success = await _adminService.DeleteUserAsync(id, role);
         if (!success) return NotFound();
         return NoContent();
     }

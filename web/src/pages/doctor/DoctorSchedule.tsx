@@ -1,15 +1,24 @@
 import { useDoctorStore } from '@/store/doctorStore'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { AvailabilityEditor } from '@/components/doctor/AvailabilityEditor'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import { PageLoader } from '@/components/ui/LoadingSpinner'
 import toast from 'react-hot-toast'
-import { Clock } from 'lucide-react'
+import { Clock, Eye, EyeOff } from 'lucide-react'
 
 export default function DoctorSchedule() {
-  const { availability, fetchAvailability, updateAvailability, isLoadingProfile } = useDoctorStore()
+  const { availability, profile, fetchAvailability, updateAvailability, updateScheduleVisibility, fetchProfile, isLoadingProfile } = useDoctorStore()
+  const [isVisible, setIsVisible] = useState(profile?.isScheduleVisible ?? true)
 
-  useEffect(() => { fetchAvailability() }, [fetchAvailability])
+  useEffect(() => { 
+    fetchAvailability()
+    fetchProfile()
+  }, [fetchAvailability, fetchProfile])
+
+  useEffect(() => {
+    setIsVisible(profile?.isScheduleVisible ?? true)
+  }, [profile?.isScheduleVisible])
 
   const handleSave = async (data: typeof availability) => {
     try {
@@ -32,9 +41,22 @@ export default function DoctorSchedule() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="mb-4">
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Weekly Availability</CardTitle>
+          <Button
+            variant={isVisible ? 'success' : 'outline'}
+            size="sm"
+            onClick={async () => {
+              const newValue = !isVisible
+              setIsVisible(newValue)
+              await updateScheduleVisibility(newValue)
+              toast.success(newValue ? 'Schedule is now visible to patients' : 'Schedule is now hidden from patients')
+            }}
+            icon={isVisible ? <Eye size={16} /> : <EyeOff size={16} />}
+          >
+            {isVisible ? 'Visible to Patients' : 'Hidden from Patients'}
+          </Button>
         </CardHeader>
         {isLoadingProfile ? <PageLoader /> : (
           <AvailabilityEditor availability={availability} onSave={handleSave} />

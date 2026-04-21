@@ -25,12 +25,15 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
+      console.log('🚀 Starting login...');
       const auth = await loginApi({
-        email:        email.toLowerCase().trim(),
-        passwordHash: password,
+        email:    email.toLowerCase().trim(),
+        password: password,
       });
+      console.log('✅ Login successful, got token');
 
       await saveSession(auth);
+      console.log('✅ Session saved, preparing to navigate...');
 
       Toast.show({
         type: "success",
@@ -41,7 +44,9 @@ export default function LoginScreen() {
       });
 
       setTimeout(() => {
-        router.replace(auth.role === "Doctor" ? "/(doctor)" : "/(patient)/home");
+        const targetRoute = auth.role === "Doctor" ? "/(doctor)" : "/(patient)/home";
+        console.log('🔄 Navigating to:', targetRoute);
+        router.replace(targetRoute);
       }, 1600);
 
     } catch (err: any) {
@@ -96,7 +101,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <View style={styles.regRow}>
-          <Text style={styles.regTxt}>Don't have an account? </Text>
+          <Text style={styles.regTxt}>Don&apos;t have an account? </Text>
           <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
             <Text style={styles.regLink}>Create Account</Text>
           </TouchableOpacity>
