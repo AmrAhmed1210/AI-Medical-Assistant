@@ -22,7 +22,7 @@ const expoHost = getExpoHost();
 const inferredBaseUrl = expoHost ? `http://${expoHost}:5194` : null;
 
 // Prefer the current Expo host in development so mobile builds do not keep using a stale LAN IP.
-export const BASE_URL = inferredBaseUrl ?? configuredBaseUrl ?? "http://localhost:5194";
+export const BASE_URL = "https://ai-medical-assistant-production-38a3.up.railway.app";
 
 // ============================================
 // ENDPOINTS

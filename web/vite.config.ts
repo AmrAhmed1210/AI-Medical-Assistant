@@ -13,11 +13,11 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:5194',
+        target: 'https://ai-medical-assistant-production-38a3.up.railway.app',
         changeOrigin: true,
       },
       '/hubs': {
-        target: 'http://localhost:5194',
+        target: 'https://ai-medical-assistant-production-38a3.up.railway.app',
         changeOrigin: true,
         ws: true,
       },
