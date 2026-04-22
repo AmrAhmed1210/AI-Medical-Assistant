@@ -23,11 +23,11 @@ namespace MedicalAssistant.Persistance.Data.Configurations
 
             builder.Property(m => m.Content)
                    .IsRequired()
-                   .HasColumnType("nvarchar(max)");
+                   .HasColumnType("text");
 
             builder.Property(m => m.Timestamp)
                    .IsRequired()
-                   .HasDefaultValueSql("GETUTCDATE()");
+                   .HasDefaultValueSql("NOW()");
 
             builder.HasIndex(m => m.SessionId).HasDatabaseName("IX_Messages_SessionId");
             builder.HasIndex(m => m.Timestamp).HasDatabaseName("IX_Messages_Timestamp");

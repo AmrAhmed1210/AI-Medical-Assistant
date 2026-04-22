@@ -1,4 +1,4 @@
-﻿using MedicalAssistant.Domain.Entities.UserModule;
+using MedicalAssistant.Domain.Entities.UserModule;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -44,7 +44,7 @@ namespace MedicalAssistant.Persistance.Data.Configurations
 
             builder.Property(u => u.CreatedAt)
                    .IsRequired()
-                   .HasDefaultValueSql("GETUTCDATE()");
+                   .HasDefaultValueSql("NOW()");
 
             builder.Property(u => u.UpdatedAt)
                    .IsRequired(false);

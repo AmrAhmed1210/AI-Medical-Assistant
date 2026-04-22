@@ -141,6 +141,25 @@ public class Program
 
         var app = builder.Build();
 
+        // ── Phase 1: Run migrations (creates all tables in Supabase) ──────────────
+        using (var scope = app.Services.CreateScope())
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+            try
+            {
+                var context = scope.ServiceProvider.GetRequiredService<MedicalAssistantDbContext>();
+                logger.LogInformation("🔄 Applying database migrations...");
+                await context.Database.MigrateAsync();
+                logger.LogInformation("✅ Database migrations applied successfully.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ An error occurred while migrating the database.");
+                throw; // Stop startup if migrations fail — tables won't exist
+            }
+        }
+
+        // ── Phase 2: Seed default admin user ─────────────────────────────────────
         using (var scope = app.Services.CreateScope())
         {
             try
@@ -163,6 +182,7 @@ public class Program
                     };
                     await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().AddAsync(admin);
                     await context.SaveChangesAsync();
+                    Console.WriteLine("✅ Admin user seeded.");
                 }
             }
             catch (Exception ex)
