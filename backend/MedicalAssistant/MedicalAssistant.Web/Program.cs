@@ -20,7 +20,6 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // ── Controllers & Swagger ────────────────────────────────────────────
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen(c =>
@@ -50,15 +49,13 @@ public class Program
             });
         });
 
-        // ── Database ─────────────────────────────────────────────────────────
         builder.Services.AddDbContext<MedicalAssistantDbContext>(options =>
             options.UseSqlServer(
                 builder.Configuration.GetConnectionString("DefaultConnection"),
                 sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
-        // ── JWT Authentication ────────────────────────────────────────────────
         var jwtKey = builder.Configuration["Jwt:Key"]
-            ?? throw new InvalidOperationException("JWT Key is missing in appsettings.json");
+            ?? throw new InvalidOperationException("JWT Key is missing");
 
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -71,8 +68,7 @@ public class Program
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = builder.Configuration["Jwt:Issuer"],
                     ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtKey))
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
                 };
                 options.Events = new JwtBearerEvents
                 {
@@ -85,36 +81,6 @@ public class Program
                             context.Token = accessToken;
                         }
                         return Task.CompletedTask;
-                    },
-                    OnTokenValidated = async context =>
-                    {
-                        var email = context.Principal?.FindFirst(ClaimTypes.Email)?.Value;
-                        var role = context.Principal?.FindFirst(ClaimTypes.Role)?.Value;
-
-                        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(role))
-                        {
-                            context.Fail("Invalid account.");
-                            return;
-                        }
-
-                        var dbContext = context.HttpContext.RequestServices.GetRequiredService<MedicalAssistantDbContext>();
-
-                        if (string.Equals(role, "Patient", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var patient = await dbContext.Patients.FirstOrDefaultAsync(p => p.Email.ToLower() == email.ToLower());
-                            if (patient == null || !patient.IsActive)
-                            {
-                                context.Fail("Your account is inactive.");
-                            }
-
-                            return;
-                        }
-
-                        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
-                        if (user == null || !user.IsActive || user.IsDeleted)
-                        {
-                            context.Fail("Your account is inactive.");
-                        }
                     }
                 };
             });
@@ -123,14 +89,12 @@ public class Program
         builder.Services.AddSignalR();
         builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, CustomUserIdProvider>();
 
-        // ── Repositories & Unit of Work ───────────────────────────────────────
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
         builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         builder.Services.AddScoped<IDoctorRepository, DoctorRepository>();
         builder.Services.AddScoped<IPatientRepository, PatientRepository>();
         builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 
-        // ── Services ──────────────────────────────────────────────────────────
         builder.Services.AddScoped<IPatientService, PatientService>();
         builder.Services.AddScoped<IAppointmentService, AppointmentService>();
         builder.Services.AddScoped<IDoctorService, DoctorService>();
@@ -139,7 +103,6 @@ public class Program
         builder.Services.AddScoped<IAdminService, AdminService>();
         builder.Services.AddScoped<INotificationService, NotificationService>();
 
-        // ── AutoMapper ────────────────────────────────────────────────────────
         builder.Services.AddAutoMapper(cfg =>
         {
             cfg.AddProfile<DoctorProfile>();
@@ -147,7 +110,6 @@ public class Program
             cfg.AddProfile<AdminProfile>();
         });
 
-        // ── CORS ──────────────────────────────────────────────────────────────
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", policy =>
@@ -157,15 +119,13 @@ public class Program
         });
 
         var app = builder.Build();
-        
-        // ── Seeding Admin User ────────────────────────────────────────────────
-        try 
+
+        using (var scope = app.Services.CreateScope())
         {
-            using (var scope = app.Services.CreateScope())
+            try
             {
                 var context = scope.ServiceProvider.GetRequiredService<MedicalAssistantDbContext>();
                 var adminEmail = "hassanmohamed5065@gmail.com";
-                
                 var adminExists = await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()
                     .AnyAsync(u => u.Email == adminEmail);
 
@@ -182,28 +142,28 @@ public class Program
                     };
                     await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().AddAsync(admin);
                     await context.SaveChangesAsync();
-                    Console.WriteLine("Created Admin User: " + adminEmail);
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("⚠️ Seeding failed: " + ex.Message);
-        }
-
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
+            catch (Exception ex)
+            {
+                Console.WriteLine("⚠️ Seeding failed: " + ex.Message);
+            }
         }
 
-        app.UseHttpsRedirection();
+        // تم نقل الـ Swagger بره شرط الـ Development ليظهر على Railway
+        app.UseSwagger();
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Medical Assistant API V1");
+            c.RoutePrefix = "swagger"; 
+        });
+
         app.UseCors("AllowAll");
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
         app.MapHub<NotificationHub>("/hubs/notifications");
-        app.Urls.Add("http://0.0.0.0:5194");
+
         app.Run();
     }
 }
