@@ -49,10 +49,20 @@ public class Program
             });
         });
 
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
         builder.Services.AddDbContext<MedicalAssistantDbContext>(options =>
-            options.UseSqlServer(
-                builder.Configuration.GetConnectionString("DefaultConnection"),
-                sqlOptions => sqlOptions.EnableRetryOnFailure()));
+        {
+            if (connectionString.Contains("postgresql") || connectionString.Contains("supabase"))
+            {
+                options.UseNpgsql(connectionString);
+            }
+            else
+            {
+                options.UseSqlServer(connectionString, sqlOptions => 
+                    sqlOptions.EnableRetryOnFailure());
+            }
+        });
 
         var jwtKey = builder.Configuration["Jwt:Key"]
             ?? throw new InvalidOperationException("JWT Key is missing");
@@ -150,7 +160,6 @@ public class Program
             }
         }
 
-        // تم نقل الـ Swagger بره شرط الـ Development ليظهر على Railway
         app.UseSwagger();
         app.UseSwaggerUI(c =>
         {
