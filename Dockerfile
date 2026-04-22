@@ -3,8 +3,8 @@ WORKDIR /src
 
 COPY . .
 
-RUN dotnet restore "**/MedicalAssistant.Web.csproj"
-RUN dotnet publish "**/MedicalAssistant.Web.csproj" -c Release -o /app/out
+RUN dotnet restore "backend/MedicalAssistant/MedicalAssistant.Web/MedicalAssistant.Web.csproj"
+RUN dotnet publish "backend/MedicalAssistant/MedicalAssistant.Web/MedicalAssistant.Web.csproj" -c Release -o /app/out
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
