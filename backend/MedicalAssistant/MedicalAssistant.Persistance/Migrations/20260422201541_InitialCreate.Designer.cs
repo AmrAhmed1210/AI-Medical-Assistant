@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MedicalAssistant.Persistance.Migrations
 {
     [DbContext(typeof(MedicalAssistantDbContext))]
-    [Migration("20260422201028_InitialCreate")]
+    [Migration("20260422201541_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -284,7 +284,7 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("GETUTCDATE()");
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<int>("DoctorId")
                         .HasColumnType("integer");

@@ -1,4 +1,4 @@
-﻿using MedicalAssistant.Domain.Entities.ReviewsModule;
+using MedicalAssistant.Domain.Entities.ReviewsModule;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
@@ -30,7 +30,7 @@ namespace MedicalAssistant.Persistence.Configurations
                    .IsRequired();
 
             builder.Property(r => r.CreatedAt)
-                   .HasDefaultValueSql("GETUTCDATE()");
+                   .HasDefaultValueSql("NOW()");
 
             builder.HasOne(r => r.Doctor)
                    .WithMany(d => d.Reviews)
