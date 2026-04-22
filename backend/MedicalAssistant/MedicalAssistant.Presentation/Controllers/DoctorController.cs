@@ -178,6 +178,7 @@ namespace MedicalAssistant.Presentation.Controllers
 
         [Authorize(Roles = "Doctor")]
         [HttpPost("photo")]
+        [Consumes("multipart/form-data")]
         public IActionResult UploadPhoto([FromForm] IFormFile? photo)
         {
             if (photo == null || photo.Length == 0)
