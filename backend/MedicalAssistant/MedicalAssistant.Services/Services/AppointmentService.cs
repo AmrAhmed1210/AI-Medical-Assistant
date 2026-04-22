@@ -60,7 +60,8 @@ namespace MedicalAssistant.Services.Services
                     saved.Id,
                     saved.Doctor.User!.Email,
                     saved.Patient?.FullName ?? "a patient",
-                    BuildScheduledAt(saved));
+                    BuildScheduledAt(saved),
+                    saved.DoctorId);
             }
 
             return MapToDto(saved);
@@ -114,7 +115,8 @@ namespace MedicalAssistant.Services.Services
                     appointment.Id,
                     appointment.Doctor.User!.Email,
                     appointment.Status,
-                    appointment.Patient?.FullName ?? "a patient");
+                    appointment.Patient?.FullName ?? "a patient",
+                    appointment.DoctorId);
             }
 
             return MapToDto(appointment);
@@ -143,7 +145,8 @@ namespace MedicalAssistant.Services.Services
                     appointment.Id,
                     appointment.Doctor.User!.Email,
                     appointment.Status,
-                    appointment.Patient?.FullName ?? "a patient");
+                    appointment.Patient?.FullName ?? "a patient",
+                    appointment.DoctorId);
             }
 
             return true;

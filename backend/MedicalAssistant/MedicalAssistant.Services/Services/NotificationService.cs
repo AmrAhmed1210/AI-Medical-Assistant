@@ -121,9 +121,9 @@ public class NotificationService : INotificationService
             new { appointmentId, doctorName, scheduledAt });
     }
 
-    public async Task NotifyDoctorNewAppointment(int appointmentId, string doctorEmail, string patientName, string scheduledAt)
+    public async Task NotifyDoctorNewAppointment(int appointmentId, string doctorEmail, string patientName, string scheduledAt, int? doctorId = null)
     {
-        await SendGroupEventAsync(doctorEmail, "AppointmentUpdated", new
+        await SendDoctorGroupEventAsync(doctorId, doctorEmail, "AppointmentUpdated", new
         {
             appointmentId,
             status = "Confirmed",
@@ -133,7 +133,8 @@ public class NotificationService : INotificationService
             timestamp = DateTime.UtcNow
         });
 
-        await SendNotificationAsync(
+        await SendDoctorNotificationAsync(
+            doctorId,
             doctorEmail,
             "new_booking",
             "New appointment booked",
@@ -178,9 +179,9 @@ public class NotificationService : INotificationService
             new { appointmentId, doctorName, scheduledAt });
     }
 
-    public async Task NotifyDoctorAppointmentChanged(int appointmentId, string doctorEmail, string status, string patientName)
+    public async Task NotifyDoctorAppointmentChanged(int appointmentId, string doctorEmail, string status, string patientName, int? doctorId = null)
     {
-        await SendGroupEventAsync(doctorEmail, "AppointmentUpdated", new
+        await SendDoctorGroupEventAsync(doctorId, doctorEmail, "AppointmentUpdated", new
         {
             appointmentId,
             status,
@@ -189,7 +190,8 @@ public class NotificationService : INotificationService
             timestamp = DateTime.UtcNow
         });
 
-        await SendNotificationAsync(
+        await SendDoctorNotificationAsync(
+            doctorId,
             doctorEmail,
             "appointment_update",
             "Appointment status updated",
@@ -208,6 +210,34 @@ public class NotificationService : INotificationService
             createdAt = DateTime.UtcNow,
             data
         });
+    }
+
+    private async Task SendDoctorNotificationAsync(int? doctorId, string doctorEmail, string category, string title, string message, object? data = null)
+    {
+        var payload = new
+        {
+            id = Guid.NewGuid().ToString("N"),
+            category,
+            title,
+            message,
+            createdAt = DateTime.UtcNow,
+            data
+        };
+
+        await SendDoctorGroupEventAsync(doctorId, doctorEmail, "NotificationReceived", payload);
+    }
+
+    private async Task SendDoctorGroupEventAsync(int? doctorId, string doctorEmail, string eventName, object payload)
+    {
+        if (doctorId.HasValue && doctorId.Value > 0)
+        {
+            await SendGroupEventAsync($"Doctor_{doctorId.Value}", eventName, payload);
+        }
+
+        if (!string.IsNullOrWhiteSpace(doctorEmail))
+        {
+            await SendGroupEventAsync(doctorEmail, eventName, payload);
+        }
     }
 
     private async Task SendGroupEventAsync(string group, string eventName, object payload)

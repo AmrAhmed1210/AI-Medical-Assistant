@@ -32,6 +32,13 @@ public class NotificationHub : Hub
             await Groups.AddToGroupAsync(Context.ConnectionId, email.Trim().ToLowerInvariant());
         }
 
+        var doctorId = Context.User?.FindFirst("DoctorId")?.Value;
+        if (int.TryParse(doctorId, out var parsedDoctorId) && parsedDoctorId > 0)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"Doctor_{parsedDoctorId}");
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"doctor_{parsedDoctorId}");
+        }
+
         await base.OnConnectedAsync();
     }
 }

@@ -17,11 +17,48 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
+const normalizeText = (value: unknown): string => {
+  const text = value?.toString?.()
+  return typeof text === "string" ? text.trim().toLowerCase() : ""
+}
+
 const toLocalIsoDate = (date: Date): string => {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, "0")
   const day = String(date.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
+}
+
+const normalizeToLocalIsoDate = (raw: unknown): string => {
+  const text = raw?.toString?.().trim() ?? ""
+  if (!text) return ""
+
+  const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`
+  }
+
+  const numericMatch = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/)
+  if (numericMatch) {
+    const first = Number(numericMatch[1])
+    const second = Number(numericMatch[2])
+    const year = Number(numericMatch[3])
+    if (Number.isFinite(first) && Number.isFinite(second) && Number.isFinite(year)) {
+      const dayFirst = first > 12 || second <= 12
+      const day = dayFirst ? first : second
+      const month = dayFirst ? second : first
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+        return `${year.toString().padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+      }
+    }
+  }
+
+  const parsed = new Date(text)
+  if (!Number.isNaN(parsed.getTime())) {
+    return toLocalIsoDate(parsed)
+  }
+
+  return ""
 }
 
 const getDayIndexFromLocalIsoDate = (isoDate: string): number => {
@@ -69,13 +106,36 @@ const getNormalizedDayName = (value: unknown): string => {
 const isDayEnabled = (day: any): boolean => normalizeBoolean(day?.isAvailable ?? day?.IsAvailable)
 
 const parseTimeToMinutes = (value: unknown): number | null => {
-  const text = value?.toString?.() ?? ""
-  const parts = text.split(":")
-  if (parts.length < 2) return null
-  const hours = Number(parts[0])
-  const minutes = Number(parts[1])
+  const text = value?.toString?.().trim() ?? ""
+  if (!text) return null
+
+  const amPmMatch = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i)
+  if (amPmMatch) {
+    let hours = Number(amPmMatch[1])
+    const minutes = Number(amPmMatch[2])
+    const marker = amPmMatch[3].toUpperCase()
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null
+    if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) return null
+    if (marker === "PM" && hours !== 12) hours += 12
+    if (marker === "AM" && hours === 12) hours = 0
+    return hours * 60 + minutes
+  }
+
+  const hhmmMatch = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/)
+  if (!hhmmMatch) return null
+
+  const hours = Number(hhmmMatch[1])
+  const minutes = Number(hhmmMatch[2])
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null
   return hours * 60 + minutes
+}
+
+const slotToKey = (value: unknown): string => {
+  const minutes = parseTimeToMinutes(value)
+  if (minutes != null) return `m-${minutes}`
+  const fallback = value?.toString?.().trim().toLowerCase() ?? ""
+  return fallback ? `t-${fallback}` : ""
 }
 
 const toDisplaySlot = (raw: unknown): string => {
@@ -112,14 +172,25 @@ const getTimeSlotsForDay = (date: string, availability: any[], bookedSlots: any[
 
   if (!dayAvail) return []
 
+  const isBookedForDateTime = (slotValue: unknown): boolean => {
+    const slotKey = slotToKey(slotValue)
+    if (!slotKey) return false
+
+    return bookedSlots.some((bs) => {
+      const bookedDate = normalizeToLocalIsoDate(bs?.date ?? bs?.Date ?? "")
+      if (!bookedDate || bookedDate !== date) return false
+      const bookedKey = slotToKey(bs?.time ?? bs?.Time ?? "")
+      return bookedKey === slotKey
+    })
+  }
+
   const rawBackendSlots = dayAvail.timeSlots ?? dayAvail.TimeSlots
   if (Array.isArray(rawBackendSlots) && rawBackendSlots.length > 0) {
     return rawBackendSlots
       .map((slot: unknown) => toDisplaySlot(slot))
       .filter((slot: string) => {
         if (!slot) return false
-        const isTaken = bookedSlots.some((bs) => bs.date === date && bs.time === slot)
-        return !isTaken
+        return !isBookedForDateTime(slot)
       })
   }
 
@@ -145,10 +216,7 @@ const getTimeSlotsForDay = (date: string, availability: any[], bookedSlots: any[
     const h12 = h % 12 || 12
     const slotStr = `${h12.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`
 
-    // Check if taken (Note: compare against bookedSlots using the display format since that's what we store)
-    const isTaken = bookedSlots.some(bs => bs.date === date && bs.time === slotStr);
-
-    if (!isTaken) {
+    if (!isBookedForDateTime(slotStr)) {
       slots.push(slotStr)
     }
     currentMinutes += slotDuration
@@ -378,15 +446,16 @@ export default function DoctorDetailsScreen() {
         { method: 'GET', allowedStatusCodes: [404] },
         false
       )
+      console.log('Availability raw data:', JSON.stringify(data, null, 2))
 
-      // Handle both nested structure (data.days) and direct array
-      const availData = data?.days ?? (Array.isArray(data) ? data : [])
-      const bookedData = data?.bookedSlots ?? []
+      // Handle both nested structure and direct array
+      const availData = data?.days ?? data?.Days ?? (Array.isArray(data) ? data : [])
+      const bookedData = data?.bookedSlots ?? data?.BookedSlots ?? []
 
       console.log('Availability data:', availData)
       console.log('Booked slots:', bookedData)
 
-      setBookedSlots(bookedData)
+      setBookedSlots(Array.isArray(bookedData) ? bookedData : [])
       if (availData.length > 0) {
         setAvailability(availData)
         const hasAny = availData.some((a: any) => {
@@ -412,14 +481,15 @@ export default function DoctorDetailsScreen() {
   }
 
   useEffect(() => {
-    let unsub: (() => void) | undefined
+    let unsubReady: (() => void) | undefined
+    let unsubUpdated: (() => void) | undefined
     let mounted = true
 
     const bindScheduleUpdates = async () => {
       await startSignalRConnection()
       if (!mounted) return
 
-      unsub = onScheduleReady(async (data) => {
+      const handleScheduleEvent = async (data: any, isUpdatedEvent: boolean) => {
         const payload = data ?? {}
         const eventDoctorId = Number(payload?.doctorId ?? payload?.DoctorId)
         const eventDoctorName = String(payload?.doctorName ?? payload?.DoctorName ?? "Doctor")
@@ -429,9 +499,22 @@ export default function DoctorDetailsScreen() {
           const list = subscribed ? JSON.parse(subscribed) : []
           if (list.includes(eventDoctorId)) {
             fetchAvailability()
-            Alert.alert('🎉 Schedule Ready!', `Dr. ${eventDoctorName}'s schedule is now available!`)
+            Alert.alert(
+              isUpdatedEvent ? "Schedule Updated" : "Schedule Ready",
+              isUpdatedEvent
+                ? `Dr. ${eventDoctorName}'s schedule has been updated.`
+                : `Dr. ${eventDoctorName}'s schedule is now available!`
+            )
           }
         }
+      }
+
+      unsubReady = onScheduleReady((data) => {
+        handleScheduleEvent(data, false).catch(() => undefined)
+      })
+
+      unsubUpdated = onScheduleUpdated((data) => {
+        handleScheduleEvent(data, true).catch(() => undefined)
       })
 
       try {
@@ -449,7 +532,8 @@ export default function DoctorDetailsScreen() {
 
     return () => {
       mounted = false
-      unsub?.()
+      unsubReady?.()
+      unsubUpdated?.()
     }
   }, [doctorId])
 
@@ -574,7 +658,34 @@ export default function DoctorDetailsScreen() {
     }
   };
 
-  const myExistingReview = reviews.find((review) => review.isMine === true);
+  const myExistingReview = useMemo(() => {
+    const byMineFlag = reviews.find((review) => review.isMine === true)
+    if (byMineFlag) return byMineFlag
+
+    const myName = normalizeText(myDisplayName)
+    if (!myName) return undefined
+
+    return reviews.find((review) => normalizeText(review.author) === myName)
+  }, [reviews, myDisplayName])
+
+  const confirmDeleteMyReview = () => {
+    if (!myExistingReview) return
+
+    Alert.alert(
+      "Delete Review",
+      "Are you sure you want to delete your review?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            handleDeleteExistingReview().catch(() => undefined)
+          },
+        },
+      ]
+    )
+  }
 
   const openReviewModal = () => {
     if (myExistingReview) {
@@ -732,10 +843,24 @@ export default function DoctorDetailsScreen() {
         <View style={styles.section}>
           <View style={styles.reviewHeader}>
             <Text style={styles.sectionTitle}>Reviews ({reviews.length})</Text>
-            <TouchableOpacity style={styles.addReviewBtn} onPress={openReviewModal}>
-              <Ionicons name="add" size={14} color="#fff" />
-              <Text style={styles.addReviewTxt}>{myExistingReview ? "Edit Review" : "Add Review"}</Text>
-            </TouchableOpacity>
+            <View style={styles.reviewActionsRow}>
+              {myExistingReview && (
+                <>
+                  <TouchableOpacity style={styles.editReviewBtn} onPress={openReviewModal}>
+                    <Ionicons name="create-outline" size={14} color={COLORS.primary} />
+                    <Text style={styles.editReviewTxt}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.deleteReviewBtn} onPress={confirmDeleteMyReview}>
+                    <Ionicons name="trash-outline" size={14} color="#DC2626" />
+                    <Text style={styles.deleteReviewTxt}>Delete</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              <TouchableOpacity style={styles.addReviewBtn} onPress={openReviewModal}>
+                <Ionicons name="add" size={14} color="#fff" />
+                <Text style={styles.addReviewTxt}>{myExistingReview ? "Edit Review" : "Add Review"}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {reviews.length === 0 ? (
@@ -899,6 +1024,11 @@ const styles = StyleSheet.create({
   timeTxt: { fontSize: 12, color: "#333", fontWeight: "500" },
   timeTxtActive: { color: "#fff" },
   reviewHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  reviewActionsRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  editReviewBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#ECFEFF", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, borderWidth: 1, borderColor: "#99F6E4" },
+  editReviewTxt: { color: COLORS.primary, fontSize: 12, fontWeight: "700" },
+  deleteReviewBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#FEF2F2", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, borderWidth: 1, borderColor: "#FECACA" },
+  deleteReviewTxt: { color: "#DC2626", fontSize: 12, fontWeight: "700" },
   addReviewBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18 },
   addReviewTxt: { color: "#fff", fontSize: 12, fontWeight: "600" },
   noReviews: { alignItems: "center", paddingVertical: 24, gap: 8 },
