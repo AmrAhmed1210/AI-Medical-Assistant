@@ -58,7 +58,7 @@ public class Program
                 throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
             }
 
-            if (connectionString.Contains("postgresql://") || connectionString.Contains("supabase"))
+            if (connectionString.Contains("postgresql") || connectionString.Contains("supabase"))
             {
                 options.UseNpgsql(connectionString);
             }
