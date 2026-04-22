@@ -177,16 +177,14 @@ namespace MedicalAssistant.Presentation.Controllers
         }
 
         [Authorize(Roles = "Doctor")]
-        [HttpPost("photo")]
+        [HttpPost("upload-photo")]
         [Consumes("multipart/form-data")]
-        public IActionResult UploadPhoto([FromForm] IFormFile? photo)
+        public async Task<IActionResult> UploadPhoto([FromForm] IFormFile file)
         {
-            if (photo == null || photo.Length == 0)
-            {
-                return BadRequest(new { message = "Photo is required." });
-            }
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded.");
 
-            return Ok(new { photoUrl = "default-doctor.png" });
+            return Ok();
         }
 
         [Authorize(Roles = "Doctor")]
