@@ -53,7 +53,12 @@ public class Program
 
         builder.Services.AddDbContext<MedicalAssistantDbContext>(options =>
         {
-            if (connectionString.Contains("postgresql") || connectionString.Contains("supabase"))
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+            }
+
+            if (connectionString.Contains("postgresql://") || connectionString.Contains("supabase"))
             {
                 options.UseNpgsql(connectionString);
             }
