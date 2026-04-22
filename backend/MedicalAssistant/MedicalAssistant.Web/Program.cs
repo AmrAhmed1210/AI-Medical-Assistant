@@ -60,13 +60,17 @@ public class Program
                 throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
             }
 
-            if (connectionString.Contains("postgresql") || connectionString.Contains("supabase"))
+            if (connectionString.Contains("postgresql") || connectionString.Contains("supabase") || connectionString.Contains("Host="))
             {
-                options.UseNpgsql(connectionString);
+                options.UseNpgsql(connectionString, npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(10),
+                        errorCodesToAdd: null));
             }
             else
             {
-                options.UseSqlServer(connectionString, sqlOptions => 
+                options.UseSqlServer(connectionString, sqlOptions =>
                     sqlOptions.EnableRetryOnFailure());
             }
         });

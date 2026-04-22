@@ -9,6 +9,12 @@ using System.Linq;
 
 namespace MedicalAssistant.Presentation.Controllers
 {
+    // DTO wrapper required by Swashbuckle when using [FromForm] with IFormFile
+    public class UploadPhotoRequest
+    {
+        public IFormFile File { get; set; } = null!;
+    }
+
     [ApiController]
     [Route("api/doctors")]   
     public class DoctorsController : ControllerBase
@@ -179,9 +185,9 @@ namespace MedicalAssistant.Presentation.Controllers
         [Authorize(Roles = "Doctor")]
         [HttpPost("upload-photo")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadPhoto([FromForm] IFormFile file)
+        public async Task<IActionResult> UploadPhoto([FromForm] UploadPhotoRequest request)
         {
-            if (file == null || file.Length == 0)
+            if (request.File == null || request.File.Length == 0)
                 return BadRequest("No file uploaded.");
 
             return Ok();
