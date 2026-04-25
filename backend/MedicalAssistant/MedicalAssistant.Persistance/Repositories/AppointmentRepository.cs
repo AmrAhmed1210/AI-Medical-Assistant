@@ -62,6 +62,7 @@ namespace MedicalAssistant.Persistance.Repositories
         {
             var totalCount = await _dbSet.CountAsync();
             var items = await _dbSet
+                .Include(a => a.Patient)
                 .Include(a => a.Doctor)
                     .ThenInclude(d => d.Specialty)
                 .Include(a => a.Doctor)

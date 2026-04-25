@@ -3,6 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 export interface Notification {
   id: string
   type:
+    | 'schedule'
+    | 'update'
+    | 'confirmed'
+    | 'message'
     | 'schedule_ready'
     | 'appointment_confirmed'
     | 'appointment_cancelled'
@@ -21,11 +25,15 @@ export interface Notification {
   isRead?: boolean
 }
 
-const NOTIFICATIONS_KEY = '@notifications'
+const getNotificationsKey = async (): Promise<string> => {
+  const patientId = await AsyncStorage.getItem("patientId") || await AsyncStorage.getItem("userId");
+  return `@notifications_${patientId || 'guest'}`
+}
 
 export async function getNotifications(): Promise<Notification[]> {
   try {
-    const stored = await AsyncStorage.getItem(NOTIFICATIONS_KEY)
+    const key = await getNotificationsKey()
+    const stored = await AsyncStorage.getItem(key)
     return stored ? JSON.parse(stored) : []
   } catch {
     return []
@@ -34,9 +42,10 @@ export async function getNotifications(): Promise<Notification[]> {
 
 export async function addNotification(notification: Notification): Promise<void> {
   try {
+    const key = await getNotificationsKey()
     const existing = await getNotifications()
     const updated = [{ ...notification, isRead: false }, ...existing].slice(0, 50) // Keep last 50
-    await AsyncStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated))
+    await AsyncStorage.setItem(key, JSON.stringify(updated))
   } catch (e) {
     console.error('Failed to save notification:', e)
   }
@@ -44,9 +53,10 @@ export async function addNotification(notification: Notification): Promise<void>
 
 export async function markAllAsRead(): Promise<void> {
   try {
+    const key = await getNotificationsKey()
     const existing = await getNotifications()
     const updated = existing.map(n => ({ ...n, isRead: true }))
-    await AsyncStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated))
+    await AsyncStorage.setItem(key, JSON.stringify(updated))
   } catch (e) {
     console.error('Failed to mark read:', e)
   }
@@ -54,7 +64,8 @@ export async function markAllAsRead(): Promise<void> {
 
 export async function clearNotifications(): Promise<void> {
   try {
-    await AsyncStorage.removeItem(NOTIFICATIONS_KEY)
+    const key = await getNotificationsKey()
+    await AsyncStorage.removeItem(key)
   } catch (e) {
     console.error('Failed to clear notifications:', e)
   }
@@ -62,9 +73,10 @@ export async function clearNotifications(): Promise<void> {
 
 export async function deleteNotification(id: string): Promise<void> {
   try {
+    const key = await getNotificationsKey()
     const existing = await getNotifications()
     const updated = existing.filter(n => n.id !== id)
-    await AsyncStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated))
+    await AsyncStorage.setItem(key, JSON.stringify(updated))
   } catch (e) {
     console.error('Failed to delete notification:', e)
   }

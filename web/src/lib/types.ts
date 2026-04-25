@@ -12,6 +12,7 @@ export type UserDto = {
   email: string
   role: UserRole
   isActive: boolean
+  photoUrl?: string
   createdAt?: string
 }
 
@@ -22,6 +23,7 @@ export type MappedUserDto = {
   email: string
   role: UserRole
   isActive: boolean
+  photoUrl?: string
   createdAt?: string
 }
 
@@ -32,6 +34,8 @@ export const mapUserDto = (user: UserDto): MappedUserDto => ({
   email: user.email,
   role: user.role as UserRole,
   isActive: user.isActive,
+  photoUrl: user.photoUrl,
+  createdAt: user.createdAt,
 })
 
 // ── دالة تحويل عكسي (من الداخلي للـ API) ──────────────────────────────
@@ -118,7 +122,7 @@ export interface LoginResponse {
 // ============================================================================
 
 export type UrgencyLevel = 'LOW' | 'MEDIUM' | 'HIGH'
-export type MessageRole = 'user' | 'assistant'
+export type MessageRole = 'user' | 'assistant' | 'doctor' | 'admin'
 
 export interface SymptomDto {
   term: string
@@ -133,12 +137,24 @@ export interface SessionDto {
   updatedAt: string
   messageCount: number
   urgencyLevel: UrgencyLevel | null
+  lastMessage?: string | null
+  lastMessageAt?: string | null
+  patientName?: string | null
+  patientPhotoUrl?: string | null
+  type?: string
+  userId?: number
 }
 
 export interface MessageDto {
   id: string
+  sessionId?: string | number
   role: MessageRole
   content: string
+  messageType?: string
+  attachmentUrl?: string | null
+  fileName?: string | null
+  senderName?: string
+  senderPhotoUrl?: string | null
   timestamp: string
 }
 
@@ -205,6 +221,7 @@ export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6 // 0=Sun … 6=Sat
 export interface UpcomingAppointmentDto {
   id: string
   patientName: string
+  patientPhotoUrl?: string | null
   scheduledAt: string
   status: AppointmentStatus
 }
@@ -274,6 +291,7 @@ export interface PatientSummaryDto {
   allergies: string | null
   totalAppointments: number
   lastVisit: string | null
+  photoUrl?: string | null
 }
 
 // Availability ───────────────────────────────────────────────────────────────

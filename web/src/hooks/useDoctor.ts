@@ -70,8 +70,7 @@ export function useDoctorProfile() {
     return () => { cancelled = true }
   }, [])
 
-  const updateProfile = async (data: Partial<DoctorDetailDto>) => {
-    await doctorApi.updateProfile(data)
+  const refresh = async () => {
     try {
       const refreshed = await doctorApi.getProfile()
       setProfile(refreshed)
@@ -80,7 +79,12 @@ export function useDoctorProfile() {
     }
   }
 
-  return { profile, isLoading, updateProfile }
+  const updateProfile = async (data: Partial<DoctorDetailDto>) => {
+    await doctorApi.updateProfile(data)
+    await refresh()
+  }
+
+  return { profile, isLoading, updateProfile, refresh }
 }
 
 export function useDoctorAppointments(status?: string) {

@@ -10,6 +10,10 @@ import type {
 } from '@/lib/types'
 
 export const doctorApi = {
+  // Apply for doctor account
+  apply: (data: any) => 
+    axiosInstance.post('/api/doctors/apply', data).then((r) => r.data),
+
   // Get all doctors (public endpoint)
   getAllDoctors: (specialtyId?: number) =>
     axiosInstance.get<DoctorDetailDto[]>('/api/doctors', { params: { specialtyId } }).then((r) => r.data),
@@ -30,8 +34,16 @@ export const doctorApi = {
 
   uploadPhoto: (file: File) => {
     const form = new FormData()
-    form.append('photo', file)
+    form.append('file', file)
     return axiosInstance.post<{ photoUrl: string }>('/api/doctors/photo', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((r) => r.data)
+  },
+
+  uploadCv: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return axiosInstance.post<{ url: string }>('/api/doctors/apply/upload-cv', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then((r) => r.data)
   },
@@ -56,4 +68,13 @@ export const doctorApi = {
 
   updateScheduleVisibility: (isVisible: boolean) =>
     axiosInstance.put('/api/doctors/schedule-visibility', isVisible).then(() => undefined),
+
+  messagePatient: (data: { patientEmail: string; message: string }) =>
+    axiosInstance.post('/api/doctors/message-patient', data).then((r) => r.data),
+
+  clearHistory: () =>
+    axiosInstance.delete('/api/doctors/appointments/history').then((r) => r.data),
+
+  createConsultation: (data: { patientId: number; title: string; description: string; scheduledAt: string }) =>
+    axiosInstance.post('/api/consultations', data).then((r) => r.data),
 }

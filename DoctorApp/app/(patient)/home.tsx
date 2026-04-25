@@ -1,6 +1,6 @@
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar, ActivityIndicator,
+  TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image
 } from "react-native";
 import { COLORS } from "../../constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -9,10 +9,12 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../../context/LanguageContext";
 import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor } from "../../services/doctorService";
+import { getMyProfile, Profile } from "../../services/profileService";
 import { getMyAppointments, Appointment } from "../../services/appointmentService";
 import { NotificationBell } from "../../components/NotificationBell";
-import { startSignalRConnection, onScheduleReady, onScheduleUpdated } from "../../services/signalr";
+import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpdated, onNewConsultation } from "../../services/signalr";
 import { addNotification, createScheduleReadyNotification } from "../../services/notificationService";
+import { checkIfFollowed, getFollowedDoctorIds, setFollowed } from "../../services/followService";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -22,6 +24,7 @@ export default function HomeScreen() {
   const [nextBooking,  setNextBooking]  = useState<Appointment | null>(null);
   const [loadingDocs,  setLoadingDocs]  = useState(true);
   const [followedIds,  setFollowedIds]  = useState<number[]>([]);
+  const [profile,      setProfile]      = useState<Profile | null>(null);
 
   const CATEGORIES = [
     { icon: "heart-outline",   label: tr("spec_cardiology"),  specialty: "Cardiology"  },
@@ -37,7 +40,16 @@ export default function HomeScreen() {
     loadFollowedDoctors();
     fetchPopularDoctors();
     fetchNextBooking();
+    fetchProfile();
   }, []);
+
+  const fetchProfile = async () => {
+    try {
+      const data = await getMyProfile();
+      setProfile(data);
+      if (data.name) setUserName(data.name);
+    } catch { }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -56,10 +68,18 @@ export default function HomeScreen() {
       onScheduleReady(async (data: any) => {
         const eventDoctorId = Number(data?.doctorId ?? data?.DoctorId);
         const eventDoctorName = String(data?.doctorName ?? data?.DoctorName ?? 'Doctor');
-        const subscribed = await AsyncStorage.getItem('subscribedDoctors')
-        const list = subscribed ? JSON.parse(subscribed) : []
-        if (list.includes(eventDoctorId)) {
-          addNotification(createScheduleReadyNotification(eventDoctorName));
+        if (!Number.isFinite(eventDoctorId) || eventDoctorId <= 0) return;
+        if (await checkIfFollowed(eventDoctorId)) {
+          await addNotification({
+            id: `schedule_ready_${eventDoctorId}_${Date.now()}`,
+            type: 'schedule',
+            title: '📅 Schedule Ready',
+            message: `Dr. ${eventDoctorName}'s schedule is now available!`,
+            timestamp: Date.now(),
+            doctorId: eventDoctorId,
+            doctorName: eventDoctorName,
+            icon: '📅',
+          });
           fetchPopularDoctors();
         }
       });
@@ -67,12 +87,66 @@ export default function HomeScreen() {
       onScheduleUpdated(async (data: any) => {
         const eventDoctorId = Number(data?.doctorId ?? data?.DoctorId);
         const eventDoctorName = String(data?.doctorName ?? data?.DoctorName ?? 'Doctor');
-        const subscribed = await AsyncStorage.getItem('subscribedDoctors')
-        const list = subscribed ? JSON.parse(subscribed) : []
-        if (list.includes(eventDoctorId)) {
-          addNotification(createScheduleReadyNotification(eventDoctorName));
+        if (!Number.isFinite(eventDoctorId) || eventDoctorId <= 0) return;
+        if (await checkIfFollowed(eventDoctorId)) {
+          await addNotification({
+            id: `schedule_updated_${eventDoctorId}_${Date.now()}`,
+            type: 'schedule',
+            title: '📅 Schedule Updated',
+            message: `Dr. ${eventDoctorName} updated their availability`,
+            timestamp: Date.now(),
+            doctorId: eventDoctorId,
+            doctorName: eventDoctorName,
+            icon: '📅',
+          });
           fetchPopularDoctors();
         }
+      });
+
+      onDoctorUpdated(async (data: any) => {
+        const eventDoctorId = Number(data?.doctorId ?? data?.DoctorId);
+        const eventDoctorName = String(data?.doctorName ?? data?.DoctorName ?? "Doctor");
+        if (!Number.isFinite(eventDoctorId) || eventDoctorId <= 0) return;
+        if (!(await checkIfFollowed(eventDoctorId))) return;
+
+        await addNotification({
+          id: `doctor_update_${eventDoctorId}_${Date.now()}`,
+          type: "update",
+          title: "👨‍⚕️ Doctor Updated",
+          message: `Dr. ${eventDoctorName} updated their profile`,
+          timestamp: Date.now(),
+          doctorId: eventDoctorId,
+          doctorName: eventDoctorName,
+          icon: "👨‍⚕️",
+        });
+      });
+
+      onNewConsultation(async (data: any) => {
+        const doctorName = String(data?.doctorName ?? data?.DoctorName ?? 'Doctor');
+        const title = String(data?.title ?? data?.Title ?? 'Consultation');
+        const scheduledAt = String(data?.scheduledAt ?? data?.ScheduledAt ?? '');
+
+        Alert.alert(
+          'New Consultation',
+          `Dr. ${doctorName} scheduled a consultation: ${title}`,
+          [
+            { text: 'Dismiss', style: 'cancel' },
+            {
+              text: 'View',
+              onPress: () => router.push('/(patient)/profile'),
+            },
+          ]
+        );
+
+        await addNotification({
+          id: `consultation_${Date.now()}`,
+          type: 'appointment_confirmed',
+          title: '🩺 New Consultation',
+          message: `Dr. ${doctorName} scheduled: ${title}${scheduledAt ? ` at ${scheduledAt}` : ''}`,
+          timestamp: Date.now(),
+          doctorName,
+          icon: '🩺',
+        });
       });
     };
     setupSignalR();
@@ -81,9 +155,8 @@ export default function HomeScreen() {
 
   const loadFollowedDoctors = async () => {
     try {
-      const stored = await AsyncStorage.getItem("followedDoctors");
-      const ids = stored ? JSON.parse(stored) : [];
-      setFollowedIds(Array.isArray(ids) ? ids.map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id)) : []);
+      const ids = await getFollowedDoctorIds();
+      setFollowedIds(ids);
     } catch {
       setFollowedIds([]);
     }
@@ -91,11 +164,12 @@ export default function HomeScreen() {
 
   const toggleFollowDoctor = async (doctorId: number) => {
     try {
-      const next = followedIds.includes(doctorId)
+      const currentlyFollowed = await checkIfFollowed(doctorId);
+      await setFollowed(doctorId, !currentlyFollowed);
+      const next = currentlyFollowed
         ? followedIds.filter((id) => id !== doctorId)
         : [...followedIds, doctorId];
       setFollowedIds(next);
-      await AsyncStorage.setItem("followedDoctors", JSON.stringify(next));
     } catch {
       // ignore storage failure
     }
@@ -106,8 +180,7 @@ export default function HomeScreen() {
       setLoadingDocs(true);
       const data = await getAllDoctors();
       const candidates = [...data]
-        .sort((a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0))
-        .slice(0, 12);
+        .sort((a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0));
       const enriched = await Promise.all(
         candidates.map(async (doc) => {
           try {
@@ -149,8 +222,11 @@ export default function HomeScreen() {
   const fetchNextBooking = async () => {
     try {
       const appts = await getMyAppointments();
-      // Only show PENDING appointments in the home banner as requested
-      const active = appts.find(a => a.status?.toLowerCase() === "pending");
+      // Active = Pending OR Confirmed
+      const active = appts.find(a => {
+        const s = a.status?.toLowerCase();
+        return s === "pending" || s === "confirmed";
+      });
       setNextBooking(active ?? null);
     } catch {
       setNextBooking(null);
@@ -177,8 +253,12 @@ export default function HomeScreen() {
         </View>
         <View style={[styles.headerRight, isRTL && styles.rowReverse]}>
           <NotificationBell isRTL={isRTL} />
-          <TouchableOpacity onPress={() => router.push("/(patient)/profile")} style={styles.avatarBtn}>
-            <Ionicons name="person-outline" size={20} color={COLORS.primary} />
+          <TouchableOpacity onPress={() => router.push("/(patient)/profile")} style={[styles.avatarBtn, profile?.photoUrl && { borderWidth: 0 }]}>
+            {profile?.photoUrl ? (
+              <Image source={{ uri: profile.photoUrl }} style={styles.headerAvatar} />
+            ) : (
+              <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} style={styles.headerAvatar} />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -270,7 +350,11 @@ export default function HomeScreen() {
                 onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(doc.id) } })}
               >
                 <View style={styles.docAvatar}>
-                  <Text style={styles.docAvatarTxt}>{doc.name.charAt(0)}</Text>
+                  {doc.imageUrl && !doc.imageUrl.includes('default') ? (
+                    <Image source={{ uri: doc.imageUrl }} style={styles.docAvatarImg} />
+                  ) : (
+                    <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} style={styles.docAvatarImg} />
+                  )}
                   {doc.isAvailable && <View style={styles.onlineIndicator} />}
                 </View>
                 <View style={{ flex: 1 }}>
@@ -377,7 +461,9 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
   },
   headerRight:  { flexDirection: "row", alignItems: "center", gap: 8 },
-  docAvatar:    { width: 50, height: 50, borderRadius: 25, backgroundColor: COLORS.primary + "20", justifyContent: "center", alignItems: "center", position: "relative" },
+  headerAvatar: { width: "100%", height: "100%", borderRadius: 20 },
+  docAvatar:    { width: 50, height: 50, borderRadius: 25, backgroundColor: COLORS.primary + "20", justifyContent: "center", alignItems: "center", position: "relative", overflow: "hidden" },
+  docAvatarImg: { width: "100%", height: "100%", borderRadius: 25 },
   docAvatarTxt: { fontSize: 20, fontWeight: "700", color: COLORS.primary },
   onlineIndicator: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#4CAF50", position: "absolute", bottom: 2, right: 2, borderWidth: 2, borderColor: "#fff" },
   docName:      { fontSize: 14, fontWeight: "700", color: "#1A1A1A" },

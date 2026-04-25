@@ -3,7 +3,6 @@ import { Bell, Search, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNotificationStore } from '@/store/notificationStore'
 import { useAuthStore } from '@/store/authStore'
-import { startConnection } from '@/lib/signalr'
 import { cn } from '@/lib/utils'
 import { formatTimeAgo } from '@/lib/utils'
 
@@ -14,56 +13,7 @@ interface TopBarProps {
 export function TopBar({ title }: TopBarProps) {
   const [showNotif, setShowNotif] = useState(false)
   const { notifications, unreadCount, markAllRead, removeNotification, addNotification } = useNotificationStore()
-  const { token } = useAuthStore()
-
-  useEffect(() => {
-    let cleanup: (() => void) | undefined
-    let active = true
-
-    const bindRealtime = async () => {
-      if (!token) return
-      try {
-        const conn = await startConnection(token)
-        if (!active) return
-
-        const onNotificationReceived = (payload: any) => {
-          const category = String(payload?.category ?? payload?.Category ?? '').toLowerCase()
-          const title = String(payload?.title ?? payload?.Title ?? 'Notification')
-          const message = String(payload?.message ?? payload?.Message ?? '')
-          const level =
-            category.includes('cancel') ? 'warning' :
-            category.includes('confirm') || category.includes('booking') ? 'success' :
-            category.includes('error') ? 'error' : 'info'
-
-          addNotification(level, title, message)
-        }
-
-        const onAppointmentUpdated = (payload: any) => {
-          const status = String(payload?.status ?? '').toLowerCase()
-          const type =
-            status === 'confirmed' ? 'success' :
-            status === 'cancelled' ? 'warning' : 'info'
-          addNotification(type, 'Appointment Update', String(payload?.message ?? 'Appointment updated'))
-        }
-
-        conn.on('NotificationReceived', onNotificationReceived)
-        conn.on('AppointmentUpdated', onAppointmentUpdated)
-
-        cleanup = () => {
-          conn.off('NotificationReceived', onNotificationReceived)
-          conn.off('AppointmentUpdated', onAppointmentUpdated)
-        }
-      } catch {
-        // realtime is optional
-      }
-    }
-
-    bindRealtime()
-    return () => {
-      active = false
-      cleanup?.()
-    }
-  }, [addNotification, token])
+  const { user, token } = useAuthStore()
 
   return (
     <header className="fixed top-0 right-0 left-64 h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 z-20 shadow-sm">
@@ -148,6 +98,20 @@ export function TopBar({ title }: TopBarProps) {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+        {/* User Profile */}
+        <div className="flex items-center gap-3 border-l border-gray-100 pl-6 ml-2">
+          <div className="flex flex-col items-end hidden sm:flex">
+            <span className="text-xs font-bold text-gray-900 leading-none">{user?.name}</span>
+            <span className="text-[10px] text-gray-400 font-medium mt-1 uppercase tracking-wider">{user?.role}</span>
+          </div>
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary-500 to-primary-600 flex items-center justify-center text-white text-xs font-black shadow-lg shadow-primary-500/20 overflow-hidden ring-2 ring-white">
+            {user?.photoUrl ? (
+              <img src={user.photoUrl} alt={user.name} className="w-full h-full object-cover" />
+            ) : (
+              user?.name?.charAt(0) ?? 'U'
+            )}
+          </div>
         </div>
       </div>
     </header>

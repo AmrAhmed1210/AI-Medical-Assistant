@@ -1,64 +1,145 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, AlertTriangle, Brain, User, MessageSquare, MessageCircle } from 'lucide-react'
+import { Send, AlertTriangle, Activity, User, MessageSquare, Image as ImageIcon, Paperclip, FileText, Trash2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { consultApi } from '@/api/consultApi'
-import { startConnection } from '@/lib/signalr'
 import { useAuthStore } from '@/store/authStore'
+import { useNotificationStore } from '@/store/notificationStore'
+import { useMessagesStore } from '@/store/messagesStore'
 import { UrgencyBadge } from '@/components/ui/Badge'
 import { PageLoader } from '@/components/ui/LoadingSpinner'
-import type { SessionDto, SessionDetailDto, MessageDto } from '@/lib/types'
-import { formatTimeAgo, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+
+function isRawSessionTitle(title?: string | null): boolean {
+  return !!title && /chat\|p:\d+\|d:\d+\|/i.test(title)
+}
+
+function toDisplaySessionTitle(title?: string | null, sessionId?: string | number): string {
+  if (!title) return `Session ${String(sessionId ?? '').slice(0, 8)}`
+  if (!isRawSessionTitle(title)) return title
+  const patientMatch = title.match(/\|p:(\d+)\|/i)
+  if (patientMatch) return `Patient #${patientMatch[1]}`
+  return `Session ${String(sessionId ?? '').slice(0, 8)}`
+}
+
+const formatTimeAgo = (timestamp?: string | null) => {
+  if (!timestamp) return ''
+  const date = new Date(timestamp)
+  if (isNaN(date.getTime())) return ''
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`
+  return date.toLocaleDateString()
+}
 
 export default function DoctorChat() {
-  const { token } = useAuthStore()
-  const [sessions, setSessions] = useState<SessionDto[]>([])
-  const [selectedSession, setSelectedSession] = useState<SessionDetailDto | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { unreadCounts, clearSessionMessages, incrementSessionMessage, latestMessagePayload } = useNotificationStore()
+  const { sessions, selectedSession, isLoadingSessions, fetchSessions, openSession, sendMessage, handleIncomingMessage } = useMessagesStore()
+  
   const [message, setMessage] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const selectedSessionIdRef = useRef<number | string | null>(null)
 
-  useEffect(() => {
-    consultApi.getSessions()
-      .then(setSessions)
-      .finally(() => setLoading(false))
-  }, [])
-
-  useEffect(() => {
-    if (!token) return
-    let cleanup: (() => void) | undefined
-
-    startConnection(token).then((conn) => {
-      conn.on('ReceiveMessage', (msg: MessageDto) => {
-        setSelectedSession((prev) => {
-          if (!prev || prev.id !== msg.id) return prev
-          return { ...prev, messages: [...prev.messages, msg] }
-        })
-      })
-      cleanup = () => conn.off('ReceiveMessage')
-    }).catch(console.error)
-
-    return () => cleanup?.()
-  }, [token])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [selectedSession?.messages])
+  const handleOpenSession = useCallback(async (sessionId: string | number) => {
+    try {
+      await openSession(sessionId)
+      clearSessionMessages(Number(sessionId))
+    } catch {
+      toast.error('Failed to load conversation')
+    }
+  }, [openSession, clearSessionMessages])
 
   const handleSend = useCallback(async () => {
     if (!message.trim() || !selectedSession) return
     const content = message.trim()
     setMessage('')
-    // Optimistic update
-    const tempMsg: MessageDto = {
-      id: 'temp-' + Date.now(),
-      role: 'user',
-      content,
-      timestamp: new Date().toISOString(),
+    try {
+      await sendMessage(content)
+    } catch {
+      toast.error('Failed to send message')
     }
-    setSelectedSession((prev) => prev ? { ...prev, messages: [...prev.messages, tempMsg] } : prev)
-  }, [message, selectedSession])
+  }, [message, selectedSession, sendMessage])
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !selectedSession) return
+    
+    const isImage = file.type.startsWith('image/')
+    const type = isImage ? 'image' : 'file'
+    
+    const loadingToast = toast.loading(`Uploading ${type}...`)
+    try {
+      const { url, fileName } = await consultApi.uploadFile(file)
+      await consultApi.sendMessage(selectedSession.id, isImage ? '[Image]' : `[File: ${fileName}]`, type, url, fileName)
+      // Refresh session to show new message
+      await openSession(selectedSession.id)
+      toast.success(`${type} sent`, { id: loadingToast })
+    } catch {
+      toast.error(`Failed to upload ${type}`, { id: loadingToast })
+    }
+  }
+
+  useEffect(() => {
+    selectedSessionIdRef.current = selectedSession?.id || null
+  }, [selectedSession?.id])
+
+  useEffect(() => {
+    fetchSessions();
+    
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get('sessionId');
+    if (sid) {
+      const numSid = Number(sid);
+      if (!isNaN(numSid)) {
+        handleOpenSession(numSid);
+      }
+      // Clear param to avoid re-opening on manual refresh
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [fetchSessions, handleOpenSession])
+
+  useEffect(() => {
+    if (!latestMessagePayload) return
+    const payload = latestMessagePayload
+    const sessionId = payload?.sessionId ?? payload?.SessionId
+    if (!sessionId) return
+
+    const isChatOpen = String(selectedSessionIdRef.current) === String(sessionId)
+    
+    try {
+      handleIncomingMessage(payload, isChatOpen)
+    } catch (e) {
+      console.error('Error handling incoming message:', e)
+    }
+
+    if (isChatOpen) {
+      clearSessionMessages(sessionId)
+    } else {
+      incrementSessionMessage(sessionId)
+    }
+  }, [latestMessagePayload, clearSessionMessages, incrementSessionMessage, handleIncomingMessage])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [selectedSession?.messages])
 
   const hasHighUrgency = selectedSession?.urgencyLevel === 'HIGH'
+
+  const handleDeleteSession = async () => {
+    if (!selectedSession) return;
+    if (!window.confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) return;
+    
+    try {
+      await useMessagesStore.getState().deleteSession(selectedSession.id);
+      toast.success('Conversation deleted successfully');
+    } catch (e: any) {
+      toast.error('Failed to delete conversation');
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -66,7 +147,7 @@ export default function DoctorChat() {
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-br from-primary-600 to-primary-400 rounded-xl blur-lg opacity-30" />
           <div className="relative bg-gradient-to-br from-primary-600 to-primary-500 rounded-xl p-3 shadow-lg">
-            <MessageCircle size={28} className="text-white" />
+            <MessageSquare size={28} className="text-white" />
           </div>
         </div>
         <div>
@@ -86,7 +167,7 @@ export default function DoctorChat() {
             <p className="text-sm font-semibold text-gray-700">Active Conversations</p>
             <p className="text-xs text-gray-500 mt-1">{sessions.length} session(s)</p>
           </div>
-          {loading ? <PageLoader /> : (
+          {isLoadingSessions ? <PageLoader /> : (
             <div className="divide-y divide-gray-50">
               {sessions.length === 0 ? (
                 <div className="p-8 text-center text-gray-400">
@@ -96,7 +177,7 @@ export default function DoctorChat() {
               ) : sessions.map((s) => (
                 <motion.button
                   key={s.id}
-                  onClick={() => setSelectedSession(s as SessionDetailDto)}
+                  onClick={() => handleOpenSession(s.id)}
                   whileHover={{ x: 4 }}
                   className={cn(
                     'w-full flex items-start gap-3 p-3 transition-colors',
@@ -104,16 +185,30 @@ export default function DoctorChat() {
                   )}
                 >
                   <div className={cn(
-                    'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0',
+                    'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm',
                     selectedSession?.id === s.id ? 'bg-gradient-to-br from-primary-600 to-primary-500' : 'bg-primary-100'
                   )}>
-                    <User size={16} className={selectedSession?.id === s.id ? 'text-white' : 'text-primary-600'} />
+                    {s.patientPhotoUrl ? (
+                      <img src={s.patientPhotoUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={16} className={selectedSession?.id === s.id ? 'text-white' : 'text-primary-600'} />
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-medium text-gray-800 truncate">{s.title || 'Session ' + s.id.slice(0, 8)}</p>
-                    <p className="text-xs text-gray-400">{formatTimeAgo(s.createdAt)}</p>
-                    {s.messageCount > 0 && <p className="text-xs text-primary-600 font-medium mt-1">{s.messageCount} messages</p>}
+                  <div className="flex-1 min-w-0 text-left relative">
+                    <p className="text-sm font-medium text-gray-800 truncate pr-6">
+                      {toDisplaySessionTitle(s.title, s.id)}
+                    </p>
+                    <p className="text-xs text-gray-400">{formatTimeAgo(s.lastMessageAt || s.updatedAt || s.createdAt)}</p>
+                    {s.lastMessage && (
+                      <p className="text-xs text-gray-500 truncate mt-1 pr-4">{s.lastMessage}</p>
+                    )}
                     {s.urgencyLevel && <UrgencyBadge level={s.urgencyLevel} />}
+                    
+                    {unreadCounts[Number(s.id)] > 0 && (
+                      <div className="absolute top-0 right-0 bg-green-500 text-white min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm">
+                        {unreadCounts[Number(s.id)] > 9 ? '9+' : unreadCounts[Number(s.id)]}
+                      </div>
+                    )}
                   </div>
                 </motion.button>
               ))}
@@ -152,17 +247,28 @@ export default function DoctorChat() {
                 )}
                 <div className={cn('flex items-center gap-2', hasHighUrgency && 'ml-auto')}>
                   <div className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center',
+                    'w-8 h-8 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0',
                     hasHighUrgency ? 'bg-red-100' : 'bg-primary-100'
                   )}>
-                    <User size={14} className={hasHighUrgency ? 'text-red-600' : 'text-primary-600'} />
+                    {selectedSession.patientPhotoUrl ? (
+                      <img src={selectedSession.patientPhotoUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={14} className={hasHighUrgency ? 'text-red-600' : 'text-primary-600'} />
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-800">
-                      {selectedSession.title || 'Session'}
+                      {toDisplaySessionTitle(selectedSession.title, selectedSession.id)}
                     </p>
                     {selectedSession.urgencyLevel && <UrgencyBadge level={selectedSession.urgencyLevel} />}
                   </div>
+                  <button
+                    onClick={handleDeleteSession}
+                    className="ml-2 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                    title="Delete Conversation"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
 
@@ -178,30 +284,54 @@ export default function DoctorChat() {
                       transition={{ duration: 0.3, delay: idx * 0.05 }}
                       className={cn(
                         'flex gap-3 max-w-[85%]',
-                        msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''
+                        msg.role === 'doctor' ? 'ml-auto flex-row-reverse' : ''
                       )}
                     >
                       <div className={cn(
-                        'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm',
-                        msg.role === 'user' ? 'bg-gradient-to-br from-blue-100 to-blue-50' :
+                        'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden',
+                        msg.role === 'doctor' ? 'bg-gradient-to-br from-blue-100 to-blue-50' :
                           msg.role === 'assistant' ? 'bg-gradient-to-br from-purple-100 to-purple-50' : 'bg-gradient-to-br from-green-100 to-green-50'
                       )}>
                         {msg.role === 'assistant' ? (
-                          <Brain size={14} className="text-purple-600" />
+                          <Activity size={14} className="text-purple-600" />
+                        ) : msg.senderPhotoUrl ? (
+                          <img src={msg.senderPhotoUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <User size={14} className={msg.role === 'user' ? 'text-blue-600' : 'text-green-600'} />
+                          <User size={14} className={msg.role === 'doctor' ? 'text-blue-600' : 'text-green-600'} />
                         )}
                       </div>
                       <div className={cn(
                         'px-4 py-3 rounded-2xl text-sm shadow-md hover:shadow-lg transition-shadow',
-                        msg.role === 'user'
+                        msg.role === 'doctor'
                           ? 'bg-gradient-to-br from-primary-600 to-primary-500 text-white rounded-br-none'
                           : msg.role === 'assistant'
                             ? 'bg-gradient-to-br from-purple-100 to-purple-50 text-gray-800 rounded-bl-none border border-purple-200'
                             : 'bg-gradient-to-br from-gray-100 to-gray-50 text-gray-800 rounded-tl-none'
                       )}>
+                        {msg.messageType === 'image' && msg.attachmentUrl ? (
+                          <img 
+                            src={msg.attachmentUrl} 
+                            alt="Attachment" 
+                            className="max-w-xs rounded-lg mb-2 cursor-pointer hover:opacity-90"
+                            onClick={() => window.open(msg.attachmentUrl!, '_blank')}
+                          />
+                        ) : msg.messageType === 'file' ? (
+                          <div 
+                            className="flex items-center gap-2 mb-2 p-2 bg-black/5 rounded-lg cursor-pointer"
+                            onClick={() => window.open(msg.attachmentUrl!, '_blank')}
+                          >
+                            <FileText size={20} className={msg.role === 'doctor' ? 'text-white' : 'text-primary-600'} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold truncate">{msg.fileName || 'Document'}</p>
+                              <p className="text-[10px] opacity-70">Attachment</p>
+                            </div>
+                          </div>
+                        ) : null}
                         <p className="leading-relaxed">{msg.content}</p>
-                        <p className={cn('text-[11px] mt-2 font-medium', msg.role === 'user' ? 'text-white/70' : 'text-gray-500')}>
+                        <p className={cn('text-[11px] mt-1', msg.role === 'doctor' ? 'text-white/80' : 'text-gray-500')}>
+                          {msg.senderName || (msg.role === 'doctor' ? 'You' : toDisplaySessionTitle(selectedSession.title, selectedSession.id))}
+                        </p>
+                        <p className={cn('text-[11px] mt-2 font-medium', msg.role === 'doctor' ? 'text-white/70' : 'text-gray-500')}>
                           {formatTimeAgo(msg.timestamp)}
                         </p>
                       </div>
@@ -225,6 +355,16 @@ export default function DoctorChat() {
                     placeholder="Type your message..."
                     className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/30 focus:border-transparent transition-all bg-white"
                   />
+                  <div className="flex gap-1">
+                    <label className="p-3 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-xl cursor-pointer transition-all">
+                      <ImageIcon size={18} />
+                      <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                    </label>
+                    <label className="p-3 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-xl cursor-pointer transition-all">
+                      <Paperclip size={18} />
+                      <input type="file" className="hidden" onChange={handleFileUpload} />
+                    </label>
+                  </div>
                   <motion.button
                     onClick={handleSend}
                     disabled={!message.trim()}

@@ -15,6 +15,7 @@ import {
 } from 'recharts'
 import { adminApi } from '@/api/adminApi'
 import type { SystemStatsDto } from '@/lib/types'
+import { useAuthStore } from '@/store/authStore'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -105,7 +106,7 @@ export default function AdminDashboard() {
 
   /* SignalR: Listen for new user registrations */
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = useAuthStore.getState().token
     if (!token) return
 
     let cleanup: (() => void) | undefined

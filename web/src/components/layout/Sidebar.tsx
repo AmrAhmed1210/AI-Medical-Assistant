@@ -1,15 +1,17 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useEffect } from 'react'
 import {
   LayoutDashboard, Calendar, Users, FileText, MessageSquare,
   Clock, User, BarChart2, Settings, LogOut, Shield,
-  Cpu, TrendingUp, Star,
+  Cpu, TrendingUp, Star, LifeBuoy,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
 import { authApi } from '@/api/authApi'
 import { ROUTES } from '@/constants/config'
 import toast from 'react-hot-toast'
+import { useNotificationStore } from '@/store/notificationStore'
 
 interface NavItem {
   to: string
@@ -33,11 +35,22 @@ const adminNav: NavItem[] = [
   { to: ROUTES.ADMIN_USERS, icon: <Users size={18} />, label: 'Users' },
   { to: ROUTES.ADMIN_STATISTICS, icon: <TrendingUp size={18} />, label: 'Statistics' },
   { to: ROUTES.ADMIN_MODELS, icon: <Cpu size={18} />, label: 'AI Models' },
+  { to: ROUTES.ADMIN_APPLICATIONS, icon: <FileText size={18} />, label: 'Applications' },
+  { to: ROUTES.ADMIN_SUPPORT, icon: <LifeBuoy size={18} />, label: 'Support Center' },
 ]
 
 export function Sidebar() {
   const { user, role, logout } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
+  const {
+    unreadMessages,
+    unreadAppointments,
+    unreadDoctorApplications,
+    clearAllMessages,
+    clearAppointments,
+    clearDoctorApplications,
+  } = useNotificationStore()
 
   const navItems = role === 'Admin' ? adminNav : doctorNav
 
@@ -47,6 +60,21 @@ export function Sidebar() {
     navigate(ROUTES.LOGIN)
     toast.success('Logged out successfully')
   }
+
+  useEffect(() => {
+    if (location.pathname === ROUTES.DOCTOR_CHAT) {
+      clearAllMessages()
+    }
+    if (location.pathname === ROUTES.DOCTOR_APPOINTMENTS) {
+      clearAppointments()
+    }
+    if (location.pathname === ROUTES.ADMIN_APPLICATIONS) {
+      clearDoctorApplications()
+    }
+    if (location.pathname === ROUTES.ADMIN_SUPPORT) {
+      clearAllMessages()
+    }
+  }, [location.pathname, clearAppointments, clearAllMessages, clearDoctorApplications])
 
   return (
     <motion.aside
@@ -90,7 +118,24 @@ export function Sidebar() {
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
             )}
           >
-            {item.icon}
+            <div className="relative">
+              {item.icon}
+              {item.to === ROUTES.DOCTOR_CHAT && unreadMessages > 0 && (
+                <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-green-500 rounded-full text-white text-[10px] font-bold shadow-sm">
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
+              {item.to === ROUTES.DOCTOR_APPOINTMENTS && unreadAppointments > 0 && (
+                <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 rounded-full text-white text-[10px] font-bold shadow-sm animate-pulse">
+                  {unreadAppointments > 9 ? '9+' : unreadAppointments}
+                </span>
+              )}
+              {item.to === ROUTES.ADMIN_APPLICATIONS && unreadDoctorApplications > 0 && (
+                <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-amber-500 rounded-full text-white text-[10px] font-bold shadow-sm animate-pulse">
+                  {unreadDoctorApplications > 9 ? '9+' : unreadDoctorApplications}
+                </span>
+              )}
+            </div>
             {item.label}
           </NavLink>
         ))}

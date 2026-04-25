@@ -62,6 +62,11 @@ namespace MedicalAssistant.Services.Services
                     saved.Patient?.FullName ?? "a patient",
                     BuildScheduledAt(saved),
                     saved.DoctorId);
+                await _notificationService.NotifyDoctorNewBooking(
+                    saved.Doctor.User!.Email,
+                    saved.Patient?.FullName ?? "a patient",
+                    BuildScheduledAt(saved),
+                    saved.DoctorId);
             }
 
             return MapToDto(saved);
@@ -117,6 +122,11 @@ namespace MedicalAssistant.Services.Services
                     appointment.Status,
                     appointment.Patient?.FullName ?? "a patient",
                     appointment.DoctorId);
+                await _notificationService.NotifyDoctorCancellation(
+                    appointment.Doctor.User!.Email,
+                    appointment.Patient?.FullName ?? "a patient",
+                    BuildScheduledAt(appointment),
+                    appointment.DoctorId);
             }
 
             return MapToDto(appointment);
@@ -147,6 +157,15 @@ namespace MedicalAssistant.Services.Services
                     appointment.Status,
                     appointment.Patient?.FullName ?? "a patient",
                     appointment.DoctorId);
+
+                if (string.Equals(appointment.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _notificationService.NotifyDoctorCancellation(
+                        appointment.Doctor.User!.Email,
+                        appointment.Patient?.FullName ?? "a patient",
+                        BuildScheduledAt(appointment),
+                        appointment.DoctorId);
+                }
             }
 
             return true;
@@ -315,6 +334,7 @@ namespace MedicalAssistant.Services.Services
                 DoctorId = appointment.DoctorId,
                 DoctorName = appointment.Doctor?.Name ?? string.Empty,
                 PatientName = appointment.Patient?.FullName ?? string.Empty,
+                PatientPhotoUrl = appointment.Patient?.ImageUrl,
                 Specialty = appointment.Doctor?.Specialty?.Name ?? string.Empty,
                 Date = appointment.Date,
                 Time = appointment.Time,

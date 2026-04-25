@@ -18,6 +18,8 @@ export const ROUTES = {
   ADMIN_USERS: '/admin/users',
   ADMIN_STATISTICS: '/admin/statistics',
   ADMIN_MODELS: '/admin/models',
+  ADMIN_APPLICATIONS: '/admin/applications',
+  ADMIN_SUPPORT: '/admin/support',
   // Doctor
   DOCTOR_DASHBOARD: '/doctor/dashboard',
   DOCTOR_PROFILE: '/doctor/profile',

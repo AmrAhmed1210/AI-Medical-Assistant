@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity, Image, StyleSheet, Modal, TextInput, Animated } from "react-native";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MapPin, Clock, MessageCircle, Heart } from "lucide-react-native";
 import RatingStars from "./RatingStars";
+import { checkIfFollowed, setFollowed } from "../services/followService";
 
 const COLORS = {
   primary: "#1E9E84",
@@ -58,10 +58,8 @@ export default function DoctorCard({ doctor, highlight }: { doctor: Doctor; high
     let mounted = true;
     const loadFollowState = async () => {
       try {
-        const stored = await AsyncStorage.getItem("followedDoctors");
-        const ids: number[] = stored ? JSON.parse(stored) : [];
         if (!mounted) return;
-        setIsFollowed(ids.includes(Number(doctor.id)));
+        setIsFollowed(await checkIfFollowed(Number(doctor.id)));
       } catch {
         if (mounted) setIsFollowed(false);
       }
@@ -77,14 +75,11 @@ export default function DoctorCard({ doctor, highlight }: { doctor: Doctor; high
     if (followBusy) return;
     setFollowBusy(true);
     try {
-      const stored = await AsyncStorage.getItem("followedDoctors");
-      const ids: number[] = stored ? JSON.parse(stored) : [];
       const doctorId = Number(doctor.id);
-      const next = ids.includes(doctorId)
-        ? ids.filter((id) => id !== doctorId)
-        : [...ids, doctorId];
-      await AsyncStorage.setItem("followedDoctors", JSON.stringify(next));
-      setIsFollowed(next.includes(doctorId));
+      const followed = await checkIfFollowed(doctorId);
+      const next = !followed;
+      await setFollowed(doctorId, next);
+      setIsFollowed(next);
     } finally {
       setFollowBusy(false);
     }
@@ -100,12 +95,10 @@ export default function DoctorCard({ doctor, highlight }: { doctor: Doctor; high
         <TouchableOpacity style={[styles.card, highlight && styles.cardHighlightBorder]} onPress={goToDetails} activeOpacity={0.88}>
           <View style={styles.topRow}>
             <View style={styles.avatarWrap}>
-              {doctor.imageUrl ? (
-                <Image source={{ uri: doctor.imageUrl }} style={styles.avatar} />
+              {doctor.photoUrl || (doctor.imageUrl && !doctor.imageUrl.includes('default')) ? (
+                <Image source={{ uri: doctor.photoUrl || doctor.imageUrl }} style={styles.avatar} />
               ) : (
-                <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarTxt}>{doctor.name?.charAt(0)?.toUpperCase() || "D"}</Text>
-                </View>
+                <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} style={styles.avatar} />
               )}
               <View style={[styles.dot, { backgroundColor: doctor.isAvailable ? "#22C55E" : "#CBD5E1" }]} />
             </View>
@@ -189,9 +182,11 @@ export default function DoctorCard({ doctor, highlight }: { doctor: Doctor; high
         <View style={styles.overlay}>
           <View style={styles.sheet}>
             <View style={styles.sheetHeaderRow}>
-              <View style={styles.sheetAvatar}>
-                <Text style={styles.sheetAvatarTxt}>{doctor.name?.charAt(0)?.toUpperCase() || "D"}</Text>
-              </View>
+              {doctor.photoUrl || doctor.imageUrl ? (
+                <Image source={{ uri: doctor.photoUrl || doctor.imageUrl }} style={styles.sheetAvatar} />
+              ) : (
+                <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} style={styles.sheetAvatar} />
+              )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.sheetTitle}>Medical Consultation</Text>
                 <Text style={styles.sheetSub}>{doctor.name} · {doctor.specialty}</Text>
@@ -208,7 +203,21 @@ export default function DoctorCard({ doctor, highlight }: { doctor: Doctor; high
               onChangeText={setMessage}
               multiline
             />
-            <TouchableOpacity style={styles.sendBtn} onPress={() => { setModalVisible(false); router.push({ pathname: "/(patient)/messages", params: { doctorName: doctor.name } }); }}>
+            <TouchableOpacity
+              style={styles.sendBtn}
+              onPress={() => {
+                setModalVisible(false);
+                router.push({
+                  pathname: "/(patient)/messages",
+                  params: {
+                    doctorId: String(doctor.id),
+                    doctorName: doctor.name,
+                    initialMessage: message.trim(),
+                  },
+                });
+                setMessage("");
+              }}
+            >
               <MessageCircle size={16} color="#FFF" />
               <Text style={styles.sendTxt}>Send Message</Text>
             </TouchableOpacity>

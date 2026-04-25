@@ -12,7 +12,6 @@ import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/config'
 import { useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
-import { startConnection } from '@/lib/signalr'
 import { useNotificationStore } from '@/store/notificationStore'
 import toast from 'react-hot-toast'
 
@@ -21,44 +20,6 @@ export default function DoctorDashboard() {
   const navigate = useNavigate()
   const { token } = useAuthStore()
   const { addNotification } = useNotificationStore()
-
-  useEffect(() => {
-    let active = true
-    let cleanup: (() => void) | undefined
-
-    const bindRealtime = async () => {
-      if (!token) return
-      try {
-        const conn = await startConnection(token)
-        if (!active) return
-
-        const onNotificationReceived = (payload: any) => {
-          const category = payload?.category ?? payload?.Category
-          const title = payload?.title ?? payload?.Title ?? 'Update'
-          const message = payload?.message ?? payload?.Message ?? 'You have a new update'
-          
-          if (category === 'new_booking' || category === 'appointment_update') {
-            addNotification('info', title, message)
-            toast.success(message)
-            refresh?.()
-          }
-        }
-
-        conn.on('NotificationReceived', onNotificationReceived)
-        cleanup = () => {
-          conn.off('NotificationReceived', onNotificationReceived)
-        }
-      } catch (err) {
-        console.error('SignalR error in dashboard:', err)
-      }
-    }
-
-    bindRealtime()
-    return () => {
-      active = false
-      cleanup?.()
-    }
-  }, [token, addNotification, refresh])
 
   if (isLoading) return <PageLoader />
 
@@ -152,8 +113,12 @@ export default function DoctorDashboard() {
                       onClick={() => navigate(`${ROUTES.DOCTOR_APPOINTMENTS}/${appt.id}`)}
                     >
                       <div className="relative">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary-500/25">
-                          <span className="text-white text-sm font-bold">{appt.patientName.charAt(0)}</span>
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary-500/25 overflow-hidden">
+                          {appt.patientPhotoUrl ? (
+                            <img src={appt.patientPhotoUrl} alt={appt.patientName} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-white text-sm font-bold">{appt.patientName.charAt(0)}</span>
+                          )}
                         </div>
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
                       </div>

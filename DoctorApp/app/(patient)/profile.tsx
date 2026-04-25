@@ -13,10 +13,12 @@ import { COLORS } from "../../constants/colors";
 import { useLanguage } from "../../context/LanguageContext";
 
 // Import services
-import { getMyProfile, updateMyProfile, Profile } from "../../services/profileService";
+import { getMyProfile, updateMyProfile, Profile, uploadProfilePhoto } from "../../services/profileService";
 import { getMyAppointments, cancelAppointment, Appointment } from "../../services/appointmentService";
 import { logout } from "../../services/authService";
 import { getDoctorById } from "../../services/doctorService";
+import { getFollowedDoctorIds } from "../../services/followService";
+import { startSupportSession } from "../../services/sessionService";
 
 // Types
 interface Medicine {
@@ -96,8 +98,7 @@ export default function ProfileScreen() {
   const fetchFollowedDoctors = async () => {
     try {
       setLoadingFollowed(true);
-      const stored = await AsyncStorage.getItem("followedDoctors");
-      const ids: number[] = stored ? JSON.parse(stored) : [];
+      const ids = await getFollowedDoctorIds();
       if (ids.length === 0) {
         setFollowedDoctors([]);
         return;
@@ -110,6 +111,7 @@ export default function ProfileScreen() {
               id: Number(doc.id ?? id),
               name: String(doc.name ?? "Doctor"),
               specialty: String(doc.specialty ?? "General"),
+              photoUrl: doc.imageUrl || doc.photoUrl,
             } as FollowedDoctor;
           } catch { return null; }
         })
@@ -196,6 +198,24 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleContactSupport = async () => {
+    setLoading(true);
+    try {
+      const session = await startSupportSession();
+      router.push({
+        pathname: "/(patient)/messages",
+        params: {
+          sessionId: String(session.id),
+          doctorName: "Technical Support",
+        }
+      });
+    } catch (e: any) {
+      Toast.show({ type: "error", text1: "Failed to open support chat" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const pickFromGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") return;
@@ -215,6 +235,34 @@ export default function ProfileScreen() {
       setScanImage(result.assets[0].uri);
       setScanResult(null);
       setRawOCR("");
+    }
+  };
+
+  const handleUploadPhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "Please allow gallery access to upload a photo.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        setLoading(true);
+        const url = await uploadProfilePhoto(result.assets[0].uri);
+        setProfile(prev => prev ? { ...prev, photoUrl: url } : prev);
+        Toast.show({ type: "success", text1: "Photo uploaded!" });
+      }
+    } catch (e: any) {
+      Toast.show({ type: "error", text1: "Upload failed" });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -297,9 +345,16 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.headerMain}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarTxt}>{initials || "U"}</Text>
-          </View>
+          <TouchableOpacity style={styles.avatarCircle} onPress={handleUploadPhoto}>
+            {profile?.photoUrl ? (
+              <Image source={{ uri: profile.photoUrl }} style={styles.avatarImg} />
+            ) : (
+              <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} style={styles.avatarImg} />
+            )}
+            <View style={styles.cameraBadge}>
+              <Ionicons name="camera" size={12} color="#fff" />
+            </View>
+          </TouchableOpacity>
           <View style={styles.headerInfo}>
             <Text style={styles.heroName}>{fullName}</Text>
             <TouchableOpacity onPress={() => switchLanguage(lang === "en" ? "ar" : "en")} style={styles.langBadge}>
@@ -311,7 +366,10 @@ export default function ProfileScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statNum}>
-              {appointments.filter(a => a.status?.toLowerCase() === "pending").length}
+              {appointments.filter(a => {
+                const s = a.status?.toLowerCase();
+                return s === "pending" || s === "confirmed";
+              }).length}
             </Text>
             <Text style={styles.statLbl}>Active Bookings</Text>
           </View>
@@ -376,7 +434,11 @@ export default function ProfileScreen() {
                 {followedDoctors.map(doc => (
                   <TouchableOpacity key={doc.id} style={styles.circleDoc} onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(doc.id) } })}>
                     <View style={styles.circleAvatar}>
-                      <Text style={styles.circleAvatarTxt}>{doc.name.charAt(0)}</Text>
+                      {doc.photoUrl ? (
+                        <Image source={{ uri: doc.photoUrl }} style={styles.avatarImg} />
+                      ) : (
+                        <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} style={styles.avatarImg} />
+                      )}
                     </View>
                     <Text style={styles.circleName} numberOfLines={1}>{doc.name.split(" ")[0]}</Text>
                   </TouchableOpacity>
@@ -397,6 +459,11 @@ export default function ProfileScreen() {
               <Text style={styles.secondaryBtnTxt}>Edit Profile Information</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 12, borderColor: '#64748B' }]} onPress={handleContactSupport}>
+              <Ionicons name="headset-outline" size={18} color="#64748B" />
+              <Text style={[styles.secondaryBtnTxt, { color: '#64748B' }]}>Contact Technical Support</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
               <Ionicons name="log-out-outline" size={18} color="#FF4444" />
               <Text style={styles.logoutBtnTxt}>Sign Out</Text>
@@ -408,31 +475,124 @@ export default function ProfileScreen() {
         {activeTab === "bookings" && (
           <View>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Upcoming Bookings</Text>
+              <Text style={styles.sectionTitle}>Active Bookings</Text>
             </View>
-            {appointments.filter(a => a.status !== "cancelled" && a.status !== "completed" && a.status !== "confirmed").length === 0 ? (
+            {appointments.filter(a => {
+              const status = String(a.status ?? "").toLowerCase();
+              return status === "pending" || status === "confirmed";
+            }).length === 0 ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyCircle}>
                   <Ionicons name="calendar-outline" size={40} color={COLORS.primary} />
                 </View>
                 <Text style={styles.emptyStateTitle}>No Active Bookings</Text>
-                <Text style={styles.emptyStateSub}>Pending booking requests will appear here.</Text>
+                <Text style={styles.emptyStateSub}>Pending and confirmed bookings will appear here.</Text>
                 <TouchableOpacity style={styles.primaryBtnSmall} onPress={() => router.push("/(patient)/doctors")}>
                   <Text style={styles.primaryBtnSmallTxt}>Book Now</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               appointments
-                .filter(a => a.status?.toLowerCase() === "pending")
+                .filter(a => {
+                  const status = String(a.status ?? "").toLowerCase();
+                  return status === "pending" || status === "confirmed";
+                })
                 .map(b => (
-                <View key={b.id} style={styles.bookingCard}>
+                  <TouchableOpacity 
+                    key={b.id} 
+                    style={styles.bookingCard}
+                    onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(b.doctorId) } })}
+                  >
+                    <View style={styles.bookingTop}>
+                      <View style={styles.docInfo}>
+                        <Text style={styles.bookingDocName}>{b.doctorName}</Text>
+                        <Text style={styles.bookingSpec}>{b.specialty}</Text>
+                      </View>
+                      <View style={[
+                        styles.statusBadge,
+                        String(b.status ?? "").toLowerCase() === "confirmed" && { backgroundColor: "#DCFCE7" }
+                      ]}>
+                        <Text style={[
+                          styles.statusTxt,
+                          String(b.status ?? "").toLowerCase() === "confirmed" && { color: "#166534" }
+                        ]}>{b.status}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.bookingMeta}>
+                      <View style={styles.metaIcon}>
+                        <Ionicons name="calendar-outline" size={12} color="#64748B" />
+                        <Text style={styles.metaTxt}>{b.date}</Text>
+                      </View>
+                      <View style={styles.metaIcon}>
+                        <Ionicons name="time-outline" size={12} color="#64748B" />
+                        <Text style={styles.metaTxt}>{b.time}</Text>
+                      </View>
+                    </View>
+                    {(String(b.status ?? "").toLowerCase() === "pending" || String(b.status ?? "").toLowerCase() === "confirmed") && (
+                      <TouchableOpacity 
+                        style={styles.cancelBookBtn} 
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          cancelBooking(b.id);
+                        }}
+                      >
+                        <Text style={styles.cancelBookBtnTxt}>Cancel Request</Text>
+                      </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+              ))
+            )}
+          </View>
+        )}
+
+        {/* Scan placeholder - simplified version in overwrite */}
+        {activeTab === "scan" && (
+          <View style={styles.emptyState}>
+            <Ionicons name="scan" size={50} color={COLORS.primary} />
+            <Text style={styles.emptyStateTitle}>Features coming soon</Text>
+          </View>
+        )}
+
+        {/* History Tab */}
+        {activeTab === "history" && (
+          <View>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Booking History</Text>
+            </View>
+            {appointments.filter(a => {
+              const status = String(a.status ?? "").toLowerCase();
+              return status === "completed" || status === "cancelled";
+            }).length === 0 ? (
+              <View style={styles.emptyState}>
+                <View style={styles.emptyCircle}>
+                  <Ionicons name="time-outline" size={40} color={COLORS.primary} />
+                </View>
+                <Text style={styles.emptyStateTitle}>No History Found</Text>
+                <Text style={styles.emptyStateSub}>Your completed and cancelled bookings will appear here.</Text>
+              </View>
+            ) : (
+              appointments
+                .filter(a => {
+                  const status = String(a.status ?? "").toLowerCase();
+                  return status === "completed" || status === "cancelled";
+                })
+                .map(b => (
+                <View key={b.id} style={[styles.bookingCard, { opacity: 0.8 }]}>
                   <View style={styles.bookingTop}>
                     <View style={styles.docInfo}>
                       <Text style={styles.bookingDocName}>{b.doctorName}</Text>
                       <Text style={styles.bookingSpec}>{b.specialty}</Text>
                     </View>
-                    <View style={styles.statusBadge}>
-                      <Text style={styles.statusTxt}>{b.status}</Text>
+                    <View style={[
+                      styles.statusBadge,
+                      String(b.status ?? "").toLowerCase() === "completed" && { backgroundColor: "#DCFCE7" },
+                      String(b.status ?? "").toLowerCase() === "cancelled" && { backgroundColor: "#FEE2E2" }
+                    ]}>
+                      <Text style={[
+                        styles.statusTxt,
+                        String(b.status ?? "").toLowerCase() === "completed" && { color: "#166534" },
+                        String(b.status ?? "").toLowerCase() === "cancelled" && { color: "#991B1B" }
+                      ]}>{b.status}</Text>
                     </View>
                   </View>
                   <View style={styles.bookingMeta}>
@@ -445,22 +605,26 @@ export default function ProfileScreen() {
                       <Text style={styles.metaTxt}>{b.time}</Text>
                     </View>
                   </View>
-                  {b.status === "pending" && (
-                    <TouchableOpacity style={styles.cancelBookBtn} onPress={() => cancelBooking(b.id)}>
-                      <Text style={styles.cancelBookBtnTxt}>Cancel Request</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               ))
             )}
-          </View>
-        )}
-
-        {/* Scan & History placeholders - simplified version in overwrite */}
-        {(activeTab === "scan" || activeTab === "history") && (
-          <View style={styles.emptyState}>
-            <Ionicons name={activeTab === "scan" ? "scan" : "document-text"} size={50} color={COLORS.primary} />
-            <Text style={styles.emptyStateTitle}>Features coming soon</Text>
+            
+            {/* Displaying Medical History Items */}
+            <View style={[styles.sectionHeader, { marginTop: 20 }]}>
+              <Text style={styles.sectionTitle}>Medical Records</Text>
+            </View>
+            {history.chronicDiseases.length === 0 && history.surgeries.length === 0 ? (
+                <Text style={styles.emptyStateSub}>No medical records added yet.</Text>
+            ) : (
+                <>
+                  {history.chronicDiseases.map((d, i) => (
+                      <Text key={`chronic-${i}`} style={{ color: "#475569", marginBottom: 4 }}>• {d}</Text>
+                  ))}
+                  {history.surgeries.map((s, i) => (
+                      <Text key={`surg-${i}`} style={{ color: "#475569", marginBottom: 4 }}>• {s} (Surgery)</Text>
+                  ))}
+                </>
+            )}
           </View>
         )}
       </ScrollView>
@@ -530,7 +694,9 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20 },
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#fff" },
   headerMain: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 },
-  avatarCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#fff" },
+  avatarCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#fff", position: "relative", overflow: "visible" },
+  avatarImg: { width: "100%", height: "100%", borderRadius: 32 },
+  cameraBadge: { position: "absolute", bottom: -2, right: -2, backgroundColor: COLORS.primary, width: 22, height: 22, borderRadius: 11, justifyContent: "center", alignItems: "center", borderWidth: 1.5, borderColor: "#fff" },
   avatarTxt: { fontSize: 24, fontWeight: "800", color: "#fff" },
   headerInfo: { marginLeft: 15 },
   heroName: { fontSize: 22, fontWeight: "800", color: "#fff" },

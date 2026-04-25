@@ -100,16 +100,33 @@ export const addReview = async (
 export const updateMyReview = async (
   doctorId: number,
   rating: number,
-  comment: string
+  comment: string,
+  reviewId?: number | string
 ): Promise<Review> => {
-  const data = await apiFetch<any>(
-    API.reviews.updateMine(doctorId),
-    {
-      method: "PUT",
-      body: JSON.stringify({ rating, comment }),
-    },
-    true
-  );
+  let data: any;
+  try {
+    data = await apiFetch<any>(
+      API.reviews.updateMine(doctorId),
+      {
+        method: "PUT",
+        body: JSON.stringify({ rating, comment }),
+      },
+      true
+    );
+  } catch (error: any) {
+    if (error?.status === 404 && reviewId != null) {
+      data = await apiFetch<any>(
+        API.reviews.updateById(reviewId),
+        {
+          method: "PUT",
+          body: JSON.stringify({ rating, comment }),
+        },
+        true
+      );
+    } else {
+      throw error;
+    }
+  }
 
   return {
     id: data?.id ?? "",
@@ -120,12 +137,27 @@ export const updateMyReview = async (
   };
 };
 
-export const deleteMyReview = async (doctorId: number): Promise<void> => {
-  await apiFetch<unknown>(
-    API.reviews.deleteMine(doctorId),
-    { method: "DELETE" },
-    true
-  );
+export const deleteMyReview = async (
+  doctorId: number,
+  reviewId?: number | string
+): Promise<void> => {
+  try {
+    await apiFetch<unknown>(
+      API.reviews.deleteMine(doctorId),
+      { method: "DELETE" },
+      true
+    );
+  } catch (error: any) {
+    if (error?.status === 404 && reviewId != null) {
+      await apiFetch<unknown>(
+        API.reviews.deleteById(reviewId),
+        { method: "DELETE" },
+        true
+      );
+      return;
+    }
+    throw error;
+  }
 };
 
 export type DoctorProfileDto = {
@@ -168,4 +200,19 @@ export const updateDoctorProfile = async (data: Partial<DoctorProfileDto>): Prom
       isAvailable: data.isAvailable
     })
   }, true);
+};
+export const uploadDoctorPhoto = async (uri: string): Promise<string> => {
+  const formData = new FormData();
+  const filename = uri.split("/").pop() || "photo.jpg";
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : `image`;
+
+  formData.append("file", { uri, name: filename, type } as any);
+
+  const res = await apiFetch<any>(`${API.doctors.profile}/photo`, {
+    method: "POST",
+    body: formData,
+  }, true);
+  
+  return res.photoUrl || res.imageUrl;
 };

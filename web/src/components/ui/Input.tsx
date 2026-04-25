@@ -13,10 +13,10 @@ export const Input = ({ className = '', error, icon, ...props }: InputProps) => 
       </div>
     )}
     <input
-      className={`w-full ${icon ? 'pr-10' : 'pr-4'} pl-4 py-3 text-sm border rounded-2xl focus:outline-none focus:ring-4 transition-all duration-200 ${
+      className={`w-full ${icon ? 'pr-10' : 'pr-4'} pl-4 py-3 text-sm border rounded-2xl focus:outline-none focus:ring-4 transition-all duration-200 text-gray-900 placeholder-gray-400 ${
         error 
-          ? 'border-red-300 bg-red-50/50 focus:ring-red-200 focus:border-red-400' 
-          : 'border-gray-200 bg-white/50 focus:ring-blue-200 focus:border-blue-400 hover:border-gray-300'
+          ? 'border-red-300 bg-red-50 focus:ring-red-200 focus:border-red-400' 
+          : 'border-gray-200 bg-white focus:ring-blue-200 focus:border-blue-400 hover:border-gray-300 shadow-sm'
       } ${className}`}
       {...props}
     />

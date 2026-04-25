@@ -61,11 +61,14 @@ export const API = {
     add:         `${BASE_URL}/api/reviews`,
     updateMine:  (doctorId: number | string) => `${BASE_URL}/api/reviews/${doctorId}/mine`,
     deleteMine:  (doctorId: number | string) => `${BASE_URL}/api/reviews/${doctorId}/mine`,
+    updateById:  (reviewId: number | string) => `${BASE_URL}/api/reviews/${reviewId}`,
+    deleteById:  (reviewId: number | string) => `${BASE_URL}/api/reviews/${reviewId}`,
   },
 
   // Profile
   profile: {
     get:    `${BASE_URL}/api/profile/me`,
     update: `${BASE_URL}/api/profile/me`,
+    photo:  `${BASE_URL}/api/profile/photo`,
   },
 };

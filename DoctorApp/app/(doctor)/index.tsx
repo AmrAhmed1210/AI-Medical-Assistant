@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Image } from "react-native";
 import { Users, CalendarDays, Clock, TrendingUp } from "lucide-react-native";
 import { useFocusEffect } from "expo-router";
 import { COLORS } from "../../constants/colors";
@@ -78,7 +78,11 @@ export default function DoctorDashboard() {
             <Text style={styles.specialtyText}>{specialty}</Text>
           </View>
           <TouchableOpacity style={styles.profileBadge}>
-            <Text style={styles.avatarText}>{initials}</Text>
+            {profile?.photoUrl ? (
+              <Image source={{ uri: profile.photoUrl }} style={styles.avatarImg} />
+            ) : (
+              <Text style={styles.avatarText}>{initials}</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -185,6 +189,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#EEE",
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
+  },
+  avatarImg: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 25,
   },
   avatarText: {
     fontWeight: "bold",

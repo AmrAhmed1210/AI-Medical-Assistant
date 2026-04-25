@@ -121,5 +121,10 @@ namespace MedicalAssistant.Persistance.Repositories
         {
             return await _dbSet.CountAsync(predicate);
         }
+
+        public IQueryable<T> Query()
+        {
+            return _dbSet.AsQueryable();
+        }
     }
 }

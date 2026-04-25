@@ -8,6 +8,8 @@ namespace MedicalAssistant.Persistance.Data.Configurations
     {
         public void Configure(EntityTypeBuilder<Message> builder)
         {
+            builder.ToTable("Message");
+
             builder.HasKey(m => m.Id);
 
             builder.Property(m => m.SessionId).IsRequired();
@@ -24,6 +26,11 @@ namespace MedicalAssistant.Persistance.Data.Configurations
             builder.Property(m => m.Content)
                    .IsRequired()
                    .HasColumnType("text");
+
+            builder.Property(m => m.SenderName)
+                   .IsRequired()
+                   .HasMaxLength(200)
+                   .HasDefaultValue(string.Empty);
 
             builder.Property(m => m.Timestamp)
                    .IsRequired()

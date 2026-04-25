@@ -8,12 +8,15 @@ import { ROUTES } from '@/constants/config'
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
+const ApplyPage = lazy(() => import('@/pages/auth/ApplyPage'))
 
 // Admin
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'))
 const AdminUsers = lazy(() => import('@/pages/admin/UsersPage'))
 const AdminStatistics = lazy(() => import('@/pages/admin/StatisticsPage'))
 const AdminModels = lazy(() => import('@/pages/admin/ModelManagementPage'))
+const AdminApplications = lazy(() => import('@/pages/admin/ApplicationsPage'))
+const AdminSupport = lazy(() => import('@/pages/admin/SupportPage'))
 
 // Doctor
 const DoctorDashboard = lazy(() => import('@/pages/doctor/DoctorDashboard'))
@@ -32,6 +35,9 @@ const DoctorDetails = lazy(() => import('@/pages/doctor/DoctorDetails'))
 // Auth Guard
 function AuthGuard() {
   const { isAuthenticated } = useAuthStore()
+  const isHydrated = useAuthStore.persist.hasHydrated()
+
+  if (!isHydrated) return <FullPageLoader />
   if (!isAuthenticated) return <Navigate to={ROUTES.LOGIN} replace />
   return <Outlet />
 }
@@ -39,6 +45,9 @@ function AuthGuard() {
 // Role Guard
 function RoleGuard({ roles }: { roles: string[] }) {
   const { role } = useAuthStore()
+  const isHydrated = useAuthStore.persist.hasHydrated()
+
+  if (!isHydrated) return <FullPageLoader />
   if (!role || !roles.includes(role)) return <Navigate to={ROUTES.LOGIN} replace />
   return <Outlet />
 }
@@ -46,6 +55,9 @@ function RoleGuard({ roles }: { roles: string[] }) {
 // Public-only Guard (redirect if already logged in)
 function PublicGuard() {
   const { isAuthenticated, role } = useAuthStore()
+  const isHydrated = useAuthStore.persist.hasHydrated()
+
+  if (!isHydrated) return <FullPageLoader />
   if (isAuthenticated) {
     if (role === 'Admin') return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
     if (role === 'Doctor') return <Navigate to={ROUTES.DOCTOR_DASHBOARD} replace />
@@ -73,6 +85,7 @@ export default function App() {
           {/* Public routes */}
           <Route element={<PublicGuard />}>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/apply" element={<ApplyPage />} />
             <Route path="/doctors" element={<DoctorsList />} />
             <Route path="/doctor/:id" element={<DoctorDetails />} />
           </Route>
@@ -87,6 +100,8 @@ export default function App() {
                 <Route path="/admin/users" element={<AdminUsers />} />
                 <Route path="/admin/statistics" element={<AdminStatistics />} />
                 <Route path="/admin/models" element={<AdminModels />} />
+                <Route path="/admin/applications" element={<AdminApplications />} />
+                <Route path="/admin/support" element={<AdminSupport />} />
               </Route>
 
               {/* Doctor routes */}
@@ -114,6 +129,9 @@ export default function App() {
 
 function RootRedirect() {
   const { isAuthenticated, role } = useAuthStore()
+  const isHydrated = useAuthStore.persist.hasHydrated()
+
+  if (!isHydrated) return <FullPageLoader />
   if (!isAuthenticated) return <Navigate to={ROUTES.LOGIN} replace />
   if (role === 'Admin') return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
   if (role === 'Doctor') return <Navigate to={ROUTES.DOCTOR_DASHBOARD} replace />

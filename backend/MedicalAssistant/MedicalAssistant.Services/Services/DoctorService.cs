@@ -24,6 +24,7 @@ public class DoctorService : IDoctorService
 
     public async Task<IReadOnlyList<DoctorDTO>> GetAllDoctorsAsync()
     {
+        await EnsureDoctorProfilesForActiveUsersAsync();
         var doctors = (await _unitOfWork.Repository<Doctor>().GetAllAsync(d => d.Specialty, d => d.User!)).ToList();
         var filteredDoctors = FilterActiveDoctors(doctors);
         return await MapDoctorsAsync(filteredDoctors);
@@ -59,6 +60,7 @@ public class DoctorService : IDoctorService
 
     public async Task<IReadOnlyList<DoctorDTO>> GetDoctorsBySpecialtyAsync(int specialtyId)
     {
+        await EnsureDoctorProfilesForActiveUsersAsync();
         var doctors = (await _unitOfWork.Doctors.GetBySpecialtyAsync(specialtyId)).ToList();
         var users = (await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.UserModule.User>()
             .FindAsync(u => doctors.Where(d => d.UserId.HasValue).Select(d => d.UserId!.Value).Contains(u.Id)))
@@ -151,8 +153,10 @@ public class DoctorService : IDoctorService
         var pendingAppointments = appointments.Count(a => string.Equals(a.Status, "Pending", StringComparison.OrdinalIgnoreCase));
         var totalPatients = appointments.Select(a => a.PatientId).Distinct().Count();
 
+        var doctorPatientIds = appointments.Select(a => a.PatientId).Distinct().ToList();
+
         var sessions = (await _unitOfWork.Repository<Session>().GetAllAsync())
-            .Where(s => s.CreatedAt.Date >= weekStart)
+            .Where(s => s.CreatedAt.Date >= weekStart && doctorPatientIds.Contains(s.UserId))
             .GroupBy(s => s.CreatedAt.DayOfWeek)
             .ToDictionary(g => g.Key, g => g.Count());
 
@@ -289,7 +293,8 @@ public class DoctorService : IDoctorService
                 BloodType = patient.BloodType,
                 Allergies = patient.MedicalNotes,
                 TotalAppointments = patientAppointments.Count,
-                LastVisit = patientAppointments.OrderByDescending(a => a.CreatedAt).FirstOrDefault()?.CreatedAt.ToString("O")
+                LastVisit = patientAppointments.OrderByDescending(a => a.CreatedAt).FirstOrDefault()?.CreatedAt.ToString("O"),
+                PhotoUrl = patient.ImageUrl
             };
         });
 
@@ -479,8 +484,30 @@ public class DoctorService : IDoctorService
             return;
         }
 
-        doctor.IsScheduleVisible = isVisible;
         await _unitOfWork.SaveChangesAsync();
+    }
+
+    public async Task ClearAppointmentHistoryAsync(int doctorUserId)
+    {
+        var doctor = await GetDoctorByUserIdAsync(doctorUserId);
+        if (doctor is null) return;
+
+        var appointments = (await _unitOfWork.Repository<Appointment>()
+            .FindAsync(a => a.DoctorId == doctor.Id))
+            .ToList();
+
+        var today = DateTime.UtcNow.Date;
+        var history = appointments.Where(a => 
+        {
+            var parsedDate = ParseAppointmentDateTime(a.Date, a.Time);
+            return parsedDate.HasValue && parsedDate.Value.Date < today;
+        }).ToList();
+
+        if (history.Count > 0)
+        {
+            _unitOfWork.Repository<Appointment>().DeleteRange(history);
+            await _unitOfWork.SaveChangesAsync();
+        }
     }
 
     public async Task<bool> SelfDeactivateAsync(int doctorUserId)
@@ -726,6 +753,73 @@ public class DoctorService : IDoctorService
         return doctors.FirstOrDefault();
     }
 
+    private async Task EnsureDoctorProfilesForActiveUsersAsync()
+    {
+        var userRepo = _unitOfWork.Repository<MedicalAssistant.Domain.Entities.UserModule.User>();
+        var doctorRepo = _unitOfWork.Repository<Doctor>();
+        var specialtyRepo = _unitOfWork.Repository<Specialty>();
+
+        var doctorUsers = (await userRepo.FindAsync(
+            u => !u.IsDeleted && u.IsActive && u.Role == "Doctor"))
+            .ToList();
+
+        if (doctorUsers.Count == 0)
+        {
+            return;
+        }
+
+        var existingDoctors = (await doctorRepo.GetAllAsync()).ToList();
+        var existingUserIds = new HashSet<int>(
+            existingDoctors
+                .Where(d => d.UserId.HasValue)
+                .Select(d => d.UserId!.Value));
+
+        var missingUsers = doctorUsers
+            .Where(u => !existingUserIds.Contains(u.Id))
+            .ToList();
+
+        if (missingUsers.Count == 0)
+        {
+            return;
+        }
+
+        var specialties = (await specialtyRepo.GetAllAsync()).ToList();
+        var fallbackSpecialty = specialties.FirstOrDefault(s =>
+            s.Name == "General Practice")
+            ?? specialties.FirstOrDefault();
+
+        if (fallbackSpecialty == null)
+        {
+            fallbackSpecialty = new Specialty
+            {
+                Name = "General Practice",
+                NameAr = "General Practice"
+            };
+            await specialtyRepo.AddAsync(fallbackSpecialty);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+        foreach (var user in missingUsers)
+        {
+            await doctorRepo.AddAsync(new Doctor
+            {
+                Name = user.FullName,
+                SpecialtyId = fallbackSpecialty.Id,
+                UserId = user.Id,
+                Location = string.Empty,
+                Experience = 0,
+                ConsultationFee = 0,
+                Bio = string.Empty,
+                IsAvailable = true,
+                IsScheduleVisible = true,
+                Rating = 0,
+                ReviewCount = 0
+            });
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+    }
+
     private static DateTime? ParseAppointmentDateTime(string date, string time)
     {
         // Try various common formats
@@ -765,5 +859,78 @@ public class DoctorService : IDoctorService
             IsFreeRebook = isFreeRebook,
             CanRebook = string.Equals(appointment.Status, "Missed", StringComparison.OrdinalIgnoreCase)
         };
+    }
+
+    public async Task ApplyForDoctorAccountAsync(ApplyDoctorRequest request)
+    {
+        try
+        {
+            // Check for duplicate by email
+            var existing = (await _unitOfWork.Repository<DoctorApplication>()
+                .FindAsync(a => a.Email.ToLower() == request.Email.ToLower()))
+                .FirstOrDefault();
+
+            if (existing != null)
+                throw new InvalidOperationException("An application with this email already exists.");
+
+            var app = new DoctorApplication
+            {
+                Name = request.Name,
+                Email = request.Email,
+                Phone = request.Phone,
+                SpecialtyId = request.SpecialtyId,
+                Experience = request.Experience,
+                Bio = request.Bio,
+                LicenseNumber = request.LicenseNumber,
+                Message = request.Message,
+                DocumentUrl = request.DocumentUrl,
+                PhotoUrl = request.PhotoUrl,
+                Status = "Pending",
+                SubmittedAt = DateTime.UtcNow
+            };
+            
+            await _unitOfWork.Repository<DoctorApplication>().AddAsync(app);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Notify all admins via SignalR
+            try 
+            {
+                await _notificationService.NotifyNewDoctorApplication(app.Name, app.Email);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ SignalR Notification failed: {ex.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ APPLICATION SUBMISSION FAILED: {ex.Message}");
+            if (ex.InnerException != null)
+                Console.WriteLine($"🔗 Inner Exception: {ex.InnerException.Message}");
+            throw;
+        }
+    }
+
+    public async Task UpdatePhotoAsync(int doctorUserId, string photoUrl)
+    {
+        var doctor = await GetDoctorByUserIdAsync(doctorUserId, includeUser: true);
+        if (doctor != null)
+        {
+            doctor.ImageUrl = photoUrl;
+            if (doctor.User != null) doctor.User.PhotoUrl = photoUrl;
+            _unitOfWork.Repository<Doctor>().Update(doctor);
+            await _unitOfWork.SaveChangesAsync();
+        }
+    }
+
+    public async Task UpdateApplicationDocumentAsync(int applicationId, string documentUrl)
+    {
+        var app = await _unitOfWork.Repository<DoctorApplication>().GetByIdAsync(applicationId);
+        if (app != null)
+        {
+            app.DocumentUrl = documentUrl;
+            _unitOfWork.Repository<DoctorApplication>().Update(app);
+            await _unitOfWork.SaveChangesAsync();
+        }
     }
 }

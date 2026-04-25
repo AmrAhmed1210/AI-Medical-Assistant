@@ -184,6 +184,8 @@ export const saveSession = async (auth: AuthResponse) => {
       ["userEmail",  auth.email],
       ["userPhone",  auth.phone || ""],
       ["userRole",   auth.role || "Patient"],
+      ["userId",     String(auth.id || 0)],
+      ["patientId",  String(auth.id || 0)],
       ["isLoggedIn", "true"],
       ["user", JSON.stringify({
         id:    auth.id || 0,
@@ -218,5 +220,6 @@ export const logout = async () => {
   await AsyncStorage.multiRemove([
     "token", "userToken", "userName", "userEmail",
     "userPhone", "userRole", "isLoggedIn", "user",
+    "userId", "patientId",
   ]);
 };

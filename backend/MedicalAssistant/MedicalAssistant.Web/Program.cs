@@ -6,7 +6,9 @@ using MedicalAssistant.Presentation.Hubs;
 using MedicalAssistant.Services.MappingProfiles;
 using MedicalAssistant.Services.Services;
 using MedicalAssistant.Services_Abstraction.Contracts;
+using MedicalAssistant.Shared.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
@@ -22,6 +24,18 @@ public class Program
 
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
+
+        // ── Allow large file uploads (up to 50 MB) ────────────────────────────
+        builder.Services.Configure<FormOptions>(options =>
+        {
+            options.MultipartBodyLengthLimit = 52428800; // 50 MB
+            options.ValueLengthLimit = int.MaxValue;
+            options.MultipartHeadersLengthLimit = int.MaxValue;
+        });
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.Limits.MaxRequestBodySize = 52428800; // 50 MB
+        });
         builder.Services.AddSwaggerGen(c =>
         {
             c.CustomSchemaIds(type => type.FullName);
@@ -120,9 +134,15 @@ public class Program
         builder.Services.AddScoped<IAppointmentService, AppointmentService>();
         builder.Services.AddScoped<IDoctorService, DoctorService>();
         builder.Services.AddScoped<IReviewService, ReviewService>();
+        builder.Services.AddScoped<ISessionService, SessionService>();
+        builder.Services.AddScoped<IMessageService, MessageService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<IAdminService, AdminService>();
         builder.Services.AddScoped<INotificationService, NotificationService>();
+        builder.Services.AddScoped<IPhotoService, PhotoService>();
+
+        // ── Cloudinary ────────────────────────────────────────────────────────
+        builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
 
         builder.Services.AddAutoMapper(cfg =>
         {
@@ -134,9 +154,14 @@ public class Program
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", policy =>
-                policy.AllowAnyOrigin()
+                policy.WithOrigins(
+                          "http://localhost:3000",
+                          "http://127.0.0.1:3000",
+                          "http://localhost:5173",
+                          "http://127.0.0.1:5173")
                       .AllowAnyMethod()
-                      .AllowAnyHeader());
+                      .AllowAnyHeader()
+                      .AllowCredentials());
         });
 
         var app = builder.Build();
@@ -155,7 +180,7 @@ public class Program
             catch (Exception ex)
             {
                 logger.LogError(ex, "❌ An error occurred while migrating the database.");
-                throw; // Stop startup if migrations fail — tables won't exist
+                // Note: On some local setups we might want to continue even if migration fails if we already have the DB
             }
         }
 
@@ -165,15 +190,16 @@ public class Program
             try
             {
                 var context = scope.ServiceProvider.GetRequiredService<MedicalAssistantDbContext>();
-                var adminEmail = "hassanmohamed5065@gmail.com";
-                var adminExists = await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()
-                    .AnyAsync(u => u.Email == adminEmail);
+                var adminEmail = "admin@medbook.com";
+                
+                var admin = await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()
+                    .FirstOrDefaultAsync(u => u.Email == adminEmail);
 
-                if (!adminExists)
+                if (admin == null)
                 {
-                    var admin = new MedicalAssistant.Domain.Entities.UserModule.User
+                    admin = new MedicalAssistant.Domain.Entities.UserModule.User
                     {
-                        FullName = "Hassan Mohamed",
+                        FullName = "Admin",
                         Email = adminEmail,
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456789"),
                         Role = "Admin",
@@ -182,7 +208,38 @@ public class Program
                     };
                     await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().AddAsync(admin);
                     await context.SaveChangesAsync();
-                    Console.WriteLine("✅ Admin user seeded.");
+                    Console.WriteLine("Created Admin User: " + adminEmail);
+                }
+                else
+                {
+                    // Ensure existing admin is active and has correct role
+                    admin.IsActive = true;
+                    admin.IsDeleted = false;
+                    admin.Role = "Admin";
+                    // Reset password to default if needed (optional, but good for rescue)
+                    admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456789");
+                    context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().Update(admin);
+                    await context.SaveChangesAsync();
+                    Console.WriteLine("Verified/Updated Admin User: " + adminEmail);
+                }
+                // ── Seeding Specialties ───────────────────────────────────────────
+                var specialties = await context.Set<MedicalAssistant.Domain.Entities.DoctorsModule.Specialty>().ToListAsync();
+                if (!specialties.Any())
+                {
+                    var initialSpecialties = new List<MedicalAssistant.Domain.Entities.DoctorsModule.Specialty>
+                    {
+                        new() { Name = "General Practice", NameAr = "طب عام" },
+                        new() { Name = "Cardiology", NameAr = "أمراض القلب" },
+                        new() { Name = "Dermatology", NameAr = "الأمراض الجلدية" },
+                        new() { Name = "Neurology", NameAr = "أمراض المخ والأعصاب" },
+                        new() { Name = "Orthopedics", NameAr = "جراحة العظام" },
+                        new() { Name = "Pediatrics", NameAr = "طب الأطفال" },
+                        new() { Name = "Psychiatry", NameAr = "الطب النفسي" },
+                        new() { Name = "Surgery", NameAr = "الجراحة العامة" }
+                    };
+                    await context.Set<MedicalAssistant.Domain.Entities.DoctorsModule.Specialty>().AddRangeAsync(initialSpecialties);
+                    await context.SaveChangesAsync();
+                    Console.WriteLine("Seeded initial specialties.");
                 }
             }
             catch (Exception ex)
@@ -198,6 +255,9 @@ public class Program
             c.RoutePrefix = "swagger"; 
         });
 
+        // NOTE: HttpsRedirection is disabled because the server runs on plain HTTP (http://0.0.0.0:5194)
+        // app.UseHttpsRedirection();
+        
         app.UseCors("AllowAll");
         app.UseAuthentication();
         app.UseAuthorization();

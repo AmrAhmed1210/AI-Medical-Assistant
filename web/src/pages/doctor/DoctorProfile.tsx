@@ -11,7 +11,7 @@ import type { ReviewDto } from '@/lib/types'
 import toast from 'react-hot-toast'
 
 export default function DoctorProfile() {
-  const { profile, isLoading } = useDoctorProfile()
+  const { profile, isLoading, refresh } = useDoctorProfile()
   const { updateProfile } = useDoctorStore()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -76,6 +76,7 @@ export default function DoctorProfile() {
     setPhotoUploading(true)
     try {
       await doctorApi.uploadPhoto(file)
+      await refresh()
       toast.success('Photo uploaded successfully')
     } catch {
       toast.error('Failed to upload photo')

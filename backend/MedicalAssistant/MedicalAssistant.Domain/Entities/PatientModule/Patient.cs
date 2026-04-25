@@ -1,4 +1,4 @@
-﻿namespace MedicalAssistant.Domain.Entities.PatientModule
+namespace MedicalAssistant.Domain.Entities.PatientModule
 {
     public class Patient : BaseEntity
     {
@@ -14,5 +14,7 @@
         public string? MedicalNotes { get; set; }
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
+        public int? UserId { get; set; }
+        public virtual MedicalAssistant.Domain.Entities.UserModule.User? User { get; set; }
     }
 }

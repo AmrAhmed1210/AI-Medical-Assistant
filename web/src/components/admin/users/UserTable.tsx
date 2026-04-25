@@ -9,7 +9,7 @@ import { formatDateTime } from '@/lib/utils'
 interface UserTableProps {
   users: UserDto[]
   onToggle: (id: number) => Promise<void>
-  onDelete: (id: number) => void
+  onDelete: (id: number, role: string) => void
 }
 
 export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
@@ -69,8 +69,12 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
                 <div className="flex items-center gap-4">
                   {/* Legendary Avatar */}
                   <div className="relative">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl font-black shadow-xl shadow-blue-500/30 group-hover:scale-110 transition-transform duration-500">
-                      {user.name.charAt(0)}
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl font-black shadow-xl shadow-blue-500/30 group-hover:scale-110 transition-transform duration-500 overflow-hidden">
+                      {user.photoUrl ? (
+                        <img src={user.photoUrl} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        user.name.charAt(0)
+                      )}
                     </div>
                     {user.isActive && <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-4 border-white shadow-lg" />}
                   </div>
@@ -120,7 +124,7 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
                   <motion.button
                     whileHover={{ scale: 1.12, rotate: -5 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => { if(confirm('Permanently wipe this entry?')) onDelete(user.id) }}
+                    onClick={() => { if(confirm('Permanently wipe this entry?')) onDelete(user.id, user.role) }}
                     className="p-3 rounded-2xl bg-white border border-rose-100 text-rose-500 hover:bg-rose-500 hover:text-white shadow-md hover:shadow-xl transition-all duration-500"
                   >
                     <Trash2 size={20} />

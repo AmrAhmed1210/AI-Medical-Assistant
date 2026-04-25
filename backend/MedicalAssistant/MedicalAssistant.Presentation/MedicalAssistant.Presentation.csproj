@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MedicalAssistant.Services Abstraction\MedicalAssistant.Services Abstraction.csproj" />
+    <ProjectReference Include="..\MedicalAssistant.Domain\MedicalAssistant.Domain.csproj" />
   </ItemGroup>
 
 </Project>

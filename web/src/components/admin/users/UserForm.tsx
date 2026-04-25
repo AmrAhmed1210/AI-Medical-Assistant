@@ -140,7 +140,7 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
                 value={form.bio}
                 onChange={(e) => onChange('bio', e.target.value)}
                 placeholder="اكتب نبذة مختصرة عن خبرة الطبيب وإنجازاته..."
-                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-2xl bg-white/50 focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-400 transition-all duration-200 resize-none"
+                className="w-full px-4 py-3 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-400 shadow-sm transition-all duration-200 resize-none"
               />
               {errors.bio && (
                 <p className="mt-1 text-sm text-red-500">{errors.bio}</p>

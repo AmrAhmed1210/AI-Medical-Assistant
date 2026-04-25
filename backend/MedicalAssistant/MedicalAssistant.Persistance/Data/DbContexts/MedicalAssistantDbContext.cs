@@ -38,6 +38,8 @@ namespace MedicalAssistant.Persistance.Data.DbContexts
         public DbSet<Review> Reviews { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<Session> Sessions { get; set; }
+        public DbSet<Message> Messages { get; set; }
         public DbSet<FollowedDoctor> FollowedDoctors { get; set; }
+        public DbSet<DoctorApplication> DoctorApplications { get; set; }
     }
 }

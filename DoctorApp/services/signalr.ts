@@ -97,6 +97,16 @@ export function onNotificationReceived(callback: (data: any) => void) {
   return () => connection?.off('NotificationReceived', callback)
 }
 
+export function onNewMessage(callback: (data: any) => void) {
+  connection?.on('NewMessage', callback)
+  return () => connection?.off('NewMessage', callback)
+}
+
+export function onNewConsultation(callback: (data: any) => void) {
+  connection?.on('NewConsultation', callback)
+  return () => connection?.off('NewConsultation', callback)
+}
+
 export async function subscribeToDoctorSchedule(doctorId: number) {
   let conn =
     connection?.state === signalR.HubConnectionState.Connected

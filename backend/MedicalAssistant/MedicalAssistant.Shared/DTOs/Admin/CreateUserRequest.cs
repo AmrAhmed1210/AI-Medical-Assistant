@@ -12,4 +12,5 @@ public class CreateUserRequest
     public int? YearsExperience { get; set; }
     public decimal? ConsultationFee { get; set; }
     public string? Bio { get; set; }
+    public string? PhotoUrl { get; set; }
 }

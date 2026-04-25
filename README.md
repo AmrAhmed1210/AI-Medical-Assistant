@@ -68,3 +68,6 @@ Together, these components create an ecosystem that streamlines documentation, i
 
 _Last updated: March 4, 2026_
 
+# Admin Credentials:
+- Email: [admin@medbook.com]
+- Password: [123456789]

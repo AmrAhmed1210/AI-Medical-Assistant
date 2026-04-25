@@ -12,4 +12,5 @@ public class PatientSummaryDto
     public string? Allergies { get; set; }
     public int TotalAppointments { get; set; }
     public string? LastVisit { get; set; }
+    public string? PhotoUrl { get; set; }
 }

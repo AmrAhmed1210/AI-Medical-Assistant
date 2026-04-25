@@ -13,6 +13,7 @@ public class User : BaseEntity
     public string Role { get; set; } = string.Empty; // Patient | Doctor | Admin [cite: 79]
     public string? PhoneNumber { get; set; } // [cite: 79]
     public DateTime? BirthDate { get; set; } // Birthdate for patients
+    public string? PhotoUrl { get; set; }
     public bool IsActive { get; set; } = true; // [cite: 79]
     public bool IsDeleted { get; set; } = false; // 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // 

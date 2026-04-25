@@ -57,6 +57,7 @@ export default function DoctorsScreen() {
             return {
               ...doctor,
               bio: details.bio ?? "",
+              imageUrl: (details as any).imageUrl ?? (details as any).photoUrl ?? doctor.imageUrl,
               photoUrl: (details as any).photoUrl ?? null,
               rating: Number.isFinite(avgRating) ? Number(avgRating.toFixed(1)) : 0,
               reviewCount: reviews.length > 0 ? reviews.length : Number((details as any).reviewCount ?? doctor.reviewCount ?? 0),

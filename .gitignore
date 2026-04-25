@@ -15,3 +15,12 @@ node_modules/
 .env
 trocr_model/
 *.zip
+
+#cursor
+.cursor
+
+#dotnet
+.dotnet
+
+#expo
+.expo_home

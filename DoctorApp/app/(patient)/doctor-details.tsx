@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView,
-  Platform,
+  Platform, Image
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +14,9 @@ import { BASE_URL } from "../../constants/api";
 import { onScheduleReady, onScheduleUpdated, startSignalRConnection, subscribeToDoctorSchedule } from "../../services/signalr";
 import RatingStars from "../../components/RatingStars";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { addNotification } from "../../services/notificationService";
+
+import { checkIfFollowed, setFollowed, toggleFollowed, checkIfSubscribed, setSubscribed } from "../../services/followService";
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -190,7 +193,18 @@ const getTimeSlotsForDay = (date: string, availability: any[], bookedSlots: any[
       .map((slot: unknown) => toDisplaySlot(slot))
       .filter((slot: string) => {
         if (!slot) return false
-        return !isBookedForDateTime(slot)
+        if (isBookedForDateTime(slot)) return false
+
+        // Check if slot is in the past (today only)
+        const isToday = date === toLocalIsoDate(new Date())
+        if (isToday) {
+          const slotMins = parseTimeToMinutes(slot)
+          const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
+          if (slotMins != null && slotMins <= nowMins) {
+            return false
+          }
+        }
+        return true
       })
   }
 
@@ -209,7 +223,7 @@ const getTimeSlotsForDay = (date: string, availability: any[], bookedSlots: any[
 
   let currentMinutes = startMinutes
 
-  while (currentMinutes < endMinutes) {
+  while (currentMinutes <= endMinutes) {
     const h = Math.floor(currentMinutes / 60)
     const m = currentMinutes % 60
     const ampm = h >= 12 ? 'PM' : 'AM'
@@ -217,7 +231,11 @@ const getTimeSlotsForDay = (date: string, availability: any[], bookedSlots: any[
     const slotStr = `${h12.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`
 
     if (!isBookedForDateTime(slotStr)) {
-      slots.push(slotStr)
+      const isToday = date === toLocalIsoDate(new Date())
+      const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
+      if (!isToday || currentMinutes > nowMins) {
+        slots.push(slotStr)
+      }
     }
     currentMinutes += slotDuration
   }
@@ -352,6 +370,19 @@ export default function DoctorDetailsScreen() {
     fetchAll();
   }, [doctorId]);
 
+  useEffect(() => {
+    const id = Number(doctorId)
+    checkIfFollowed(id)
+      .then((followed) => {
+        setIsFollowed(followed)
+        setNotifyEnabled(followed)
+      })
+      .catch(() => {
+        setIsFollowed(false)
+        setNotifyEnabled(false)
+      })
+  }, [doctorId]);
+
   const fetchAll = async () => {
     try {
       setLoading(true);
@@ -366,8 +397,7 @@ export default function DoctorDetailsScreen() {
       setMyDisplayName((currentName ?? "").trim());
       await Promise.all([
         fetchAvailability(),
-        checkFollowStatus(),
-        checkNotifyStatus()
+        refreshFollowState()
       ]);
     } catch (e: any) {
       setError(e.message || "Failed to load");
@@ -376,67 +406,81 @@ export default function DoctorDetailsScreen() {
     }
   };
 
-  const checkFollowStatus = async () => {
-    try {
-      const stored = await AsyncStorage.getItem('followedDoctors')
-      const followed = stored ? JSON.parse(stored) : []
-      setIsFollowed(followed.includes(Number(doctorId)));
-    } catch { /* ignore */ }
-  };
+  const checkFollowStatus = async (targetDoctorId: number): Promise<boolean> => {
+    return await checkIfFollowed(targetDoctorId)
+  }
 
-  const toggleFollow = async () => {
-    setFollowing(true);
-    try {
-      const stored = await AsyncStorage.getItem('followedDoctors')
-      let followed = stored ? JSON.parse(stored) : []
-      if (followed.includes(Number(doctorId))) {
-        followed = followed.filter((id: number) => id !== Number(doctorId))
-      } else {
-        followed.push(Number(doctorId))
-      }
-      await AsyncStorage.setItem('followedDoctors', JSON.stringify(followed))
-      setIsFollowed(!isFollowed);
-    } catch {
-      Alert.alert("Error", "Failed to update followed list.");
-    } finally {
-      setFollowing(false);
+  const refreshFollowState = async () => {
+    const id = Number(doctorId)
+    if (!Number.isFinite(id) || id <= 0) {
+      setIsFollowed(false)
+      setNotifyEnabled(false)
+      return
     }
-  };
 
-  const checkNotifyStatus = async () => {
+    const [followed, subscribed] = await Promise.all([
+      checkIfFollowed(id),
+      checkIfSubscribed(id)
+    ])
+    setIsFollowed(followed)
+    setNotifyEnabled(followed || subscribed)
+  }
+
+  const toggleFollow = async (targetDoctorId: number) => {
+    if (!Number.isFinite(targetDoctorId) || targetDoctorId <= 0) return
+
+    setFollowing(true)
     try {
-      const subscribed = await AsyncStorage.getItem('subscribedDoctors')
-      const list = subscribed ? JSON.parse(subscribed) : []
-      setNotifyEnabled(list.includes(Number(doctorId)));
-    } catch { /* ignore */ }
-  };
+      const followed = await checkIfFollowed(targetDoctorId)
+      const next = !followed
+      await setFollowed(targetDoctorId, next)
+      setIsFollowed(next)
+      
+      // If we follow, we definitely want notifications. 
+      // If we unfollow, we only keep notifications if explicitly subscribed.
+      const subscribed = await checkIfSubscribed(targetDoctorId)
+      setNotifyEnabled(next || subscribed)
+
+      if (next) {
+        await startSignalRConnection()
+        await subscribeToDoctorSchedule(targetDoctorId)
+        Alert.alert("✅ Following!", "You will be notified of schedule changes.")
+      }
+    } catch {
+      Alert.alert("Error", "Failed to update followed list.")
+    } finally {
+      setFollowing(false)
+    }
+  }
 
   const handleNotifyMe = async () => {
-    try {
-      const subscribed = await AsyncStorage.getItem('subscribedDoctors')
-      let list = subscribed ? JSON.parse(subscribed) : []
+    const id = Number(doctorId)
+    if (!Number.isFinite(id) || id <= 0) return
 
-      if (!notifyEnabled) {
-        // Subscribe
+    try {
+      const currentlyEnabled = notifyEnabled
+      const next = !currentlyEnabled
+      
+      // If we are currently following, we can't really "disable" notifications 
+      // without unfollowing, unless the user wants to keep following but mute?
+      // But the requirement says "notify me should not follow".
+      // So if I'm not following, I can subscribe/unsubscribe.
+      
+      await setSubscribed(id, next)
+      setNotifyEnabled(next || isFollowed)
+
+      if (next) {
         await apiFetch(`${BASE_URL}/api/doctors/${doctorId}/notify-schedule`, { method: 'POST' }, true)
-        if (!list.includes(Number(doctorId))) {
-          list.push(Number(doctorId))
-          await AsyncStorage.setItem('subscribedDoctors', JSON.stringify(list))
-        }
         await startSignalRConnection()
-        await subscribeToDoctorSchedule(Number(doctorId))
-        setNotifyEnabled(true)
-        Alert.alert('🔔 Notification Set!', "We'll notify you when the schedule is ready.")
+        await subscribeToDoctorSchedule(id)
+        Alert.alert("🔔 Notifications On", "You will be notified when Dr. " + (doctor?.fullName || "the doctor") + " updates their schedule.")
       } else {
-        // Unsubscribe
-        list = list.filter((id: number) => id !== Number(doctorId))
-        await AsyncStorage.setItem('subscribedDoctors', JSON.stringify(list))
-        setNotifyEnabled(false)
+        Alert.alert("🔕 Notifications Off", "You will no longer receive schedule alerts unless you follow this doctor.")
       }
     } catch {
       Alert.alert('Error', 'Failed to update notification settings.')
     }
-  };
+  }
 
   const fetchAvailability = async () => {
     try {
@@ -463,7 +507,8 @@ export default function DoctorDetailsScreen() {
           const hasWindow =
             parseTimeToMinutes(a?.startTime ?? a?.StartTime) != null &&
             parseTimeToMinutes(a?.endTime ?? a?.EndTime) != null
-          return isDayEnabled(a) || (Array.isArray(daySlots) && daySlots.length > 0) || hasWindow
+          const dayEnabled = isDayEnabled(a)
+          return dayEnabled && ((Array.isArray(daySlots) && daySlots.length > 0) || hasWindow)
         })
         setHasSchedule(hasAny)
       } else {
@@ -494,10 +539,8 @@ export default function DoctorDetailsScreen() {
         const eventDoctorId = Number(payload?.doctorId ?? payload?.DoctorId)
         const eventDoctorName = String(payload?.doctorName ?? payload?.DoctorName ?? "Doctor")
         if (eventDoctorId === Number(doctorId)) {
-          // Only notify if subscribed to this specific doctor
-          const subscribed = await AsyncStorage.getItem('subscribedDoctors')
-          const list = subscribed ? JSON.parse(subscribed) : []
-          if (list.includes(eventDoctorId)) {
+          const followed = await checkFollowStatus(eventDoctorId)
+          if (followed) {
             fetchAvailability()
             Alert.alert(
               isUpdatedEvent ? "Schedule Updated" : "Schedule Ready",
@@ -518,10 +561,12 @@ export default function DoctorDetailsScreen() {
       })
 
       try {
-        const subscribed = await AsyncStorage.getItem('subscribedDoctors')
-        const list = subscribed ? JSON.parse(subscribed) : []
-        if (list.includes(Number(doctorId))) {
-          await subscribeToDoctorSchedule(Number(doctorId))
+        const id = Number(doctorId)
+        if (Number.isFinite(id) && id > 0) {
+          const followed = await checkFollowStatus(id)
+          if (followed) {
+            await subscribeToDoctorSchedule(id)
+          }
         }
       } catch {
         // ignore subscription issues
@@ -569,14 +614,34 @@ export default function DoctorDetailsScreen() {
     if (!doctor || !selectedTime || !selectedDayData) return;
     setBooking(true);
     try {
-      await bookAppointment({
+      const newAppointment = await bookAppointment({
         doctorId: doctor.id,
         date: selectedDayData.isoDate,
         time: selectedTime,
         paymentMethod: method as "visa" | "cash",
       });
+
+      await addNotification({
+        id: `booking_${newAppointment.id ?? Date.now()}`,
+        type: "confirmed",
+        title: "✅ Booking Received!",
+        message: `Your appointment request has been sent to Dr. ${doctor.name}. Waiting for doctor approval.`,
+        timestamp: Date.now(),
+        doctorId: doctor.id,
+        doctorName: doctor.name,
+        appointmentId: Number(newAppointment.id),
+        icon: "✅",
+      });
+
+      Alert.alert(
+        "✅ Request Sent!",
+        `Your appointment with Dr. ${doctor.name} is pending doctor approval. You will be notified when confirmed.`,
+        [{ text: "OK" }]
+      );
+
       setPayMethod(method);
       setShowSuccess(true);
+      await fetchAvailability();
     } catch (e: any) {
       Alert.alert("Booking Failed", e.message);
     } finally {
@@ -631,7 +696,7 @@ export default function DoctorDetailsScreen() {
 
     setSavingReview(true);
     try {
-      await updateMyReview(Number(doctorId), myRating, myComment.trim());
+      await updateMyReview(Number(doctorId), myRating, myComment.trim(), myExistingReview?.id);
       await fetchAll();
       setShowAddReview(false);
       Alert.alert("Updated", "Your review was updated successfully.");
@@ -645,7 +710,7 @@ export default function DoctorDetailsScreen() {
   const handleDeleteExistingReview = async () => {
     setSavingReview(true);
     try {
-      await deleteMyReview(Number(doctorId));
+      await deleteMyReview(Number(doctorId), myExistingReview?.id);
       await fetchAll();
       setMyRating(0);
       setMyComment("");
@@ -723,7 +788,11 @@ export default function DoctorDetailsScreen() {
           <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.headerBtn, { right: 16 }]} onPress={toggleFollow} disabled={following}>
+        <TouchableOpacity
+          style={[styles.headerBtn, { right: 16 }]}
+          onPress={() => toggleFollow(Number(doctorId))}
+          disabled={following}
+        >
           {following ? (
             <ActivityIndicator size="small" color={COLORS.primary} />
           ) : (
@@ -736,7 +805,11 @@ export default function DoctorDetailsScreen() {
         <View style={styles.profileCard}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarFallback}>
-              <Text style={styles.avatarTxt}>{doctor.name?.charAt(0)?.toUpperCase() ?? "D"}</Text>
+              {doctor.photoUrl || (doctor as any).imageUrl ? (
+                <Image source={{ uri: doctor.photoUrl || (doctor as any).imageUrl }} style={styles.avatarImg} />
+              ) : (
+                <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} style={styles.avatarImg} />
+              )}
             </View>
             <View style={[styles.onlineDot, { backgroundColor: doctor.isAvailable ? "#4CAF50" : "#CBD5E1" }]} />
           </View>
@@ -782,6 +855,24 @@ export default function DoctorDetailsScreen() {
             <Ionicons name="cash-outline" size={14} color={COLORS.primary} />
             <Text style={styles.pillTxt}>${doctor.consultationFee} per visit</Text>
           </View>
+        </View>
+
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={styles.messageDoctorBtn}
+            onPress={() =>
+              router.push({
+                pathname: "/(patient)/messages",
+                params: {
+                  doctorId: String(doctor.id),
+                  doctorName: doctor.name,
+                },
+              })
+            }
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={15} color="#fff" />
+            <Text style={styles.messageDoctorTxt}>Message Doctor</Text>
+          </TouchableOpacity>
         </View>
 
         {loadingAvailability ? (
@@ -995,7 +1086,8 @@ const styles = StyleSheet.create({
   headerBtn: { backgroundColor: "#fff", borderRadius: 14, padding: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 4 },
   profileCard: { backgroundColor: "#fff", alignItems: "center", paddingTop: 88, paddingBottom: 24, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 4 },
   avatarWrap: { position: "relative", marginBottom: 12 },
-  avatarFallback: { width: 84, height: 84, borderRadius: 42, backgroundColor: COLORS.primary + "20", justifyContent: "center", alignItems: "center", borderWidth: 3, borderColor: COLORS.primary + "30" },
+  avatarFallback: { width: 84, height: 84, borderRadius: 42, backgroundColor: COLORS.primary + "20", justifyContent: "center", alignItems: "center", borderWidth: 3, borderColor: COLORS.primary + "30", overflow: "hidden" },
+  avatarImg: { width: "100%", height: "100%", borderRadius: 42 },
   avatarTxt: { fontSize: 32, fontWeight: "800", color: COLORS.primary },
   onlineDot: { position: "absolute", bottom: 4, right: 4, width: 15, height: 15, borderRadius: 8, backgroundColor: "#4CAF50", borderWidth: 3, borderColor: "#fff" },
   docName: { fontSize: 20, fontWeight: "800", color: "#1A1A1A" },
@@ -1012,6 +1104,18 @@ const styles = StyleSheet.create({
   pills: { flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: 18, marginTop: 14 },
   pill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: COLORS.primary + "12", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
   pillTxt: { fontSize: 12, color: "#444", fontWeight: "500" },
+  quickActions: { paddingHorizontal: 18, marginTop: 12 },
+  messageDoctorBtn: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 18,
+  },
+  messageDoctorTxt: { color: "#fff", fontSize: 12, fontWeight: "700" },
   dayChip: { alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, backgroundColor: "#fff", borderWidth: 1.5, borderColor: "#EEE", minWidth: 68 },
   dayChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   dayLabel: { fontSize: 10, color: "#AAA", fontWeight: "500" },

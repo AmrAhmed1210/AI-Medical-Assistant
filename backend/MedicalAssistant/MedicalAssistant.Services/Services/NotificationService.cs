@@ -25,14 +25,16 @@ public class NotificationService : INotificationService
 
     public async Task NotifyProfileUpdated(int doctorId, string doctorName)
     {
-        await _hub.Clients.All.SendAsync("DoctorUpdated", new
+        var payload = new
         {
             doctorId,
             doctorName,
             message = "Doctor profile has been updated",
             type = "profile_updated",
             timestamp = DateTime.UtcNow
-        });
+        };
+
+        await SendGroupEventAsync($"Schedule_Doctor_{doctorId}", "DoctorUpdated", payload);
     }
 
     public async Task NotifyAppointmentChanged(int appointmentId, string status, string patientEmail)
@@ -93,8 +95,9 @@ public class NotificationService : INotificationService
 
         await SendGroupEventAsync($"Schedule_Doctor_{doctorId}", "ScheduleUpdated", payload);
         
+        // Notify targeted followers only
         await SendNotificationAsync(
-            "Patient",
+            $"Schedule_Doctor_{doctorId}",
             "schedule_updated",
             "Schedule updated",
             $"Dr. {doctorName}'s schedule has been updated.",
@@ -142,6 +145,30 @@ public class NotificationService : INotificationService
             new { appointmentId, patientName, scheduledAt });
     }
 
+    public async Task NotifyDoctorNewBooking(string doctorEmail, string patientName, string appointmentDate, int? doctorId = null)
+    {
+        await SendDoctorGroupEventAsync(doctorId, doctorEmail, "NewBooking", new
+        {
+            patientName,
+            date = appointmentDate,
+            message = $"{patientName} booked an appointment on {appointmentDate}",
+            type = "new_booking",
+            timestamp = DateTime.UtcNow
+        });
+    }
+
+    public async Task NotifyDoctorCancellation(string doctorEmail, string patientName, string appointmentDate, int? doctorId = null)
+    {
+        await SendDoctorGroupEventAsync(doctorId, doctorEmail, "BookingCancelled", new
+        {
+            patientName,
+            date = appointmentDate,
+            message = $"{patientName} cancelled their appointment",
+            type = "cancellation",
+            timestamp = DateTime.UtcNow
+        });
+    }
+
     public async Task NotifyAppointmentReminder(int appointmentId, string patientEmail, string doctorName, string scheduledAt)
     {
         await SendNotificationAsync(
@@ -179,6 +206,49 @@ public class NotificationService : INotificationService
             new { appointmentId, doctorName, scheduledAt });
     }
 
+    public async Task NotifyNewMessage(string patientEmail, string doctorName, string message, int? sessionId = null, int? doctorId = null)
+    {
+        var payload = new
+        {
+            doctorName,
+            message,
+            sessionId,
+            type = "message",
+            timestamp = DateTime.UtcNow
+        };
+
+        await SendGroupEventAsync(patientEmail, "NewMessage", payload);
+        await SendNotificationAsync(
+            patientEmail,
+            "message",
+            "New message",
+            $"Dr. {doctorName}: {message}",
+            new { doctorName, message, sessionId });
+    }
+
+    public async Task NotifyDoctorNewMessage(string doctorEmail, string patientName, string message, int? sessionId = null, int? doctorId = null, int? patientId = null, string? patientPhotoUrl = null)
+    {
+        var payload = new
+        {
+            patientName,
+            message,
+            sessionId,
+            patientId,
+            patientPhotoUrl,
+            type = "message",
+            timestamp = DateTime.UtcNow
+        };
+
+        await SendDoctorGroupEventAsync(doctorId, doctorEmail, "NewMessage", payload);
+        await SendDoctorNotificationAsync(
+            doctorId,
+            doctorEmail,
+            "message",
+            "New message",
+            $"Patient {patientName}: {message}",
+            new { patientName, message, sessionId });
+    }
+
     public async Task NotifyDoctorAppointmentChanged(int appointmentId, string doctorEmail, string status, string patientName, int? doctorId = null)
     {
         await SendDoctorGroupEventAsync(doctorId, doctorEmail, "AppointmentUpdated", new
@@ -197,6 +267,49 @@ public class NotificationService : INotificationService
             "Appointment status updated",
             $"Appointment for {patientName} is now {status}.",
             new { appointmentId, status, patientName });
+    }
+
+    public async Task NotifyNewConsultation(string patientEmail, string doctorName, string title, string scheduledAt, int consultationId)
+    {
+        var payload = new
+        {
+            doctorName,
+            title,
+            scheduledAt,
+            consultationId,
+            message = $"Dr. {doctorName} scheduled a consultation: {title}",
+            type = "new_consultation",
+            timestamp = DateTime.UtcNow
+        };
+
+        await SendGroupEventAsync(patientEmail, "NewConsultation", payload);
+        await SendNotificationAsync(
+            patientEmail,
+            "new_consultation",
+            "New Consultation",
+            $"Dr. {doctorName} scheduled a consultation: {title}",
+            new { doctorName, title, scheduledAt, consultationId });
+    }
+
+    public async Task NotifyNewDoctorApplication(string applicantName, string applicantEmail)
+    {
+        var payload = new
+        {
+            applicantName,
+            applicantEmail,
+            message = $"New doctor application from {applicantName} ({applicantEmail})",
+            type = "new_doctor_application",
+            timestamp = DateTime.UtcNow
+        };
+
+        // Notify Admin group via both event name and NotificationReceived
+        await SendGroupEventAsync("Admin", "NewDoctorApplication", payload);
+        await SendNotificationAsync(
+            "Admin",
+            "new_doctor_application",
+            "New Doctor Application",
+            $"Dr. {applicantName} has applied to join the platform.",
+            payload);
     }
 
     private async Task SendNotificationAsync(string group, string category, string title, string message, object? data = null)

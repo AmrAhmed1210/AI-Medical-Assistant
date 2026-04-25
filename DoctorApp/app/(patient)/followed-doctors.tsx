@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "../../constants/colors";
 import { getDoctorById } from "../../services/doctorService";
 import DoctorCard from "../../components/DoctorCard";
+import { getFollowedDoctorIds } from "../../services/followService";
 
 export default function FollowedDoctorsScreen() {
   const router = useRouter();
@@ -15,8 +15,7 @@ export default function FollowedDoctorsScreen() {
 
   const fetchFollowed = useCallback(async () => {
     try {
-      const stored = await AsyncStorage.getItem('followedDoctors')
-      const followedIds = stored ? JSON.parse(stored) : []
+      const followedIds = await getFollowedDoctorIds()
       
       if (followedIds.length === 0) {
         setDoctors([]);

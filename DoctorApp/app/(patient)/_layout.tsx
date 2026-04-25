@@ -1,7 +1,8 @@
 import { Tabs } from "expo-router";
+import { usePathname } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 import { View, StyleSheet } from "react-native";
@@ -11,7 +12,9 @@ import {
   createScheduleReadyNotification,
 } from "../../services/notificationService";
 import {
+  onDoctorUpdated,
   onAppointmentUpdated,
+  onNewMessage,
   onNotificationReceived,
   onScheduleReady,
   onScheduleUpdated,
@@ -19,6 +22,8 @@ import {
   startSignalRConnection,
   stopSignalRConnection,
 } from "../../services/signalr";
+import { checkIfFollowed, getAllNotificationDoctorIds, shouldReceiveDoctorNotifications } from "../../services/followService";
+import { useNotificationStore } from "../../store/notificationStore";
 
 type TabIconProps = {
   color: string;
@@ -35,6 +40,12 @@ function TabIcon({ name, color, size, focused }: { name: any; color: string; siz
 }
 
 export default function TabsLayout() {
+  const pathname = usePathname();
+  const unreadMessages = useNotificationStore(state => state.unreadMessages);
+  const clearAllMessages = useNotificationStore(state => state.clearAllMessages);
+  const setLatestMessagePayload = useNotificationStore(state => state.setLatestMessagePayload);
+  const incrementSessionMessage = useNotificationStore(state => state.incrementSessionMessage);
+
   useEffect(() => {
     let mounted = true;
 
@@ -49,8 +60,7 @@ export default function TabsLayout() {
       if (!conn || !mounted) return;
 
       try {
-        const subscribed = await AsyncStorage.getItem("subscribedDoctors");
-        const list: number[] = subscribed ? JSON.parse(subscribed) : [];
+        const list = await getAllNotificationDoctorIds();
         await Promise.all(
           list.map((doctorId) => subscribeToDoctorSchedule(Number(doctorId)).catch(() => undefined))
         );
@@ -80,9 +90,7 @@ export default function TabsLayout() {
         const payload = data ?? {};
         const doctorId = Number(payload?.doctorId ?? payload?.DoctorId);
         const doctorName = String(payload?.doctorName ?? payload?.DoctorName ?? "Doctor");
-        const subscribed = await AsyncStorage.getItem("subscribedDoctors");
-        const list: number[] = subscribed ? JSON.parse(subscribed) : [];
-        if (!list.includes(doctorId)) return;
+        if (!(await shouldReceiveDoctorNotifications(doctorId))) return;
         pushScheduleNotification(doctorId, doctorName);
       };
 
@@ -117,6 +125,57 @@ export default function TabsLayout() {
 
       onScheduleReady(handleScheduleEvent);
       onScheduleUpdated(handleScheduleEvent);
+      onDoctorUpdated(async (payload) => {
+        if (!mounted) return;
+        const doctorId = Number(payload?.doctorId ?? payload?.DoctorId);
+        const doctorName = String(payload?.doctorName ?? payload?.DoctorName ?? "Doctor");
+        if (!(await shouldReceiveDoctorNotifications(doctorId))) return;
+
+        await addNotification({
+          id: `doctor_update_${doctorId}_${Date.now()}`,
+          type: "update",
+          icon: "👨‍⚕️",
+          title: "👨‍⚕️ Doctor Updated",
+          message: `Dr. ${doctorName} updated their profile`,
+          timestamp: Date.now(),
+          doctorId,
+          doctorName,
+        });
+
+        Toast.show({
+          type: "info",
+          text1: "Doctor Updated",
+          text2: `Dr. ${doctorName} updated their profile`,
+          position: "top",
+          topOffset: 60,
+        });
+      });
+      onNewMessage((payload) => {
+        if (!mounted) return;
+        setLatestMessagePayload(payload);
+        
+        const sessionId = payload?.sessionId ?? payload?.SessionId;
+        if (pathname !== "/messages" && sessionId) {
+          incrementSessionMessage(sessionId);
+        }
+
+        const doctorName = String(payload?.doctorName ?? payload?.DoctorName ?? "Doctor");
+        const message = String(payload?.message ?? payload?.Message ?? "You received a new message.");
+        addNotification(
+          createAppointmentUpdatedNotification(
+            "New Message",
+            `Dr. ${doctorName}: ${message}`,
+            "message"
+          )
+        );
+        Toast.show({
+          type: "info",
+          text1: "New Message",
+          text2: `Dr. ${doctorName}: ${message}`,
+          position: "top",
+          topOffset: 60,
+        });
+      });
       onNotificationReceived((payload) => {
         if (!mounted) return;
         const category = payload?.category ?? payload?.Category;
@@ -124,11 +183,9 @@ export default function TabsLayout() {
         if (category === "schedule_updated" || category === "schedule_ready") {
           const doctorId = Number(data?.doctorId ?? data?.DoctorId);
           const doctorName = String(data?.doctorName ?? data?.DoctorName ?? "Doctor");
-
-          AsyncStorage.getItem("subscribedDoctors")
-            .then((subscribed) => {
-              const list: number[] = subscribed ? JSON.parse(subscribed) : [];
-              if (!list.includes(doctorId)) return;
+          shouldReceiveDoctorNotifications(doctorId)
+            .then((allowed) => {
+              if (!allowed) return;
               pushScheduleNotification(doctorId, doctorName);
             })
             .catch(() => undefined);
@@ -152,6 +209,21 @@ export default function TabsLayout() {
             position: "top",
             topOffset: 60,
           });
+          return;
+        }
+
+        if (category === "message") {
+          incrementSessionMessage(0); // bump unread count globally
+          const title = String(payload?.title ?? payload?.Title ?? "New Message");
+          const message = String(payload?.message ?? payload?.Message ?? "You received a new message.");
+          addNotification(createAppointmentUpdatedNotification(title, message, "message"));
+          Toast.show({
+            type: "info",
+            text1: title,
+            text2: message,
+            position: "top",
+            topOffset: 60,
+          });
         }
       });
     };
@@ -163,6 +235,12 @@ export default function TabsLayout() {
       stopSignalRConnection();
     };
   }, []);
+
+  useEffect(() => {
+    if (pathname?.includes("/messages")) {
+      clearAllMessages();
+    }
+  }, [pathname, clearAllMessages]);
 
   return (
     <Tabs
@@ -213,6 +291,7 @@ export default function TabsLayout() {
         name="messages"
         options={{
           title: "Messages",
+          tabBarBadge: unreadMessages > 0 ? unreadMessages : undefined,
           tabBarIcon: ({ color, size, focused }: TabIconProps) => (
             <TabIcon name={focused ? "chatbubbles" : "chatbubbles-outline"} color={color} size={size} focused={focused} />
           ),

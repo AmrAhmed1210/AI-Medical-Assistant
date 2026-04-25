@@ -7,8 +7,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { COLORS } from "../../constants/colors";
 import { logout } from "../../services/authService";
-import { getDoctorProfile, updateDoctorProfile, type DoctorProfileDto } from "../../services/doctorService";
+import { getDoctorProfile, updateDoctorProfile, uploadDoctorPhoto, type DoctorProfileDto } from "../../services/doctorService";
 import Toast from 'react-native-toast-message';
+import * as ImagePicker from "expo-image-picker";
 
 export default function DoctorProfile() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function DoctorProfile() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Form states
   const [name, setName] = useState("");
@@ -61,6 +63,34 @@ export default function DoctorProfile() {
         },
       ]
     );
+  };
+
+  const handleUploadPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Denied", "We need access to your photos to update your profile.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets[0].uri) {
+      setUploading(true);
+      try {
+        await uploadDoctorPhoto(result.assets[0].uri);
+        Toast.show({ type: "success", text1: "Photo Updated!" });
+        await loadProfile();
+      } catch (e: any) {
+        Alert.alert("Upload Failed", e.message || "Failed to upload photo");
+      } finally {
+        setUploading(false);
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -114,13 +144,22 @@ export default function DoctorProfile() {
         </View>
 
         <View style={styles.profileCard}>
-          {profile?.photoUrl ? (
-            <Image source={{ uri: profile.photoUrl }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarFallback}>
-              <Text style={styles.avatarText}>{initials}</Text>
+          <TouchableOpacity style={styles.avatarContainer} onPress={handleUploadPhoto} disabled={uploading}>
+            {profile?.photoUrl ? (
+              <Image source={{ uri: profile.photoUrl }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarFallback}>
+                <Text style={styles.avatarText}>{initials}</Text>
+              </View>
+            )}
+            <View style={styles.cameraBadge}>
+              {uploading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="camera" size={14} color="#fff" />
+              )}
             </View>
-          )}
+          </TouchableOpacity>
           <View style={styles.profileInfo}>
             {isEditing ? (
               <TextInput style={styles.nameInput} value={name} onChangeText={setName} placeholder="Full Name" />
@@ -219,9 +258,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: "bold", color: "#1A1A1A" },
   editBtnText: { color: COLORS.primary, fontWeight: "700", fontSize: 15 },
   profileCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#FFF", padding: 20, borderRadius: 24, borderWidth: 1, borderColor: "#F0F0F0", marginBottom: 20 },
-  avatar: { width: 70, height: 70, borderRadius: 20, backgroundColor: "#F5F5F5" },
-  avatarFallback: { width: 70, height: 70, borderRadius: 20, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
+  avatarContainer: { position: "relative" },
+  avatar: { width: 70, height: 70, borderRadius: 20, backgroundColor: "#F5F5F5", overflow: "hidden" },
+  avatarFallback: { width: 70, height: 70, borderRadius: 20, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", overflow: "hidden" },
   avatarText: { color: "#fff", fontSize: 24, fontWeight: "800" },
+  cameraBadge: { position: "absolute", bottom: -2, right: -2, width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" },
   profileInfo: { marginLeft: 15, flex: 1 },
   doctorName: { fontSize: 18, fontWeight: "bold", color: "#333" },
   nameInput: { fontSize: 18, fontWeight: "bold", color: "#333", borderBottomWidth: 1, borderBottomColor: COLORS.primary, padding: 0 },

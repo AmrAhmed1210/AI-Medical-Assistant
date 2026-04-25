@@ -14,6 +14,9 @@ namespace MedicalAssistant.Domain.Entities.SessionsModule
         // Urgency: LOW, MEDIUM, HIGH, EMERGENCY
         public string? UrgencyLevel { get; set; }
 
+        // Type: AI | DoctorChat | SupportChat
+        public string Type { get; set; } = "AI";
+
         // Soft delete
         public bool IsDeleted { get; set; } = false;
 

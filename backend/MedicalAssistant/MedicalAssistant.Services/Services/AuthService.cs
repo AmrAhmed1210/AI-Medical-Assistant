@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Domain.Entities.PatientModule;
+using MedicalAssistant.Domain.Entities.UserModule;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.AuthDTOs;
 using Microsoft.Extensions.Configuration;
@@ -32,7 +33,7 @@ namespace MedicalAssistant.Services.Services
             if (existing != null)
                 throw new InvalidOperationException("Email already registered.");
 
-            var existingUser = (await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.UserModule.User>()
+            var existingUser = (await _unitOfWork.Repository<User>()
                 .FindAsync(u => u.Email.ToLower() == email))
                 .FirstOrDefault();
 
@@ -47,7 +48,22 @@ namespace MedicalAssistant.Services.Services
             // Hash password
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
-            // Create patient
+            // Create user for auth
+            var user = new User
+            {
+                FullName = dto.FullName.Trim(),
+                Email = email,
+                PasswordHash = hashedPassword,
+                Role = "Patient",
+                PhoneNumber = dto.PhoneNumber?.Trim(),
+                BirthDate = dto.DateOfBirth,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+            await _unitOfWork.Repository<User>().AddAsync(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Create patient linked to user
             var patient = new Patient
             {
                 FullName    = dto.FullName.Trim(),
@@ -57,7 +73,8 @@ namespace MedicalAssistant.Services.Services
                 DateOfBirth = dto.DateOfBirth ?? DateTime.UtcNow.AddYears(-25),
                 Gender      = "N/A",
                 IsActive    = true,
-                CreatedAt   = DateTime.UtcNow
+                CreatedAt   = DateTime.UtcNow,
+                UserId      = user.Id
             };
 
             await _unitOfWork.Patients.AddAsync(patient);
@@ -67,7 +84,7 @@ namespace MedicalAssistant.Services.Services
             await _notificationService.NotifyNewUserRegistered(
                 patient.Id, patient.FullName, patient.Email, "Patient");
 
-            var token = GenerateToken(patient.FullName, patient.Email, "Patient", patient.Id.ToString());
+            var token = GenerateToken(patient.FullName, patient.Email, "Patient", user.Id.ToString(), patient.Id.ToString());
 
             return new AuthResponseDto
             {
@@ -76,10 +93,11 @@ namespace MedicalAssistant.Services.Services
                 ExpiresIn = 86400,
                 User = new UserDto
                 {
-                    Id = patient.Id,
+                    Id = user.Id,
                     FullName = patient.FullName,
                     Email = patient.Email,
-                    Role = "Patient"
+                    Role = "Patient",
+                    PhotoUrl = patient.ImageUrl
                 }
             };
         }
@@ -91,6 +109,7 @@ namespace MedicalAssistant.Services.Services
             // ── Developer Admin Bypass (Hardcoded for current user) ───────────
             if (email == "hassanmohamed5065@gmail.com" && dto.Password == "123456789")
             {
+                var adminUser = (await _unitOfWork.Repository<User>().FindAsync(u => u.Email == email)).FirstOrDefault();
                 return new AuthResponseDto
                 {
                     AccessToken = GenerateToken("Hassan Mohamed", email, "Admin", "999"),
@@ -101,7 +120,8 @@ namespace MedicalAssistant.Services.Services
                         Id = 999,
                         FullName = "Hassan Mohamed",
                         Email = email,
-                        Role = "Admin"
+                        Role = "Admin",
+                        PhotoUrl = adminUser?.PhotoUrl
                     }
                 };
             }
@@ -113,32 +133,99 @@ namespace MedicalAssistant.Services.Services
                 if (!patient.IsActive)
                     throw new UnauthorizedAccessException("Your account has been deactivated. Please contact administration at support@yourapp.com.");
 
-                var isValid = BCrypt.Net.BCrypt.Verify(dto.Password, patient.PasswordHash);
-                if (!isValid) throw new UnauthorizedAccessException("Invalid email or password.");
+                var isVerified = BCrypt.Net.BCrypt.Verify(dto.Password, patient.PasswordHash);
+                if (!isVerified) throw new UnauthorizedAccessException("Invalid email or password.");
+
+                // Ensure a User record exists for this patient
+                var patientUser = (await _unitOfWork.Repository<User>().FindAsync(u => u.Email == email)).FirstOrDefault();
+                if (patientUser == null)
+                {
+                    patientUser = new User
+                    {
+                        FullName = patient.FullName,
+                        Email = patient.Email,
+                        PasswordHash = patient.PasswordHash,
+                        Role = "Patient",
+                        PhoneNumber = patient.PhoneNumber,
+                        BirthDate = patient.DateOfBirth,
+                        PhotoUrl = patient.ImageUrl,
+                        CreatedAt = patient.CreatedAt,
+                        IsActive = true
+                    };
+                    await _unitOfWork.Repository<User>().AddAsync(patientUser);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+
+                // Always ensure the link is established
+                if (patient.UserId == null || patient.UserId != patientUser.Id)
+                {
+                    patient.UserId = patientUser.Id;
+                    _unitOfWork.Patients.Update(patient);
+
+                    // Sync old sessions to new UserId if they were using Patient.Id
+                    var sessions = await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.SessionsModule.Session>()
+                        .FindAsync(s => s.UserId == patient.Id);
+                    foreach (var s in sessions)
+                    {
+                        s.UserId = patientUser.Id;
+                        _unitOfWork.Repository<MedicalAssistant.Domain.Entities.SessionsModule.Session>().Update(s);
+                    }
+
+                    await _unitOfWork.SaveChangesAsync();
+                }
+                else
+                {
+                    // Ensure sessions are synced even if UserId was already set (in case some were missed)
+                    var sessions = await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.SessionsModule.Session>()
+                        .FindAsync(s => s.UserId == patient.Id);
+                    if (sessions.Any())
+                    {
+                        foreach (var s in sessions)
+                        {
+                            s.UserId = patientUser.Id;
+                            _unitOfWork.Repository<MedicalAssistant.Domain.Entities.SessionsModule.Session>().Update(s);
+                        }
+                        await _unitOfWork.SaveChangesAsync();
+                    }
+                }
 
                 return new AuthResponseDto
                 {
-                    AccessToken = GenerateToken(patient.FullName, patient.Email, "Patient", patient.Id.ToString()),
+                    AccessToken = GenerateToken(patient.FullName, patient.Email, "Patient", patientUser.Id.ToString(), patient.Id.ToString()),
                     RefreshToken = "",
                     ExpiresIn = 86400,
                     User = new UserDto
                     {
-                        Id = patient.Id,
+                        Id = patientUser.Id,
                         FullName = patient.FullName,
                         Email = patient.Email,
-                        Role = "Patient"
+                        Role = "Patient",
+                        PhotoUrl = patient.ImageUrl
                     }
                 };
             }
 
             // 2. Try to find in Users table (Admin/Doctor)
-            var users = await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.UserModule.User>()
+            var users = await _unitOfWork.Repository<User>()
                 .FindAsync(u => u.Email.ToLower() == email);
             
             var user = users.FirstOrDefault();
             
             if (user == null)
                 throw new UnauthorizedAccessException("Invalid email or password.");
+
+            // 🛡️ Admin Rescue: Auto-activate if credentials are correct
+            if (string.Equals(user.Email, "hassanmohamed5065@gmail.com", StringComparison.OrdinalIgnoreCase) && 
+                BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            {
+                if (!user.IsActive || user.IsDeleted)
+                {
+                    user.IsActive = true;
+                    user.IsDeleted = false;
+                    _unitOfWork.Repository<User>().Update(user);
+                    await _unitOfWork.SaveChangesAsync();
+                }
+            }
 
             // Check if account is deleted or inactive
             if (user.IsDeleted)
@@ -160,7 +247,7 @@ namespace MedicalAssistant.Services.Services
 
             return new AuthResponseDto
             {
-                AccessToken = GenerateToken(user.FullName, user.Email, user.Role, user.Id.ToString(), doctorId),
+                AccessToken = GenerateToken(user.FullName, user.Email, user.Role, user.Id.ToString(), null, doctorId),
                 RefreshToken = "",
                 ExpiresIn = 86400,
                 User = new UserDto
@@ -168,12 +255,13 @@ namespace MedicalAssistant.Services.Services
                     Id = user.Id,
                     FullName = user.FullName,
                     Email = user.Email,
-                    Role = user.Role
+                    Role = user.Role,
+                    PhotoUrl = user.PhotoUrl
                 }
             };
         }
 
-        private string GenerateToken(string name, string email, string role, string id, string? doctorId = null)
+        private string GenerateToken(string name, string email, string role, string userId, string? patientId = null, string? doctorId = null)
         {
             var key    = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
             var creds  = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -181,12 +269,17 @@ namespace MedicalAssistant.Services.Services
 
             var claimsList = new List<Claim>
             {
-                new Claim("UserId", id),
-                new Claim("PatientId", id),  // For appointment controller compatibility
+                new Claim(ClaimTypes.NameIdentifier, userId),
+                new Claim("UserId", userId),
                 new Claim("name",   name),
                 new Claim(ClaimTypes.Email, email),
                 new Claim(ClaimTypes.Role,  role),
             };
+
+            if (!string.IsNullOrEmpty(patientId))
+            {
+                claimsList.Add(new Claim("PatientId", patientId));
+            }
 
             if (!string.IsNullOrEmpty(doctorId))
             {

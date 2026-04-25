@@ -1,4 +1,5 @@
 using MedicalAssistant.Shared.DTOs.Admin;
+using MedicalAssistant.Shared.DTOs.DoctorDTOs;
 using MedicalAssistant.Shared.DTOs.Common;
 
 namespace MedicalAssistant.Services_Abstraction.Contracts
@@ -23,6 +24,10 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
 
         Task<IEnumerable<ModelVersionDto>> ListModelVersionsAsync();
 
-        Task ReloadAiModelAsync(string agentName); 
+        Task ReloadAiModelAsync(string agentName);
+
+        Task<IEnumerable<DoctorApplicationDto>> GetDoctorApplicationsAsync(string? status = null);
+        Task<bool> ApproveDoctorApplicationAsync(int applicationId);
+        Task<bool> RejectDoctorApplicationAsync(int applicationId, string? reason = null);
     }
 }

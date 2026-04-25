@@ -92,5 +92,7 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
         Task<IEnumerable<MedicalAssistant.Shared.DTOs.DoctorDTOs.DoctorDTO>> GetFollowedDoctorsAsync(int patientId);
         Task<bool> FollowDoctorAsync(int patientId, int doctorId);
         Task<bool> UnfollowDoctorAsync(int patientId, int doctorId);
+
+        Task<bool> UpdatePhotoAsync(int patientId, string photoUrl);
     }
 }

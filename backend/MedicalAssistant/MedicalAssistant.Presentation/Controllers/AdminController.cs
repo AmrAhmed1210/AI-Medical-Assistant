@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
+using MedicalAssistant.Shared.DTOs.DoctorDTOs;
 using Microsoft.AspNetCore.Authorization;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.Admin;
 using MedicalAssistant.Shared.DTOs.Common;
+using MedicalAssistant.Shared.DTOs.SessionDTOs;
 
 namespace MedicalAssistant.API.Controllers;
 
@@ -12,10 +14,12 @@ namespace MedicalAssistant.API.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
+    private readonly ISessionService _sessionService;
 
-    public AdminController(IAdminService adminService)
+    public AdminController(IAdminService adminService, ISessionService sessionService)
     {
         _adminService = adminService;
+        _sessionService = sessionService;
     }
 
     [HttpGet("stats")]
@@ -95,4 +99,39 @@ public class AdminController : ControllerBase
         await _adminService.ReloadAiModelAsync(request.AgentName);
         return Ok(new { message = "Model reload signal sent successfully" });
     }
+
+    [HttpGet("applications")]
+    public async Task<ActionResult<IEnumerable<DoctorApplicationDto>>> GetApplications([FromQuery] string? status = null)
+    {
+        var apps = await _adminService.GetDoctorApplicationsAsync(status);
+        return Ok(apps);
+    }
+
+    [HttpPost("applications/{id}/approve")]
+    public async Task<IActionResult> ApproveApplication(int id)
+    {
+        var success = await _adminService.ApproveDoctorApplicationAsync(id);
+        if (!success) return BadRequest(new { message = "Failed to approve application. It may already be processed." });
+        return Ok(new { message = "Application approved. Doctor account created successfully." });
+    }
+
+    [HttpPost("applications/{id}/reject")]
+    public async Task<IActionResult> RejectApplication(int id, [FromBody] RejectApplicationRequest? request = null)
+    {
+        var success = await _adminService.RejectDoctorApplicationAsync(id, request?.Reason);
+        if (!success) return BadRequest(new { message = "Failed to reject application. It may already be processed." });
+        return Ok(new { message = "Application rejected." });
+    }
+
+    [HttpGet("support-sessions")]
+    public async Task<ActionResult<IEnumerable<SessionDto>>> GetSupportSessions()
+    {
+        var (sessions, _) = await _sessionService.GetPaginatedSessionsAsync(1, 1000);
+        return Ok(sessions.Where(s => s.Type == "SupportChat"));
+    }
+}
+
+public class RejectApplicationRequest
+{
+    public string? Reason { get; set; }
 }

@@ -43,9 +43,15 @@ public interface IDoctorService
 
     Task<IEnumerable<MedicalAssistant.Shared.DTOs.ReviewDTOs.ReviewDto>> GetMyReviewsAsync(int doctorUserId);
 
-    // Schedule visibility toggle
     Task UpdateScheduleVisibilityAsync(int doctorUserId, bool isVisible);
+
+    // Clear history
+    Task ClearAppointmentHistoryAsync(int doctorUserId);
 
     // Self-deactivate account
     Task<bool> SelfDeactivateAsync(int doctorUserId);
+
+    Task ApplyForDoctorAccountAsync(ApplyDoctorRequest request);
+    Task UpdatePhotoAsync(int doctorUserId, string photoUrl);
+    Task UpdateApplicationDocumentAsync(int applicationId, string documentUrl);
 }

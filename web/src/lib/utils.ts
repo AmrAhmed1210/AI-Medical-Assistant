@@ -10,7 +10,9 @@ export function cn(...inputs: ClassValue[]) {
 
 export function formatDate(dateStr: string, fmt = 'dd/MM/yyyy') {
   try {
-    return format(parseISO(dateStr), fmt, { locale: ar })
+    const parsed = parseDateSafe(dateStr)
+    if (!parsed) return (dateStr || '').replace(/\s+/g, ' ').trim()
+    return format(parsed, fmt, { locale: ar })
   } catch {
     return dateStr
   }
@@ -18,7 +20,9 @@ export function formatDate(dateStr: string, fmt = 'dd/MM/yyyy') {
 
 export function formatDateTime(dateStr: string) {
   try {
-    return format(parseISO(dateStr), 'dd/MM/yyyy - hh:mm a', { locale: ar })
+    const parsed = parseDateSafe(dateStr)
+    if (!parsed) return (dateStr || '').replace(/\s+/g, ' ').trim()
+    return format(parsed, 'dd/MM/yyyy - hh:mm a', { locale: ar })
   } catch {
     return dateStr
   }
@@ -26,10 +30,30 @@ export function formatDateTime(dateStr: string) {
 
 export function formatTimeAgo(dateStr: string) {
   try {
-    return formatDistanceToNow(parseISO(dateStr), { addSuffix: true, locale: ar })
+    const parsed = parseDateSafe(dateStr)
+    if (!parsed) return dateStr
+    return formatDistanceToNow(parsed, { addSuffix: true, locale: ar })
   } catch {
     return dateStr
   }
+}
+
+function parseDateSafe(input: string): Date | null {
+  const raw = String(input ?? '').replace(/\s+/g, ' ').trim()
+  if (!raw) return null
+
+  let isoLike = raw.includes('T') ? raw : raw.replace(' ', 'T')
+  // Treat timezone-less server timestamps as UTC to avoid +3h drift.
+  if (!/[zZ]|[+\-]\d{2}:\d{2}$/.test(isoLike)) {
+    isoLike = `${isoLike}Z`
+  }
+  const tryIso = parseISO(isoLike)
+  if (!Number.isNaN(tryIso.getTime())) return tryIso
+
+  const tryNative = new Date(raw)
+  if (!Number.isNaN(tryNative.getTime())) return tryNative
+
+  return null
 }
 
 export function formatCurrency(amount: number) {

@@ -46,6 +46,7 @@ export interface Profile {
   phone: string;
   role: string;
   dateOfBirth?: string;
+  photoUrl?: string;
 }
 
 // ============================================
@@ -79,4 +80,33 @@ export const updateMyProfile = async (
     },
     true
   );
+};
+
+// ============================================
+// Upload Profile Photo
+// ============================================
+export const uploadProfilePhoto = async (uri: string): Promise<string> => {
+  const formData = new FormData();
+  
+  // Expo File format
+  const filename = uri.split('/').pop() || 'photo.jpg';
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+  formData.append('file', {
+    uri,
+    name: filename,
+    type,
+  } as any);
+
+  const response = await apiFetch<{ photoUrl: string }>(
+    API.profile.photo, // api/profile/photo
+    {
+      method: "POST",
+      body: formData,
+    },
+    true
+  );
+
+  return response.photoUrl;
 };

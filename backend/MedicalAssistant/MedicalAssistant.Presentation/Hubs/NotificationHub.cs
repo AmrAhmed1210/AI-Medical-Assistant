@@ -1,11 +1,26 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
 
 namespace MedicalAssistant.Presentation.Hubs;
 
 [Authorize]
 public class NotificationHub : Hub
 {
+    private string? GetClaimValue(params string[] claimTypes)
+    {
+        foreach (var claimType in claimTypes)
+        {
+            var value = Context.User?.FindFirst(claimType)?.Value;
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
     public async Task JoinGroup(string groupName)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
@@ -18,14 +33,14 @@ public class NotificationHub : Hub
 
     public override async Task OnConnectedAsync()
     {
-        var role = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        var role = GetClaimValue(ClaimTypes.Role, "role");
         if (!string.IsNullOrWhiteSpace(role))
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, role);
             await Groups.AddToGroupAsync(Context.ConnectionId, role.Trim().ToLowerInvariant());
         }
 
-        var email = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+        var email = GetClaimValue(ClaimTypes.Email, "email", "Email");
         if (!string.IsNullOrWhiteSpace(email))
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, email);

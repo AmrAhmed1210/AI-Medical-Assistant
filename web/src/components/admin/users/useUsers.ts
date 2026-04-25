@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useAuthStore } from '@/store/authStore'
 import { adminApi } from '@/api/adminApi'
 import type { UserDto, UserRole } from '@/lib/types'
 import toast from 'react-hot-toast'
@@ -140,12 +141,12 @@ export function useUsers(
 
   /* ---------------- delete ---------------- */
 
-  const handleDelete = useCallback(async (id: number) => {
+  const handleDelete = useCallback(async (id: number, role: string) => {
 
     if (!confirm('هل أنت متأكد؟')) return
 
     try {
-      await adminApi.deleteUser(id)
+      await adminApi.deleteUser(id, role)
 
       setUsers(prev => prev.filter(u => u.id !== id))
       setTotal(t => t - 1)
@@ -184,7 +185,7 @@ export function useUsers(
 
   /* SignalR: Listen for new user registrations */
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = useAuthStore.getState().token
     if (!token) return
 
     let cleanup: (() => void) | undefined

@@ -14,12 +14,21 @@ export const adminApi = {
   createUser: (data: CreateUserRequest) =>
     axiosInstance.post<UserDto>('/api/admin/users', data).then((r) => r.data),
 
-  deleteUser: (id: number) =>
-    axiosInstance.delete(`/api/admin/users/${id}`).then((r) => r.data),
+  deleteUser: (id: number, role: string) =>
+    axiosInstance.delete(`/api/admin/users/${id}`, { params: { role } }).then((r) => r.data),
 
   getModels: () =>
     axiosInstance.get<ModelVersionDto[]>('/api/admin/models').then((r) => r.data),
 
   reloadModel: (agentName: string) =>
     axiosInstance.post('/api/admin/reload-model', { agentName }).then((r) => r.data),
+
+  getApplications: (status?: string) =>
+    axiosInstance.get<any[]>('/api/admin/applications', { params: { status } }).then((r) => r.data),
+
+  approveApplication: (id: number) =>
+    axiosInstance.post(`/api/admin/applications/${id}/approve`).then((r) => r.data),
+
+  rejectApplication: (id: number, reason?: string) =>
+    axiosInstance.post(`/api/admin/applications/${id}/reject`, { reason }).then((r) => r.data),
 }

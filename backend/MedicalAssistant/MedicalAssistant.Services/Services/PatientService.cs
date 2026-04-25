@@ -261,5 +261,27 @@ namespace MedicalAssistant.Services.Services
                 IsActive = patient.IsActive
             };
         }
+
+        public async Task<bool> UpdatePhotoAsync(int patientId, string photoUrl)
+        {
+            var patient = await unitOfWork.Patients.GetByIdAsync(patientId);
+            if (patient == null) return false;
+
+            patient.ImageUrl = photoUrl;
+            
+            // Also update user photo if it exists
+            var user = await unitOfWork.Repository<User>().GetByIdAsync(patientId); // Assuming patientId maps to userId or similar? 
+            // Wait, patients have their own table. Let's find user by email.
+            var userByEmail = (await unitOfWork.Repository<User>().FindAsync(u => u.Email == patient.Email)).FirstOrDefault();
+            if (userByEmail != null)
+            {
+                userByEmail.PhotoUrl = photoUrl;
+                unitOfWork.Repository<User>().Update(userByEmail);
+            }
+
+            unitOfWork.Patients.Update(patient);
+            await unitOfWork.SaveChangesAsync();
+            return true;
+        }
     }
 }

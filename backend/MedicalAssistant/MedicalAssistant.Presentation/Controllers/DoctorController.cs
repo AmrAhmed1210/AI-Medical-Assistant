@@ -1,4 +1,7 @@
 using MedicalAssistant.Services_Abstraction.Contracts;
+using MedicalAssistant.Domain.Contracts;
+using MedicalAssistant.Domain.Entities.PatientModule;
+using MedicalAssistant.Domain.Entities.UserModule;
 using MedicalAssistant.Shared.DTOs.AppointmentsDTOs;
 using MedicalAssistant.Shared.DTOs.DoctorDTOs;
 using MedicalAssistant.Shared.DTOs.ReviewDTOs;
@@ -21,13 +24,25 @@ namespace MedicalAssistant.Presentation.Controllers
     {
         private readonly IDoctorService _doctorService;
         private readonly INotificationService _notificationService;
+        private readonly ISessionService _sessionService;
+        private readonly IMessageService _messageService;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IPhotoService _photoService;
 
         public DoctorsController(
             IDoctorService doctorService,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            ISessionService sessionService,
+            IMessageService messageService,
+            IUnitOfWork unitOfWork,
+            IPhotoService photoService)
         {
             _doctorService = doctorService;
             _notificationService = notificationService;
+            _sessionService = sessionService;
+            _messageService = messageService;
+            _unitOfWork = unitOfWork;
+            _photoService = photoService;
         }
 
         // GET /doctors
@@ -51,6 +66,33 @@ namespace MedicalAssistant.Presentation.Controllers
             if (doctor == null)
                 return NotFound(new { message = "Doctor not found." });
             return Ok(doctor);
+        }
+
+        [AllowAnonymous]
+        [HttpPost("apply")]
+        public async Task<IActionResult> ApplyForDoctorAccount([FromBody] ApplyDoctorRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.Email))
+                return BadRequest(new { message = "Invalid application data." });
+
+            if (string.IsNullOrWhiteSpace(request.Name))
+                return BadRequest(new { message = "Full name is required." });
+
+            if (string.IsNullOrWhiteSpace(request.Phone))
+                return BadRequest(new { message = "Phone number is required." });
+
+            if (string.IsNullOrWhiteSpace(request.LicenseNumber))
+                return BadRequest(new { message = "License / National ID is required." });
+
+            try
+            {
+                await _doctorService.ApplyForDoctorAccountAsync(request);
+                return Ok(new { message = "Your application has been received. We will contact you soon." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
         }
 
         private int GetDoctorId()
@@ -102,6 +144,17 @@ namespace MedicalAssistant.Presentation.Controllers
         }
 
         [Authorize(Roles = "Doctor")]
+        [HttpDelete("appointments/history")]
+        public async Task<IActionResult> ClearHistory()
+        {
+            var doctorId = GetDoctorId();
+            if (doctorId <= 0) return Unauthorized();
+            
+            await _doctorService.ClearAppointmentHistoryAsync(doctorId);
+            return Ok(new { message = "History cleared successfully" });
+        }
+
+        [Authorize(Roles = "Doctor")]
         [HttpGet("patients")]
         public async Task<ActionResult<IEnumerable<PatientSummaryDto>>> GetPatients([FromQuery] string? search = null)
         {
@@ -133,7 +186,7 @@ namespace MedicalAssistant.Presentation.Controllers
 
         [HttpPost("{id}/notify-schedule")]
         [Authorize]
-        public async Task<IActionResult> SubscribeToSchedule(int id)
+        public IActionResult SubscribeToSchedule(int id)
         {
             // Simple: store in a table or just return OK for now
             return Ok(new { message = "You will be notified when schedule is ready" });
@@ -183,14 +236,30 @@ namespace MedicalAssistant.Presentation.Controllers
         }
 
         [Authorize(Roles = "Doctor")]
-        [HttpPost("upload-photo")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadPhoto([FromForm] UploadPhotoRequest request)
+        [HttpPost("photo")]
+        public async Task<IActionResult> UploadPhoto(IFormFile file)
         {
-            if (request.File == null || request.File.Length == 0)
-                return BadRequest("No file uploaded.");
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { message = "Photo is required." });
+            }
 
-            return Ok();
+            var doctorUserId = GetDoctorId();
+            if (doctorUserId <= 0) return Unauthorized();
+
+            var url = await _photoService.UploadPhotoAsync(file);
+            await _doctorService.UpdatePhotoAsync(doctorUserId, url);
+
+            return Ok(new { photoUrl = url });
+        }
+
+        [AllowAnonymous]
+        [HttpPost("apply/upload-cv")]
+        public async Task<IActionResult> UploadCv(IFormFile file)
+        {
+            if (file == null || file.Length == 0) return BadRequest("File is required");
+            var url = await _photoService.UploadFileAsync(file);
+            return Ok(new { url });
         }
 
         [Authorize(Roles = "Doctor")]
@@ -201,6 +270,70 @@ namespace MedicalAssistant.Presentation.Controllers
             if (doctorId <= 0) return Unauthorized();
             var reviews = await _doctorService.GetMyReviewsAsync(doctorId);
             return Ok(reviews);
+        }
+
+        [HttpPost("message-patient")]
+        [Authorize(Roles = "Doctor")]
+        public async Task<IActionResult> MessagePatient([FromBody] MessagePatientRequest req)
+        {
+            if (req == null || string.IsNullOrWhiteSpace(req.PatientEmail) || string.IsNullOrWhiteSpace(req.Message))
+            {
+                return BadRequest(new { message = "Patient email and message are required." });
+            }
+
+            var doctorUserId = GetDoctorId();
+            if (doctorUserId <= 0) return Unauthorized();
+
+            var doctor = await _doctorService.GetProfileAsync(doctorUserId);
+            if (doctor == null) return Unauthorized(new { message = "Doctor not found." });
+
+            var patientEmail = req.PatientEmail.Trim().ToLowerInvariant();
+            var patient = await _unitOfWork.Patients.GetByEmailAsync(patientEmail);
+            if (patient == null || !patient.IsActive)
+            {
+                return NotFound(new { message = "Patient not found." });
+            }
+
+            // Ensure a User record exists for this patient to satisfy Session FK
+            var userRecord = (await _unitOfWork.Repository<User>().FindAsync(u => u.Email == patientEmail)).FirstOrDefault();
+            if (userRecord == null)
+            {
+                userRecord = new User
+                {
+                    FullName = patient.FullName,
+                    Email = patient.Email,
+                    PasswordHash = patient.PasswordHash,
+                    Role = "Patient",
+                    PhoneNumber = patient.PhoneNumber,
+                    BirthDate = patient.DateOfBirth,
+                    PhotoUrl = patient.ImageUrl,
+                    CreatedAt = patient.CreatedAt,
+                    IsActive = true
+                };
+                await _unitOfWork.Repository<User>().AddAsync(userRecord);
+                await _unitOfWork.SaveChangesAsync();
+                
+                patient.UserId = userRecord.Id;
+                _unitOfWork.Patients.Update(patient);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            var sessionTitle = $"chat|p:{userRecord.Id}|d:{doctor.Id}|";
+            var sessions = await _sessionService.GetSessionsByUserIdAsync(userRecord.Id);
+            var existing = sessions.FirstOrDefault(s =>
+                string.Equals(s.Title, sessionTitle, StringComparison.OrdinalIgnoreCase));
+
+            var session = existing ?? await _sessionService.CreateSessionAsync(userRecord.Id, sessionTitle, "DoctorChat");
+
+            await _messageService.SendMessageAsync(session.Id, doctorUserId, "doctor", req.Message.Trim());
+            await _notificationService.NotifyNewMessage(
+                patient.Email,
+                doctor.FullName ?? "Your Doctor",
+                req.Message.Trim(),
+                session.Id,
+                doctor.Id);
+
+            return Ok(new { message = "Message sent", sessionId = session.Id });
         }
 
         // Self-deactivate account (Doctor can deactivate their own account)
@@ -216,5 +349,16 @@ namespace MedicalAssistant.Presentation.Controllers
 
             return Ok(new { message = "Account deactivated successfully. Contact admin to reactivate." });
         }
+    }
+
+    public class MessagePatientRequest
+    {
+        public string PatientEmail { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+    }
+
+    public class UploadDoctorPhotoRequest
+    {
+        public IFormFile? Photo { get; set; }
     }
 }

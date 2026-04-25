@@ -46,9 +46,19 @@ export async function apiFetch<T>(
   try {
     console.log(`[API] ${options.method ?? 'GET'} ${url}`)
     
+    const isFormData = options.body instanceof FormData;
+
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      // Don't set Content-Type for FormData - fetch needs to set it automatically
+      // with the correct multipart boundary. For everything else, default to JSON.
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...(options.headers as Record<string, string>),
+    }
+
+    // Remove Content-Type if FormData, even if caller passed one manually
+    if (isFormData) {
+      delete headers['Content-Type'];
+      delete headers['content-type'];
     }
 
     if (requiresAuth) {
