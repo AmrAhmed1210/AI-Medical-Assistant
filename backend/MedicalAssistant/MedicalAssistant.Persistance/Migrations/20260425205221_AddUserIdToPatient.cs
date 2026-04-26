@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,42 +10,47 @@ namespace MedicalAssistant.Persistance.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // Use compatible types for both SQL Server and PostgreSQL
+            var isPostgres = migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL";
+            var stringType = isPostgres ? "text" : "nvarchar(max)";
+            var intType = isPostgres ? "integer" : "int";
+
             migrationBuilder.AddColumn<string>(
                 name: "Type",
                 table: "Session",
-                type: "nvarchar(max)",
+                type: stringType,
                 nullable: false,
                 defaultValue: "");
 
             migrationBuilder.AddColumn<int>(
                 name: "UserId",
                 table: "Patients",
-                type: "int",
+                type: intType,
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
                 name: "AttachmentUrl",
                 table: "Message",
-                type: "nvarchar(max)",
+                type: stringType,
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
                 name: "FileName",
                 table: "Message",
-                type: "nvarchar(max)",
+                type: stringType,
                 nullable: true);
 
             migrationBuilder.AddColumn<string>(
                 name: "MessageType",
                 table: "Message",
-                type: "nvarchar(max)",
+                type: stringType,
                 nullable: false,
                 defaultValue: "");
 
             migrationBuilder.AddColumn<string>(
                 name: "PhotoUrl",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: stringType,
                 nullable: true);
 
             migrationBuilder.CreateIndex(
