@@ -147,41 +147,31 @@ public class Program
             // 1. Aggressive PostgreSQL Schema Patching
             if (!context.Database.IsSqlServer())
             {
-                Console.WriteLine("🚀 Starting Fortified PostgreSQL Schema Patching...");
-                try
+                Console.WriteLine("🚀 [DB PATCH] Starting Brute-Force Patching...");
+                string[] tables = { "Messages", "messages", "Message", "message" };
+                string[] sessionTables = { "Sessions", "sessions", "Session", "session" };
+
+                foreach (var tab in tables)
                 {
-                    var patchSql = @"
-                        DO $$ 
-                        BEGIN 
-                            -- Ensure columns exist in Messages/Message table
-                            FOR tab IN SELECT tablename FROM pg_tables WHERE tablename IN ('Messages', 'Message', 'messages', 'message')
-                            LOOP
-                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""SenderName"" text', tab);
-                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""SenderPhotoUrl"" text', tab);
-                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""Type"" integer DEFAULT 0', tab);
-                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""IsSystem"" boolean DEFAULT false', tab);
-                            END LOOP;
-
-                            -- Ensure columns exist in Sessions/Session table
-                            FOR tab IN SELECT tablename FROM pg_tables WHERE tablename IN ('Sessions', 'Session', 'sessions', 'session')
-                            LOOP
-                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""Type"" text DEFAULT ''''', tab);
-                            END LOOP;
-
-                            -- Ensure columns exist in Users/users table
-                            FOR tab IN SELECT tablename FROM pg_tables WHERE tablename IN ('Users', 'users')
-                            LOOP
-                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""PhotoUrl"" text', tab);
-                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""FullName"" text', tab);
-                            END LOOP;
-                        END $$;";
-
-                    await context.Database.ExecuteSqlRawAsync(patchSql);
-                    Console.WriteLine("✅ PostgreSQL Schema Patching Applied Successfully");
+                    try
+                    {
+                        await context.Database.ExecuteSqlRawAsync($@"ALTER TABLE ""{tab}"" ADD COLUMN IF NOT EXISTS ""SenderName"" text;");
+                        await context.Database.ExecuteSqlRawAsync($@"ALTER TABLE ""{tab}"" ADD COLUMN IF NOT EXISTS ""SenderPhotoUrl"" text;");
+                        await context.Database.ExecuteSqlRawAsync($@"ALTER TABLE ""{tab}"" ADD COLUMN IF NOT EXISTS ""Type"" integer DEFAULT 0;");
+                        await context.Database.ExecuteSqlRawAsync($@"ALTER TABLE ""{tab}"" ADD COLUMN IF NOT EXISTS ""IsSystem"" boolean DEFAULT false;");
+                        Console.WriteLine($"✅ [DB PATCH] Applied to table: {tab}");
+                    }
+                    catch { /* try next name */ }
                 }
-                catch (Exception ex)
+
+                foreach (var tab in sessionTables)
                 {
-                    Console.WriteLine($"⚠️ Schema Patch Warning: {ex.Message}");
+                    try
+                    {
+                        await context.Database.ExecuteSqlRawAsync($@"ALTER TABLE ""{tab}"" ADD COLUMN IF NOT EXISTS ""Type"" text DEFAULT '';");
+                        Console.WriteLine($"✅ [DB PATCH] Applied to session table: {tab}");
+                    }
+                    catch { /* try next name */ }
                 }
             }
 
