@@ -178,29 +178,43 @@ public class Program
                         // 3. Patch Message table
                         await using (var cmd = conn.CreateCommand())
                         {
+                            Console.WriteLine("🚀 Attempting to patch Message table schema...");
                             cmd.CommandText = @"
-                                ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""SenderName"" text;
-                                ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""SenderPhotoUrl"" text;
-                                ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""MessageType"" text DEFAULT 'text';
-                                ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""AttachmentUrl"" text;
-                                ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""FileName"" text;
+                                DO $$ 
+                                BEGIN 
+                                    IF EXISTS (SELECT FROM pg_tables WHERE tablename = 'Message') THEN
+                                        ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""SenderName"" text;
+                                        ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""SenderPhotoUrl"" text;
+                                        ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""MessageType"" text DEFAULT 'text';
+                                        ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""AttachmentUrl"" text;
+                                        ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""FileName"" text;
+                                    END IF;
+                                    
+                                    IF EXISTS (SELECT FROM pg_tables WHERE tablename = 'Messages') THEN
+                                        ALTER TABLE ""Messages"" ADD COLUMN IF NOT EXISTS ""SenderName"" text;
+                                        ALTER TABLE ""Messages"" ADD COLUMN IF NOT EXISTS ""SenderPhotoUrl"" text;
+                                        ALTER TABLE ""Messages"" ADD COLUMN IF NOT EXISTS ""MessageType"" text DEFAULT 'text';
+                                        ALTER TABLE ""Messages"" ADD COLUMN IF NOT EXISTS ""AttachmentUrl"" text;
+                                        ALTER TABLE ""Messages"" ADD COLUMN IF NOT EXISTS ""FileName"" text;
+                                    END IF;
+                                END $$;
                             ";
                             await cmd.ExecuteNonQueryAsync();
-                            Console.WriteLine("✅ Message table patch complete");
+                            Console.WriteLine("✅ PostgreSQL Schema Patching Applied Successfully");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"⚠️ Pre-migration patch failed (non-critical): {ex.Message}");
+                        Console.WriteLine($"❌ CRITICAL SCHEMA PATCH ERROR: {ex.Message}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "❌ DB Init Error - continuing anyway...");
+                var logger = services.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "An error occurred while migrating the database.");
             }
-
-            // Seeding Admin
+        }     // Seeding Admin
             try
             {
                 var adminEmail = "hassanmohamed5065@gmail.com";
