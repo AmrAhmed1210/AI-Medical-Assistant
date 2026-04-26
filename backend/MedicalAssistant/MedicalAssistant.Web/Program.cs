@@ -213,6 +213,7 @@ public class Program
 
         // Railway Port Fix
         var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+        // Railway Force Redeploy Comment - Timestamp: 2026-04-26 01:42
         app.Run($"http://0.0.0.0:{port}");
     }
 }
