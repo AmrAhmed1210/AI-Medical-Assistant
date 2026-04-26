@@ -214,8 +214,19 @@ export function useUsers(
           }
         )
       })
+      
+      conn.on('DoctorUpdated', (data) => {
+        setUsers(prev => prev.map(u => 
+          (u.id === data.doctorId || u.id === data.userId)
+            ? { ...u, photoUrl: data.photoUrl || u.photoUrl, name: data.doctorName || u.name } 
+            : u
+        ))
+      })
 
-      cleanup = () => conn.off('NewUserRegistered')
+      cleanup = () => {
+        conn.off('NewUserRegistered')
+        conn.off('DoctorUpdated')
+      }
     }).catch(() => {
       // SignalR optional - app works without it
     })

@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using MedicalAssistant.Domain.Entities.DoctorsModule;
 using MedicalAssistant.Shared.DTOs.DoctorDTOs;
 
@@ -10,7 +10,10 @@ public class DoctorProfile : Profile
     {
         CreateMap<Doctor, DoctorDTO>()
             .ForMember(dest => dest.Specialty, opt => opt.MapFrom(src => src.Specialty.Name))
-            .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => src.ImageUrl ?? string.Empty))
+            .ForMember(dest => dest.ImageUrl, opt => opt.MapFrom(src => 
+                (string.IsNullOrWhiteSpace(src.ImageUrl) || src.ImageUrl == "default-doctor.png") 
+                ? "https://cdn-icons-png.flaticon.com/512/3774/3774299.png" 
+                : src.ImageUrl))
             .ForMember(dest => dest.YearsExperience, opt => opt.MapFrom(src => src.Experience))
             .ForMember(dest => dest.IsProfileComplete, opt => opt.MapFrom(src =>
                 !string.IsNullOrWhiteSpace(src.Bio)

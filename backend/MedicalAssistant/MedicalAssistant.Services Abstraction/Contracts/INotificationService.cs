@@ -3,7 +3,7 @@ namespace MedicalAssistant.Services_Abstraction.Contracts;
 public interface INotificationService
 {
     Task NotifyDoctorCreated(string doctorName, string specialty);
-    Task NotifyProfileUpdated(int doctorId, string doctorName);
+    Task NotifyProfileUpdated(int doctorId, string doctorName, string? photoUrl = null);
     Task NotifyAppointmentChanged(int appointmentId, string status, string patientEmail);
     Task NotifyNewUserRegistered(int userId, string name, string email, string role);
     Task NotifyScheduleReady(int doctorId, string doctorName);

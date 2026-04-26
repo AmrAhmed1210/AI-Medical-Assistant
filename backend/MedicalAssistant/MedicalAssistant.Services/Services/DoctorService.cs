@@ -243,7 +243,7 @@ public class DoctorService : IDoctorService
 
         _unitOfWork.Repository<Doctor>().Update(doctor);
         await _unitOfWork.SaveChangesAsync();
-        await _notificationService.NotifyProfileUpdated(doctor.Id, doctor.Name);
+        await _notificationService.NotifyProfileUpdated(doctor.Id, doctor.Name, GetFullImageUrl(doctor.ImageUrl));
     }
 
     public async Task<IEnumerable<AppointmentDto>> GetAppointmentsAsync(int doctorId, string? status)
@@ -929,6 +929,7 @@ public class DoctorService : IDoctorService
             if (doctor.User != null) doctor.User.PhotoUrl = photoUrl;
             _unitOfWork.Repository<Doctor>().Update(doctor);
             await _unitOfWork.SaveChangesAsync();
+            await _notificationService.NotifyProfileUpdated(doctor.Id, doctor.Name, photoUrl);
         }
     }
 

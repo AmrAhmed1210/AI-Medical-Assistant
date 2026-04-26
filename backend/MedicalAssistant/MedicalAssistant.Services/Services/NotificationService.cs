@@ -23,18 +23,21 @@ public class NotificationService : INotificationService
         });
     }
 
-    public async Task NotifyProfileUpdated(int doctorId, string doctorName)
+    public async Task NotifyProfileUpdated(int doctorId, string doctorName, string? photoUrl = null)
     {
         var payload = new
         {
             doctorId,
             doctorName,
+            photoUrl,
             message = "Doctor profile has been updated",
             type = "profile_updated",
             timestamp = DateTime.UtcNow
         };
 
         await SendGroupEventAsync($"Schedule_Doctor_{doctorId}", "DoctorUpdated", payload);
+        await SendGroupEventAsync("Admin", "DoctorUpdated", payload);
+        await SendNotificationAsync("Admin", "profile_updated", "Profile Updated", $"Dr. {doctorName} updated their profile.", payload);
     }
 
     public async Task NotifyAppointmentChanged(int appointmentId, string status, string patientEmail)
@@ -67,6 +70,8 @@ public class NotificationService : INotificationService
             message = $"New {role} registered: {name}",
             timestamp = DateTime.UtcNow
         });
+
+        await SendNotificationAsync("Admin", "new_user", "New User Registered", $"{role} {name} has joined.", new { userId, name, email, role });
     }
 
     public async Task NotifyScheduleReady(int doctorId, string doctorName)
