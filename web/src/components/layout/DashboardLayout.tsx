@@ -1,33 +1,47 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
-import { startConnection } from '@/lib/signalr'
+import { startConnection, stopConnection } from '@/lib/signalr'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationStore } from '@/store/notificationStore'
 import { useAppointmentStore } from '@/store/appointmentStore'
 
 export function DashboardLayout() {
   const { token, role } = useAuthStore()
+  const navigate = useNavigate()
   const { incrementSessionMessage, incrementAppointments, incrementDoctorApplications, setLatestMessagePayload, addNotification } = useNotificationStore()
   const { handleNewBooking, handleAppointmentUpdated } = useAppointmentStore()
 
   useEffect(() => {
-    if (!token || (role !== 'Doctor' && role !== 'Admin')) return
+    if (!token || !role) return
     let disposed = false
     let cleanup: (() => void) | undefined
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
-    startConnection(token)
-      .then((conn) => {
+    const setupConnection = async () => {
+      try {
+        const conn = await startConnection(token)
         if (disposed) return
 
         const onNewMessage = (payload: any) => {
-          setLatestMessagePayload(payload);
-          const sessionId = payload?.sessionId ?? payload?.SessionId;
-          const isChatActive = window.location.pathname.includes('/doctor/chat');
+          // Deduplicate: check if message already exists in current session
+          const sessionId = payload?.sessionId ?? payload?.SessionId
+          const messageId = payload?.messageId ?? payload?.id ?? payload?.Id
+          
+          if (sessionId && messageId) {
+            const dedupKey = `msg_${sessionId}_${messageId}`
+            if (sessionStorage.getItem(dedupKey)) return // Already processed
+            sessionStorage.setItem(dedupKey, Date.now().toString())
+            // Cleanup old dedup keys after 5 minutes
+            setTimeout(() => sessionStorage.removeItem(dedupKey), 300000)
+          }
+
+          setLatestMessagePayload(payload)
+          const isChatActive = window.location.pathname.includes('/doctor/chat') || window.location.pathname.includes('/messages')
           if (!isChatActive && sessionId) {
-            incrementSessionMessage(sessionId);
+            incrementSessionMessage(sessionId)
           }
         }
         
@@ -79,13 +93,51 @@ export function DashboardLayout() {
           toast.success(message)
         }
 
+        // New Consultation handler for Patients
+        const onNewConsultation = (payload: any) => {
+          const doctorName = String(payload?.doctorName ?? payload?.DoctorName ?? 'Doctor')
+          const title = String(payload?.title ?? payload?.Title ?? 'Consultation')
+          
+          addNotification('info', 'New Consultation', `Dr. ${doctorName} scheduled: ${title}`)
+          toast.success(`🩺 Dr. ${doctorName} scheduled a consultation: ${title}`, { duration: 6000 })
+          
+          // If patient is on appointments page, refresh appointments
+          if (window.location.pathname.includes('/appointments') || window.location.pathname.includes('/profile')) {
+            // The page will auto-refresh via its own useEffect
+          }
+        }
+
         conn.on('NewMessage', onNewMessage)
         conn.on('NewBooking', onNewBooking)
         conn.on('BookingCancelled', onBookingCancelled)
         conn.on('NotificationReceived', onNotificationReceived)
         conn.on('AppointmentUpdated', onAppointmentUpdated)
-
         conn.on('NewDoctorApplication', onNewDoctorApplication)
+        
+        // Patient-specific events
+        if (role === 'Patient') {
+          conn.on('NewConsultation', onNewConsultation)
+        }
+
+        // Handle reconnection
+        conn.onreconnecting(() => {
+          console.log('[SignalR] Reconnecting...')
+        })
+        
+        conn.onreconnected(() => {
+          console.log('[SignalR] Reconnected')
+          toast.success('Connection restored')
+        })
+
+        conn.onclose(() => {
+          console.log('[SignalR] Connection closed')
+          if (!disposed) {
+            // Try to reconnect after 5 seconds
+            reconnectTimer = setTimeout(() => {
+              if (!disposed) setupConnection()
+            }, 5000)
+          }
+        })
 
         cleanup = () => {
           conn.off('NewMessage', onNewMessage)
@@ -94,15 +146,28 @@ export function DashboardLayout() {
           conn.off('NotificationReceived', onNotificationReceived)
           conn.off('AppointmentUpdated', onAppointmentUpdated)
           conn.off('NewDoctorApplication', onNewDoctorApplication)
+          conn.off('NewConsultation', onNewConsultation)
         }
-      })
-      .catch(() => undefined)
+      } catch (err) {
+        console.error('[SignalR] Setup failed:', err)
+        // Retry connection after 10 seconds
+        if (!disposed) {
+          reconnectTimer = setTimeout(() => {
+            if (!disposed) setupConnection()
+          }, 10000)
+        }
+      }
+    }
+
+    setupConnection()
 
     return () => {
       disposed = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
       cleanup?.()
+      stopConnection().catch(() => undefined)
     }
-  }, [token, role, incrementSessionMessage, incrementAppointments, incrementDoctorApplications, setLatestMessagePayload, addNotification])
+  }, [token, role, incrementSessionMessage, incrementAppointments, incrementDoctorApplications, setLatestMessagePayload, addNotification, navigate])
 
   return (
     <div className="min-h-screen bg-gray-50 font-outfit" dir="ltr">

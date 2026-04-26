@@ -129,10 +129,23 @@ public class Program
             cfg.AddProfile<AdminProfile>();
         });
 
+        // ── CORS (Explicit origins required for SignalR + credentials) ───────
+        var corsOrigins = builder.Configuration.GetSection("CorsOrigins").Get<string[]>()
+            ?? builder.Configuration["CORS_ORIGINS"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            ?? new[] { "http://localhost:3000", "http://localhost:5173", "http://localhost:19006" };
+
+        if (corsOrigins.Length == 0 || string.IsNullOrWhiteSpace(corsOrigins[0]))
+        {
+            corsOrigins = new[] { "http://localhost:3000", "http://localhost:5173", "http://localhost:19006" };
+        }
+
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", policy =>
-                policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+                policy.WithOrigins(corsOrigins)
+                      .AllowAnyMethod()
+                      .AllowAnyHeader()
+                      .AllowCredentials());
         });
 
         var app = builder.Build();
