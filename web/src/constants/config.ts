@@ -1,5 +1,5 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ai-medical-assistant-production-38a3.up.railway.app'
-export const SIGNALR_HUB_URL = import.meta.env.VITE_SIGNALR_HUB_URL || 'https://ai-medical-assistant-production-38a3.up.railway.app/hubs/consult'
+export const SIGNALR_HUB_URL = import.meta.env.VITE_SIGNALR_HUB_URL || 'https://ai-medical-assistant-production-38a3.up.railway.app/hubs/notifications'
 export const APP_NAME = import.meta.env.VITE_APP_NAME || 'MedBook'
 
 export const TOKEN_KEY = 'medbook_token'
