@@ -180,29 +180,43 @@ public class Program
                 // Final brute-force attempt to fix PostgreSQL schema
                 try 
                 {
-                    logger.LogInformation("🛠️ Attempting brute-force schema patch...");
-                    string[] tables = { "Patients", "Session", "Message", "DoctorApplications" };
-                    foreach (var table in tables)
+                    logger.LogInformation("🛠️ Starting Ultimate Schema Diagnostics...");
+                    
+                    // 1. List existing columns for debugging
+                    try {
+                        using var command = context.Database.GetDbConnection().CreateCommand();
+                        command.CommandText = "SELECT column_name FROM information_schema.columns WHERE table_name = 'Patients' OR table_name = 'patients';";
+                        context.Database.OpenConnection();
+                        using var reader = await command.ExecuteReaderAsync();
+                        var cols = new List<string>();
+                        while (await reader.ReadAsync()) cols.Add(reader.GetString(0));
+                        logger.LogInformation("🔍 Existing columns in Patients: {Cols}", string.Join(", ", cols));
+                    } catch (Exception ex) { logger.LogError("❌ Could not list columns: {Msg}", ex.Message); }
+
+                    // 2. Apply patches with all possible variations
+                    string[] sqls = {
+                        "ALTER TABLE \"Patients\" ADD COLUMN IF NOT EXISTS \"UserId\" integer;",
+                        "ALTER TABLE patients ADD COLUMN IF NOT EXISTS \"UserId\" integer;",
+                        "ALTER TABLE \"Patients\" ADD COLUMN IF NOT EXISTS userid integer;",
+                        "ALTER TABLE patients ADD COLUMN IF NOT EXISTS userid integer;"
+                    };
+
+                    foreach (var sql in sqls)
                     {
                         try {
-                            if (table == "Patients") await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Patients\" ADD COLUMN IF NOT EXISTS \"UserId\" integer;");
-                            if (table == "Session") await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Session\" ADD COLUMN IF NOT EXISTS \"Type\" text DEFAULT '';");
-                            if (table == "Message") {
-                                await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"AttachmentUrl\" text;");
-                                await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"FileName\" text;");
-                                await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"MessageType\" text DEFAULT 'text';");
-                            }
-                            if (table == "DoctorApplications") await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"DoctorApplications\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;");
-                            logger.LogInformation("✅ Patched table: {Table}", table);
-                        } catch (Exception ex) { 
-                            logger.LogWarning("⚠️ Could not patch {Table} with quotes, trying without... Error: {Msg}", table, ex.Message);
-                            // Try without quotes just in case
-                            try {
-                                if (table == "Patients") await context.Database.ExecuteSqlRawAsync($"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS UserId integer;");
-                                logger.LogInformation("✅ Patched table {Table} (without quotes)", table);
-                            } catch { /* Ignore second failure */ }
-                        }
+                            await context.Database.ExecuteSqlRawAsync(sql);
+                            logger.LogInformation("✅ Executed: {Sql}", sql);
+                        } catch (Exception ex) { logger.LogWarning("⚠️ Failed SQL: {Sql}. Error: {Msg}", sql, ex.Message); }
                     }
+
+                    // Patch other tables too
+                    try {
+                        await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Session\" ADD COLUMN IF NOT EXISTS \"Type\" text DEFAULT '';");
+                        await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"AttachmentUrl\" text;");
+                        await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"FileName\" text;");
+                        await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"MessageType\" text DEFAULT 'text';");
+                        await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"DoctorApplications\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;");
+                    } catch { /* Ignore */ }
                 }
                 catch(Exception ex) { logger.LogError("❌ Critical patch error: {Message}", ex.Message); }
 
