@@ -1,4 +1,5 @@
 using MedicalAssistant.Application.Services;
+// Force redeploy to apply database migrations for PostgreSQL
 using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Persistance.Data.DbContexts;
 using MedicalAssistant.Persistance.Repositories;
