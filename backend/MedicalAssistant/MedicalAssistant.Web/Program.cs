@@ -208,35 +208,39 @@ public class Program
                         Console.WriteLine($"❌ CRITICAL SCHEMA PATCH ERROR: {ex.Message}");
                     }
                 }
+
+                // Seeding Admin
+                try
+                {
+                    var adminEmail = "hassanmohamed5065@gmail.com";
+                    var admin = await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()
+                        .FirstOrDefaultAsync(u => u.Email == adminEmail);
+
+                    if (admin == null)
+                    {
+                        admin = new MedicalAssistant.Domain.Entities.UserModule.User
+                        {
+                            FullName = "Admin",
+                            Email = adminEmail,
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456789"),
+                            Role = "Admin",
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().AddAsync(admin);
+                        await context.SaveChangesAsync();
+                    }
+                }
+                catch (Exception ex) 
+                { 
+                    logger.LogWarning("Seeding failed: {Msg}", ex.Message); 
+                }
             }
             catch (Exception ex)
             {
                 var logger = services.GetRequiredService<ILogger<Program>>();
                 logger.LogError(ex, "An error occurred while migrating the database.");
             }
-        }     // Seeding Admin
-            try
-            {
-                var adminEmail = "hassanmohamed5065@gmail.com";
-                var admin = await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()
-                    .FirstOrDefaultAsync(u => u.Email == adminEmail);
-
-                if (admin == null)
-                {
-                    admin = new MedicalAssistant.Domain.Entities.UserModule.User
-                    {
-                        FullName = "Admin",
-                        Email = adminEmail,
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456789"),
-                        Role = "Admin",
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().AddAsync(admin);
-                    await context.SaveChangesAsync();
-                }
-            }
-            catch (Exception ex) { logger.LogWarning("Seeding failed: {Msg}", ex.Message); }
         }
 
         if (app.Environment.IsDevelopment())
@@ -253,7 +257,6 @@ public class Program
 
         // Railway Port Fix
         var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-        // Railway Force Redeploy Comment - Timestamp: 2026-04-26 01:42
         app.Run($"http://0.0.0.0:{port}");
     }
 }
