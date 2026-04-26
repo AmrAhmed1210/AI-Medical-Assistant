@@ -203,13 +203,22 @@ public class DoctorService : IDoctorService
             Specialty = doctor.Specialty?.Name ?? string.Empty,
             SpecialityNameAr = doctor.Specialty?.NameAr,
             Bio = doctor.Bio,
-            PhotoUrl = doctor.ImageUrl,
+            PhotoUrl = GetFullImageUrl(doctor.ImageUrl),
             ConsultFee = doctor.ConsultationFee,
             YearsExperience = doctor.Experience,
             IsAvailable = doctor.IsAvailable,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = null
         };
+    }
+
+    private string GetFullImageUrl(string? imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl) || imageUrl == "default-doctor.png")
+        {
+            return "https://cdn-icons-png.flaticon.com/512/3774/3774299.png"; // Official Doctor Placeholder
+        }
+        return imageUrl;
     }
 
     public async Task UpdateProfileAsync(int doctorId, UpdateDoctorProfileRequest request)
@@ -552,7 +561,7 @@ public class DoctorService : IDoctorService
             Location = doctor.Location,
             ConsultationFee = doctor.ConsultationFee,
             IsAvailable = doctor.IsAvailable && hasSchedule,
-            ImageUrl = doctor.ImageUrl ?? string.Empty,
+            ImageUrl = GetFullImageUrl(doctor.ImageUrl),
             YearsExperience = doctor.Experience,
             IsProfileComplete = IsProfileComplete(doctor),
             IsMobileEnabled = doctor.IsAvailable,
@@ -573,7 +582,7 @@ public class DoctorService : IDoctorService
             Location = doctor.Location,
             ConsultationFee = doctor.ConsultationFee,
             IsAvailable = doctor.IsAvailable && schedule.HasSchedule,
-            ImageUrl = doctor.ImageUrl ?? string.Empty,
+            ImageUrl = GetFullImageUrl(doctor.ImageUrl),
             YearsExperience = doctor.Experience,
             IsProfileComplete = schedule.IsProfileComplete,
             IsMobileEnabled = doctor.IsAvailable,
