@@ -129,7 +129,9 @@ public class Program
             cfg.AddProfile<AdminProfile>();
         });
 
-        // ── CORS (Explicit origins required for SignalR + credentials) ───────
+        // ── CORS Fix: Explicit origins REQUIRED for SignalR + JWT credentials ──
+        // DO NOT use AllowAnyOrigin() — browsers block wildcard when credentials=include
+        // Origins loaded from: appsettings.json → CorsOrigins OR env var CORS_ORIGINS
         var corsOrigins = builder.Configuration.GetSection("CorsOrigins").Get<string[]>()
             ?? builder.Configuration["CORS_ORIGINS"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             ?? new[] { "http://localhost:3000", "http://localhost:5173", "http://localhost:19006" };
