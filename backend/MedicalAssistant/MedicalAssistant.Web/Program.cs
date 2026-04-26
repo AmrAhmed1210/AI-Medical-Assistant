@@ -1,5 +1,4 @@
 using MedicalAssistant.Application.Services;
-// Force redeploy to apply database migrations for PostgreSQL
 using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Persistance.Data.DbContexts;
 using MedicalAssistant.Persistance.Repositories;
@@ -9,7 +8,6 @@ using MedicalAssistant.Services.Services;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
@@ -23,24 +21,11 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        // ── Controllers & Swagger ────────────────────────────────────────────
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
-
-        // ── Allow large file uploads (up to 50 MB) ────────────────────────────
-        builder.Services.Configure<FormOptions>(options =>
-        {
-            options.MultipartBodyLengthLimit = 52428800; // 50 MB
-            options.ValueLengthLimit = int.MaxValue;
-            options.MultipartHeadersLengthLimit = int.MaxValue;
-        });
-        builder.WebHost.ConfigureKestrel(options =>
-        {
-            options.Limits.MaxRequestBodySize = 52428800; // 50 MB
-        });
         builder.Services.AddSwaggerGen(c =>
         {
-            c.CustomSchemaIds(type => type.FullName);
-            c.OperationFilter<MedicalAssistant.Web.Filters.SwaggerFileUploadFilter>();
             c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
             {
                 Name = "Authorization",
@@ -66,32 +51,15 @@ public class Program
             });
         });
 
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
+        // ── Database ─────────────────────────────────────────────────────────
         builder.Services.AddDbContext<MedicalAssistantDbContext>(options =>
-        {
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-            }
+            options.UseSqlServer(
+                builder.Configuration.GetConnectionString("DefaultConnection"),
+                sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
-            if (connectionString.Contains("postgresql") || connectionString.Contains("supabase") || connectionString.Contains("Host="))
-            {
-                options.UseNpgsql(connectionString, npgsqlOptions =>
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(10),
-                        errorCodesToAdd: null));
-            }
-            else
-            {
-                options.UseSqlServer(connectionString, sqlOptions =>
-                    sqlOptions.EnableRetryOnFailure());
-            }
-        });
-
+        // ── JWT Authentication ────────────────────────────────────────────────
         var jwtKey = builder.Configuration["Jwt:Key"]
-            ?? throw new InvalidOperationException("JWT Key is missing");
+            ?? throw new InvalidOperationException("JWT Key is missing in appsettings.json");
 
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -104,7 +72,8 @@ public class Program
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = builder.Configuration["Jwt:Issuer"],
                     ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtKey))
                 };
                 options.Events = new JwtBearerEvents
                 {
@@ -117,6 +86,36 @@ public class Program
                             context.Token = accessToken;
                         }
                         return Task.CompletedTask;
+                    },
+                    OnTokenValidated = async context =>
+                    {
+                        var email = context.Principal?.FindFirst(ClaimTypes.Email)?.Value;
+                        var role = context.Principal?.FindFirst(ClaimTypes.Role)?.Value;
+
+                        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(role))
+                        {
+                            context.Fail("Invalid account.");
+                            return;
+                        }
+
+                        var dbContext = context.HttpContext.RequestServices.GetRequiredService<MedicalAssistantDbContext>();
+
+                        if (string.Equals(role, "Patient", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var patient = await dbContext.Patients.FirstOrDefaultAsync(p => p.Email.ToLower() == email.ToLower());
+                            if (patient == null || !patient.IsActive)
+                            {
+                                context.Fail("Your account is inactive.");
+                            }
+
+                            return;
+                        }
+
+                        var user = await dbContext.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower());
+                        if (user == null || !user.IsActive || user.IsDeleted)
+                        {
+                            context.Fail("Your account is inactive.");
+                        }
                     }
                 };
             });
@@ -125,12 +124,14 @@ public class Program
         builder.Services.AddSignalR();
         builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, CustomUserIdProvider>();
 
+        // ── Repositories & Unit of Work ───────────────────────────────────────
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
         builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         builder.Services.AddScoped<IDoctorRepository, DoctorRepository>();
         builder.Services.AddScoped<IPatientRepository, PatientRepository>();
         builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 
+        // ── Services ──────────────────────────────────────────────────────────
         builder.Services.AddScoped<IPatientService, PatientService>();
         builder.Services.AddScoped<IAppointmentService, AppointmentService>();
         builder.Services.AddScoped<IDoctorService, DoctorService>();
@@ -145,6 +146,7 @@ public class Program
         // ── Cloudinary ────────────────────────────────────────────────────────
         builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
 
+        // ── AutoMapper ────────────────────────────────────────────────────────
         builder.Services.AddAutoMapper(cfg =>
         {
             cfg.AddProfile<DoctorProfile>();
@@ -152,6 +154,7 @@ public class Program
             cfg.AddProfile<AdminProfile>();
         });
 
+        // ── CORS ──────────────────────────────────────────────────────────────
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", policy =>
@@ -166,62 +169,14 @@ public class Program
         });
 
         var app = builder.Build();
-
-        // ── Phase 1: Run migrations (creates all tables in Supabase) ──────────────
-        using (var scope = app.Services.CreateScope())
+        
+        // ── Seeding Admin User ────────────────────────────────────────────────
+        try 
         {
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-            try
+            using (var scope = app.Services.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<MedicalAssistantDbContext>();
-                
-                // --- STRATEGIC PATCH START: Run before everything else ---
-                logger.LogInformation("🛠️ Starting Early Schema Patch (Pre-Migration)...");
-                try 
-                {
-                    string[] patchSqls = {
-                        "ALTER TABLE \"Patients\" ADD COLUMN IF NOT EXISTS \"UserId\" integer;",
-                        "ALTER TABLE patients ADD COLUMN IF NOT EXISTS \"UserId\" integer;",
-                        "ALTER TABLE \"Users\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;",
-                        "ALTER TABLE users ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;",
-                        "ALTER TABLE \"Session\" ADD COLUMN IF NOT EXISTS \"Type\" text DEFAULT '';",
-                        "ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"AttachmentUrl\" text;",
-                        "ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"FileName\" text;",
-                        "ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"MessageType\" text DEFAULT 'text';",
-                        "ALTER TABLE \"DoctorApplications\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;"
-                    };
-
-                    foreach (var sql in patchSqls)
-                    {
-                        try { await context.Database.ExecuteSqlRawAsync(sql); } catch { /* Silent fail */ }
-                    }
-                    logger.LogInformation("✅ Pre-migration patch complete.");
-                }
-                catch(Exception ex) { logger.LogWarning("⚠️ Early patch warning: {Msg}", ex.Message); }
-                // --- STRATEGIC PATCH END ---
-
-                logger.LogInformation("🔄 Applying database migrations...");
-                await context.Database.MigrateAsync();
-                logger.LogInformation("✅ Database migrations applied successfully.");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "❌ An error occurred during DB initialization, but we will try to continue.");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "❌ An error occurred while migrating the database.");
-                // Note: On some local setups we might want to continue even if migration fails if we already have the DB
-            }
-        }
-
-        // ── Phase 2: Seed default admin user ─────────────────────────────────────
-        using (var scope = app.Services.CreateScope())
-        {
-            try
-            {
-                var context = scope.ServiceProvider.GetRequiredService<MedicalAssistantDbContext>();
-                var adminEmail = "admin@medbook.com";
+                var adminEmail = "hassanmohamed5065@gmail.com";
                 
                 var admin = await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()
                     .FirstOrDefaultAsync(u => u.Email == adminEmail);
@@ -230,7 +185,7 @@ public class Program
                 {
                     admin = new MedicalAssistant.Domain.Entities.UserModule.User
                     {
-                        FullName = "Admin",
+                        FullName = "Hassan Mohamed",
                         Email = adminEmail,
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456789"),
                         Role = "Admin",
@@ -238,7 +193,6 @@ public class Program
                         CreatedAt = DateTime.UtcNow
                     };
                     await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().AddAsync(admin);
-                    await context.SaveChangesAsync();
                     Console.WriteLine("Created Admin User: " + adminEmail);
                 }
                 else
@@ -250,7 +204,6 @@ public class Program
                     // Reset password to default if needed (optional, but good for rescue)
                     admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456789");
                     context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().Update(admin);
-                    await context.SaveChangesAsync();
                     Console.WriteLine("Verified/Updated Admin User: " + adminEmail);
                 }
                 // ── Seeding Specialties ───────────────────────────────────────────
@@ -273,28 +226,25 @@ public class Program
                     Console.WriteLine("Seeded initial specialties.");
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine("⚠️ Seeding failed: " + ex.Message);
-            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("⚠️ Seeding failed: " + ex.Message);
         }
 
-        app.UseSwagger();
-        app.UseSwaggerUI(c =>
+        if (app.Environment.IsDevelopment())
         {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Medical Assistant API V1");
-            c.RoutePrefix = "swagger"; 
-        });
+            app.UseSwagger();
+            app.UseSwaggerUI();
+        }
 
-        // NOTE: HttpsRedirection is disabled because the server runs on plain HTTP (http://0.0.0.0:5194)
-        // app.UseHttpsRedirection();
-        
+        app.UseHttpsRedirection();
         app.UseCors("AllowAll");
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
         app.MapHub<NotificationHub>("/hubs/notifications");
-
+        app.Urls.Add("http://0.0.0.0:5194");
         app.Run();
     }
 }
