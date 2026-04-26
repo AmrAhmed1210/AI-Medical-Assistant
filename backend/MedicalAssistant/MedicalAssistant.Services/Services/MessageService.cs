@@ -42,8 +42,10 @@ namespace MedicalAssistant.Services.Services
             var session = await _unitOfWork.Sessions.GetByIdAsync(sessionId);
             if (session?.Type == "SupportChat" && (role.Equals("user", StringComparison.OrdinalIgnoreCase) || role.Equals("doctor", StringComparison.OrdinalIgnoreCase)))
             {
-                var messages = await _unitOfWork.Messages.GetBySessionIdAsync(sessionId);
-                if (messages.Count() == 1)
+                var messages = await _unitOfWork.Repository<Message>()
+                    .FindAsync(m => m.SessionId == sessionId);
+                    
+                if (messages != null && messages.Count() == 1)
                 {
                     var autoReply = new Message
                     {
@@ -64,8 +66,13 @@ namespace MedicalAssistant.Services.Services
 
         public async Task<IReadOnlyList<MessageDto>> GetMessagesForSessionAsync(int sessionId)
         {
-            var items = await _unitOfWork.Messages.GetBySessionIdAsync(sessionId);
-            return items.Select(Map).ToList();
+            var items = await _unitOfWork.Repository<Message>()
+                .FindAsync(m => m.SessionId == sessionId);
+                
+            return (items ?? Enumerable.Empty<Message>())
+                .OrderBy(m => m.Timestamp)
+                .Select(Map)
+                .ToList();
         }
 
         private static MessageDto Map(Message m) => new MessageDto
