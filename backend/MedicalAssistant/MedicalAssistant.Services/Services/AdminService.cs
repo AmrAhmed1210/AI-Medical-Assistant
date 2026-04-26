@@ -155,7 +155,7 @@ namespace MedicalAssistant.Services.Services
                 Email = p.Email,
                 Role = "Patient",
                 IsActive = p.IsActive,
-                PhotoUrl = p.ImageUrl,
+                PhotoUrl = string.IsNullOrWhiteSpace(p.ImageUrl) ? "https://cdn-icons-png.flaticon.com/512/3774/3774299.png" : p.ImageUrl,
                 CreatedAt = p.CreatedAt
             });
 
@@ -167,7 +167,7 @@ namespace MedicalAssistant.Services.Services
                 Email = u.Email,
                 Role = u.Role,
                 IsActive = u.IsActive,
-                PhotoUrl = u.PhotoUrl,
+                PhotoUrl = string.IsNullOrWhiteSpace(u.PhotoUrl) ? "https://cdn-icons-png.flaticon.com/512/3774/3774299.png" : u.PhotoUrl,
                 CreatedAt = u.CreatedAt
             });
 
@@ -519,6 +519,7 @@ namespace MedicalAssistant.Services.Services
                 Rating = 0,
                 ReviewCount = 0,
                 SpecialtyId = app.SpecialtyId,
+                ImageUrl = string.IsNullOrWhiteSpace(app.PhotoUrl) ? "default-doctor.png" : app.PhotoUrl,
                 UserId = user.Id
             };
 
