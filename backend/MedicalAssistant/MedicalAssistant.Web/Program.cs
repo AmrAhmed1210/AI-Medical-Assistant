@@ -168,6 +168,32 @@ public class Program
                 logger.LogInformation("🔄 Running Migrations...");
                 await context.Database.MigrateAsync();
                 logger.LogInformation("✅ Database Ready.");
+
+                if (isPostgres)
+                {
+                    try
+                    {
+                        var conn = context.Database.GetDbConnection();
+                        await conn.OpenAsync();
+                        // 3. Patch Message table
+                        await using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.CommandText = @"
+                                ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""SenderName"" text;
+                                ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""SenderPhotoUrl"" text;
+                                ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""MessageType"" text DEFAULT 'text';
+                                ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""AttachmentUrl"" text;
+                                ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""FileName"" text;
+                            ";
+                            await cmd.ExecuteNonQueryAsync();
+                            Console.WriteLine("✅ Message table patch complete");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠️ Pre-migration patch failed (non-critical): {ex.Message}");
+                    }
+                }
             }
             catch (Exception ex)
             {
