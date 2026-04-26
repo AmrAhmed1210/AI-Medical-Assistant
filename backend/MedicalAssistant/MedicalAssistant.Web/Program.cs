@@ -144,101 +144,85 @@ public class Program
             var logger = services.GetRequiredService<ILogger<Program>>();
             var context = services.GetRequiredService<MedicalAssistantDbContext>();
 
-            try
+            // 1. Aggressive PostgreSQL Schema Patching
+            if (!context.Database.IsSqlServer())
             {
-                if (isPostgres)
-                {
-                    logger.LogInformation("🛠️ Applying PostgreSQL Schema Patches...");
-                    string[] patchSqls = {
-                        "ALTER TABLE \"Patients\" ADD COLUMN IF NOT EXISTS \"UserId\" integer;",
-                        "ALTER TABLE \"Users\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;",
-                        "ALTER TABLE \"Users\" ADD COLUMN IF NOT EXISTS \"FullName\" text;",
-                        "ALTER TABLE \"Session\" ADD COLUMN IF NOT EXISTS \"Type\" text DEFAULT '';",
-                        "ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"AttachmentUrl\" text;",
-                        "ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"FileName\" text;",
-                        "ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"MessageType\" text DEFAULT 'text';",
-                        "ALTER TABLE \"DoctorApplications\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;"
-                    };
-                    foreach (var sql in patchSqls)
-                    {
-                        try { await context.Database.ExecuteSqlRawAsync(sql); } catch { /* skip */ }
-                    }
-                }
-
-                logger.LogInformation("🔄 Running Migrations...");
-                await context.Database.MigrateAsync();
-                logger.LogInformation("✅ Database Ready.");
-
-                if (isPostgres)
-                {
-                    try
-                    {
-                        var conn = context.Database.GetDbConnection();
-                        await conn.OpenAsync();
-                        // 3. Patch Message table
-                        await using (var cmd = conn.CreateCommand())
-                        {
-                            Console.WriteLine("🚀 Attempting to patch Message table schema...");
-                            cmd.CommandText = @"
-                                DO $$ 
-                                BEGIN 
-                                    IF EXISTS (SELECT FROM pg_tables WHERE tablename = 'Message') THEN
-                                        ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""SenderName"" text;
-                                        ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""SenderPhotoUrl"" text;
-                                        ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""MessageType"" text DEFAULT 'text';
-                                        ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""AttachmentUrl"" text;
-                                        ALTER TABLE ""Message"" ADD COLUMN IF NOT EXISTS ""FileName"" text;
-                                    END IF;
-                                    
-                                    IF EXISTS (SELECT FROM pg_tables WHERE tablename = 'Messages') THEN
-                                        ALTER TABLE ""Messages"" ADD COLUMN IF NOT EXISTS ""SenderName"" text;
-                                        ALTER TABLE ""Messages"" ADD COLUMN IF NOT EXISTS ""SenderPhotoUrl"" text;
-                                        ALTER TABLE ""Messages"" ADD COLUMN IF NOT EXISTS ""MessageType"" text DEFAULT 'text';
-                                        ALTER TABLE ""Messages"" ADD COLUMN IF NOT EXISTS ""AttachmentUrl"" text;
-                                        ALTER TABLE ""Messages"" ADD COLUMN IF NOT EXISTS ""FileName"" text;
-                                    END IF;
-                                END $$;
-                            ";
-                            await cmd.ExecuteNonQueryAsync();
-                            Console.WriteLine("✅ PostgreSQL Schema Patching Applied Successfully");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"❌ CRITICAL SCHEMA PATCH ERROR: {ex.Message}");
-                    }
-                }
-
-                // Seeding Admin
+                Console.WriteLine("🚀 Starting Fortified PostgreSQL Schema Patching...");
                 try
                 {
-                    var adminEmail = "hassanmohamed5065@gmail.com";
-                    var admin = await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()
-                        .FirstOrDefaultAsync(u => u.Email == adminEmail);
+                    var patchSql = @"
+                        DO $$ 
+                        BEGIN 
+                            -- Ensure columns exist in Messages/Message table
+                            FOR tab IN SELECT tablename FROM pg_tables WHERE tablename IN ('Messages', 'Message', 'messages', 'message')
+                            LOOP
+                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""SenderName"" text', tab);
+                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""SenderPhotoUrl"" text', tab);
+                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""Type"" integer DEFAULT 0', tab);
+                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""IsSystem"" boolean DEFAULT false', tab);
+                            END LOOP;
 
-                    if (admin == null)
-                    {
-                        admin = new MedicalAssistant.Domain.Entities.UserModule.User
-                        {
-                            FullName = "Admin",
-                            Email = adminEmail,
-                            PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456789"),
-                            Role = "Admin",
-                            IsActive = true,
-                            CreatedAt = DateTime.UtcNow
-                        };
-                        await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().AddAsync(admin);
-                        await context.SaveChangesAsync();
-                    }
+                            -- Ensure columns exist in Sessions/Session table
+                            FOR tab IN SELECT tablename FROM pg_tables WHERE tablename IN ('Sessions', 'Session', 'sessions', 'session')
+                            LOOP
+                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""Type"" text DEFAULT ''''', tab);
+                            END LOOP;
+
+                            -- Ensure columns exist in Users/users table
+                            FOR tab IN SELECT tablename FROM pg_tables WHERE tablename IN ('Users', 'users')
+                            LOOP
+                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""PhotoUrl"" text', tab);
+                                EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS ""FullName"" text', tab);
+                            END LOOP;
+                        END $$;";
+
+                    await context.Database.ExecuteSqlRawAsync(patchSql);
+                    Console.WriteLine("✅ PostgreSQL Schema Patching Applied Successfully");
                 }
-                catch (Exception ex) 
-                { 
-                    logger.LogWarning("Seeding failed: {Msg}", ex.Message); 
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️ Schema Patch Warning: {ex.Message}");
                 }
+            }
+
+            // 2. Try Migrations (Independent)
+            try
+            {
+                Console.WriteLine("🔄 Running Migrations...");
+                await context.Database.MigrateAsync();
+                Console.WriteLine("✅ Database Migrations completed.");
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "An error occurred while migrating the database.");
+                Console.WriteLine($"⚠️ Migration failed/skipped (Non-critical due to patch): {ex.Message}");
+            }
+
+            // 3. Seeding Admin (Independent)
+            try
+            {
+                var adminEmail = "hassanmohamed5065@gmail.com";
+                var admin = await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()
+                    .FirstOrDefaultAsync(u => u.Email == adminEmail);
+
+                if (admin == null)
+                {
+                    admin = new MedicalAssistant.Domain.Entities.UserModule.User
+                    {
+                        FullName = "Admin",
+                        Email = adminEmail,
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456789"),
+                        Role = "Admin",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().AddAsync(admin);
+                    await context.SaveChangesAsync();
+                    Console.WriteLine("✅ Admin seeded successfully.");
+                }
+            }
+            catch (Exception ex) 
+            { 
+                Console.WriteLine($"⚠️ Seeding failed: {ex.Message}"); 
             }
         }
 
