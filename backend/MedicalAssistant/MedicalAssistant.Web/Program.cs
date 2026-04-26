@@ -174,53 +174,39 @@ public class Program
             try
             {
                 var context = scope.ServiceProvider.GetRequiredService<MedicalAssistantDbContext>();
-                logger.LogInformation("🔄 Applying database migrations...");
-                await context.Database.MigrateAsync();
                 
-                // Final brute-force attempt to fix PostgreSQL schema
+                // --- STRATEGIC PATCH START: Run before everything else ---
+                logger.LogInformation("🛠️ Starting Early Schema Patch (Pre-Migration)...");
                 try 
                 {
-                    logger.LogInformation("🛠️ Starting Ultimate Schema Diagnostics...");
-                    
-                    // 1. List existing columns for debugging
-                    try {
-                        using var command = context.Database.GetDbConnection().CreateCommand();
-                        command.CommandText = "SELECT column_name FROM information_schema.columns WHERE table_name = 'Patients' OR table_name = 'patients';";
-                        context.Database.OpenConnection();
-                        using var reader = await command.ExecuteReaderAsync();
-                        var cols = new List<string>();
-                        while (await reader.ReadAsync()) cols.Add(reader.GetString(0));
-                        logger.LogInformation("🔍 Existing columns in Patients: {Cols}", string.Join(", ", cols));
-                    } catch (Exception ex) { logger.LogError("❌ Could not list columns: {Msg}", ex.Message); }
-
-                    // 2. Apply patches with all possible variations
-                    string[] sqls = {
+                    string[] patchSqls = {
                         "ALTER TABLE \"Patients\" ADD COLUMN IF NOT EXISTS \"UserId\" integer;",
                         "ALTER TABLE patients ADD COLUMN IF NOT EXISTS \"UserId\" integer;",
-                        "ALTER TABLE \"Patients\" ADD COLUMN IF NOT EXISTS userid integer;",
-                        "ALTER TABLE patients ADD COLUMN IF NOT EXISTS userid integer;"
+                        "ALTER TABLE \"Users\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;",
+                        "ALTER TABLE users ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;",
+                        "ALTER TABLE \"Session\" ADD COLUMN IF NOT EXISTS \"Type\" text DEFAULT '';",
+                        "ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"AttachmentUrl\" text;",
+                        "ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"FileName\" text;",
+                        "ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"MessageType\" text DEFAULT 'text';",
+                        "ALTER TABLE \"DoctorApplications\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;"
                     };
 
-                    foreach (var sql in sqls)
+                    foreach (var sql in patchSqls)
                     {
-                        try {
-                            await context.Database.ExecuteSqlRawAsync(sql);
-                            logger.LogInformation("✅ Executed: {Sql}", sql);
-                        } catch (Exception ex) { logger.LogWarning("⚠️ Failed SQL: {Sql}. Error: {Msg}", sql, ex.Message); }
+                        try { await context.Database.ExecuteSqlRawAsync(sql); } catch { /* Silent fail */ }
                     }
-
-                    // Patch other tables too
-                    try {
-                        await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Session\" ADD COLUMN IF NOT EXISTS \"Type\" text DEFAULT '';");
-                        await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"AttachmentUrl\" text;");
-                        await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"FileName\" text;");
-                        await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"MessageType\" text DEFAULT 'text';");
-                        await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"DoctorApplications\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;");
-                    } catch { /* Ignore */ }
+                    logger.LogInformation("✅ Pre-migration patch complete.");
                 }
-                catch(Exception ex) { logger.LogError("❌ Critical patch error: {Message}", ex.Message); }
+                catch(Exception ex) { logger.LogWarning("⚠️ Early patch warning: {Msg}", ex.Message); }
+                // --- STRATEGIC PATCH END ---
 
+                logger.LogInformation("🔄 Applying database migrations...");
+                await context.Database.MigrateAsync();
                 logger.LogInformation("✅ Database migrations applied successfully.");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "❌ An error occurred during DB initialization, but we will try to continue.");
             }
             catch (Exception ex)
             {

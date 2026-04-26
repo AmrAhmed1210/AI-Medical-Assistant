@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -13,7 +13,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "PhotoUrl",
                 table: "Users",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true);
         }
 

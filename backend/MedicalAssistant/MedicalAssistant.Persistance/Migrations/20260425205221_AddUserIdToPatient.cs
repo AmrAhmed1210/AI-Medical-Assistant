@@ -12,7 +12,7 @@ namespace MedicalAssistant.Persistance.Migrations
         {
             // Use compatible types for both SQL Server and PostgreSQL
             var isPostgres = migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL";
-            var stringType = isPostgres ? "text" : "nvarchar(max)";
+            var stringType = isPostgres ? "text" : "text";
             var intType = isPostgres ? "integer" : "int";
 
             migrationBuilder.AddColumn<string>(

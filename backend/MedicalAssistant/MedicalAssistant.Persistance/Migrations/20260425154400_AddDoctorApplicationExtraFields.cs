@@ -14,14 +14,14 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "LicenseNumber",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 defaultValue: "");
 
             migrationBuilder.AddColumn<string>(
                 name: "Message",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 defaultValue: "");
         }

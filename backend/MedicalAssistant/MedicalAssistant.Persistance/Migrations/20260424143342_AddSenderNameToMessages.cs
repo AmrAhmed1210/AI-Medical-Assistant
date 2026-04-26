@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -13,7 +13,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "SenderName",
                 table: "Message",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: false,
                 defaultValue: "");
