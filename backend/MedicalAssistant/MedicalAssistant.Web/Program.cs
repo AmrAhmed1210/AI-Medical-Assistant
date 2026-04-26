@@ -176,6 +176,20 @@ public class Program
                 var context = scope.ServiceProvider.GetRequiredService<MedicalAssistantDbContext>();
                 logger.LogInformation("🔄 Applying database migrations...");
                 await context.Database.MigrateAsync();
+                
+                // Manual fix for missing columns in PostgreSQL due to migration sync issues
+                try 
+                {
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Patients\" ADD COLUMN IF NOT EXISTS \"UserId\" integer;");
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Session\" ADD COLUMN IF NOT EXISTS \"Type\" text DEFAULT '';");
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"AttachmentUrl\" text;");
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"FileName\" text;");
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"MessageType\" text DEFAULT 'text';");
+                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"DoctorApplications\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;");
+                    logger.LogInformation("✅ Database schema verified and patched.");
+                }
+                catch(Exception ex) { logger.LogWarning("⚠️ Schema patch notice: {Message}", ex.Message); }
+
                 logger.LogInformation("✅ Database migrations applied successfully.");
             }
             catch (Exception ex)
