@@ -78,16 +78,19 @@ namespace MedicalAssistant.Services.Services
             foreach (var item in items)
             {
                 var dto = Map(item);
-                var lastMsg = (await _unitOfWork.Messages.GetBySessionIdAsync(item.Id))
-                    .OrderByDescending(m => m.Timestamp)
-                    .FirstOrDefault();
+                try {
+                    var lastMsg = (await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.SessionsModule.Message>()
+                        .FindAsync(m => m.SessionId == item.Id))
+                        .OrderByDescending(m => m.Timestamp)
+                        .FirstOrDefault();
 
-                if (lastMsg != null)
-                {
-                    dto.LastMessage = lastMsg.Content;
-                    dto.LastMessageAt = lastMsg.Timestamp;
-                    dto.UpdatedAt = lastMsg.Timestamp;
-                }
+                    if (lastMsg != null)
+                    {
+                        dto.LastMessage = lastMsg.Content;
+                        dto.LastMessageAt = lastMsg.Timestamp;
+                        dto.UpdatedAt = lastMsg.Timestamp;
+                    }
+                } catch { /* skip message fetch if it fails */ }
                 dtos.Add(dto);
             }
 
@@ -108,16 +111,19 @@ namespace MedicalAssistant.Services.Services
             foreach (var item in items)
             {
                 var dto = Map(item);
-                var lastMsg = (await _unitOfWork.Messages.GetBySessionIdAsync(item.Id))
-                    .OrderByDescending(m => m.Timestamp)
-                    .FirstOrDefault();
+                try {
+                    var lastMsg = (await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.SessionsModule.Message>()
+                        .FindAsync(m => m.SessionId == item.Id))
+                        .OrderByDescending(m => m.Timestamp)
+                        .FirstOrDefault();
 
-                if (lastMsg != null)
-                {
-                    dto.LastMessage = lastMsg.Content;
-                    dto.LastMessageAt = lastMsg.Timestamp;
-                    dto.UpdatedAt = lastMsg.Timestamp;
-                }
+                    if (lastMsg != null)
+                    {
+                        dto.LastMessage = lastMsg.Content;
+                        dto.LastMessageAt = lastMsg.Timestamp;
+                        dto.UpdatedAt = lastMsg.Timestamp;
+                    }
+                } catch { /* skip */ }
                 dtos.Add(dto);
             }
 
@@ -143,15 +149,18 @@ namespace MedicalAssistant.Services.Services
             foreach (var item in items)
             {
                 var dto = Map(item);
-                var lastMsg = (await _unitOfWork.Messages.GetBySessionIdAsync(item.Id))
-                    .OrderByDescending(m => m.Timestamp)
-                    .FirstOrDefault();
+                try {
+                    var lastMsg = (await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.SessionsModule.Message>()
+                        .FindAsync(m => m.SessionId == item.Id))
+                        .OrderByDescending(m => m.Timestamp)
+                        .FirstOrDefault();
 
-                if (lastMsg != null)
-                {
-                    dto.LastMessage = lastMsg.Content;
-                    dto.LastMessageAt = lastMsg.Timestamp;
-                }
+                    if (lastMsg != null)
+                    {
+                        dto.LastMessage = lastMsg.Content;
+                        dto.LastMessageAt = lastMsg.Timestamp;
+                    }
+                } catch { /* skip */ }
                 dtos.Add(dto);
             }
 
