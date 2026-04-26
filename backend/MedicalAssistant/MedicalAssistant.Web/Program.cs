@@ -177,18 +177,34 @@ public class Program
                 logger.LogInformation("🔄 Applying database migrations...");
                 await context.Database.MigrateAsync();
                 
-                // Manual fix for missing columns in PostgreSQL due to migration sync issues
+                // Final brute-force attempt to fix PostgreSQL schema
                 try 
                 {
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Patients\" ADD COLUMN IF NOT EXISTS \"UserId\" integer;");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Session\" ADD COLUMN IF NOT EXISTS \"Type\" text DEFAULT '';");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"AttachmentUrl\" text;");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"FileName\" text;");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"MessageType\" text DEFAULT 'text';");
-                    await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"DoctorApplications\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;");
-                    logger.LogInformation("✅ Database schema verified and patched.");
+                    logger.LogInformation("🛠️ Attempting brute-force schema patch...");
+                    string[] tables = { "Patients", "Session", "Message", "DoctorApplications" };
+                    foreach (var table in tables)
+                    {
+                        try {
+                            if (table == "Patients") await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Patients\" ADD COLUMN IF NOT EXISTS \"UserId\" integer;");
+                            if (table == "Session") await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Session\" ADD COLUMN IF NOT EXISTS \"Type\" text DEFAULT '';");
+                            if (table == "Message") {
+                                await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"AttachmentUrl\" text;");
+                                await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"FileName\" text;");
+                                await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Message\" ADD COLUMN IF NOT EXISTS \"MessageType\" text DEFAULT 'text';");
+                            }
+                            if (table == "DoctorApplications") await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"DoctorApplications\" ADD COLUMN IF NOT EXISTS \"PhotoUrl\" text;");
+                            logger.LogInformation("✅ Patched table: {Table}", table);
+                        } catch (Exception ex) { 
+                            logger.LogWarning("⚠️ Could not patch {Table} with quotes, trying without... Error: {Msg}", table, ex.Message);
+                            // Try without quotes just in case
+                            try {
+                                if (table == "Patients") await context.Database.ExecuteSqlRawAsync($"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS UserId integer;");
+                                logger.LogInformation("✅ Patched table {Table} (without quotes)", table);
+                            } catch { /* Ignore second failure */ }
+                        }
+                    }
                 }
-                catch(Exception ex) { logger.LogWarning("⚠️ Schema patch notice: {Message}", ex.Message); }
+                catch(Exception ex) { logger.LogError("❌ Critical patch error: {Message}", ex.Message); }
 
                 logger.LogInformation("✅ Database migrations applied successfully.");
             }
