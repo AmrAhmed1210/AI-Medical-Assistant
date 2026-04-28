@@ -1,4 +1,4 @@
-using MedicalAssistant.Application.Services;
+﻿using MedicalAssistant.Application.Services;
 using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Persistance.Data.DbContexts;
 using MedicalAssistant.Persistance.Repositories;
@@ -10,39 +10,46 @@ using MedicalAssistant.Shared.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Security.Claims;
+using Microsoft.OpenApi.Models;
 using System.Text;
 
 namespace MedicalAssistant;
 
 public class Program
 {
-    public static async Task Main(string[] args)
+    public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // ── Controllers & Swagger ────────────────────────────────────────────
+        // =========================
+        // Controllers
+        // =========================
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
+
+        // =========================
+        // Swagger + JWT Support
+        // =========================
         builder.Services.AddSwaggerGen(c =>
         {
-            c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Name = "Authorization",
-                Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+                Type = SecuritySchemeType.Http,
                 Scheme = "Bearer",
                 BearerFormat = "JWT",
-                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                Description = "Enter your JWT token"
+                In = ParameterLocation.Header,
+                Description = "Enter JWT token"
             });
-            c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+
+            c.AddSecurityRequirement(new OpenApiSecurityRequirement
             {
                 {
-                    new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                    new OpenApiSecurityScheme
                     {
-                        Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                        Reference = new OpenApiReference
                         {
-                            Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                            Type = ReferenceType.SecurityScheme,
                             Id = "Bearer"
                         }
                     },
@@ -51,25 +58,20 @@ public class Program
             });
         });
 
-        // ── Database (PostgreSQL Detection) ──────────────────────────────────
+        // =========================
+        // PostgreSQL (Neon)
+        // =========================
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-        bool isPostgres = connectionString?.Contains("Host=") == true || connectionString?.Contains("User Id=") == true;
 
         builder.Services.AddDbContext<MedicalAssistantDbContext>(options =>
-        {
-            if (isPostgres)
-            {
-                options.UseNpgsql(connectionString, o => o.EnableRetryOnFailure());
-            }
-            else
-            {
-                options.UseSqlServer(connectionString, o => o.EnableRetryOnFailure());
-            }
-        });
+            options.UseNpgsql(connectionString, o => o.EnableRetryOnFailure())
+        );
 
-        // ── JWT Authentication ────────────────────────────────────────────────
+        // =========================
+        // JWT Authentication
+        // =========================
         var jwtKey = builder.Configuration["Jwt:Key"]
-            ?? throw new InvalidOperationException("JWT Key is missing in appsettings.json");
+            ?? throw new InvalidOperationException("JWT Key is missing");
 
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -84,31 +86,46 @@ public class Program
                     ValidAudience = builder.Configuration["Jwt:Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
                 };
+
+                // SignalR token support
                 options.Events = new JwtBearerEvents
                 {
                     OnMessageReceived = context =>
                     {
                         var accessToken = context.Request.Query["access_token"];
                         var path = context.HttpContext.Request.Path;
-                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/notifications"))
+
+                        if (!string.IsNullOrEmpty(accessToken) &&
+                            path.StartsWithSegments("/hubs/notifications"))
                         {
                             context.Token = accessToken;
                         }
+
                         return Task.CompletedTask;
                     }
                 };
             });
 
         builder.Services.AddAuthorization();
+
+        // =========================
+        // SignalR
+        // =========================
         builder.Services.AddSignalR();
         builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, CustomUserIdProvider>();
 
-        // ── Repositories & Services ───────────────────────────────────────────
+        // =========================
+        // Repositories
+        // =========================
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
         builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         builder.Services.AddScoped<IDoctorRepository, DoctorRepository>();
         builder.Services.AddScoped<IPatientRepository, PatientRepository>();
         builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
+
+        // =========================
+        // Services
+        // =========================
         builder.Services.AddScoped<IPatientService, PatientService>();
         builder.Services.AddScoped<IAppointmentService, AppointmentService>();
         builder.Services.AddScoped<IDoctorService, DoctorService>();
@@ -120,26 +137,22 @@ public class Program
         builder.Services.AddScoped<INotificationService, NotificationService>();
         builder.Services.AddScoped<IPhotoService, PhotoService>();
 
-        builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("CloudinarySettings"));
+        // =========================
+        // Cloudinary
+        // =========================
+        builder.Services.Configure<CloudinarySettings>(
+            builder.Configuration.GetSection("CloudinarySettings"));
 
-        builder.Services.AddAutoMapper(cfg =>
-        {
-            cfg.AddProfile<DoctorProfile>();
-            cfg.AddProfile<ReviewMappingProfile>();
-            cfg.AddProfile<AdminProfile>();
-        });
+        // =========================
+        // AutoMapper ✅ Fixed for v16.x
+        // =========================
+        builder.Services.AddAutoMapper(cfg => { }, typeof(DoctorProfile));
 
-        // ── CORS Fix: Explicit origins REQUIRED for SignalR + JWT credentials ──
-        // DO NOT use AllowAnyOrigin() — browsers block wildcard when credentials=include
-        // Origins loaded from: appsettings.json → CorsOrigins OR env var CORS_ORIGINS
+        // =========================
+        // CORS
+        // =========================
         var corsOrigins = builder.Configuration.GetSection("CorsOrigins").Get<string[]>()
-            ?? builder.Configuration["CORS_ORIGINS"]?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            ?? new[] { "http://localhost:3000", "http://localhost:5173", "http://localhost:19006" };
-
-        if (corsOrigins.Length == 0 || string.IsNullOrWhiteSpace(corsOrigins[0]))
-        {
-            corsOrigins = new[] { "http://localhost:3000", "http://localhost:5173", "http://localhost:19006" };
-        }
+            ?? new[] { "http://localhost:3000", "http://localhost:5173" };
 
         builder.Services.AddCors(options =>
         {
@@ -152,85 +165,9 @@ public class Program
 
         var app = builder.Build();
 
-        // ── Database Initialization (The Heart of the Fix) ───────────────────
-        using (var scope = app.Services.CreateScope())
-        {
-            var services = scope.ServiceProvider;
-            var logger = services.GetRequiredService<ILogger<Program>>();
-            var context = services.GetRequiredService<MedicalAssistantDbContext>();
-
-            // 1. Aggressive PostgreSQL Schema Patching
-            if (!context.Database.IsSqlServer())
-            {
-                Console.WriteLine("🚀 [DB PATCH] Starting Brute-Force Patching...");
-                string[] tables = { "Messages", "messages", "Message", "message" };
-                string[] sessionTables = { "Sessions", "sessions", "Session", "session" };
-
-                foreach (var tab in tables)
-                {
-                    try
-                    {
-                        await context.Database.ExecuteSqlRawAsync($@"ALTER TABLE ""{tab}"" ADD COLUMN IF NOT EXISTS ""SenderName"" text;");
-                        await context.Database.ExecuteSqlRawAsync($@"ALTER TABLE ""{tab}"" ADD COLUMN IF NOT EXISTS ""SenderPhotoUrl"" text;");
-                        await context.Database.ExecuteSqlRawAsync($@"ALTER TABLE ""{tab}"" ADD COLUMN IF NOT EXISTS ""Type"" integer DEFAULT 0;");
-                        await context.Database.ExecuteSqlRawAsync($@"ALTER TABLE ""{tab}"" ADD COLUMN IF NOT EXISTS ""IsSystem"" boolean DEFAULT false;");
-                        Console.WriteLine($"✅ [DB PATCH] Applied to table: {tab}");
-                    }
-                    catch { /* try next name */ }
-                }
-
-                foreach (var tab in sessionTables)
-                {
-                    try
-                    {
-                        await context.Database.ExecuteSqlRawAsync($@"ALTER TABLE ""{tab}"" ADD COLUMN IF NOT EXISTS ""Type"" text DEFAULT '';");
-                        Console.WriteLine($"✅ [DB PATCH] Applied to session table: {tab}");
-                    }
-                    catch { /* try next name */ }
-                }
-            }
-
-            // 2. Try Migrations (Independent)
-            try
-            {
-                Console.WriteLine("🔄 Running Migrations...");
-                await context.Database.MigrateAsync();
-                Console.WriteLine("✅ Database Migrations completed.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"⚠️ Migration failed/skipped (Non-critical due to patch): {ex.Message}");
-            }
-
-            // 3. Seeding Admin (Independent)
-            try
-            {
-                var adminEmail = "hassanmohamed5065@gmail.com";
-                var admin = await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()
-                    .FirstOrDefaultAsync(u => u.Email == adminEmail);
-
-                if (admin == null)
-                {
-                    admin = new MedicalAssistant.Domain.Entities.UserModule.User
-                    {
-                        FullName = "Admin",
-                        Email = adminEmail,
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456789"),
-                        Role = "Admin",
-                        IsActive = true,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    await context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().AddAsync(admin);
-                    await context.SaveChangesAsync();
-                    Console.WriteLine("✅ Admin seeded successfully.");
-                }
-            }
-            catch (Exception ex) 
-            { 
-                Console.WriteLine($"⚠️ Seeding failed: {ex.Message}"); 
-            }
-        }
-
+        // =========================
+        // Middleware
+        // =========================
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
@@ -243,8 +180,6 @@ public class Program
         app.MapControllers();
         app.MapHub<NotificationHub>("/hubs/notifications");
 
-        // Railway Port Fix
-        var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-        app.Run($"http://0.0.0.0:{port}");
+        app.Run();
     }
 }

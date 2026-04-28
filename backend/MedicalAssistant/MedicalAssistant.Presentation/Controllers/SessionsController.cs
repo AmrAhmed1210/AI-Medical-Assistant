@@ -37,6 +37,7 @@ namespace MedicalAssistant.Presentation.Controllers
         }
 
         // GET /api/sessions
+        [HttpGet]
         public async Task<IActionResult> GetMySessions()
         {
             var role = User.FindFirstValue(ClaimTypes.Role) ?? string.Empty;
@@ -147,9 +148,9 @@ namespace MedicalAssistant.Presentation.Controllers
                 if (patientUser != null)
                 {
                     var doctorUser = await _unitOfWork.Repository<Doctor>().GetByIdAsync(req.DoctorId);
-                    if (doctorUser != null && doctorUser.UserId.HasValue)
+                    if (doctorUser != null && doctorUser.UserId > 0)
                     {
-                        var docUser = await _unitOfWork.Repository<User>().GetByIdAsync(doctorUser.UserId.Value);
+                        var docUser = await _unitOfWork.Repository<User>().GetByIdAsync(doctorUser.UserId);
                         if (docUser != null)
                         {
                             await _notificationService.NotifyDoctorNewMessage(
@@ -248,12 +249,12 @@ namespace MedicalAssistant.Presentation.Controllers
 
                 var patientUser = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
                 var doctorId = ExtractDoctorIdFromTitle(session.Title);
-                if (doctorId.HasValue && patientUser != null)
+                if (doctorId > 0 && patientUser != null)
                 {
                     var doctorUser = await _unitOfWork.Repository<Doctor>().GetByIdAsync(doctorId.Value);
-                    if (doctorUser != null && doctorUser.UserId.HasValue)
+                    if (doctorUser != null && doctorUser.UserId > 0)
                     {
-                        var docUser = await _unitOfWork.Repository<User>().GetByIdAsync(doctorUser.UserId.Value);
+                        var docUser = await _unitOfWork.Repository<User>().GetByIdAsync(doctorUser.UserId);
                         if (docUser != null)
                         {
                             await _notificationService.NotifyDoctorNewMessage(

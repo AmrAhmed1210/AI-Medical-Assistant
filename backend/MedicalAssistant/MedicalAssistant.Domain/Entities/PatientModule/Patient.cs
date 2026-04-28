@@ -1,3 +1,5 @@
+using MedicalAssistant.Domain.Entities.UserModule;
+
 namespace MedicalAssistant.Domain.Entities.PatientModule
 {
     public class Patient : BaseEntity
@@ -15,6 +17,16 @@ namespace MedicalAssistant.Domain.Entities.PatientModule
         public DateTime CreatedAt { get; set; }
         public bool IsActive { get; set; }
         public int? UserId { get; set; }
-        public virtual MedicalAssistant.Domain.Entities.UserModule.User? User { get; set; }
+        public virtual User? User { get; set; }
+
+        public virtual MedicalProfile? MedicalProfile { get; set; }
+        public virtual ICollection<SurgeryHistory> SurgeryHistories { get; set; } = [];
+        public virtual ICollection<AllergyRecord> AllergyRecords { get; set; } = [];
+        public virtual ICollection<ChronicDiseaseMonitor> ChronicDiseaseMonitors { get; set; } = [];
+        public virtual ICollection<VitalReading> VitalReadings { get; set; } = [];
+        public virtual ICollection<MedicationTracker> MedicationTrackers { get; set; } = [];
+        public virtual ICollection<MedicationLog> MedicationLogs { get; set; } = [];
+        public virtual ICollection<PatientVisit> PatientVisits { get; set; } = [];
+        public virtual ICollection<VisitVitalSign> VisitVitalSigns { get; set; } = [];
     }
 }

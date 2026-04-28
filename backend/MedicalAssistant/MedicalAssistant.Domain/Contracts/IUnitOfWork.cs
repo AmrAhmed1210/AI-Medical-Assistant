@@ -16,6 +16,8 @@ namespace MedicalAssistant.Domain.Contracts
 
         IMessageRepository Messages { get; }
 
+        IConsultationRepository Consultations { get; }
+
         IGenericRepository<TEntity> Repository<TEntity>() where TEntity : BaseEntity;
 
         /// <summary>

@@ -12,14 +12,13 @@ using System.Linq;
 
 namespace MedicalAssistant.Presentation.Controllers
 {
-    // DTO wrapper required by Swashbuckle when using [FromForm] with IFormFile
     public class UploadPhotoRequest
     {
         public IFormFile File { get; set; } = null!;
     }
 
     [ApiController]
-    [Route("api/doctors")]   
+    [Route("api/doctors")]
     public class DoctorsController : ControllerBase
     {
         private readonly IDoctorService _doctorService;
@@ -45,8 +44,8 @@ namespace MedicalAssistant.Presentation.Controllers
             _photoService = photoService;
         }
 
-        // GET /doctors
-        // GET /doctors?specialtyId=1
+        // GET: api/doctors
+        // GET: api/doctors?specialtyId=1
         [HttpGet]
         public async Task<ActionResult<IEnumerable<DoctorDTO>>> GetAllDoctors(
             [FromQuery] int? specialtyId = null)
@@ -58,7 +57,7 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(doctors);
         }
 
-        // GET /doctors/{id}
+        // GET: api/doctors/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<DoctorDetailsDTO>> GetDoctorById(int id)
         {
@@ -68,6 +67,7 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(doctor);
         }
 
+        // POST: api/doctors/apply
         [AllowAnonymous]
         [HttpPost("apply")]
         public async Task<IActionResult> ApplyForDoctorAccount([FromBody] ApplyDoctorRequest request)
@@ -102,78 +102,86 @@ namespace MedicalAssistant.Presentation.Controllers
             return int.TryParse(userIdClaim, out var id) ? id : 0;
         }
 
+        // GET: api/doctors/dashboard
         [Authorize(Roles = "Doctor")]
         [HttpGet("dashboard")]
         public async Task<ActionResult<DoctorDashboardDto>> GetDashboard()
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
             var result = await _doctorService.GetDashboardAsync(doctorId);
             return Ok(result);
         }
 
+        // GET: api/doctors/profile
         [Authorize(Roles = "Doctor")]
         [HttpGet("profile")]
         public async Task<ActionResult<DoctorDetailDto>> GetProfile()
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
             var result = await _doctorService.GetProfileAsync(doctorId);
-            if (result == null) return NotFound();
+            if (result == null) return NotFound(new { message = "Doctor not found." });
             return Ok(result);
         }
 
+        // PUT: api/doctors/profile
         [Authorize(Roles = "Doctor")]
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateDoctorProfileRequest request)
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
             await _doctorService.UpdateProfileAsync(doctorId, request);
             return NoContent();
         }
 
+        // GET: api/doctors/appointments
         [Authorize(Roles = "Doctor")]
         [HttpGet("appointments")]
         public async Task<ActionResult<IEnumerable<AppointmentDto>>> GetAppointments([FromQuery] string? status = null)
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
             var result = await _doctorService.GetAppointmentsAsync(doctorId, status);
             return Ok(result);
         }
 
+        // DELETE: api/doctors/appointments/history
         [Authorize(Roles = "Doctor")]
         [HttpDelete("appointments/history")]
         public async Task<IActionResult> ClearHistory()
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
-            
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
+
             await _doctorService.ClearAppointmentHistoryAsync(doctorId);
             return Ok(new { message = "History cleared successfully" });
         }
 
+        // GET: api/doctors/patients
         [Authorize(Roles = "Doctor")]
         [HttpGet("patients")]
         public async Task<ActionResult<IEnumerable<PatientSummaryDto>>> GetPatients([FromQuery] string? search = null)
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
             var result = await _doctorService.GetPatientsAsync(doctorId, search);
             return Ok(result);
         }
 
+        // GET: api/doctors/reports
         [Authorize(Roles = "Doctor")]
         [HttpGet("reports")]
         public async Task<ActionResult<IEnumerable<AIReportDto>>> GetReports([FromQuery] string? urgency = null)
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
             var result = await _doctorService.GetReportsAsync(doctorId, urgency);
             return Ok(result);
         }
 
+        // GET: api/doctors/{id}/availability
         [AllowAnonymous]
         [HttpGet("{id}/availability")]
         public async Task<ActionResult<DoctorScheduleDto>> GetDoctorAvailability(int id)
@@ -184,33 +192,35 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(schedule);
         }
 
+        // POST: api/doctors/{id}/notify-schedule
         [HttpPost("{id}/notify-schedule")]
         [Authorize]
         public IActionResult SubscribeToSchedule(int id)
         {
-            // Simple: store in a table or just return OK for now
             return Ok(new { message = "You will be notified when schedule is ready" });
         }
 
+        // GET: api/doctors/availability
         [Authorize(Roles = "Doctor")]
         [HttpGet("availability")]
         public async Task<ActionResult<IEnumerable<AvailabilityDto>>> GetAvailability()
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
             var result = await _doctorService.GetAvailabilityAsync(doctorId);
             return Ok(result);
         }
 
+        // PUT: api/doctors/availability
         [Authorize(Roles = "Doctor")]
         [HttpPut("availability")]
         public async Task<IActionResult> UpdateAvailability([FromBody] List<AvailabilityDto> data)
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
-            
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
+
             await _doctorService.UpdateAvailabilityAsync(doctorId, data);
-            
+
             var schedule = await _doctorService.GetMyScheduleAsync(doctorId);
             if (schedule != null)
             {
@@ -219,22 +229,24 @@ namespace MedicalAssistant.Presentation.Controllers
                     schedule.DoctorName,
                     schedule.IsMobileEnabled);
             }
-            
+
             return NoContent();
         }
 
+        // PUT: api/doctors/schedule-visibility
         [Authorize(Roles = "Doctor")]
         [HttpPut("schedule-visibility")]
         public async Task<IActionResult> UpdateScheduleVisibility([FromBody] bool isVisible)
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
-            
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
+
             await _doctorService.UpdateScheduleVisibilityAsync(doctorId, isVisible);
-            
+
             return NoContent();
         }
 
+        // POST: api/doctors/photo
         [Authorize(Roles = "Doctor")]
         [HttpPost("photo")]
         public async Task<IActionResult> UploadPhoto(IFormFile file)
@@ -245,7 +257,7 @@ namespace MedicalAssistant.Presentation.Controllers
             }
 
             var doctorUserId = GetDoctorId();
-            if (doctorUserId <= 0) return Unauthorized();
+            if (doctorUserId <= 0) return Unauthorized(new { message = "Invalid token." });
 
             var url = await _photoService.UploadPhotoAsync(file);
             await _doctorService.UpdatePhotoAsync(doctorUserId, url);
@@ -253,25 +265,28 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(new { photoUrl = url });
         }
 
+        // POST: api/doctors/apply/upload-cv
         [AllowAnonymous]
         [HttpPost("apply/upload-cv")]
         public async Task<IActionResult> UploadCv(IFormFile file)
         {
-            if (file == null || file.Length == 0) return BadRequest("File is required");
+            if (file == null || file.Length == 0) return BadRequest(new { message = "File is required" });
             var url = await _photoService.UploadFileAsync(file);
             return Ok(new { url });
         }
 
+        // GET: api/doctors/reviews
         [Authorize(Roles = "Doctor")]
         [HttpGet("reviews")]
         public async Task<ActionResult<IEnumerable<ReviewDto>>> GetMyReviews()
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
             var reviews = await _doctorService.GetMyReviewsAsync(doctorId);
             return Ok(reviews);
         }
 
+        // POST: api/doctors/message-patient
         [HttpPost("message-patient")]
         [Authorize(Roles = "Doctor")]
         public async Task<IActionResult> MessagePatient([FromBody] MessagePatientRequest req)
@@ -282,7 +297,7 @@ namespace MedicalAssistant.Presentation.Controllers
             }
 
             var doctorUserId = GetDoctorId();
-            if (doctorUserId <= 0) return Unauthorized();
+            if (doctorUserId <= 0) return Unauthorized(new { message = "Invalid token." });
 
             var doctor = await _doctorService.GetProfileAsync(doctorUserId);
             if (doctor == null) return Unauthorized(new { message = "Doctor not found." });
@@ -294,7 +309,6 @@ namespace MedicalAssistant.Presentation.Controllers
                 return NotFound(new { message = "Patient not found." });
             }
 
-            // Ensure a User record exists for this patient to satisfy Session FK
             var userRecord = (await _unitOfWork.Repository<User>().FindAsync(u => u.Email == patientEmail)).FirstOrDefault();
             if (userRecord == null)
             {
@@ -312,7 +326,7 @@ namespace MedicalAssistant.Presentation.Controllers
                 };
                 await _unitOfWork.Repository<User>().AddAsync(userRecord);
                 await _unitOfWork.SaveChangesAsync();
-                
+
                 patient.UserId = userRecord.Id;
                 _unitOfWork.Patients.Update(patient);
                 await _unitOfWork.SaveChangesAsync();
@@ -336,13 +350,13 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(new { message = "Message sent", sessionId = session.Id });
         }
 
-        // Self-deactivate account (Doctor can deactivate their own account)
+        // POST: api/doctors/self-deactivate
         [Authorize(Roles = "Doctor")]
         [HttpPost("self-deactivate")]
         public async Task<IActionResult> SelfDeactivate()
         {
             var doctorId = GetDoctorId();
-            if (doctorId <= 0) return Unauthorized();
+            if (doctorId <= 0) return Unauthorized(new { message = "Invalid token." });
 
             var success = await _doctorService.SelfDeactivateAsync(doctorId);
             if (!success) return BadRequest(new { message = "Failed to deactivate account." });

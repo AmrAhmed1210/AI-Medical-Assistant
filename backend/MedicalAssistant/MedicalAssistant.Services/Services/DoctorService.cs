@@ -46,12 +46,12 @@ public class DoctorService : IDoctorService
     {
         var doctors = (await _unitOfWork.Doctors.GetAvailableDoctorsAsync()).ToList();
         var users = (await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.UserModule.User>()
-            .FindAsync(u => doctors.Where(d => d.UserId.HasValue).Select(d => d.UserId!.Value).Contains(u.Id)))
+            .FindAsync(u => doctors.Where(d => d.UserId > 0).Select(d => d.UserId).Contains(u.Id)))
             .ToDictionary(u => u.Id);
 
-        foreach (var doctor in doctors.Where(d => d.UserId.HasValue && users.ContainsKey(d.UserId.Value)))
+        foreach (var doctor in doctors.Where(d => d.UserId > 0 && users.ContainsKey(d.UserId)))
         {
-            doctor.User = users[doctor.UserId!.Value];
+            doctor.User = users[doctor.UserId];
         }
 
         var filteredDoctors = FilterActiveDoctors(doctors);
@@ -63,12 +63,12 @@ public class DoctorService : IDoctorService
         await EnsureDoctorProfilesForActiveUsersAsync();
         var doctors = (await _unitOfWork.Doctors.GetBySpecialtyAsync(specialtyId)).ToList();
         var users = (await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.UserModule.User>()
-            .FindAsync(u => doctors.Where(d => d.UserId.HasValue).Select(d => d.UserId!.Value).Contains(u.Id)))
+            .FindAsync(u => doctors.Where(d => d.UserId > 0).Select(d => d.UserId).Contains(u.Id)))
             .ToDictionary(u => u.Id);
 
-        foreach (var doctor in doctors.Where(d => d.UserId.HasValue && users.ContainsKey(d.UserId.Value)))
+        foreach (var doctor in doctors.Where(d => d.UserId > 0 && users.ContainsKey(d.UserId)))
         {
-            doctor.User = users[doctor.UserId!.Value];
+            doctor.User = users[doctor.UserId];
         }
 
         var filteredDoctors = FilterActiveDoctors(doctors);
@@ -79,12 +79,12 @@ public class DoctorService : IDoctorService
     {
         var doctors = (await _unitOfWork.Doctors.SearchByNameAsync(name)).ToList();
         var users = (await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.UserModule.User>()
-            .FindAsync(u => doctors.Where(d => d.UserId.HasValue).Select(d => d.UserId!.Value).Contains(u.Id)))
+            .FindAsync(u => doctors.Where(d => d.UserId > 0).Select(d => d.UserId).Contains(u.Id)))
             .ToDictionary(u => u.Id);
 
-        foreach (var doctor in doctors.Where(d => d.UserId.HasValue && users.ContainsKey(d.UserId.Value)))
+        foreach (var doctor in doctors.Where(d => d.UserId > 0 && users.ContainsKey(d.UserId)))
         {
-            doctor.User = users[doctor.UserId!.Value];
+            doctor.User = users[doctor.UserId];
         }
 
         var filteredDoctors = FilterActiveDoctors(doctors);
@@ -95,12 +95,12 @@ public class DoctorService : IDoctorService
     {
         var doctors = (await _unitOfWork.Doctors.GetTopRatedDoctorsAsync(count)).ToList();
         var users = (await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.UserModule.User>()
-            .FindAsync(u => doctors.Where(d => d.UserId.HasValue).Select(d => d.UserId!.Value).Contains(u.Id)))
+            .FindAsync(u => doctors.Where(d => d.UserId > 0).Select(d => d.UserId).Contains(u.Id)))
             .ToDictionary(u => u.Id);
 
-        foreach (var doctor in doctors.Where(d => d.UserId.HasValue && users.ContainsKey(d.UserId.Value)))
+        foreach (var doctor in doctors.Where(d => d.UserId > 0 && users.ContainsKey(d.UserId)))
         {
-            doctor.User = users[doctor.UserId!.Value];
+            doctor.User = users[doctor.UserId];
         }
 
         var filteredDoctors = FilterActiveDoctors(doctors);
@@ -112,12 +112,12 @@ public class DoctorService : IDoctorService
         var (items, _) = await _unitOfWork.Doctors.GetPaginatedAsync(pageNumber, pageSize);
         var doctors = items.ToList();
         var users = (await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.UserModule.User>()
-            .FindAsync(u => doctors.Where(d => d.UserId.HasValue).Select(d => d.UserId!.Value).Contains(u.Id)))
+            .FindAsync(u => doctors.Where(d => d.UserId > 0).Select(d => d.UserId).Contains(u.Id)))
             .ToDictionary(u => u.Id);
 
-        foreach (var doctor in doctors.Where(d => d.UserId.HasValue && users.ContainsKey(d.UserId.Value)))
+        foreach (var doctor in doctors.Where(d => d.UserId > 0 && users.ContainsKey(d.UserId)))
         {
-            doctor.User = users[doctor.UserId!.Value];
+            doctor.User = users[doctor.UserId];
         }
 
         var filteredDoctors = FilterActiveDoctors(doctors);
@@ -198,15 +198,15 @@ public class DoctorService : IDoctorService
         {
             Id = doctor.Id,
             UserId = doctor.UserId,
-            FullName = doctor.Name,
+            FullName = doctor.User?.FullName ?? string.Empty,
             Email = doctor.User?.Email ?? string.Empty,
             Specialty = doctor.Specialty?.Name ?? string.Empty,
             SpecialityNameAr = doctor.Specialty?.NameAr,
             Bio = doctor.Bio,
             PhotoUrl = GetFullImageUrl(doctor.ImageUrl),
             ConsultFee = doctor.ConsultationFee,
-            YearsExperience = doctor.Experience,
-            IsAvailable = doctor.IsAvailable,
+            YearsExperience = doctor.Experience ?? 0,
+            IsAvailable = true,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = null
         };
@@ -229,11 +229,9 @@ public class DoctorService : IDoctorService
             return;
         }
 
-        doctor.Name = string.IsNullOrWhiteSpace(request.FullName) ? doctor.Name : request.FullName.Trim();
         doctor.Bio = request.Bio ?? string.Empty;
         doctor.Experience = request.YearsExperience;
         doctor.ConsultationFee = request.ConsultationFee;
-        doctor.IsAvailable = request.IsAvailable;
 
         if (doctor.User is not null && !string.IsNullOrWhiteSpace(request.FullName))
         {
@@ -243,7 +241,7 @@ public class DoctorService : IDoctorService
 
         _unitOfWork.Repository<Doctor>().Update(doctor);
         await _unitOfWork.SaveChangesAsync();
-        await _notificationService.NotifyProfileUpdated(doctor.Id, doctor.Name, GetFullImageUrl(doctor.ImageUrl));
+        await _notificationService.NotifyProfileUpdated(doctor.Id, doctor.User?.FullName ?? string.Empty, GetFullImageUrl(doctor.ImageUrl));
     }
 
     public async Task<IEnumerable<AppointmentDto>> GetAppointmentsAsync(int doctorId, string? status)
@@ -412,7 +410,7 @@ public class DoctorService : IDoctorService
         await _unitOfWork.SaveChangesAsync();
 
         // Notify subscribers via SignalR targeted group
-        await _notificationService.NotifyScheduleReady(doctor.Id, doctor.Name);
+        await _notificationService.NotifyScheduleReady(doctor.Id, doctor.User?.FullName ?? string.Empty);
     }
 
     public async Task<IEnumerable<MedicalAssistant.Shared.DTOs.ReviewDTOs.ReviewDto>> GetMyReviewsAsync(int userId)
@@ -736,7 +734,7 @@ public class DoctorService : IDoctorService
 
     private static bool IsDoctorUserActive(Doctor doctor)
     {
-        if (!doctor.UserId.HasValue)
+        if (doctor.UserId <= 0)
         {
             return false;
         }
@@ -780,8 +778,8 @@ public class DoctorService : IDoctorService
         var existingDoctors = (await doctorRepo.GetAllAsync()).ToList();
         var existingUserIds = new HashSet<int>(
             existingDoctors
-                .Where(d => d.UserId.HasValue)
-                .Select(d => d.UserId!.Value));
+                .Where(d => d.UserId > 0)
+                .Select(d => d.UserId));
 
         var missingUsers = doctorUsers
             .Where(u => !existingUserIds.Contains(u.Id))
@@ -812,17 +810,12 @@ public class DoctorService : IDoctorService
         {
             await doctorRepo.AddAsync(new Doctor
             {
-                Name = user.FullName,
-                SpecialtyId = fallbackSpecialty.Id,
                 UserId = user.Id,
-                Location = string.Empty,
-                Experience = 0,
-                ConsultationFee = 0,
+                SpecialtyId = fallbackSpecialty.Id,
                 Bio = string.Empty,
-                IsAvailable = true,
-                IsScheduleVisible = true,
-                Rating = 0,
-                ReviewCount = 0
+                ImageUrl = string.Empty,
+                ConsultationFee = 0,
+                Experience = 0
             });
         }
 
@@ -857,7 +850,7 @@ public class DoctorService : IDoctorService
             PatientId = appointment.PatientId,
             DoctorId = appointment.DoctorId,
             PatientName = appointment.Patient?.FullName ?? string.Empty,
-            DoctorName = appointment.Doctor?.Name ?? string.Empty,
+            DoctorName = appointment.Doctor?.User?.FullName ?? string.Empty,
             Specialty = appointment.Doctor?.Specialty?.Name ?? string.Empty,
             Date = appointment.Date,
             Time = appointment.Time,
@@ -929,7 +922,7 @@ public class DoctorService : IDoctorService
             if (doctor.User != null) doctor.User.PhotoUrl = photoUrl;
             _unitOfWork.Repository<Doctor>().Update(doctor);
             await _unitOfWork.SaveChangesAsync();
-            await _notificationService.NotifyProfileUpdated(doctor.Id, doctor.Name, photoUrl);
+            await _notificationService.NotifyProfileUpdated(doctor.Id, doctor.User?.FullName ?? string.Empty, photoUrl);
         }
     }
 

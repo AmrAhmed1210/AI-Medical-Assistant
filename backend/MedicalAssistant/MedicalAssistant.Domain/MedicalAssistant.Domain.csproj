@@ -15,4 +15,8 @@
     <None Remove="Global\**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="16.1.1" />
+  </ItemGroup>
+
 </Project>

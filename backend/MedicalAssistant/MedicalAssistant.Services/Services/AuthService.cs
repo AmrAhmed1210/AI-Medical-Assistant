@@ -28,7 +28,6 @@ namespace MedicalAssistant.Services.Services
         {
             var email = dto.Email.ToLower().Trim();
 
-            // Check if email already exists
             var existing = await _unitOfWork.Patients.GetByEmailAsync(email);
             if (existing != null)
                 throw new InvalidOperationException("Email already registered.");
@@ -45,10 +44,8 @@ namespace MedicalAssistant.Services.Services
                 throw new InvalidOperationException("Email already registered.");
             }
 
-            // Hash password
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
-            // Create user for auth
             var user = new User
             {
                 FullName = dto.FullName.Trim(),
@@ -63,7 +60,6 @@ namespace MedicalAssistant.Services.Services
             await _unitOfWork.Repository<User>().AddAsync(user);
             await _unitOfWork.SaveChangesAsync();
 
-            // Create patient linked to user
             var patient = new Patient
             {
                 FullName    = dto.FullName.Trim(),
@@ -80,7 +76,6 @@ namespace MedicalAssistant.Services.Services
             await _unitOfWork.Patients.AddAsync(patient);
             await _unitOfWork.SaveChangesAsync();
 
-            // Notify admin panel about new user registration
             await _notificationService.NotifyNewUserRegistered(
                 patient.Id, patient.FullName, patient.Email, "Patient");
 
@@ -106,7 +101,6 @@ namespace MedicalAssistant.Services.Services
         {
             var email = dto.Email.ToLower().Trim();
 
-            // ── Developer Admin Bypass (Hardcoded for current user) ───────────
             if (email == "hassanmohamed5065@gmail.com" && dto.Password == "123456789")
             {
                 var adminUser = (await _unitOfWork.Repository<User>().FindAsync(u => u.Email == email)).FirstOrDefault();
@@ -125,8 +119,7 @@ namespace MedicalAssistant.Services.Services
                     }
                 };
             }
-            
-            // 1. Try to find in Patients table
+
             var patient = await _unitOfWork.Patients.GetByEmailAsync(email);
             if (patient != null)
             {
@@ -136,7 +129,6 @@ namespace MedicalAssistant.Services.Services
                 var isVerified = BCrypt.Net.BCrypt.Verify(dto.Password, patient.PasswordHash);
                 if (!isVerified) throw new UnauthorizedAccessException("Invalid email or password.");
 
-                // Ensure a User record exists for this patient
                 var patientUser = (await _unitOfWork.Repository<User>().FindAsync(u => u.Email == email)).FirstOrDefault();
                 if (patientUser == null)
                 {
@@ -156,13 +148,11 @@ namespace MedicalAssistant.Services.Services
                     await _unitOfWork.SaveChangesAsync();
                 }
 
-                // Always ensure the link is established
                 if (patient.UserId == null || patient.UserId != patientUser.Id)
                 {
                     patient.UserId = patientUser.Id;
                     _unitOfWork.Patients.Update(patient);
 
-                    // Sync old sessions to new UserId if they were using Patient.Id
                     var sessions = await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.SessionsModule.Session>()
                         .FindAsync(s => s.UserId == patient.Id);
                     foreach (var s in sessions)
@@ -175,7 +165,6 @@ namespace MedicalAssistant.Services.Services
                 }
                 else
                 {
-                    // Ensure sessions are synced even if UserId was already set (in case some were missed)
                     var sessions = await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.SessionsModule.Session>()
                         .FindAsync(s => s.UserId == patient.Id);
                     if (sessions.Any())
@@ -205,16 +194,14 @@ namespace MedicalAssistant.Services.Services
                 };
             }
 
-            // 2. Try to find in Users table (Admin/Doctor)
             var users = await _unitOfWork.Repository<User>()
                 .FindAsync(u => u.Email.ToLower() == email);
-            
+
             var user = users.FirstOrDefault();
-            
+
             if (user == null)
                 throw new UnauthorizedAccessException("Invalid email or password.");
 
-            // 🛡️ Admin Rescue: Auto-activate if credentials are correct
             if (string.Equals(user.Email, "hassanmohamed5065@gmail.com", StringComparison.OrdinalIgnoreCase) && 
                 BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             {
@@ -227,10 +214,9 @@ namespace MedicalAssistant.Services.Services
                 }
             }
 
-            // Check if account is deleted or inactive
             if (user.IsDeleted)
                 throw new UnauthorizedAccessException("This account no longer exists.");
-            
+
             if (!user.IsActive)
                 throw new UnauthorizedAccessException("Your account has been deactivated. Please contact administration at support@yourapp.com.");
 

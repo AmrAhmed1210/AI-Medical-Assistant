@@ -1,9 +1,8 @@
 ﻿using MedicalAssistant.Domain.Entities.DoctorsModule;
-using MedicalAssistant.Domain.Entities.UserModule;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace MedicalAssistant.Infrastructure.Data.Configurations.DoctorsModule;
+namespace MedicalAssistant.Persistance.Data.Configurations;
 
 public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
 {
@@ -14,10 +13,6 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
         builder.HasKey(d => d.Id);
 
         builder.Property(d => d.Name)
-               .IsRequired()
-               .HasMaxLength(150);
-
-        builder.Property(d => d.Location)
                .HasMaxLength(200);
 
         builder.Property(d => d.Bio)
@@ -29,6 +24,21 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
         builder.Property(d => d.ImageUrl)
                .HasMaxLength(500);
 
+        builder.Property(d => d.Location)
+               .HasMaxLength(200);
+
+        builder.Property(d => d.Rating)
+               .HasDefaultValue(0.0);
+
+        builder.Property(d => d.ReviewCount)
+               .HasDefaultValue(0);
+
+        builder.Property(d => d.IsAvailable)
+               .HasDefaultValue(true);
+
+        builder.Property(d => d.IsScheduleVisible)
+               .HasDefaultValue(true);
+
         builder.HasOne(d => d.Specialty)
                .WithMany(s => s.Doctors)
                .HasForeignKey(d => d.SpecialtyId)
@@ -37,6 +47,6 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
         builder.HasOne(d => d.User)
                .WithMany()
                .HasForeignKey(d => d.UserId)
-               .OnDelete(DeleteBehavior.SetNull);
+               .OnDelete(DeleteBehavior.Restrict);
     }
 }
