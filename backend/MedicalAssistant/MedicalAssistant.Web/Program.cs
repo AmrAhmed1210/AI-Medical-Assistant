@@ -59,13 +59,27 @@ public class Program
         });
 
         // =========================
-        // PostgreSQL (Neon)
+        // Database (choose provider by connection string)
         // =========================
-        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("DefaultConnection is missing");
 
         builder.Services.AddDbContext<MedicalAssistantDbContext>(options =>
-            options.UseNpgsql(connectionString, o => o.EnableRetryOnFailure())
-        );
+        {
+            // If the connection string looks like Postgres (Host= or Username/User Id), use Npgsql.
+            // Otherwise assume SQL Server for local development (Server=...)
+            if (connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
+                || connectionString.Contains("Username=", StringComparison.OrdinalIgnoreCase)
+                || connectionString.Contains("User Id=", StringComparison.OrdinalIgnoreCase)
+                || connectionString.Contains("Port=", StringComparison.OrdinalIgnoreCase))
+            {
+                options.UseNpgsql(connectionString, o => o.EnableRetryOnFailure());
+            }
+            else
+            {
+                options.UseSqlServer(connectionString, o => o.EnableRetryOnFailure());
+            }
+        });
 
         // =========================
         // JWT Authentication
@@ -136,6 +150,7 @@ public class Program
         builder.Services.AddScoped<IAdminService, AdminService>();
         builder.Services.AddScoped<INotificationService, NotificationService>();
         builder.Services.AddScoped<IPhotoService, PhotoService>();
+        builder.Services.AddScoped<IPatientRecordService, PatientRecordService>();
 
         // =========================
         // Cloudinary
