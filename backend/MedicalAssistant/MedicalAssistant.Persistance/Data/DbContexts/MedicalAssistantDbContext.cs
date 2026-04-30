@@ -25,6 +25,10 @@ namespace MedicalAssistant.Persistance.Data.DbContexts
             modelBuilder.Entity<FollowedDoctor>()
                 .HasIndex(f => new { f.PatientId, f.DoctorId })
                 .IsUnique();
+            
+            // Fix: Use TPT (Table Per Type) for Admin inheritance - avoids Discriminator column
+            modelBuilder.Entity<Admin>().ToTable("Admins");
+            
             base.OnModelCreating(modelBuilder);
         }
 
