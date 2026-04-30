@@ -184,11 +184,10 @@ public class Program
         // =========================
         // Middleware
         // =========================
-        if (app.Environment.IsDevelopment())
-        {
+        
             app.UseSwagger();
             app.UseSwaggerUI();
-        }
+        
 
         app.UseCors("AllowAll");
         app.UseAuthentication();
