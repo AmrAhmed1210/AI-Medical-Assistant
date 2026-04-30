@@ -151,6 +151,7 @@ public class Program
         builder.Services.AddScoped<INotificationService, NotificationService>();
         builder.Services.AddScoped<IPhotoService, PhotoService>();
         builder.Services.AddScoped<IPatientRecordService, PatientRecordService>();
+        builder.Services.AddScoped<IPatientVisitService, PatientVisitService>();
 
         // =========================
         // Cloudinary
