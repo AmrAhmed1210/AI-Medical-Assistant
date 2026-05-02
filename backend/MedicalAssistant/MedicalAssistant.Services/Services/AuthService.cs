@@ -46,6 +46,11 @@ namespace MedicalAssistant.Services.Services
 
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
+            // Normalize DateOfBirth to UTC to satisfy Npgsql's timestamp with time zone requirement
+            DateTime? birthDateUtc = dto.DateOfBirth.HasValue
+                ? DateTime.SpecifyKind(dto.DateOfBirth.Value, DateTimeKind.Utc)
+                : null;
+
             var user = new User
             {
                 FullName = dto.FullName.Trim(),
@@ -53,8 +58,9 @@ namespace MedicalAssistant.Services.Services
                 PasswordHash = hashedPassword,
                 Role = "Patient",
                 PhoneNumber = dto.PhoneNumber?.Trim(),
-                BirthDate = dto.DateOfBirth,
+                BirthDate = birthDateUtc,
                 CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
                 IsActive = true
             };
             await _unitOfWork.Repository<User>().AddAsync(user);
@@ -66,7 +72,7 @@ namespace MedicalAssistant.Services.Services
                 Email       = email,
                 PhoneNumber = dto.PhoneNumber?.Trim().Length > 0 ? dto.PhoneNumber.Trim() : "N/A",
                 PasswordHash = hashedPassword,
-                DateOfBirth = dto.DateOfBirth ?? DateTime.UtcNow.AddYears(-25),
+                DateOfBirth = birthDateUtc ?? DateTime.UtcNow.AddYears(-25),
                 Gender      = "N/A",
                 IsActive    = true,
                 CreatedAt   = DateTime.UtcNow,
@@ -139,9 +145,13 @@ namespace MedicalAssistant.Services.Services
                         PasswordHash = patient.PasswordHash,
                         Role = "Patient",
                         PhoneNumber = patient.PhoneNumber,
-                        BirthDate = patient.DateOfBirth,
+                        BirthDate = patient.DateOfBirth.Kind == DateTimeKind.Utc 
+                            ? patient.DateOfBirth 
+                            : DateTime.SpecifyKind(patient.DateOfBirth, DateTimeKind.Utc),
                         PhotoUrl = patient.ImageUrl,
-                        CreatedAt = patient.CreatedAt,
+                        CreatedAt = patient.CreatedAt.Kind == DateTimeKind.Utc 
+                            ? patient.CreatedAt 
+                            : DateTime.SpecifyKind(patient.CreatedAt, DateTimeKind.Utc),
                         IsActive = true
                     };
                     await _unitOfWork.Repository<User>().AddAsync(patientUser);
