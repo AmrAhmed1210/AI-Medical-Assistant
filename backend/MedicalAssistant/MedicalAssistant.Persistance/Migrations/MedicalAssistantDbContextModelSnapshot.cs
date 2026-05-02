@@ -448,7 +448,7 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasColumnType("character varying(20)");
 
                     b.Property<string>("TargetValues")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -582,7 +582,8 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("DoseTimes")
                         .IsRequired()
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
@@ -768,7 +769,7 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasDefaultValue("active");
 
                     b.Property<string>("SummarySnapshot")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text");
 
                     b.Property<DateOnly>("VisitDate")
                         .HasColumnType("date");
@@ -985,7 +986,8 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<string>("SpecificTimes")
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<int>("TimesPerDay")
                         .HasColumnType("integer");

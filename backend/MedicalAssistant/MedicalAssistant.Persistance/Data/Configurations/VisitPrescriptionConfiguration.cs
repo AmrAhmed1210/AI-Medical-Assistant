@@ -1,4 +1,4 @@
-﻿using MedicalAssistant.Domain.Entities.PatientModule;
+using MedicalAssistant.Domain.Entities.PatientModule;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
@@ -27,7 +27,7 @@ namespace MedicalAssistant.Persistance.Data.Configurations
             builder.Property(x => x.Dosage).HasMaxLength(100).IsRequired();
             builder.Property(x => x.Form).HasMaxLength(30).IsRequired();
             builder.Property(x => x.Frequency).HasMaxLength(100).IsRequired();
-            builder.Property(x => x.SpecificTimes).HasColumnType("nvarchar(200)"); // JSON
+            builder.Property(x => x.SpecificTimes).HasMaxLength(200); // JSON
             builder.Property(x => x.Duration).HasMaxLength(100);
             builder.Property(x => x.Refills).HasDefaultValue(0);
 

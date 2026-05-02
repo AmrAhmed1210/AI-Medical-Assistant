@@ -1,4 +1,4 @@
-﻿using MedicalAssistant.Domain.Entities.PatientModule;
+using MedicalAssistant.Domain.Entities.PatientModule;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
@@ -27,11 +27,11 @@ namespace MedicalAssistant.Persistance.Data.Configurations
 
             builder.Property(x => x.ChiefComplaint).IsRequired();
             builder.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("active");
-            builder.Property(x => x.SummarySnapshot).HasColumnType("nvarchar(max)");
+            builder.Property(x => x.SummarySnapshot);
 
             builder.HasIndex(x => new { x.PatientId, x.VisitDate });
             builder.HasIndex(x => new { x.DoctorId, x.VisitDate });
-            builder.HasIndex(x => new { x.DoctorId, x.Status }); // لـ today's active visits
+            builder.HasIndex(x => new { x.DoctorId, x.Status });
         }
     }
 }

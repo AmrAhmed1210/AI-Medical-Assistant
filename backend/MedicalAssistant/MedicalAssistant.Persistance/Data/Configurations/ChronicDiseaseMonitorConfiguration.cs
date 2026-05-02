@@ -1,4 +1,4 @@
-﻿using MedicalAssistant.Domain.Entities.PatientModule;
+using MedicalAssistant.Domain.Entities.PatientModule;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using System;
@@ -25,7 +25,7 @@ namespace MedicalAssistant.Persistance.Data.Configurations
             builder.Property(x => x.Severity).HasMaxLength(20).IsRequired();
             builder.Property(x => x.MonitoringFrequency).HasMaxLength(50).IsRequired();
             // TargetValues بيتخزن كـ JSON string
-            builder.Property(x => x.TargetValues).HasColumnType("nvarchar(max)");
+            builder.Property(x => x.TargetValues);
 
             builder.HasIndex(x => x.PatientId);
             builder.HasIndex(x => new { x.PatientId, x.IsActive });
