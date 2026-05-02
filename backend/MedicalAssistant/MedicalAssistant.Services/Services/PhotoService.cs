@@ -3,6 +3,7 @@ using CloudinaryDotNet.Actions;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.Settings;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace MedicalAssistant.Services.Services;
@@ -10,9 +11,12 @@ namespace MedicalAssistant.Services.Services;
 public class PhotoService : IPhotoService
 {
     private readonly Cloudinary _cloudinary;
+    private readonly ILogger<PhotoService> _logger;
 
-    public PhotoService(IOptions<CloudinarySettings> config)
+    public PhotoService(IOptions<CloudinarySettings> config, ILogger<PhotoService> logger)
     {
+        _logger = logger;
+
         var acc = new Account(
             config.Value.CloudName,
             config.Value.ApiKey,
@@ -41,14 +45,23 @@ public class PhotoService : IPhotoService
                 Folder = "medbook-photos"
             };
 
-            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-
-            if (uploadResult.Error != null)
+            try 
             {
-                throw new Exception(uploadResult.Error.Message);
-            }
+                var uploadResult = await _cloudinary.UploadAsync(uploadParams);
 
-            return uploadResult.SecureUrl.ToString();
+                if (uploadResult.Error != null)
+                {
+                    _logger.LogError("Cloudinary Upload Error: {Message}", uploadResult.Error.Message);
+                    throw new Exception($"Cloudinary Error: {uploadResult.Error.Message}");
+                }
+
+                return uploadResult.SecureUrl.ToString();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception during Cloudinary photo upload");
+                throw;
+            }
         }
 
         return string.Empty;
