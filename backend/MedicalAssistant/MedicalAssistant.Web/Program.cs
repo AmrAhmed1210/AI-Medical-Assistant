@@ -1,4 +1,4 @@
-﻿using MedicalAssistant.Application.Services;
+using MedicalAssistant.Application.Services;
 using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Persistance.Data.DbContexts;
 using MedicalAssistant.Persistance.Repositories;
@@ -194,6 +194,27 @@ public class Program
         app.UseAuthorization();
         app.MapControllers();
         app.MapHub<NotificationHub>("/hubs/notifications");
+
+        // =========================
+        // Apply Migrations (Auto-Migration for Railway)
+        // =========================
+        using (var scope = app.Services.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            try
+            {
+                var context = services.GetRequiredService<MedicalAssistantDbContext>();
+                if (context.Database.IsRelational())
+                {
+                    context.Database.Migrate();
+                }
+            }
+            catch (Exception ex)
+            {
+                var logger = services.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "An error occurred while migrating the database.");
+            }
+        }
 
         app.Run();
     }
