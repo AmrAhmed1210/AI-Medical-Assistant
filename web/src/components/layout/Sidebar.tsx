@@ -60,10 +60,20 @@ export function Sidebar() {
   const navItems = role === 'Admin' ? adminNav : (role === 'Secretary' ? secretaryNav : doctorNav)
 
   const handleLogout = async () => {
-    try { await authApi.logout() } catch { /* silent */ }
-    logout()
-    navigate(ROUTES.LOGIN)
+    try { 
+      await authApi.logout() 
+    } catch { /* silent */ }
+    
+    // Clear all local/session storage to be safe
+    localStorage.clear()
+    sessionStorage.clear()
+    
+    logout() // Store logout
+    navigate(ROUTES.LOGIN, { replace: true })
     toast.success('Logged out successfully')
+    
+    // Optional: Force reload to ensure clean state
+    window.location.href = ROUTES.LOGIN
   }
 
   useEffect(() => {

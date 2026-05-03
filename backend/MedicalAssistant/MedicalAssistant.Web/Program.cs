@@ -217,6 +217,22 @@ public class Program
             }
         }
 
-        app.Run();
+        // Automatic Migration
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<MedicalAssistant.Persistance.Data.DbContexts.MedicalAssistantDbContext>();
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating the database.");
+    }
+}
+
+app.Run();
     }
 }

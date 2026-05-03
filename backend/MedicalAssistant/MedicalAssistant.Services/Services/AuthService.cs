@@ -240,6 +240,12 @@ namespace MedicalAssistant.Services.Services
                     .FindAsync(d => d.UserId == user.Id);
                 doctorId = doc.FirstOrDefault()?.Id.ToString();
             }
+            else if (string.Equals(user.Role, "Secretary", StringComparison.OrdinalIgnoreCase))
+            {
+                var sec = await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.DoctorsModule.Secretary>()
+                    .FindAsync(s => s.UserId == user.Id);
+                doctorId = sec.FirstOrDefault()?.DoctorId.ToString();
+            }
 
             return new AuthResponseDto
             {

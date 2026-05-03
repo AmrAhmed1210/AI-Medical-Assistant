@@ -45,6 +45,8 @@ export default function LoginPage() {
         navigate('/admin/dashboard')
       } else if (role === 'Doctor') {
         navigate('/doctor/dashboard')
+      } else if (role === 'Secretary') {
+        navigate('/secretary/dashboard')
       } else {
         setError('Access denied. Please use the mobile application.')
         useAuthStore.getState().logout?.()

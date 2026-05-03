@@ -157,8 +157,8 @@ export default function ManageSecretaries() {
                     <ShieldCheck size={20} className="text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-800">{s.fullName}</h3>
-                    <p className="text-xs text-gray-500">{s.email}</p>
+                    <h3 className="font-bold text-gray-800">{s.fullName || (s as any).FullName}</h3>
+                    <p className="text-xs text-gray-500">{s.email || (s as any).Email}</p>
                   </div>
                 </div>
                 <button 
