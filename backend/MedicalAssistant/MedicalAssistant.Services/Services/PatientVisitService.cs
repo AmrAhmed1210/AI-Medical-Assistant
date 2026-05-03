@@ -4,6 +4,7 @@ using MedicalAssistant.Domain.Entities.PatientModule;
 using MedicalAssistant.Domain.Entities.UserModule;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.PatientVisits;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,10 +15,12 @@ namespace MedicalAssistant.Services.Services
     public class PatientVisitService : IPatientVisitService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IPhotoService _photoService;
 
-        public PatientVisitService(IUnitOfWork unitOfWork)
+        public PatientVisitService(IUnitOfWork unitOfWork, IPhotoService photoService)
         {
             _unitOfWork = unitOfWork;
+            _photoService = photoService;
         }
 
         private async Task<Doctor?> GetDoctorByUserIdAsync(int doctorUserId)
@@ -71,6 +74,37 @@ namespace MedicalAssistant.Services.Services
             v.RecordedBy,
             v.Notes,
             v.RecordedAt
+        );
+
+        private static VisitPrescriptionDto MapPrescription(VisitPrescription p) => new(
+            p.Id,
+            p.PatientVisitId,
+            p.MedicationName,
+            p.GenericName,
+            p.Dosage,
+            p.Form,
+            p.Frequency,
+            p.TimesPerDay,
+            p.SpecificTimes,
+            p.Duration,
+            p.Quantity,
+            p.Instructions,
+            p.IsChronic,
+            p.Refills,
+            p.IsDispensed,
+            p.Notes,
+            p.CreatedAt
+        );
+
+        private static VisitDocumentDto MapDocument(VisitDocument d) => new(
+            d.Id,
+            d.PatientVisitId,
+            d.DocumentType,
+            d.Title,
+            d.FileUrl,
+            d.FileType,
+            d.Description,
+            d.UploadedAt
         );
 
         public async Task<PatientVisitDto> OpenVisitAsync(int doctorUserId, CreateVisitDto dto)
@@ -260,6 +294,182 @@ namespace MedicalAssistant.Services.Services
             _unitOfWork.Repository<VisitVitalSign>().Delete(item);
             await _unitOfWork.SaveChangesAsync();
             return true;
+        }
+
+        // Prescriptions
+        public async Task<VisitPrescriptionDto> AddPrescriptionAsync(int doctorUserId, int visitId, CreateVisitPrescriptionDto dto)
+        {
+            var doctor = await GetDoctorByUserIdAsync(doctorUserId) ?? throw new UnauthorizedAccessException("Doctor profile not found.");
+            var visit = await _unitOfWork.Repository<PatientVisit>().GetByIdAsync(visitId)
+                ?? throw new InvalidOperationException("Visit not found.");
+            if (visit.DoctorId != doctor.Id) throw new UnauthorizedAccessException("Not allowed.");
+
+            var line = new VisitPrescription
+            {
+                PatientVisitId = visitId,
+                MedicationName = dto.MedicationName,
+                GenericName = dto.GenericName,
+                Dosage = dto.Dosage,
+                Form = dto.Form,
+                Frequency = dto.Frequency,
+                TimesPerDay = dto.TimesPerDay,
+                SpecificTimes = dto.SpecificTimes,
+                Duration = dto.Duration,
+                Quantity = dto.Quantity,
+                Instructions = dto.Instructions,
+                IsChronic = dto.IsChronic,
+                Refills = dto.Refills,
+                Notes = dto.Notes,
+                IsDispensed = false,
+                CreatedAt = DateTime.UtcNow,
+            };
+
+            await _unitOfWork.Repository<VisitPrescription>().AddAsync(line);
+            await _unitOfWork.SaveChangesAsync();
+            return MapPrescription(line);
+        }
+
+        public async Task<IEnumerable<VisitPrescriptionDto>> GetPrescriptionsAsync(int visitId)
+        {
+            var items = await _unitOfWork.Repository<VisitPrescription>().FindAsync(p => p.PatientVisitId == visitId);
+            return items.OrderByDescending(p => p.CreatedAt).Select(MapPrescription).ToList();
+        }
+
+        public async Task<VisitPrescriptionDto?> UpdatePrescriptionAsync(int doctorUserId, int prescriptionId, UpdateVisitPrescriptionDto dto)
+        {
+            var doctor = await GetDoctorByUserIdAsync(doctorUserId) ?? throw new UnauthorizedAccessException("Doctor profile not found.");
+            var line = await _unitOfWork.Repository<VisitPrescription>().GetByIdAsync(prescriptionId);
+            if (line == null) return null;
+
+            var visit = await _unitOfWork.Repository<PatientVisit>().GetByIdAsync(line.PatientVisitId);
+            if (visit == null || visit.DoctorId != doctor.Id) throw new UnauthorizedAccessException("Not allowed.");
+
+            if (dto.MedicationName != null) line.MedicationName = dto.MedicationName;
+            if (dto.GenericName != null) line.GenericName = dto.GenericName;
+            if (dto.Dosage != null) line.Dosage = dto.Dosage;
+            if (dto.Form != null) line.Form = dto.Form;
+            if (dto.Frequency != null) line.Frequency = dto.Frequency;
+            if (dto.TimesPerDay.HasValue) line.TimesPerDay = dto.TimesPerDay.Value;
+            if (dto.SpecificTimes != null) line.SpecificTimes = dto.SpecificTimes;
+            if (dto.Duration != null) line.Duration = dto.Duration;
+            if (dto.Quantity.HasValue) line.Quantity = dto.Quantity;
+            if (dto.Instructions != null) line.Instructions = dto.Instructions;
+            if (dto.IsChronic.HasValue) line.IsChronic = dto.IsChronic.Value;
+            if (dto.Refills.HasValue) line.Refills = dto.Refills.Value;
+            if (dto.Notes != null) line.Notes = dto.Notes;
+
+            _unitOfWork.Repository<VisitPrescription>().Update(line);
+            await _unitOfWork.SaveChangesAsync();
+            return MapPrescription(line);
+        }
+
+        public async Task<bool> DeletePrescriptionAsync(int doctorUserId, int prescriptionId)
+        {
+            var doctor = await GetDoctorByUserIdAsync(doctorUserId) ?? throw new UnauthorizedAccessException("Doctor profile not found.");
+            var line = await _unitOfWork.Repository<VisitPrescription>().GetByIdAsync(prescriptionId);
+            if (line == null) return false;
+
+            var visit = await _unitOfWork.Repository<PatientVisit>().GetByIdAsync(line.PatientVisitId);
+            if (visit == null || visit.DoctorId != doctor.Id) throw new UnauthorizedAccessException("Not allowed.");
+
+            _unitOfWork.Repository<VisitPrescription>().Delete(line);
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DispensePrescriptionAsync(int pharmacistUserId, int prescriptionId)
+        {
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(pharmacistUserId);
+            if (user == null || !string.Equals(user.Role, "Pharmacist", StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Not allowed.");
+
+            var line = await _unitOfWork.Repository<VisitPrescription>().GetByIdAsync(prescriptionId);
+            if (line == null) return false;
+
+            if (!line.IsDispensed)
+            {
+                line.IsDispensed = true;
+                _unitOfWork.Repository<VisitPrescription>().Update(line);
+                await _unitOfWork.SaveChangesAsync();
+            }
+
+            return true;
+        }
+
+        // Documents
+        public async Task<VisitDocumentDto> UploadDocumentAsync(int uploaderUserId, int visitId, IFormFile file, string documentType, string title, string? description)
+        {
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(uploaderUserId)
+                ?? throw new UnauthorizedAccessException("Invalid token.");
+
+            if (!string.Equals(user.Role, "Doctor", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(user.Role, "Nurse", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException("Not allowed.");
+            }
+
+            var visit = await _unitOfWork.Repository<PatientVisit>().GetByIdAsync(visitId)
+                ?? throw new InvalidOperationException("Visit not found.");
+
+            if (string.Equals(user.Role, "Doctor", StringComparison.OrdinalIgnoreCase))
+            {
+                var doctor = await GetDoctorByUserIdAsync(uploaderUserId) ?? throw new UnauthorizedAccessException("Doctor profile not found.");
+                if (visit.DoctorId != doctor.Id) throw new UnauthorizedAccessException("Not allowed.");
+            }
+
+            if (file == null || file.Length == 0) throw new InvalidOperationException("File is required.");
+
+            var url = await _photoService.UploadFileAsync(file);
+
+            var doc = new VisitDocument
+            {
+                PatientVisitId = visitId,
+                DocumentType = documentType ?? string.Empty,
+                Title = string.IsNullOrWhiteSpace(title) ? file.FileName : title,
+                FileUrl = url,
+                FileType = file.ContentType ?? string.Empty,
+                Description = description,
+                UploadedAt = DateTime.UtcNow,
+            };
+
+            await _unitOfWork.Repository<VisitDocument>().AddAsync(doc);
+            await _unitOfWork.SaveChangesAsync();
+            return MapDocument(doc);
+        }
+
+        public async Task<IEnumerable<VisitDocumentDto>> GetDocumentsAsync(int visitId)
+        {
+            var items = await _unitOfWork.Repository<VisitDocument>().FindAsync(d => d.PatientVisitId == visitId);
+            return items.OrderByDescending(d => d.UploadedAt).Select(MapDocument).ToList();
+        }
+
+        public async Task<bool> DeleteDocumentAsync(int requesterUserId, int documentId)
+        {
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(requesterUserId)
+                ?? throw new UnauthorizedAccessException("Invalid token.");
+
+            var doc = await _unitOfWork.Repository<VisitDocument>().GetByIdAsync(documentId);
+            if (doc == null) return false;
+
+            if (string.Equals(user.Role, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                _unitOfWork.Repository<VisitDocument>().Delete(doc);
+                await _unitOfWork.SaveChangesAsync();
+                return true;
+            }
+
+            if (string.Equals(user.Role, "Doctor", StringComparison.OrdinalIgnoreCase))
+            {
+                var doctor = await GetDoctorByUserIdAsync(requesterUserId) ?? throw new UnauthorizedAccessException("Doctor profile not found.");
+                var visit = await _unitOfWork.Repository<PatientVisit>().GetByIdAsync(doc.PatientVisitId);
+                if (visit == null || visit.DoctorId != doctor.Id) throw new UnauthorizedAccessException("Not allowed.");
+
+                _unitOfWork.Repository<VisitDocument>().Delete(doc);
+                await _unitOfWork.SaveChangesAsync();
+                return true;
+            }
+
+            throw new UnauthorizedAccessException("Not allowed.");
         }
     }
 }

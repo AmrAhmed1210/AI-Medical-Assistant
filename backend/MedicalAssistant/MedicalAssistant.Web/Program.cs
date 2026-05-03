@@ -7,6 +7,7 @@ using MedicalAssistant.Services.MappingProfiles;
 using MedicalAssistant.Services.Services;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.Settings;
+using MedicalAssistant.Web.Filters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -56,6 +57,8 @@ public class Program
                     Array.Empty<string>()
                 }
             });
+
+            c.OperationFilter<SwaggerFileUploadFilter>();
         });
 
         // =========================

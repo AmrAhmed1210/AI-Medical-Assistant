@@ -1,4 +1,5 @@
 using MedicalAssistant.Shared.DTOs.PatientVisits;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -25,5 +26,17 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
         Task<VisitVitalDto> AddVisitVitalAsync(int doctorOrNurseUserId, int visitId, CreateVisitVitalDto dto);
         Task<IEnumerable<VisitVitalDto>> GetVisitVitalsAsync(int visitId);
         Task<bool> DeleteClinicalVitalAsync(int vitalId);
+
+        // Prescriptions
+        Task<VisitPrescriptionDto> AddPrescriptionAsync(int doctorUserId, int visitId, CreateVisitPrescriptionDto dto);
+        Task<IEnumerable<VisitPrescriptionDto>> GetPrescriptionsAsync(int visitId);
+        Task<VisitPrescriptionDto?> UpdatePrescriptionAsync(int doctorUserId, int prescriptionId, UpdateVisitPrescriptionDto dto);
+        Task<bool> DeletePrescriptionAsync(int doctorUserId, int prescriptionId);
+        Task<bool> DispensePrescriptionAsync(int pharmacistUserId, int prescriptionId);
+
+        // Documents
+        Task<VisitDocumentDto> UploadDocumentAsync(int uploaderUserId, int visitId, IFormFile file, string documentType, string title, string? description);
+        Task<IEnumerable<VisitDocumentDto>> GetDocumentsAsync(int visitId);
+        Task<bool> DeleteDocumentAsync(int requesterUserId, int documentId);
     }
 }
