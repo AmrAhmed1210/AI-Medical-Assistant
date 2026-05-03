@@ -205,18 +205,31 @@ public class Program
         using (var scope = app.Services.CreateScope())
         {
             var services = scope.ServiceProvider;
+            var logger = services.GetRequiredService<ILogger<Program>>();
             try
             {
+                logger.LogInformation("Starting database migration...");
                 var context = services.GetRequiredService<MedicalAssistantDbContext>();
-                context.Database.Migrate();
+                
+                var pendingMigrations = context.Database.GetPendingMigrations().ToList();
+                if (pendingMigrations.Any())
+                {
+                    logger.LogInformation("Found {Count} pending migrations: {Migrations}", pendingMigrations.Count, string.Join(", ", pendingMigrations));
+                    context.Database.Migrate();
+                    logger.LogInformation("Database migration completed successfully.");
+                }
+                else
+                {
+                    logger.LogInformation("No pending migrations found.");
+                }
             }
             catch (Exception ex)
             {
-                var logger = services.GetRequiredService<ILogger<Program>>();
-                logger.LogError(ex, "An error occurred while migrating the database.");
+                logger.LogCritical(ex, "FATAL ERROR: Database migration failed!");
+                // Optional: throw; // Uncomment this if you want the app to fail-fast if migration fails
             }
         }
 
-app.Run();
+        app.Run();
     }
 }

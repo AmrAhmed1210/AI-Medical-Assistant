@@ -65,8 +65,9 @@ public class SecretaryService : ISecretaryService
 
         foreach (var s in secretaries)
         {
-            var user = await _unitOfWork.Repository<User>().GetByIdAsync(s.UserId);
-            results.Add(new SecretaryDto(s.Id, s.UserId, s.DoctorId, s.FullName, user?.Email ?? "", s.IsActive));
+            // Direct query to avoid any tracking/cache issues with GetByIdAsync
+            var user = (await _unitOfWork.Repository<User>().FindAsync(u => u.Id == s.UserId)).FirstOrDefault();
+            results.Add(new SecretaryDto(s.Id, s.UserId, s.DoctorId, s.FullName, user?.Email ?? "No Email Found", s.IsActive));
         }
 
         return results;

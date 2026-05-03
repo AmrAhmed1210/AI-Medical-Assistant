@@ -30,6 +30,18 @@ namespace MedicalAssistant.Persistance.Data.DbContexts
             modelBuilder.Entity<Admin>().ToTable("Admins");
             
             base.OnModelCreating(modelBuilder);
+
+            // Force all string properties to use 'text' or 'varchar' to avoid nvarchar errors on Postgres
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                foreach (var property in entityType.GetProperties())
+                {
+                    if (property.ClrType == typeof(string))
+                    {
+                        property.SetColumnType("text");
+                    }
+                }
+            }
         }
 
         public DbSet<Doctor> Doctors { get; set; }
