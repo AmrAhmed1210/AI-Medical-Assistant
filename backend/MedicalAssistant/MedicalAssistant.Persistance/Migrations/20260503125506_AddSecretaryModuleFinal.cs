@@ -5,7 +5,7 @@
 namespace MedicalAssistant.Persistance.Migrations
 {
     /// <inheritdoc />
-    public partial class FinalSecretarySystemFix : Migration
+    public partial class AddSecretaryModuleFinal : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

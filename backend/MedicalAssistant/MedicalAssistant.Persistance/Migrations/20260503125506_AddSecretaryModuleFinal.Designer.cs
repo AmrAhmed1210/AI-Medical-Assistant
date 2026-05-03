@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MedicalAssistant.Persistance.Migrations
 {
     [DbContext(typeof(MedicalAssistantDbContext))]
-    [Migration("20260503125032_FinalSecretarySystemFix")]
-    partial class FinalSecretarySystemFix
+    [Migration("20260503125506_AddSecretaryModuleFinal")]
+    partial class AddSecretaryModuleFinal
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
