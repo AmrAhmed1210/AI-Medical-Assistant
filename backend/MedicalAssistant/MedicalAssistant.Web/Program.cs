@@ -174,7 +174,7 @@ public class Program
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", policy =>
-                policy.WithOrigins(corsOrigins)
+                policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "https://ai-medical-assistant-production-38a3.up.railway.app")
                       .AllowAnyMethod()
                       .AllowAnyHeader()
                       .AllowCredentials());
@@ -197,7 +197,7 @@ public class Program
         app.MapHub<NotificationHub>("/hubs/notifications");
 
         // =========================
-        // Apply Migrations (Auto-Migration for Railway)
+        // Apply Migrations (Auto-Migration)
         // =========================
         using (var scope = app.Services.CreateScope())
         {
@@ -205,10 +205,7 @@ public class Program
             try
             {
                 var context = services.GetRequiredService<MedicalAssistantDbContext>();
-                if (context.Database.IsRelational())
-                {
-                    context.Database.Migrate();
-                }
+                context.Database.Migrate();
             }
             catch (Exception ex)
             {
@@ -216,22 +213,6 @@ public class Program
                 logger.LogError(ex, "An error occurred while migrating the database.");
             }
         }
-
-        // Automatic Migration
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<MedicalAssistant.Persistance.Data.DbContexts.MedicalAssistantDbContext>();
-        context.Database.Migrate();
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating the database.");
-    }
-}
 
 app.Run();
     }
