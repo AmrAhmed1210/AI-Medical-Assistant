@@ -19,6 +19,7 @@ export default function ManageSecretaries() {
   const fetchSecretaries = async () => {
     try {
       const data = await secretaryApi.getMySecretaries()
+      console.log('[Staff Data]', data)
       setSecretaries(data)
     } catch {
       toast.error('Failed to load staff list')
