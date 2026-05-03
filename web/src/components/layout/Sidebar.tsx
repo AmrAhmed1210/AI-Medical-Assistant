@@ -26,6 +26,7 @@ const doctorNav: NavItem[] = [
   { to: ROUTES.DOCTOR_REPORTS, icon: <FileText size={18} />, label: 'AI Reports' },
   { to: ROUTES.DOCTOR_REVIEWS, icon: <Star size={18} />, label: 'Reviews' },
   { to: ROUTES.DOCTOR_CHAT, icon: <MessageSquare size={18} />, label: 'Messages' },
+  { to: '/doctor/staff', icon: <Users size={18} />, label: 'Manage Staff' },
   { to: ROUTES.DOCTOR_SCHEDULE, icon: <Clock size={18} />, label: 'Schedule' },
   { to: ROUTES.DOCTOR_PROFILE, icon: <User size={18} />, label: 'My Profile' },
 ]
@@ -37,6 +38,10 @@ const adminNav: NavItem[] = [
   { to: ROUTES.ADMIN_MODELS, icon: <Cpu size={18} />, label: 'AI Models' },
   { to: ROUTES.ADMIN_APPLICATIONS, icon: <FileText size={18} />, label: 'Applications' },
   { to: ROUTES.ADMIN_SUPPORT, icon: <LifeBuoy size={18} />, label: 'Support Center' },
+]
+
+const secretaryNav: NavItem[] = [
+  { to: '/secretary/dashboard', icon: <Calendar size={18} />, label: 'Appointments' },
 ]
 
 export function Sidebar() {
@@ -52,7 +57,7 @@ export function Sidebar() {
     clearDoctorApplications,
   } = useNotificationStore()
 
-  const navItems = role === 'Admin' ? adminNav : doctorNav
+  const navItems = role === 'Admin' ? adminNav : (role === 'Secretary' ? secretaryNav : doctorNav)
 
   const handleLogout = async () => {
     try { await authApi.logout() } catch { /* silent */ }
@@ -98,10 +103,11 @@ export function Sidebar() {
       <div className="px-4 py-3">
         <div className={cn(
           'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium',
-          role === 'Admin' ? 'bg-purple-50 text-purple-700' : 'bg-primary-50 text-primary-700'
+          role === 'Admin' ? 'bg-purple-50 text-purple-700' : 
+          role === 'Secretary' ? 'bg-amber-50 text-amber-700' : 'bg-primary-50 text-primary-700'
         )}>
-          {role === 'Admin' ? <Shield size={14} /> : <User size={14} />}
-          {role === 'Admin' ? 'System Admin' : 'Doctor'}
+          {role === 'Admin' ? <Shield size={14} /> : role === 'Secretary' ? <Users size={14} /> : <User size={14} />}
+          {role === 'Admin' ? 'System Admin' : role === 'Secretary' ? 'Secretary' : 'Doctor'}
         </div>
       </div>
 

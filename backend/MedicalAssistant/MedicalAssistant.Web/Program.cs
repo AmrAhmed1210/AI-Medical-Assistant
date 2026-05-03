@@ -152,6 +152,7 @@ public class Program
         builder.Services.AddScoped<IPhotoService, PhotoService>();
         builder.Services.AddScoped<IPatientRecordService, PatientRecordService>();
         builder.Services.AddScoped<IPatientVisitService, PatientVisitService>();
+        builder.Services.AddScoped<ISecretaryService, SecretaryService>();
 
         // =========================
         // Cloudinary
@@ -160,7 +161,7 @@ public class Program
             builder.Configuration.GetSection("CloudinarySettings"));
 
         // =========================
-        // AutoMapper ✅ Fixed for v16.x
+        // AutoMapper  Fixed for v16.x
         // =========================
         builder.Services.AddAutoMapper(cfg => { }, typeof(DoctorProfile));
 

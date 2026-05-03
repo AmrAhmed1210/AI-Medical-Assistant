@@ -89,14 +89,14 @@ namespace MedicalAssistant.Presentation.Controllers
 
         // PUT /appointments/{id}/confirm
         [HttpPut("{id}/confirm")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Secretary,Admin")]
         [ProducesResponseType(typeof(AppointmentDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Confirm(int id)
         {
             var current = await _appointmentService.GetAppointmentByIdAsync(id);
             if (current == null) return NotFound(new { message = "Appointment not found." });
-            if (!await CanDoctorAccessAppointmentAsync(current)) return Forbid();
+            if (!await CanAccessAppointmentAsync(current)) return Forbid();
 
             var updated = await UpdateStatusAsync(id, "Confirmed", null);
             if (updated == null) return NotFound(new { message = "Appointment not found." });
@@ -105,14 +105,14 @@ namespace MedicalAssistant.Presentation.Controllers
 
         // PUT /appointments/{id}/cancel
         [HttpPut("{id}/pending")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Secretary,Admin")]
         [ProducesResponseType(typeof(AppointmentDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> SetPending(int id)
         {
             var current = await _appointmentService.GetAppointmentByIdAsync(id);
             if (current == null) return NotFound(new { message = "Appointment not found." });
-            if (!await CanDoctorAccessAppointmentAsync(current)) return Forbid();
+            if (!await CanAccessAppointmentAsync(current)) return Forbid();
 
             var updated = await UpdateStatusAsync(id, "Pending", null);
             if (updated == null) return NotFound(new { message = "Appointment not found." });
@@ -121,7 +121,7 @@ namespace MedicalAssistant.Presentation.Controllers
 
         // PUT /appointments/{id}/cancel
         [HttpPut("{id}/cancel")]
-        [Authorize]
+        [Authorize(Roles = "Patient,Doctor,Secretary,Admin")]
         [ProducesResponseType(typeof(AppointmentDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Cancel(int id, [FromBody] CancelAppointmentBody? body)
@@ -249,6 +249,18 @@ namespace MedicalAssistant.Presentation.Controllers
             return appointment.DoctorId == doctorProfileId.Value;
         }
 
+        [HttpGet("secretary")]
+        [Authorize(Roles = "Secretary")]
+        [ProducesResponseType(typeof(IEnumerable<AppointmentDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetSecretaryAppointments()
+        {
+            var userId = GetUserId();
+            if (!userId.HasValue) return Unauthorized();
+
+            var appointments = await _appointmentService.GetAppointmentsForSecretaryAsync(userId.Value);
+            return Ok(appointments);
+        }
+
         private async Task<bool> CanAccessAppointmentAsync(AppointmentDto appointment)
         {
             var role = GetRole();
@@ -256,6 +268,15 @@ namespace MedicalAssistant.Presentation.Controllers
             if (string.Equals(role, "Doctor", StringComparison.OrdinalIgnoreCase))
             {
                 return await CanDoctorAccessAppointmentAsync(appointment);
+            }
+
+            if (string.Equals(role, "Secretary", StringComparison.OrdinalIgnoreCase))
+            {
+                var userId = GetUserId();
+                if (!userId.HasValue) return false;
+
+                var secretary = (await _unitOfWork.Repository<Secretary>().FindAsync(s => s.UserId == userId.Value)).FirstOrDefault();
+                return secretary != null && appointment.DoctorId == secretary.DoctorId;
             }
 
             if (string.Equals(role, "Patient", StringComparison.OrdinalIgnoreCase))

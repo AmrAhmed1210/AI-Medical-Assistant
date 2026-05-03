@@ -45,6 +45,7 @@ namespace MedicalAssistant.Persistance.Data.DbContexts
         public DbSet<Message> Messages { get; set; }
         public DbSet<FollowedDoctor> FollowedDoctors { get; set; }
         public DbSet<DoctorApplication> DoctorApplications { get; set; }
+        public DbSet<Secretary> Secretaries { get; set; }
 
         public DbSet<MedicalProfile> MedicalProfiles { get; set; }
         public DbSet<SurgeryHistory> SurgeryHistories { get; set; }

@@ -6,6 +6,9 @@ export const appointmentApi = {
   getMyAppointments: () =>
     axiosInstance.get<AppointmentDto[]>('/api/appointments/my').then((r) => r.data),
 
+  getSecretaryAppointments: () =>
+    axiosInstance.get<AppointmentDto[]>('/api/appointments/secretary').then((r) => r.data),
+
   // Get appointment by ID
   getById: (id: string) =>
     axiosInstance.get<AppointmentDto>(`/api/appointments/${id}`).then((r) => r.data),

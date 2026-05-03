@@ -184,6 +184,9 @@ export function AppointmentTable({
             <div className="grid grid-cols-2 gap-4">
               <div><p className="text-xs text-gray-400 mb-1">Patient</p><p className="font-medium">{detailItem.patientName}</p></div>
               <div><p className="text-xs text-gray-400 mb-1">Doctor</p><p className="font-medium">{detailItem.doctorName}</p></div>
+              {detailItem.patientPhone && (
+                <div><p className="text-xs text-gray-400 mb-1">Phone</p><p className="font-bold text-primary-600">{detailItem.patientPhone}</p></div>
+              )}
               <div><p className="text-xs text-gray-400 mb-1">Date/Time</p><p className="font-medium">{formatDateTime(detailItem.scheduledAt)}</p></div>
               <div><p className="text-xs text-gray-400 mb-1">Status</p><StatusBadge status={detailItem.status} /></div>
               <div><p className="text-xs text-gray-400 mb-1">Payment</p><p className="font-medium">{formatPaymentMethod(detailItem.paymentMethod)}</p></div>

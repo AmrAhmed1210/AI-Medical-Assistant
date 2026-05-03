@@ -27,6 +27,10 @@ const DoctorPatients = lazy(() => import('@/pages/doctor/DoctorPatients'))
 const DoctorReports = lazy(() => import('@/pages/doctor/DoctorReports'))
 const DoctorChat = lazy(() => import('@/pages/doctor/DoctorChat'))
 const DoctorReviews = lazy(() => import('@/pages/doctor/DoctorReviews'))
+const ManageSecretaries = lazy(() => import('@/pages/doctor/ManageSecretaries'))
+
+// Secretary
+const SecretaryDashboard = lazy(() => import('@/pages/secretary/SecretaryDashboard'))
 
 // Public pages
 const DoctorsList = lazy(() => import('@/pages/doctor/DoctorsList'))
@@ -61,6 +65,7 @@ function PublicGuard() {
   if (isAuthenticated) {
     if (role === 'Admin') return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
     if (role === 'Doctor') return <Navigate to={ROUTES.DOCTOR_DASHBOARD} replace />
+    if (role === 'Secretary') return <Navigate to="/secretary/dashboard" replace />
   }
   return <Outlet />
 }
@@ -113,7 +118,13 @@ export default function App() {
                 <Route path="/doctor/patients" element={<DoctorPatients />} />
                 <Route path="/doctor/reports" element={<DoctorReports />} />
                 <Route path="/doctor/reviews" element={<DoctorReviews />} />
+                <Route path="/doctor/staff" element={<ManageSecretaries />} />
                 <Route path="/doctor/chat" element={<DoctorChat />} />
+              </Route>
+
+              {/* Secretary routes */}
+              <Route element={<RoleGuard roles={['Secretary']} />}>
+                <Route path="/secretary/dashboard" element={<SecretaryDashboard />} />
               </Route>
 
             </Route>
@@ -135,5 +146,6 @@ function RootRedirect() {
   if (!isAuthenticated) return <Navigate to={ROUTES.LOGIN} replace />
   if (role === 'Admin') return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
   if (role === 'Doctor') return <Navigate to={ROUTES.DOCTOR_DASHBOARD} replace />
+  if (role === 'Secretary') return <Navigate to="/secretary/dashboard" replace />
   return <Navigate to={ROUTES.LOGIN} replace />
 }

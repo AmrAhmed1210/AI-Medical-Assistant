@@ -9,6 +9,7 @@ export const ROLE_CONFIG: Record<UserRole, {
   Admin: { variant: 'admin', icon: null, label: 'Admin / مدير نظام' },
   Doctor: { variant: 'success', icon: null, label: 'Doctor / طبيب' },
   Patient: { variant: 'info', icon: null, label: 'Patient / مريض' },
+  Secretary: { variant: 'info', icon: null, label: 'Secretary / سكرتارية' },
 }
 
 export const ROLE_FILTERS: Array<{ value: UserRole | ''; label: string; emoji: string }> = [
@@ -16,6 +17,7 @@ export const ROLE_FILTERS: Array<{ value: UserRole | ''; label: string; emoji: s
   { value: 'Admin', label: 'Admins / المدراء', emoji: '👑' },
   { value: 'Doctor', label: 'Doctors / الأطباء', emoji: '🩺' },
   { value: 'Patient', label: 'Patients / المرضى', emoji: '👤' },
+  { value: 'Secretary', label: 'Secretary / السكرتارية', emoji: '⌨️' },
 ]
 
 // ── Mock Data for Dev Testing ───────────────────────────────────────

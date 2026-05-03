@@ -9,6 +9,7 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
         Task<AppointmentDto?> GetAppointmentByIdAsync(int id);
         Task<IEnumerable<AppointmentDto>> GetAppointmentsByPatientIdAsync(int patientId);
         Task<IEnumerable<AppointmentDto>> GetAppointmentsByDoctorIdAsync(int doctorId);
+        Task<IEnumerable<AppointmentDto>> GetAppointmentsForSecretaryAsync(int secretaryUserId);
         Task<AppointmentDto?> UpdateAppointmentAsync(UpdateAppointmentDto dto);
         Task<bool> DeleteAppointmentAsync(int id);
         Task<AppointmentDto?> RebookAppointmentAsync(int appointmentId, int patientId);

@@ -12,6 +12,8 @@ interface AppointmentState {
   historyAppointments: () => AppointmentDto[]
 
   fetchAppointments: () => Promise<void>
+  fetchSecretaryAppointments: () => Promise<void>
+  setNormalizedAppointments: (data: any[]) => void
   confirm: (id: string) => Promise<AppointmentDto>
   cancel: (id: string, reason?: string) => Promise<void>
   complete: (id: string, notes?: string) => Promise<AppointmentDto>
@@ -47,38 +49,51 @@ export const useAppointmentStore = create<AppointmentState>((set, get) => ({
     set({ isLoading: true })
     try {
       const data = await doctorApi.getAppointments()
-      
-      const toScheduledAt = (item: any): string => {
-        const fromApi = String(item?.scheduledAt ?? item?.ScheduledAt ?? '').trim()
-        if (fromApi) return fromApi
-        const datePart = String(item?.date ?? item?.Date ?? '').trim()
-        const timePart = String(item?.time ?? item?.Time ?? '').trim()
-        if (!datePart && !timePart) return ''
-        return `${datePart} ${timePart}`.replace(/\s+/g, ' ').trim()
-      }
-
-      const normalizeStatus = (status: string) => {
-        const lowered = (status || '').toLowerCase()
-        if (lowered === 'confirmed') return 'Confirmed'
-        if (lowered === 'cancelled' || lowered === 'canceled') return 'Cancelled'
-        if (lowered === 'completed') return 'Completed'
-        return 'Pending'
-      }
-
-      const normalized = (data as any[]).map((item) => ({
-        ...item,
-        id: String(item.id),
-        patientName: item.patientName ?? 'Unknown',
-        doctorName: item.doctorName ?? 'Doctor',
-        paymentMethod: item.paymentMethod ?? item.PaymentMethod ?? '',
-        status: normalizeStatus(item.status),
-        scheduledAt: toScheduledAt(item),
-      })).sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-
-      set({ appointments: normalized })
+      get().setNormalizedAppointments(data)
     } finally {
       set({ isLoading: false })
     }
+  },
+
+  fetchSecretaryAppointments: async () => {
+    set({ isLoading: true })
+    try {
+      const data = await appointmentApi.getSecretaryAppointments()
+      get().setNormalizedAppointments(data)
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+
+  setNormalizedAppointments: (data: any[]) => {
+    const toScheduledAt = (item: any): string => {
+      const fromApi = String(item?.scheduledAt ?? item?.ScheduledAt ?? '').trim()
+      if (fromApi) return fromApi
+      const datePart = String(item?.date ?? item?.Date ?? '').trim()
+      const timePart = String(item?.time ?? item?.Time ?? '').trim()
+      if (!datePart && !timePart) return ''
+      return `${datePart} ${timePart}`.replace(/\s+/g, ' ').trim()
+    }
+
+    const normalizeStatus = (status: string) => {
+      const lowered = (status || '').toLowerCase()
+      if (lowered === 'confirmed') return 'Confirmed'
+      if (lowered === 'cancelled' || lowered === 'canceled') return 'Cancelled'
+      if (lowered === 'completed') return 'Completed'
+      return 'Pending'
+    }
+
+    const normalized = (data as any[]).map((item) => ({
+      ...item,
+      id: String(item.id),
+      patientName: item.patientName ?? 'Unknown',
+      doctorName: item.doctorName ?? 'Doctor',
+      paymentMethod: item.paymentMethod ?? item.PaymentMethod ?? '',
+      status: normalizeStatus(item.status),
+      scheduledAt: toScheduledAt(item),
+    })).sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+
+    set({ appointments: normalized })
   },
 
   confirm: async (id) => {
@@ -149,9 +164,11 @@ export const useAppointmentStore = create<AppointmentState>((set, get) => ({
     
     const newAppt: AppointmentDto = {
       id,
+      patientId: Number(payload?.patientId ?? payload?.PatientId ?? 0),
+      doctorId: Number(payload?.doctorId ?? payload?.DoctorId ?? 0),
       patientName: payload?.patientName ?? payload?.PatientName ?? 'New Patient',
       doctorName: payload?.doctorName ?? 'Doctor',
-      status: 'Confirmed', // Usually bookings from mobile are confirmed or pending. SignalR often sends confirmed.
+      status: 'Confirmed', 
       scheduledAt,
       paymentMethod: payload?.paymentMethod ?? 'Cash',
       notes: ''

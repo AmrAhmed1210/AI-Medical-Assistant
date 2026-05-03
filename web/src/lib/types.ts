@@ -3,7 +3,7 @@
 // ============================================================================
 
 // ── أدوار المستخدمين ──────────────────────────────────────────────────
-export type UserRole = 'Admin' | 'Doctor' | 'Patient'
+export type UserRole = 'Admin' | 'Doctor' | 'Patient' | 'Secretary'
 
 // ── مستخدم (يتطابق مع رد الـ API من Swagger) ─────────────────────────
 export type UserDto = {
@@ -117,6 +117,22 @@ export interface LoginResponse {
   user: AuthUserDto
 }
 
+// ── Secretary ────────────────────────────────────────────────────────
+export interface SecretaryDto {
+  id: number
+  userId: number
+  doctorId: number
+  fullName: string
+  email: string
+  isActive: boolean
+}
+
+export interface CreateSecretaryRequest {
+  fullName: string
+  email: string
+  password: string
+}
+
 // ============================================================================
 // 💬 Sessions / Consult
 // ============================================================================
@@ -185,6 +201,8 @@ export type AppointmentStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Complet
 
 export interface AppointmentDto {
   id: string
+  patientId: number
+  doctorId: number
   patientName: string
   doctorName: string
   scheduledAt: string
@@ -194,6 +212,7 @@ export interface AppointmentDto {
   paymentMethod?: string
   status: AppointmentStatus
   notes: string | null
+  patientPhone?: string
 }
 
 export interface BookAppointmentRequest {

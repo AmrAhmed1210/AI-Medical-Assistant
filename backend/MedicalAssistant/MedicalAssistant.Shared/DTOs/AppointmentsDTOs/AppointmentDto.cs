@@ -20,6 +20,7 @@ namespace MedicalAssistant.Shared.DTOs.AppointmentsDTOs
         /// Patient photo URL
         /// </summary>
         public string? PatientPhotoUrl { get; set; }
+        public string? PatientPhone { get; set; }
 
         /// <summary>
         /// Doctor specialty name

@@ -95,6 +95,16 @@ namespace MedicalAssistant.Services.Services
             return appointments.Select(MapToDto);
         }
 
+        public async Task<IEnumerable<AppointmentDto>> GetAppointmentsForSecretaryAsync(int secretaryUserId)
+        {
+            var secretary = (await _unitOfWork.Repository<Secretary>().FindAsync(s => s.UserId == secretaryUserId)).FirstOrDefault();
+            if (secretary == null) return Enumerable.Empty<AppointmentDto>();
+
+            var appointments = (await _unitOfWork.Appointments.GetByDoctorIdAsync(secretary.DoctorId)).ToList();
+            await ApplyAppointmentLifecycleAsync(appointments);
+            return appointments.Select(MapToDto);
+        }
+
         public async Task<AppointmentDto?> UpdateAppointmentAsync(UpdateAppointmentDto dto)
         {
             var appointment = await _unitOfWork.Appointments.GetByIdWithDoctorAsync(dto.Id);
@@ -335,6 +345,7 @@ namespace MedicalAssistant.Services.Services
                 DoctorName = appointment.Doctor?.Name ?? string.Empty,
                 PatientName = appointment.Patient?.FullName ?? string.Empty,
                 PatientPhotoUrl = appointment.Patient?.ImageUrl,
+                PatientPhone = appointment.Patient?.PhoneNumber ?? string.Empty,
                 Specialty = appointment.Doctor?.Specialty?.Name ?? string.Empty,
                 Date = appointment.Date,
                 Time = appointment.Time,
