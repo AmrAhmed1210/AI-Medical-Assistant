@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -17,7 +17,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20);
 
             migrationBuilder.AlterColumn<string>(
@@ -27,7 +27,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20,
                 oldNullable: true);
 
@@ -38,7 +38,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20);
 
             migrationBuilder.AlterColumn<string>(
@@ -48,7 +48,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(30)",
+                oldType: "text",
                 oldMaxLength: 30);
 
             migrationBuilder.AlterColumn<string>(
@@ -57,7 +57,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -67,7 +67,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20);
 
             migrationBuilder.AlterColumn<string>(
@@ -77,7 +77,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(30)",
+                oldType: "text",
                 oldMaxLength: 30);
 
             migrationBuilder.AlterColumn<string>(
@@ -87,7 +87,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20);
 
             migrationBuilder.AlterColumn<string>(
@@ -96,7 +96,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -106,7 +106,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200,
                 oldNullable: true);
 
@@ -116,7 +116,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -126,7 +126,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200);
 
             migrationBuilder.AlterColumn<string>(
@@ -135,7 +135,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -145,7 +145,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200,
                 oldNullable: true);
 
@@ -156,7 +156,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(100)",
+                oldType: "text",
                 oldMaxLength: 100);
 
             migrationBuilder.AlterColumn<string>(
@@ -166,7 +166,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(30)",
+                oldType: "text",
                 oldMaxLength: 30);
 
             migrationBuilder.AlterColumn<string>(
@@ -176,7 +176,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 100,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(100)",
+                oldType: "text",
                 oldMaxLength: 100,
                 oldNullable: true);
 
@@ -187,7 +187,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(100)",
+                oldType: "text",
                 oldMaxLength: 100);
 
             migrationBuilder.AlterColumn<string>(
@@ -197,7 +197,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 300,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(300)",
+                oldType: "text",
                 oldMaxLength: 300);
 
             migrationBuilder.AlterColumn<string>(
@@ -206,7 +206,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "FileType",
@@ -215,7 +215,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 50,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(50)",
+                oldType: "text",
                 oldMaxLength: 50);
 
             migrationBuilder.AlterColumn<string>(
@@ -225,7 +225,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(30)",
+                oldType: "text",
                 oldMaxLength: 30);
 
             migrationBuilder.AlterColumn<string>(
@@ -234,7 +234,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -244,7 +244,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20);
 
             migrationBuilder.AlterColumn<string>(
@@ -253,7 +253,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -263,7 +263,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20,
                 oldNullable: true);
 
@@ -274,7 +274,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 512,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(512)",
+                oldType: "text",
                 oldMaxLength: 512);
 
             migrationBuilder.AlterColumn<string>(
@@ -284,7 +284,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 120,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(120)",
+                oldType: "text",
                 oldMaxLength: 120);
 
             migrationBuilder.AlterColumn<string>(
@@ -294,7 +294,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 256,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(256)",
+                oldType: "text",
                 oldMaxLength: 256);
 
             migrationBuilder.AlterColumn<string>(
@@ -304,7 +304,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20);
 
             migrationBuilder.AlterColumn<string>(
@@ -314,7 +314,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20,
                 oldNullable: true);
 
@@ -325,7 +325,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20,
                 oldNullable: true);
 
@@ -335,7 +335,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -345,7 +345,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200);
 
             migrationBuilder.AlterColumn<string>(
@@ -355,7 +355,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 100,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(100)",
+                oldType: "text",
                 oldMaxLength: 100,
                 oldNullable: true);
 
@@ -365,7 +365,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -375,7 +375,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 300,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(300)",
+                oldType: "text",
                 oldMaxLength: 300);
 
             migrationBuilder.AlterColumn<string>(
@@ -384,7 +384,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -394,7 +394,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200,
                 oldNullable: true);
 
@@ -405,7 +405,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200,
                 oldNullable: true);
 
@@ -415,7 +415,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -424,7 +424,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -434,7 +434,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(100)",
+                oldType: "text",
                 oldMaxLength: 100);
 
             migrationBuilder.AlterColumn<string>(
@@ -444,7 +444,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20,
                 oldNullable: true);
 
@@ -454,7 +454,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Title",
@@ -463,7 +463,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200,
                 oldNullable: true);
 
@@ -473,7 +473,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "PatientName",
@@ -481,7 +481,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -491,7 +491,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 1000,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(1000)",
+                oldType: "text",
                 oldMaxLength: 1000);
 
             migrationBuilder.AlterColumn<string>(
@@ -501,7 +501,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(100)",
+                oldType: "text",
                 oldMaxLength: 100);
 
             migrationBuilder.AlterColumn<string>(
@@ -510,7 +510,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -521,7 +521,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 nullable: false,
                 defaultValue: "active",
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20,
                 oldDefaultValue: "active");
 
@@ -531,7 +531,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -540,7 +540,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -549,7 +549,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -558,7 +558,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -567,7 +567,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Assessment",
@@ -575,7 +575,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -585,7 +585,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20);
 
             migrationBuilder.AlterColumn<string>(
@@ -594,7 +594,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "MedicalNotes",
@@ -602,7 +602,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -611,7 +611,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -621,7 +621,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 10,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(10)",
+                oldType: "text",
                 oldMaxLength: 10);
 
             migrationBuilder.AlterColumn<string>(
@@ -631,7 +631,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(100)",
+                oldType: "text",
                 oldMaxLength: 100);
 
             migrationBuilder.AlterColumn<string>(
@@ -641,7 +641,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 150,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(150)",
+                oldType: "text",
                 oldMaxLength: 150);
 
             migrationBuilder.AlterColumn<string>(
@@ -651,7 +651,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 5,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(5)",
+                oldType: "text",
                 oldMaxLength: 5,
                 oldNullable: true);
 
@@ -662,7 +662,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 300,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(300)",
+                oldType: "text",
                 oldMaxLength: 300,
                 oldNullable: true);
 
@@ -672,7 +672,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -683,7 +683,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 nullable: false,
                 defaultValue: "",
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200,
                 oldDefaultValue: "");
 
@@ -694,7 +694,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20);
 
             migrationBuilder.AlterColumn<string>(
@@ -703,7 +703,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "FileName",
@@ -711,7 +711,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -720,7 +720,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -730,7 +730,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200);
 
             migrationBuilder.AlterColumn<string>(
@@ -739,7 +739,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -749,7 +749,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200,
                 oldNullable: true);
 
@@ -760,7 +760,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(100)",
+                oldType: "text",
                 oldMaxLength: 100);
 
             migrationBuilder.AlterColumn<string>(
@@ -770,7 +770,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(30)",
+                oldType: "text",
                 oldMaxLength: 30);
 
             migrationBuilder.AlterColumn<string>(
@@ -780,7 +780,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200);
 
             migrationBuilder.AlterColumn<string>(
@@ -790,7 +790,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(100)",
+                oldType: "text",
                 oldMaxLength: 100);
 
             migrationBuilder.AlterColumn<string>(
@@ -801,7 +801,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 nullable: false,
                 defaultValue: "pending",
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20,
                 oldDefaultValue: "pending");
 
@@ -811,7 +811,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -821,7 +821,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 100,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(100)",
+                oldType: "text",
                 oldMaxLength: 100,
                 oldNullable: true);
 
@@ -832,7 +832,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 100,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(100)",
+                oldType: "text",
                 oldMaxLength: 100,
                 oldNullable: true);
 
@@ -843,7 +843,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 30,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(30)",
+                oldType: "text",
                 oldMaxLength: 30,
                 oldNullable: true);
 
@@ -854,7 +854,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200,
                 oldNullable: true);
 
@@ -865,7 +865,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 5,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(5)",
+                oldType: "text",
                 oldMaxLength: 5,
                 oldNullable: true);
 
@@ -876,7 +876,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200);
 
             migrationBuilder.AlterColumn<string>(
@@ -886,7 +886,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200,
                 oldNullable: true);
 
@@ -896,7 +896,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "ImageUrl",
@@ -905,7 +905,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 500,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(500)",
+                oldType: "text",
                 oldMaxLength: 500,
                 oldNullable: true);
 
@@ -916,7 +916,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 1000,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(1000)",
+                oldType: "text",
                 oldMaxLength: 1000,
                 oldNullable: true);
 
@@ -926,7 +926,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "PhotoUrl",
@@ -934,7 +934,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -943,7 +943,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Name",
@@ -951,7 +951,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Message",
@@ -959,7 +959,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "LicenseNumber",
@@ -967,7 +967,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Email",
@@ -975,7 +975,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "DocumentUrl",
@@ -983,7 +983,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Bio",
@@ -991,7 +991,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Title",
@@ -999,7 +999,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Status",
@@ -1007,7 +1007,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Description",
@@ -1015,7 +1015,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "TargetValues",
@@ -1023,7 +1023,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -1033,7 +1033,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20);
 
             migrationBuilder.AlterColumn<string>(
@@ -1043,7 +1043,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 50,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(50)",
+                oldType: "text",
                 oldMaxLength: 50);
 
             migrationBuilder.AlterColumn<string>(
@@ -1052,7 +1052,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -1062,7 +1062,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 50,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(50)",
+                oldType: "text",
                 oldMaxLength: 50);
 
             migrationBuilder.AlterColumn<string>(
@@ -1072,7 +1072,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200);
 
             migrationBuilder.AlterColumn<string>(
@@ -1082,7 +1082,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20);
 
             migrationBuilder.AlterColumn<string>(
@@ -1093,7 +1093,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 nullable: false,
                 defaultValue: "Pending",
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20,
                 oldDefaultValue: "Pending");
 
@@ -1105,7 +1105,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 nullable: false,
                 defaultValue: "cash",
                 oldClrType: typeof(string),
-                oldType: "nvarchar(10)",
+                oldType: "text",
                 oldMaxLength: 10,
                 oldDefaultValue: "cash");
 
@@ -1116,7 +1116,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 1000,
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(1000)",
+                oldType: "text",
                 oldMaxLength: 1000,
                 oldNullable: true);
 
@@ -1127,7 +1127,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(20)",
+                oldType: "text",
                 oldMaxLength: 20);
 
             migrationBuilder.AlterColumn<string>(
@@ -1136,7 +1136,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -1145,7 +1145,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -1154,7 +1154,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
+                oldType: "text");
 
             migrationBuilder.AlterColumn<string>(
                 name: "Severity",
@@ -1163,7 +1163,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(30)",
+                oldType: "text",
                 oldMaxLength: 30);
 
             migrationBuilder.AlterColumn<string>(
@@ -1172,7 +1172,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(max)",
+                oldType: "text",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<string>(
@@ -1182,7 +1182,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(30)",
+                oldType: "text",
                 oldMaxLength: 30);
 
             migrationBuilder.AlterColumn<string>(
@@ -1192,7 +1192,7 @@ namespace MedicalAssistant.Persistance.Migrations
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "nvarchar(200)",
+                oldType: "text",
                 oldMaxLength: 200);
         }
 
@@ -1202,7 +1202,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Unit",
                 table: "VitalReadings",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1212,7 +1212,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "SugarReadingContext",
                 table: "VitalReadings",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1223,7 +1223,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "RecordedBy",
                 table: "VitalReadings",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1233,7 +1233,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "ReadingType",
                 table: "VitalReadings",
-                type: "nvarchar(30)",
+                type: "text",
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1243,7 +1243,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Notes",
                 table: "VitalReadings",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1252,7 +1252,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Unit",
                 table: "VisitVitalSigns",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1262,7 +1262,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Type",
                 table: "VisitVitalSigns",
-                type: "nvarchar(30)",
+                type: "text",
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1272,7 +1272,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "RecordedBy",
                 table: "VisitVitalSigns",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1282,7 +1282,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Notes",
                 table: "VisitVitalSigns",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1291,7 +1291,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "SpecificTimes",
                 table: "VisitPrescriptions",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1302,7 +1302,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Notes",
                 table: "VisitPrescriptions",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1311,7 +1311,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "MedicationName",
                 table: "VisitPrescriptions",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1321,7 +1321,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Instructions",
                 table: "VisitPrescriptions",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1330,7 +1330,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "GenericName",
                 table: "VisitPrescriptions",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1341,7 +1341,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Frequency",
                 table: "VisitPrescriptions",
-                type: "nvarchar(100)",
+                type: "text",
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1351,7 +1351,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Form",
                 table: "VisitPrescriptions",
-                type: "nvarchar(30)",
+                type: "text",
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1361,7 +1361,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Duration",
                 table: "VisitPrescriptions",
-                type: "nvarchar(100)",
+                type: "text",
                 maxLength: 100,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1372,7 +1372,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Dosage",
                 table: "VisitPrescriptions",
-                type: "nvarchar(100)",
+                type: "text",
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1382,7 +1382,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Title",
                 table: "VisitDocuments",
-                type: "nvarchar(300)",
+                type: "text",
                 maxLength: 300,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1392,7 +1392,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "FileUrl",
                 table: "VisitDocuments",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -1400,7 +1400,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "FileType",
                 table: "VisitDocuments",
-                type: "nvarchar(50)",
+                type: "text",
                 maxLength: 50,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1410,7 +1410,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "DocumentType",
                 table: "VisitDocuments",
-                type: "nvarchar(30)",
+                type: "text",
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1420,7 +1420,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Description",
                 table: "VisitDocuments",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1429,7 +1429,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Role",
                 table: "Users",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1439,7 +1439,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "PhotoUrl",
                 table: "Users",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1448,7 +1448,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "PhoneNumber",
                 table: "Users",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1459,7 +1459,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "PasswordHash",
                 table: "Users",
-                type: "nvarchar(512)",
+                type: "text",
                 maxLength: 512,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1469,7 +1469,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "FullName",
                 table: "Users",
-                type: "nvarchar(120)",
+                type: "text",
                 maxLength: 120,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1479,7 +1479,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Email",
                 table: "Users",
-                type: "nvarchar(256)",
+                type: "text",
                 maxLength: 256,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1489,7 +1489,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Severity",
                 table: "Symptoms",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1499,7 +1499,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Progression",
                 table: "Symptoms",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1510,7 +1510,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Onset",
                 table: "Symptoms",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1521,7 +1521,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Notes",
                 table: "Symptoms",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1530,7 +1530,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Name",
                 table: "Symptoms",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1540,7 +1540,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Location",
                 table: "Symptoms",
-                type: "nvarchar(100)",
+                type: "text",
                 maxLength: 100,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1551,7 +1551,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Duration",
                 table: "Symptoms",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1560,7 +1560,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "SurgeryName",
                 table: "SurgeryHistories",
-                type: "nvarchar(300)",
+                type: "text",
                 maxLength: 300,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1570,7 +1570,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Notes",
                 table: "SurgeryHistories",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1579,7 +1579,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "HospitalName",
                 table: "SurgeryHistories",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1590,7 +1590,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "DoctorName",
                 table: "SurgeryHistories",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1601,7 +1601,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Complications",
                 table: "SurgeryHistories",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1610,7 +1610,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "NameAr",
                 table: "Specialties",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1619,7 +1619,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Name",
                 table: "Specialties",
-                type: "nvarchar(100)",
+                type: "text",
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1629,7 +1629,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "UrgencyLevel",
                 table: "Session",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1640,7 +1640,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Type",
                 table: "Session",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -1648,7 +1648,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Title",
                 table: "Session",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1659,7 +1659,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "FullName",
                 table: "Secretaries",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -1667,7 +1667,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "PatientName",
                 table: "Reviews",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1676,7 +1676,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Comment",
                 table: "Reviews",
-                type: "nvarchar(1000)",
+                type: "text",
                 maxLength: 1000,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1686,7 +1686,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Author",
                 table: "Reviews",
-                type: "nvarchar(100)",
+                type: "text",
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1696,7 +1696,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "SummarySnapshot",
                 table: "PatientVisits",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1705,7 +1705,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Status",
                 table: "PatientVisits",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 defaultValue: "active",
@@ -1717,7 +1717,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "PresentIllnessHistory",
                 table: "PatientVisits",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1726,7 +1726,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Plan",
                 table: "PatientVisits",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1735,7 +1735,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Notes",
                 table: "PatientVisits",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1744,7 +1744,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "ExaminationFindings",
                 table: "PatientVisits",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1753,7 +1753,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "ChiefComplaint",
                 table: "PatientVisits",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -1761,7 +1761,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Assessment",
                 table: "PatientVisits",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1770,7 +1770,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "PhoneNumber",
                 table: "Patients",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1780,7 +1780,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "PasswordHash",
                 table: "Patients",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -1788,7 +1788,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "MedicalNotes",
                 table: "Patients",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1797,7 +1797,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "ImageUrl",
                 table: "Patients",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1806,7 +1806,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Gender",
                 table: "Patients",
-                type: "nvarchar(10)",
+                type: "text",
                 maxLength: 10,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1816,7 +1816,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "FullName",
                 table: "Patients",
-                type: "nvarchar(100)",
+                type: "text",
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1826,7 +1826,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Email",
                 table: "Patients",
-                type: "nvarchar(150)",
+                type: "text",
                 maxLength: 150,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1836,7 +1836,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "BloodType",
                 table: "Patients",
-                type: "nvarchar(5)",
+                type: "text",
                 maxLength: 5,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1847,7 +1847,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Address",
                 table: "Patients",
-                type: "nvarchar(300)",
+                type: "text",
                 maxLength: 300,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1858,7 +1858,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "SenderPhotoUrl",
                 table: "Message",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1867,7 +1867,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "SenderName",
                 table: "Message",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: false,
                 defaultValue: "",
@@ -1879,7 +1879,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Role",
                 table: "Message",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1889,7 +1889,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "MessageType",
                 table: "Message",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -1897,7 +1897,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "FileName",
                 table: "Message",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1906,7 +1906,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "AttachmentUrl",
                 table: "Message",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1915,7 +1915,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "MedicationName",
                 table: "MedicationTrackers",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1925,7 +1925,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Instructions",
                 table: "MedicationTrackers",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -1934,7 +1934,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "GenericName",
                 table: "MedicationTrackers",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -1945,7 +1945,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Frequency",
                 table: "MedicationTrackers",
-                type: "nvarchar(100)",
+                type: "text",
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1955,7 +1955,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Form",
                 table: "MedicationTrackers",
-                type: "nvarchar(30)",
+                type: "text",
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1965,7 +1965,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "DoseTimes",
                 table: "MedicationTrackers",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1975,7 +1975,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Dosage",
                 table: "MedicationTrackers",
-                type: "nvarchar(100)",
+                type: "text",
                 maxLength: 100,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -1985,7 +1985,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Status",
                 table: "MedicationLogs",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 defaultValue: "pending",
@@ -1997,7 +1997,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "SmokingDetails",
                 table: "MedicalProfiles",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -2006,7 +2006,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "ExerciseHabits",
                 table: "MedicalProfiles",
-                type: "nvarchar(100)",
+                type: "text",
                 maxLength: 100,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -2017,7 +2017,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "EmergencyContactRelation",
                 table: "MedicalProfiles",
-                type: "nvarchar(100)",
+                type: "text",
                 maxLength: 100,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -2028,7 +2028,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "EmergencyContactPhone",
                 table: "MedicalProfiles",
-                type: "nvarchar(30)",
+                type: "text",
                 maxLength: 30,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -2039,7 +2039,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "EmergencyContactName",
                 table: "MedicalProfiles",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -2050,7 +2050,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "BloodType",
                 table: "MedicalProfiles",
-                type: "nvarchar(5)",
+                type: "text",
                 maxLength: 5,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -2061,7 +2061,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Name",
                 table: "Doctors",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -2071,7 +2071,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Location",
                 table: "Doctors",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -2082,7 +2082,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "License",
                 table: "Doctors",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2090,7 +2090,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "ImageUrl",
                 table: "Doctors",
-                type: "nvarchar(500)",
+                type: "text",
                 maxLength: 500,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -2101,7 +2101,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Bio",
                 table: "Doctors",
-                type: "nvarchar(1000)",
+                type: "text",
                 maxLength: 1000,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -2112,7 +2112,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Status",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2120,7 +2120,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "PhotoUrl",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -2129,7 +2129,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Phone",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2137,7 +2137,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Name",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2145,7 +2145,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Message",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2153,7 +2153,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "LicenseNumber",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2161,7 +2161,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Email",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2169,7 +2169,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "DocumentUrl",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2177,7 +2177,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Bio",
                 table: "DoctorApplications",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2185,7 +2185,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Title",
                 table: "Consultations",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2193,7 +2193,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Status",
                 table: "Consultations",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2201,7 +2201,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Description",
                 table: "Consultations",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2209,7 +2209,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "TargetValues",
                 table: "ChronicDiseaseMonitors",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -2218,7 +2218,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Severity",
                 table: "ChronicDiseaseMonitors",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -2228,7 +2228,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "MonitoringFrequency",
                 table: "ChronicDiseaseMonitors",
-                type: "nvarchar(50)",
+                type: "text",
                 maxLength: 50,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -2238,7 +2238,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "DoctorNotes",
                 table: "ChronicDiseaseMonitors",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -2247,7 +2247,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "DiseaseType",
                 table: "ChronicDiseaseMonitors",
-                type: "nvarchar(50)",
+                type: "text",
                 maxLength: 50,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -2257,7 +2257,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "DiseaseName",
                 table: "ChronicDiseaseMonitors",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -2267,7 +2267,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Time",
                 table: "Appointments",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -2277,7 +2277,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Status",
                 table: "Appointments",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 defaultValue: "Pending",
@@ -2289,7 +2289,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "PaymentMethod",
                 table: "Appointments",
-                type: "nvarchar(10)",
+                type: "text",
                 maxLength: 10,
                 nullable: false,
                 defaultValue: "cash",
@@ -2301,7 +2301,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Notes",
                 table: "Appointments",
-                type: "nvarchar(1000)",
+                type: "text",
                 maxLength: 1000,
                 nullable: true,
                 oldClrType: typeof(string),
@@ -2312,7 +2312,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Date",
                 table: "Appointments",
-                type: "nvarchar(20)",
+                type: "text",
                 maxLength: 20,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -2322,7 +2322,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "UrgencyLevel",
                 table: "AnalysisResults",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -2331,7 +2331,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "SymptomsJson",
                 table: "AnalysisResults",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -2340,7 +2340,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Disclaimer",
                 table: "AnalysisResults",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: false,
                 oldClrType: typeof(string),
                 oldType: "text");
@@ -2348,7 +2348,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "Severity",
                 table: "AllergyRecords",
-                type: "nvarchar(30)",
+                type: "text",
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -2358,7 +2358,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "ReactionDescription",
                 table: "AllergyRecords",
-                type: "nvarchar(max)",
+                type: "text",
                 nullable: true,
                 oldClrType: typeof(string),
                 oldType: "text",
@@ -2367,7 +2367,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "AllergyType",
                 table: "AllergyRecords",
-                type: "nvarchar(30)",
+                type: "text",
                 maxLength: 30,
                 nullable: false,
                 oldClrType: typeof(string),
@@ -2377,7 +2377,7 @@ namespace MedicalAssistant.Persistance.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "AllergenName",
                 table: "AllergyRecords",
-                type: "nvarchar(200)",
+                type: "text",
                 maxLength: 200,
                 nullable: false,
                 oldClrType: typeof(string),
