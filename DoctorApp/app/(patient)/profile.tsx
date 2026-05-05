@@ -582,7 +582,7 @@ export default function ProfileScreen() {
               </View>
             ) : (
               visits.map(v => (
-                <TouchableOpacity key={v.id} style={styles.bookingCard} onPress={() => router.push({ pathname: "/(patient)/visit-summary", params: { visitId: String(v.id) } })}>
+                <TouchableOpacity key={v.id} style={styles.bookingCard} onPress={() => router.push({ pathname: "/(patient)/visit-summary" as any, params: { visitId: String(v.id) } })}>
                   <View style={styles.bookingTop}>
                     <View style={styles.docInfo}>
                       <Text style={styles.bookingDocName}>Visit #{v.id}</Text>
@@ -677,11 +677,11 @@ export default function ProfileScreen() {
             {/* Displaying Medical History Items */}
             <View style={[styles.sectionHeader, { marginTop: 20 }]}>
               <Text style={styles.sectionTitle}>My Medical Records</Text>
-              <TouchableOpacity onPress={() => router.push("/(patient)/medical-records")}>
+              <TouchableOpacity onPress={() => router.push("/(patient)/medical-records" as any)}>
                 <Text style={styles.seeAll}>View All</Text>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.infoCard} onPress={() => router.push("/(patient)/medical-records")}>
+            <TouchableOpacity style={styles.infoCard} onPress={() => router.push("/(patient)/medical-records" as any)}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                 <View style={[styles.infoIconBox, { backgroundColor: COLORS.primary + "15" }]}>
                   <Ionicons name="document-text-outline" size={20} color={COLORS.primary} />
