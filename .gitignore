@@ -27,3 +27,9 @@ trocr_model/
 
 #android
 android
+
+# AI model files
+AI-Medical-Assistant/
+medical_knowledge_base.csv
+patient_service.py
+test_api.py
