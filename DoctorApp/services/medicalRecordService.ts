@@ -72,7 +72,18 @@ export const getChronicDiseases = async (patientId: number): Promise<ChronicDise
     { method: "GET" },
     true
   );
-  return Array.isArray(data) ? data : [];
+  const items = Array.isArray(data) ? data : [];
+  return items.map((item: any) => ({
+    id: Number(item.id ?? item.Id ?? 0),
+    diseaseName: String(item.diseaseName ?? item.DiseaseName ?? ""),
+    diseaseType: String(item.diseaseType ?? item.DiseaseType ?? ""),
+    diagnosedDate: item.diagnosedDate ?? item.DiagnosedDate,
+    severity: String(item.severity ?? item.Severity ?? ""),
+    isActive: Boolean(item.isActive ?? item.IsActive),
+    doctorNotes: item.doctorNotes ?? item.DoctorNotes,
+    targetValues: item.targetValues ?? item.TargetValues,
+    monitoringFrequency: String(item.monitoringFrequency ?? item.MonitoringFrequency ?? ""),
+  }));
 };
 
 // ============================================

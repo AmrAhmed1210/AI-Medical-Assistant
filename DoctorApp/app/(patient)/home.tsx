@@ -11,6 +11,9 @@ import { useLanguage } from "../../context/LanguageContext";
 import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor } from "../../services/doctorService";
 import { getMyProfile, Profile } from "../../services/profileService";
 import { getMyAppointments, Appointment } from "../../services/appointmentService";
+import { getMedicationSchedule, type MedicationScheduleItem } from "../../services/medicationService";
+import { getLatestVital, type VitalReading } from "../../services/vitalService";
+import { getMyPatientId } from "../../services/authService";
 import { NotificationBell } from "../../components/NotificationBell";
 import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpdated, onNewConsultation } from "../../services/signalr";
 import { addNotification, createScheduleReadyNotification } from "../../services/notificationService";
@@ -25,6 +28,10 @@ export default function HomeScreen() {
   const [loadingDocs,  setLoadingDocs]  = useState(true);
   const [followedIds,  setFollowedIds]  = useState<number[]>([]);
   const [profile,      setProfile]      = useState<Profile | null>(null);
+  const [nextDose,     setNextDose]     = useState<MedicationScheduleItem | null>(null);
+  const [lastBP,       setLastBP]       = useState<VitalReading | null>(null);
+  const [lastSugar,    setLastSugar]    = useState<VitalReading | null>(null);
+  const [loadingHealth, setLoadingHealth] = useState(true);
 
   const CATEGORIES = [
     { icon: "heart-outline",   label: tr("spec_cardiology"),  specialty: "Cardiology"  },
@@ -41,6 +48,7 @@ export default function HomeScreen() {
     fetchPopularDoctors();
     fetchNextBooking();
     fetchProfile();
+    fetchHealthData();
   }, []);
 
   const fetchProfile = async () => {
@@ -51,11 +59,38 @@ export default function HomeScreen() {
     } catch { }
   };
 
+  const fetchHealthData = async () => {
+    try {
+      setLoadingHealth(true);
+      const pid = await getMyPatientId();
+      if (!pid) { setLoadingHealth(false); return; }
+
+      const [schedule, bp, sugar] = await Promise.all([
+        getMedicationSchedule(pid).catch(() => []),
+        getLatestVital(pid, "Blood Pressure").catch(() => null),
+        getLatestVital(pid, "Blood Sugar").catch(() => null),
+      ]);
+
+      // Find next pending dose
+      const pending = schedule
+        .filter((s) => s.status?.toLowerCase() === "pending")
+        .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+      setNextDose(pending[0] || null);
+      setLastBP(bp);
+      setLastSugar(sugar);
+    } catch {
+      // ignore
+    } finally {
+      setLoadingHealth(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadFollowedDoctors();
       fetchPopularDoctors();
       fetchNextBooking();
+      fetchHealthData();
     }, [])
   );
 
@@ -299,6 +334,54 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {/* Health Metrics — clean grid */}
+      <View style={styles.metricsSection}>
+        <View style={styles.metricsGrid}>
+          <MetricCard
+            icon="medkit"
+            iconColor="#1565C0"
+            iconBg="#E3F2FD"
+            label="Next Dose"
+            value={nextDose ? nextDose.medicationName : "—"}
+            sub={nextDose ? new Date(nextDose.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "No pending doses"}
+            loading={loadingHealth}
+            onPress={() => router.push("/(patient)/medications")}
+          />
+          <MetricCard
+            icon="heart"
+            iconColor={lastBP && !lastBP.isNormal ? "#C62828" : "#00695C"}
+            iconBg={lastBP && !lastBP.isNormal ? "#FFEBEE" : "#E0F2F1"}
+            label="Last BP"
+            value={lastBP ? `${lastBP.value}${lastBP.value2 != null ? `/${lastBP.value2}` : ""}` : "—"}
+            sub={lastBP ? lastBP.unit : "No reading yet"}
+            loading={loadingHealth}
+            abnormal={lastBP ? !lastBP.isNormal : false}
+            onPress={() => router.push("/(patient)/vitals")}
+          />
+          <MetricCard
+            icon="water"
+            iconColor={lastSugar && !lastSugar.isNormal ? "#C62828" : "#E65100"}
+            iconBg={lastSugar && !lastSugar.isNormal ? "#FFEBEE" : "#FFF3E0"}
+            label="Blood Sugar"
+            value={lastSugar ? String(lastSugar.value) : "—"}
+            sub={lastSugar ? lastSugar.unit : "No reading yet"}
+            loading={loadingHealth}
+            abnormal={lastSugar ? !lastSugar.isNormal : false}
+            onPress={() => router.push("/(patient)/vitals")}
+          />
+          <MetricCard
+            icon="calendar"
+            iconColor="#7B1FA2"
+            iconBg="#F3E5F5"
+            label="Next Appt"
+            value={nextBooking ? new Date(nextBooking.scheduledAt).toLocaleDateString([], { month: "short", day: "numeric" }) : "—"}
+            sub={nextBooking ? nextBooking.doctorName || "Doctor" : "No upcoming"}
+            loading={false}
+            onPress={() => router.push("/(patient)/profile")}
+          />
+        </View>
+      </View>
+
       {/* Stats */}
       <View style={styles.statsRow}>
         {[
@@ -397,6 +480,32 @@ export default function HomeScreen() {
   );
 }
 
+function MetricCard({
+  icon, iconColor, iconBg, label, value, sub, loading, abnormal, onPress,
+}: {
+  icon: any; iconColor: string; iconBg: string; label: string;
+  value: string; sub: string; loading: boolean; abnormal?: boolean; onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.metricCard} onPress={onPress} activeOpacity={0.85}>
+      <View style={[styles.metricIconWrap, { backgroundColor: iconBg }]}>
+        <Ionicons name={icon} size={18} color={iconColor} />
+      </View>
+      <View style={styles.metricTextWrap}>
+        <Text style={styles.metricLabel}>{label}</Text>
+        {loading ? (
+          <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: 4 }} />
+        ) : (
+          <>
+            <Text style={[styles.metricValue, abnormal && styles.metricValueAbnormal]} numberOfLines={1}>{value}</Text>
+            <Text style={styles.metricSub} numberOfLines={1}>{sub}</Text>
+          </>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   container:  { flex: 1, backgroundColor: "#F4F6FA" },
   content:    { paddingBottom: 28 },
@@ -487,4 +596,28 @@ const styles = StyleSheet.create({
   bannerLeft:  { width: 38, height: 38, borderRadius: 12, backgroundColor: COLORS.primary, justifyContent: "center", alignItems: "center" },
   bannerTitle: { fontSize: 12, fontWeight: "700", color: "#1A1A1A" },
   bannerSub:   { fontSize: 11, color: "#888", marginTop: 2 },
+  metricsSection: { marginHorizontal: 18, marginTop: 16, marginBottom: 4 },
+  metricsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  metricCard: {
+    width: "47.5%",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  metricIconWrap: { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
+  metricTextWrap: { flex: 1 },
+  metricLabel: { fontSize: 11, fontWeight: "700", color: "#94A3B8", marginBottom: 3, textTransform: "uppercase" },
+  metricValue: { fontSize: 15, fontWeight: "800", color: "#1E293B" },
+  metricValueAbnormal: { color: "#C62828" },
+  metricSub: { fontSize: 11, color: "#64748B", marginTop: 2 },
 });

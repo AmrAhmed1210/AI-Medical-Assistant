@@ -15,6 +15,12 @@ type ApiRequestError = Error & {
   status?: number;
 };
 
+function isExpectedNotFound(status: number, message: string): boolean {
+  if (status !== 404) return false;
+  const normalized = (message || "").toLowerCase();
+  return normalized.includes("no reading found") || normalized.includes("not found");
+}
+
 async function extractErrorMessage(response: Response): Promise<string> {
   const rawText = await response.text();
   if (!rawText) {
@@ -44,8 +50,6 @@ export async function apiFetch<T>(
   requiresAuth: boolean = false
 ): Promise<T> {
   try {
-    console.log(`[API] ${options.method ?? 'GET'} ${url}`)
-    
     const isFormData = options.body instanceof FormData;
 
     const headers: Record<string, string> = {
@@ -71,8 +75,6 @@ export async function apiFetch<T>(
     }
 
     const response = await fetch(url, { ...options, headers })
-    
-    console.log(`[API] Response: ${response.status} for ${url}`)
 
     if (options.allowedStatusCodes?.includes(response.status)) {
       return undefined as T
@@ -92,7 +94,13 @@ export async function apiFetch<T>(
 
     if (!response.ok) {
       const errorMessage = await extractErrorMessage(response)
-      console.error(`[API] Error ${response.status}:`, errorMessage)
+      if (response.status === 403) {
+        console.warn(`[API] Forbidden ${response.status}:`, url)
+      } else if (isExpectedNotFound(response.status, errorMessage)) {
+        console.warn(`[API] Not found (expected) ${response.status}:`, errorMessage)
+      } else {
+        console.error(`[API] Error ${response.status}:`, errorMessage)
+      }
       const requestError = new Error(errorMessage) as ApiRequestError
       requestError.status = response.status
       throw requestError

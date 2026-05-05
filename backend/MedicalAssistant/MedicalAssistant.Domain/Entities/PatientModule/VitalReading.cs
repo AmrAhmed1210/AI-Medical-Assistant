@@ -11,7 +11,7 @@ namespace MedicalAssistant.Domain.Entities.PatientModule
         public int PatientId { get; set; }
         public Patient? Patient { get; set; }
 
-        public int ChronicDiseaseMonitorId { get; set; }
+        public int? ChronicDiseaseMonitorId { get; set; }
         public ChronicDiseaseMonitor? ChronicDiseaseMonitor { get; set; }
 
         public string ReadingType { get; set; } = string.Empty;

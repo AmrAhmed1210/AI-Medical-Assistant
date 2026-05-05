@@ -64,6 +64,15 @@ export default function DoctorTabsLayout() {
           ),
         }}
       />
+
+      <Tabs.Screen
+        name="workspace"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="visit-summary"
+        options={{ href: null }}
+      />
     </Tabs>
   );
 }

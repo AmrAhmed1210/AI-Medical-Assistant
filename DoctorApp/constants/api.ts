@@ -72,10 +72,16 @@ export const API = {
     photo:  `${BASE_URL}/api/profile/photo`,
   },
 
-  // Patient Visits
+  // Visits
   visits: {
-    my:     `${BASE_URL}/api/visits/my`,
-    summary: (id: number | string) => `${BASE_URL}/api/visits/${id}/summary`,
+    my:           `${BASE_URL}/api/visits/my`,
+    open:         `${BASE_URL}/api/visits`,
+    getById:      (id: number | string) => `${BASE_URL}/api/visits/${id}`,
+    update:       (id: number | string) => `${BASE_URL}/api/visits/${id}`,
+    close:        (id: number | string) => `${BASE_URL}/api/visits/${id}/close`,
+    summary:      (id: number | string) => `${BASE_URL}/api/visits/${id}/summary`,
+    doctorToday:  `${BASE_URL}/api/visits/doctor/today`,
+    patientHistory: (id: number | string) => `${BASE_URL}/api/patients/${id}/history`,
   },
 
   // Patient
@@ -88,6 +94,11 @@ export const API = {
     allergies:       (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/allergies`,
     chronicDiseases: (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/chronic-diseases`,
     medications:     (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/medications`,
+    medicationsSchedule: (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/medications/schedule`,
     vitals:          (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/vitals`,
+    vitalsLatest:    (patientId: number | string, type: string) => `${BASE_URL}/api/patients/${patientId}/vitals/latest?type=${encodeURIComponent(type)}`,
+    vitalsTrend:     (patientId: number | string, type: string, days?: number) => `${BASE_URL}/api/patients/${patientId}/vitals/trend?type=${encodeURIComponent(type)}${days ? `&days=${days}` : ""}`,
+    surgeries:       (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/surgeries`,
+    familyHistory:   (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/family-history`,
   },
 };

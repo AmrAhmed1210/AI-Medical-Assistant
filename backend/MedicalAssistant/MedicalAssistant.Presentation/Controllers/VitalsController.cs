@@ -47,7 +47,7 @@ namespace MedicalAssistant.Presentation.Controllers
             var dto = items.Select(v => new VitalReadingDto(
                 v.Id,
                 v.PatientId,
-                v.ChronicDiseaseMonitorId == 0 ? null : v.ChronicDiseaseMonitorId,
+                v.ChronicDiseaseMonitorId,
                 v.ReadingType,
                 v.Value,
                 v.Value2,
@@ -79,7 +79,7 @@ namespace MedicalAssistant.Presentation.Controllers
 
             var entity = new VitalReading
             {
-                ChronicDiseaseMonitorId = dto.ChronicDiseaseMonitorId ?? 0,
+                ChronicDiseaseMonitorId = dto.ChronicDiseaseMonitorId,
                 ReadingType = dto.ReadingType,
                 Value = dto.Value,
                 Value2 = dto.Value2,
@@ -96,7 +96,7 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(new VitalReadingDto(
                 created.Id,
                 created.PatientId,
-                created.ChronicDiseaseMonitorId == 0 ? null : created.ChronicDiseaseMonitorId,
+                created.ChronicDiseaseMonitorId,
                 created.ReadingType,
                 created.Value,
                 created.Value2,
@@ -123,7 +123,7 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(new VitalReadingDto(
                 item.Id,
                 item.PatientId,
-                item.ChronicDiseaseMonitorId == 0 ? null : item.ChronicDiseaseMonitorId,
+                item.ChronicDiseaseMonitorId,
                 item.ReadingType,
                 item.Value,
                 item.Value2,

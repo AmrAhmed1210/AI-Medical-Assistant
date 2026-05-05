@@ -173,12 +173,23 @@ export type DoctorProfileDto = {
   email?: string;
 };
 
+export type TodayAppointmentItem = {
+  id: number;
+  patientId: number;
+  patientName?: string;
+  patientPhotoUrl?: string;
+  scheduledAt?: string;
+  status?: string;
+  time?: string;
+  notes?: string;
+};
+
 export type DoctorDashboardDto = {
   todayAppointments: number;
   pendingAppointments: number;
   totalPatients: number;
   weekAppointments: number;
-  todayAppointmentsList: Array<{ id: number; patientName?: string; scheduledAt?: string; status?: string }>;
+  todayAppointmentsList: TodayAppointmentItem[];
   weeklySessionsChart: Array<{ day: string; count: number }>;
   recentReports: Array<any>;
 };

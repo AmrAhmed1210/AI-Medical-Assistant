@@ -1,9 +1,11 @@
 import React, { useCallback, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, ActivityIndicator, Image } from "react-native";
 import { Users, CalendarDays, Clock, TrendingUp } from "lucide-react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { COLORS } from "../../constants/colors";
 import { getDoctorDashboard, getDoctorProfile, type DoctorDashboardDto, type DoctorProfileDto } from "../../services/doctorService";
+import { getVisitById, openVisit } from "../../services/visitService";
+import Toast from "react-native-toast-message";
 
 const emptyDashboard: DoctorDashboardDto = {
   todayAppointments: 0,
@@ -16,7 +18,9 @@ const emptyDashboard: DoctorDashboardDto = {
 };
 
 export default function DoctorDashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [startingVisitId, setStartingVisitId] = useState<number | null>(null);
   const [dashboard, setDashboard] = useState<DoctorDashboardDto>(emptyDashboard);
   const [profile, setProfile] = useState<DoctorProfileDto | null>(null);
 
@@ -55,6 +59,34 @@ export default function DoctorDashboard() {
   const specialty = profile?.specialty || "Specialty not set";
   const initials = fullName.split(" ").filter(Boolean).map((n) => n[0]?.toUpperCase() ?? "").slice(0, 2).join("") || "DR";
   const incompleteProfile = !(profile?.bio && profile.bio.trim().length > 0 && profile?.photoUrl);
+
+  const handleStartVisit = async (appointment: DoctorDashboardDto["todayAppointmentsList"][number]) => {
+    if (!appointment?.patientId || startingVisitId === appointment.id) return;
+    try {
+      setStartingVisitId(appointment.id);
+      const visit = await openVisit({
+        patientId: appointment.patientId,
+        appointmentId: appointment.id,
+        chiefComplaint: appointment.notes?.trim() || "General consultation",
+      });
+      router.push({ pathname: "/(doctor)/workspace", params: { visitId: String(visit.id), patientId: String(appointment.patientId) } });
+    } catch (e: any) {
+      // If visit already exists, try to open it directly if backend returns id in message.
+      const maybeId = Number(String(e?.message || "").match(/\d+/)?.[0] ?? 0);
+      if (maybeId > 0) {
+        try {
+          const existing = await getVisitById(maybeId);
+          router.push({ pathname: "/(doctor)/workspace", params: { visitId: String(existing.id), patientId: String(existing.patientId) } });
+          return;
+        } catch {
+          // ignore and show toast below
+        }
+      }
+      Toast.show({ type: "error", text1: e?.message || "Failed to start visit" });
+    } finally {
+      setStartingVisitId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -120,26 +152,32 @@ export default function DoctorDashboard() {
               <Text style={styles.typeText}>No appointments today</Text>
             </View>
           ) : dashboard.todayAppointmentsList.map((item, i) => (
-            <View 
-              key={i} 
+            <View
+              key={i}
               style={styles.appointmentCard}
             >
               <View style={styles.timeBox}>
-                <Text style={styles.timeText}>{item.scheduledAt ? new Date(item.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--"}</Text>
+                <Text style={styles.timeText}>{item.time ?? (item.scheduledAt ? new Date(item.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--")}</Text>
               </View>
-              
+
               <View style={styles.verticalDivider} />
-              
+
               <View style={styles.appointmentInfo}>
                 <Text style={styles.patientNameText}>{item.patientName ?? "Unknown Patient"}</Text>
                 <Text style={styles.typeText}>{item.status ?? "Pending"}</Text>
               </View>
 
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>
-                  {item.status ?? "Pending"}
-                </Text>
-              </View>
+              <TouchableOpacity
+                style={styles.startVisitBtn}
+                onPress={() => handleStartVisit(item)}
+                disabled={startingVisitId === item.id}
+              >
+                {startingVisitId === item.id ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.startVisitBtnText}>Start Visit</Text>
+                )}
+              </TouchableOpacity>
             </View>
           ))}
         </View>
@@ -294,15 +332,17 @@ const styles = StyleSheet.create({
     color: "#888",
     marginTop: 2,
   },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: "#F5F5F5",
+  startVisitBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#00695C",
+    minWidth: 92,
+    alignItems: "center",
   },
-  statusText: {
-    fontSize: 10,
+  startVisitBtnText: {
+    color: "#fff",
     fontWeight: "700",
-    color: "#777",
+    fontSize: 12,
   },
 });

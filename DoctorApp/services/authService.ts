@@ -5,21 +5,26 @@ import { apiFetch } from "./http";
 // ============================================
 // Get Patient ID for logged-in patient
 // ============================================
+// WARNING: UserId !== PatientId. Always fetch real PatientId from backend.
 export const getMyPatientId = async (): Promise<number> => {
-  const stored = await AsyncStorage.getItem("patientId");
-  if (stored) {
-    const id = Number(stored);
-    if (id > 0) return id;
-  }
   try {
+    // Always verify with backend — cached value may be UserId not PatientId
     const data = await apiFetch<any>(API.patient.me, { method: "GET" }, true);
-    const pid = Number(data?.patientId ?? 0);
+    const pid = Number(data?.patientId ?? data?.id ?? 0);
     if (pid > 0) {
       await AsyncStorage.setItem("patientId", String(pid));
       return pid;
     }
-  } catch {
-    // fallback
+  } catch (e: any) {
+    if (e?.status === 403) {
+      await AsyncStorage.removeItem("patientId");
+    }
+  }
+  // Fallback to cache only if network fails
+  const stored = await AsyncStorage.getItem("patientId");
+  if (stored) {
+    const id = Number(stored);
+    if (id > 0) return id;
   }
   return 0;
 };
@@ -207,7 +212,6 @@ export const saveSession = async (auth: AuthResponse) => {
       ["userPhone",  auth.phone || ""],
       ["userRole",   auth.role || "Patient"],
       ["userId",     String(auth.id || 0)],
-      ["patientId",  String(auth.id || 0)],
       ["isLoggedIn", "true"],
       ["user", JSON.stringify({
         id:    auth.id || 0,
@@ -218,7 +222,18 @@ export const saveSession = async (auth: AuthResponse) => {
       })],
     ]);
 
-    // Verify it was saved
+    // Fetch real patientId from backend (UserId !== PatientId)
+    try {
+      const me = await apiFetch<any>(API.patient.me, { method: "GET" }, true);
+      const pid = Number(me?.patientId ?? me?.id ?? 0);
+      if (pid > 0) {
+        await AsyncStorage.setItem("patientId", String(pid));
+        console.log('✅ PatientId cached:', pid);
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not fetch patientId, will retry on next call');
+    }
+
     const savedToken = await AsyncStorage.getItem('token');
     const savedIsLoggedIn = await AsyncStorage.getItem('isLoggedIn');
     console.log('✅ Session saved! Token exists:', !!savedToken, 'isLoggedIn:', savedIsLoggedIn);

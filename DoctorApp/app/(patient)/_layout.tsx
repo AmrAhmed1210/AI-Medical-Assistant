@@ -309,6 +309,26 @@ export default function TabsLayout() {
       />
 
       <Tabs.Screen
+        name="medications"
+        options={{
+          title: "Meds",
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
+            <TabIcon name={focused ? "medkit" : "medkit-outline"} color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="vitals"
+        options={{
+          title: "Vitals",
+          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
+            <TabIcon name={focused ? "pulse" : "pulse-outline"} color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
@@ -320,15 +340,19 @@ export default function TabsLayout() {
 
       <Tabs.Screen
         name="doctor-details"
-        options={{
-          href: null,
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="followed-doctors"
-        options={{
-          href: null,
-        }}
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="visit-summary"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="medical-records"
+        options={{ href: null }}
       />
     </Tabs>
   );
