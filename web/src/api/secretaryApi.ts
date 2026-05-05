@@ -23,4 +23,7 @@ export const secretaryApi = {
 
   updateMyDoctorAvailability: (data: AvailabilityDto[]) =>
     axiosInstance.put('/api/Secretary/my-doctor/availability', data).then((r) => r.data),
+
+  updateMyDoctorScheduleVisibility: (isVisible: boolean) =>
+    axiosInstance.put('/api/Secretary/my-doctor/schedule-visibility', isVisible).then((r) => r.data),
 }

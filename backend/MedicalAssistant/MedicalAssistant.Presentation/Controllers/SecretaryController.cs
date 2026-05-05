@@ -1,5 +1,6 @@
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.Secretary;
+using MedicalAssistant.Shared.DTOs.DoctorDTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -112,13 +113,39 @@ public class SecretaryController : ControllerBase
             return NotFound(new { message = "No doctor assigned." });
 
         await _doctorService.UpdateAvailabilityAsync(doctorId.Value, data);
+        return NoContent();
+    }
 
-        var schedule = await _doctorService.GetMyScheduleAsync(doctorId.Value);
-        if (schedule != null)
-        {
-            // Note: notification service not injected here, skip or inject if needed
-        }
+    [HttpGet("my-doctor/schedule")]
+    [Authorize(Roles = "Secretary")]
+    public async Task<IActionResult> GetMyDoctorSchedule()
+    {
+        var secretaryUserId = GetCurrentUserId();
+        var doctorId = await _secretaryService.GetDoctorIdForSecretaryAsync(secretaryUserId);
+        if (!doctorId.HasValue)
+            return NotFound(new { message = "No doctor assigned." });
 
+        var schedule = await _doctorService.GetScheduleAsync(doctorId.Value);
+        if (schedule == null)
+            return NotFound(new { message = "Schedule not found." });
+
+        return Ok(schedule);
+    }
+
+    [HttpPut("my-doctor/schedule-visibility")]
+    [Authorize(Roles = "Secretary")]
+    public async Task<IActionResult> UpdateMyDoctorScheduleVisibility([FromBody] bool isVisible)
+    {
+        var secretaryUserId = GetCurrentUserId();
+        var doctorId = await _secretaryService.GetDoctorIdForSecretaryAsync(secretaryUserId);
+        if (!doctorId.HasValue)
+            return NotFound(new { message = "No doctor assigned." });
+
+        var profile = await _doctorService.GetProfileAsync(doctorId.Value);
+        if (profile?.UserId.HasValue != true)
+            return NotFound(new { message = "Doctor user not found." });
+
+        await _doctorService.UpdateScheduleVisibilityAsync(profile.UserId.Value, isVisible);
         return NoContent();
     }
 }

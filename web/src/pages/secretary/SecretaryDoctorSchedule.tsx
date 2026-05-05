@@ -4,23 +4,28 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { PageLoader } from '@/components/ui/LoadingSpinner'
 import { secretaryApi } from '@/api/secretaryApi'
-import type { AvailabilityDto } from '@/lib/types'
+import type { AvailabilityDto, DoctorDetailDto } from '@/lib/types'
 import toast from 'react-hot-toast'
-import { Clock, ArrowLeft } from 'lucide-react'
+import { Clock, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 export default function SecretaryDoctorSchedule() {
   const navigate = useNavigate()
   const [availability, setAvailability] = useState<AvailabilityDto[]>([])
+  const [myDoctor, setMyDoctor] = useState<DoctorDetailDto | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isVisible, setIsVisible] = useState(true)
 
   useEffect(() => {
     setIsLoading(true)
-    secretaryApi.getMyDoctorAvailability()
-      .then((data) => {
-        setAvailability(data)
-      })
+    Promise.all([
+      secretaryApi.getMyDoctorAvailability().then(setAvailability),
+      secretaryApi.getMyDoctor().then((doc) => {
+        setMyDoctor(doc)
+        setIsVisible(doc.isScheduleVisible ?? true)
+      }),
+    ])
       .catch(() => toast.error('Failed to load doctor schedule'))
       .finally(() => setIsLoading(false))
   }, [])
@@ -34,6 +39,18 @@ export default function SecretaryDoctorSchedule() {
       toast.error('Failed to save schedule')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const toggleVisibility = async () => {
+    const newValue = !isVisible
+    setIsVisible(newValue)
+    try {
+      await secretaryApi.updateMyDoctorScheduleVisibility(newValue)
+      toast.success(newValue ? 'Schedule is now visible to patients' : 'Schedule is now hidden from patients')
+    } catch {
+      toast.error('Failed to update visibility')
+      setIsVisible(!newValue)
     }
   }
 
@@ -55,6 +72,14 @@ export default function SecretaryDoctorSchedule() {
       <Card className="mb-4">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Weekly Availability</CardTitle>
+          <Button
+            variant={isVisible ? 'success' : 'outline'}
+            size="sm"
+            onClick={toggleVisibility}
+            icon={isVisible ? <Eye size={16} /> : <EyeOff size={16} />}
+          >
+            {isVisible ? 'Visible to Patients' : 'Hidden from Patients'}
+          </Button>
         </CardHeader>
         {isLoading ? <PageLoader /> : (
           <AvailabilityEditor availability={availability} onSave={handleSave} isSaving={isSaving} />
