@@ -255,7 +255,62 @@ namespace MedicalAssistant.Services.Services
             tracker.CreatedAt = DateTime.UtcNow;
             await _unitOfWork.Repository<MedicationTracker>().AddAsync(tracker);
             await _unitOfWork.SaveChangesAsync();
+
+            // Generate upcoming logs (next 7 days)
+            await GenerateMedicationLogsAsync(tracker, daysAhead: 7);
             return tracker;
+        }
+
+        private async Task GenerateMedicationLogsAsync(MedicationTracker tracker, int daysAhead = 7)
+        {
+            var daysOfWeek = tracker.DaysOfWeek?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(d => d.Trim()).ToList() ?? new List<string>();
+            if (daysOfWeek.Count == 0) daysOfWeek = new List<string> { "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday" };
+
+            var doseTimes = tracker.DoseTimes?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(t => t.Trim()).ToList() ?? new List<string>();
+            if (doseTimes.Count == 0) doseTimes = new List<string> { "08:00" };
+
+            var start = tracker.StartDate.ToDateTime(TimeOnly.MinValue);
+            var end = tracker.EndDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.UtcNow.AddDays(daysAhead);
+            var maxDate = DateTime.UtcNow.AddDays(daysAhead);
+            if (end > maxDate) end = maxDate;
+
+            var logs = new List<MedicationLog>();
+            for (var date = start.Date; date <= end.Date; date = date.AddDays(1))
+            {
+                var dayName = date.DayOfWeek.ToString();
+                if (!daysOfWeek.Contains(dayName)) continue;
+
+                foreach (var timeStr in doseTimes)
+                {
+                    if (!TimeOnly.TryParse(timeStr, out var time)) continue;
+                    var scheduled = date.Add(time.ToTimeSpan());
+                    if (scheduled < DateTime.UtcNow.AddHours(-1)) continue; // skip past doses
+
+                    // Check if log already exists
+                    var existing = await _unitOfWork.Repository<MedicationLog>()
+                        .FindAsync(l => l.MedicationTrackerId == tracker.Id
+                            && l.PatientId == tracker.PatientId
+                            && l.ScheduledAt == scheduled);
+                    if (existing.Any()) continue;
+
+                    logs.Add(new MedicationLog
+                    {
+                        MedicationTrackerId = tracker.Id,
+                        PatientId = tracker.PatientId,
+                        ScheduledAt = scheduled,
+                        Status = "pending"
+                    });
+                }
+            }
+
+            if (logs.Count > 0)
+            {
+                foreach (var log in logs)
+                    await _unitOfWork.Repository<MedicationLog>().AddAsync(log);
+                await _unitOfWork.SaveChangesAsync();
+            }
         }
 
         public async Task<MedicationTracker?> UpdateMedicationAsync(int medicationId, MedicationTracker updates)
@@ -270,6 +325,7 @@ namespace MedicalAssistant.Services.Services
             if (!string.IsNullOrWhiteSpace(updates.Frequency)) existing.Frequency = updates.Frequency;
             if (updates.TimesPerDay > 0) existing.TimesPerDay = updates.TimesPerDay;
             if (!string.IsNullOrWhiteSpace(updates.DoseTimes)) existing.DoseTimes = updates.DoseTimes;
+            if (!string.IsNullOrWhiteSpace(updates.DaysOfWeek)) existing.DaysOfWeek = updates.DaysOfWeek;
             if (updates.StartDate != default) existing.StartDate = updates.StartDate;
             if (updates.EndDate.HasValue) existing.EndDate = updates.EndDate;
             if (updates.Instructions != null) existing.Instructions = updates.Instructions;
@@ -296,18 +352,36 @@ namespace MedicalAssistant.Services.Services
             return true;
         }
 
+        public async Task<MedicationLog?> MarkMedicationTakenAsync(int logId)
+        {
+            var log = await _unitOfWork.Repository<MedicationLog>().GetByIdAsync(logId);
+            if (log == null) return null;
+
+            log.Status = "taken";
+            log.TakenAt = DateTime.UtcNow;
+            _unitOfWork.Repository<MedicationLog>().Update(log);
+            await _unitOfWork.SaveChangesAsync();
+            return log;
+        }
+
         public async Task<IEnumerable<MedicationScheduleItemDto>> GetTodayScheduleAsync(int patientId, DateTime? now = null)
         {
             var baseline = now ?? DateTime.UtcNow;
             var start = baseline.Date;
             var end = baseline.Date.AddDays(1);
 
+            // Ensure logs exist for today by generating from active trackers
+            var trackers = await _unitOfWork.Repository<MedicationTracker>()
+                .FindAsync(m => m.PatientId == patientId && m.IsActive);
+            foreach (var tracker in trackers)
+                await GenerateMedicationLogsAsync(tracker, daysAhead: 1);
+
             var logs = await _unitOfWork.Repository<MedicationLog>()
                 .FindAsync(l => l.PatientId == patientId && l.ScheduledAt >= start && l.ScheduledAt < end);
 
             var trackerIds = logs.Select(l => l.MedicationTrackerId).Distinct().ToList();
-            var trackers = await _unitOfWork.Repository<MedicationTracker>().FindAsync(m => trackerIds.Contains(m.Id));
-            var trackerMap = trackers.ToDictionary(t => t.Id, t => t);
+            var trackerDict = await _unitOfWork.Repository<MedicationTracker>().FindAsync(m => trackerIds.Contains(m.Id));
+            var trackerMap = trackerDict.ToDictionary(t => t.Id, t => t);
 
             return logs
                 .OrderBy(l => l.ScheduledAt)

@@ -25,6 +25,7 @@ namespace MedicalAssistant.Domain.Entities.PatientModule
         public string Frequency { get; set; } = string.Empty;
         public int TimesPerDay { get; set; }
         public string DoseTimes { get; set; } = string.Empty;
+        public string DaysOfWeek { get; set; } = "Saturday,Sunday,Monday,Tuesday,Wednesday,Thursday,Friday";
         public DateOnly StartDate { get; set; }
         public DateOnly? EndDate { get; set; }
         public string? Instructions { get; set; }

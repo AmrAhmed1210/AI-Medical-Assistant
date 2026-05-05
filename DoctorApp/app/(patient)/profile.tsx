@@ -465,6 +465,39 @@ export default function ProfileScreen() {
               </ScrollView>
             )}
 
+            {/* Health Hub */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Health Hub</Text>
+            </View>
+            <View style={{ flexDirection: "row", gap: 14 }}>
+              <TouchableOpacity
+                style={[styles.healthCard, { flex: 1, backgroundColor: "#FFFBFC", borderColor: "#FFD6E0", borderWidth: 1.5 }]}
+                onPress={() => router.push("/(patient)/vitals" as any)}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <View style={[styles.healthIcon, { backgroundColor: "#FF4D6D" }]}>
+                    <Ionicons name="pulse" size={26} color="#fff" />
+                  </View>
+                  <Ionicons name="chevron-forward-circle" size={24} color="#FF4D6D" />
+                </View>
+                <Text style={[styles.healthTitle, { color: "#C9184A", marginTop: 14 }]}>My Vitals</Text>
+                <Text style={styles.healthSub}>Blood pressure, sugar & more</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.healthCard, { flex: 1, backgroundColor: "#F0FCFA", borderColor: "#A7E9E1", borderWidth: 1.5 }]}
+                onPress={() => router.push("/(patient)/medications" as any)}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <View style={[styles.healthIcon, { backgroundColor: "#00BCD4" }]}>
+                    <Ionicons name="medkit" size={26} color="#fff" />
+                  </View>
+                  <Ionicons name="chevron-forward-circle" size={24} color="#00BCD4" />
+                </View>
+                <Text style={[styles.healthTitle, { color: "#00695C", marginTop: 14 }]}>Medications</Text>
+                <Text style={styles.healthSub}>Pills schedule & reminders</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.infoCard}>
               <Text style={styles.cardHeader}>Personal Details</Text>
               <InfoRow icon="person-outline" label="Full Name" value={profile?.name || "—"} isRTL={isRTL} />
@@ -846,4 +879,8 @@ const styles = StyleSheet.create({
   modalSaveTxt: { fontSize: 14, fontWeight: "700", color: "#fff" },
   secondaryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 15, marginTop: 20, borderRadius: 16, borderColor: COLORS.primary, borderWidth: 1.5 },
   secondaryBtnTxt: { fontSize: 14, fontWeight: "700", color: COLORS.primary },
+  healthCard: { borderRadius: 24, padding: 18, shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 6 },
+  healthIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: "center", alignItems: "center", marginBottom: 12 },
+  healthTitle: { fontSize: 15, fontWeight: "800", marginBottom: 4 },
+  healthSub: { fontSize: 12, color: "#64748B", fontWeight: "500" },
 });

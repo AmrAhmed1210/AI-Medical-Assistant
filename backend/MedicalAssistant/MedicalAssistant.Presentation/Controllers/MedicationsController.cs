@@ -54,6 +54,7 @@ namespace MedicalAssistant.Presentation.Controllers
                 m.Frequency,
                 m.TimesPerDay,
                 m.DoseTimes,
+                m.DaysOfWeek,
                 m.StartDate,
                 m.EndDate,
                 m.Instructions,
@@ -85,6 +86,7 @@ namespace MedicalAssistant.Presentation.Controllers
                 Frequency = dto.Frequency,
                 TimesPerDay = dto.TimesPerDay,
                 DoseTimes = dto.DoseTimes,
+                DaysOfWeek = dto.DaysOfWeek,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
                 Instructions = dto.Instructions,
@@ -109,6 +111,7 @@ namespace MedicalAssistant.Presentation.Controllers
                 created.Frequency,
                 created.TimesPerDay,
                 created.DoseTimes,
+                created.DaysOfWeek,
                 created.StartDate,
                 created.EndDate,
                 created.Instructions,
@@ -135,6 +138,7 @@ namespace MedicalAssistant.Presentation.Controllers
                 Frequency = dto.Frequency ?? string.Empty,
                 TimesPerDay = dto.TimesPerDay ?? 0,
                 DoseTimes = dto.DoseTimes ?? string.Empty,
+                DaysOfWeek = dto.DaysOfWeek ?? string.Empty,
                 StartDate = dto.StartDate ?? default,
                 EndDate = dto.EndDate,
                 Instructions = dto.Instructions,
@@ -159,6 +163,7 @@ namespace MedicalAssistant.Presentation.Controllers
                 updated.Frequency,
                 updated.TimesPerDay,
                 updated.DoseTimes,
+                updated.DaysOfWeek,
                 updated.StartDate,
                 updated.EndDate,
                 updated.Instructions,
@@ -178,6 +183,69 @@ namespace MedicalAssistant.Presentation.Controllers
             var ok = await _patientRecordService.DeactivateMedicationAsync(id);
             if (!ok) return NotFound(new { message = "Medication not found." });
             return Ok(new { message = "Medication deactivated." });
+        }
+
+        // POST /api/patients/{id}/medications/self  (Patient can add own meds)
+        [HttpPost("patients/{id:int}/medications/self")]
+        [Authorize(Roles = "Patient")]
+        public async Task<IActionResult> CreateSelf(int id, [FromBody] CreateMedicationTrackerDto dto)
+        {
+            if (!IsOwnPatient(id)) return Forbid();
+
+            var entity = new MedicationTracker
+            {
+                ChronicDiseaseMonitorId = dto.ChronicDiseaseMonitorId,
+                MedicationName = dto.MedicationName,
+                GenericName = dto.GenericName,
+                Dosage = dto.Dosage,
+                Form = dto.Form,
+                Frequency = dto.Frequency,
+                TimesPerDay = dto.TimesPerDay,
+                DoseTimes = dto.DoseTimes,
+                DaysOfWeek = dto.DaysOfWeek,
+                StartDate = dto.StartDate,
+                EndDate = dto.EndDate,
+                Instructions = dto.Instructions,
+                PillsRemaining = dto.PillsRemaining,
+                RefillThreshold = dto.RefillThreshold,
+                IsChronic = dto.IsChronic,
+                IsActive = dto.IsActive ?? true,
+            };
+
+            var created = await _patientRecordService.AddMedicationAsync(id, entity);
+
+            return Ok(new MedicationTrackerDto(
+                created.Id,
+                created.PatientId,
+                created.PrescribedByDoctorId,
+                created.ChronicDiseaseMonitorId,
+                created.MedicationName,
+                created.GenericName,
+                created.Dosage,
+                created.Form,
+                created.Frequency,
+                created.TimesPerDay,
+                created.DoseTimes,
+                created.DaysOfWeek,
+                created.StartDate,
+                created.EndDate,
+                created.Instructions,
+                created.PillsRemaining,
+                created.RefillThreshold,
+                created.IsChronic,
+                created.IsActive,
+                created.CreatedAt
+            ));
+        }
+
+        // POST /api/medication-logs/{logId}/taken  (Patient,Nurse)
+        [HttpPost("medication-logs/{logId:int}/taken")]
+        [Authorize(Roles = "Patient,Nurse")]
+        public async Task<IActionResult> MarkTaken(int logId)
+        {
+            var log = await _patientRecordService.MarkMedicationTakenAsync(logId);
+            if (log == null) return NotFound(new { message = "Log not found." });
+            return Ok(new { message = "Marked as taken.", takenAt = log.TakenAt });
         }
 
         // GET /api/patients/{id}/medications/schedule  (Patient(own),Nurse)
@@ -209,6 +277,7 @@ namespace MedicalAssistant.Presentation.Controllers
                 m.Frequency,
                 m.TimesPerDay,
                 m.DoseTimes,
+                m.DaysOfWeek,
                 m.StartDate,
                 m.EndDate,
                 m.Instructions,

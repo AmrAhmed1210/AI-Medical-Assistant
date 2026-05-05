@@ -44,6 +44,7 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
         Task<MedicationTracker?> UpdateMedicationAsync(int medicationId, MedicationTracker updates);
         Task<bool> DeactivateMedicationAsync(int medicationId);
         Task<IEnumerable<MedicationScheduleItemDto>> GetTodayScheduleAsync(int patientId, DateTime? now = null);
+        Task<MedicationLog?> MarkMedicationTakenAsync(int logId);
         Task<IEnumerable<MedicationTracker>> GetLowStockMedicationsAsync(int patientId);
     }
 }

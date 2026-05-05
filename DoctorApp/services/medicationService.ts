@@ -16,6 +16,7 @@ export interface MedicationTracker {
   frequency: string;
   timesPerDay: number;
   doseTimes: string;
+  daysOfWeek: string;
   startDate: string;
   endDate?: string;
   instructions?: string;
@@ -27,11 +28,31 @@ export interface MedicationTracker {
 }
 
 export interface MedicationScheduleItem {
+  logId?: number;
   medicationTrackerId: number;
   scheduledAt: string;
   medicationName: string;
   dosage: string;
   status: string; // pending / taken / missed / skipped
+}
+
+export interface CreateMedicationPayload {
+  chronicDiseaseMonitorId?: number;
+  medicationName: string;
+  genericName?: string;
+  dosage: string;
+  form: string;
+  frequency: string;
+  timesPerDay: number;
+  doseTimes: string;
+  daysOfWeek: string;
+  startDate: string;
+  endDate?: string;
+  instructions?: string;
+  pillsRemaining?: number;
+  refillThreshold: number;
+  isChronic: boolean;
+  isActive?: boolean;
 }
 
 // ============================================
@@ -56,4 +77,27 @@ export const getMedicationSchedule = async (patientId: number): Promise<Medicati
     true
   );
   return Array.isArray(data) ? data : [];
+};
+
+// ============================================
+// Create Medication (Patient self-add)
+// ============================================
+export const createPatientMedication = async (patientId: number, payload: CreateMedicationPayload): Promise<MedicationTracker> => {
+  const data = await apiFetch<any>(
+    API.records.medicationsSelf(patientId),
+    { method: "POST", body: JSON.stringify(payload) },
+    true
+  );
+  return data;
+};
+
+// ============================================
+// Mark Medication as Taken
+// ============================================
+export const markMedicationTaken = async (logId: number): Promise<void> => {
+  await apiFetch<any>(
+    API.records.medicationLogTaken(logId),
+    { method: "POST" },
+    true
+  );
 };
