@@ -30,4 +30,7 @@ export const ROUTES = {
   DOCTOR_REPORTS: '/doctor/reports',
   DOCTOR_REVIEWS: '/doctor/reviews',
   DOCTOR_CHAT: '/doctor/chat',
+  DOCTOR_TODAY: '/doctor/today',
+  DOCTOR_WORKSPACE: '/doctor/workspace/:visitId',
+  DOCTOR_VISIT_SUMMARY: '/doctor/visits/:id/summary',
 }

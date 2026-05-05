@@ -116,6 +116,20 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(visits);
         }
 
+        // GET /api/patients/{id}/history  (Doctor)
+        [HttpGet("/api/patients/{id:int}/history")]
+        [Authorize(Roles = "Doctor")]
+        public async Task<IActionResult> GetPatientHistory(int id)
+        {
+            var userId = GetUserIdFromToken();
+            if (!userId.HasValue) return Unauthorized(new { message = "Invalid token." });
+
+            var history = await _visitService.GetPatientHistoryAsync(userId.Value, id);
+            if (history == null) return NotFound(new { message = "Patient not found." });
+
+            return Ok(history);
+        }
+
         // GET /api/visits/{id}/summary  (Doctor)
         [HttpGet("{id:int}/summary")]
         [Authorize(Roles = "Doctor")]

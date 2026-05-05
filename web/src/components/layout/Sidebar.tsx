@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import {
   LayoutDashboard, Calendar, Users, FileText, MessageSquare,
   Clock, User, BarChart2, Settings, LogOut, Shield,
-  Cpu, TrendingUp, Star, LifeBuoy,
+  Cpu, TrendingUp, Star, LifeBuoy, Stethoscope,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
@@ -21,6 +21,7 @@ interface NavItem {
 
 const doctorNav: NavItem[] = [
   { to: ROUTES.DOCTOR_DASHBOARD, icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
+  { to: ROUTES.DOCTOR_TODAY, icon: <Stethoscope size={18} />, label: 'Today\'s Visits' },
   { to: ROUTES.DOCTOR_APPOINTMENTS, icon: <Calendar size={18} />, label: 'Appointments' },
   { to: ROUTES.DOCTOR_PATIENTS, icon: <Users size={18} />, label: 'Patients' },
   { to: ROUTES.DOCTOR_REPORTS, icon: <FileText size={18} />, label: 'AI Reports' },
@@ -80,7 +81,7 @@ export function Sidebar() {
     if (location.pathname === ROUTES.DOCTOR_CHAT) {
       clearAllMessages()
     }
-    if (location.pathname === ROUTES.DOCTOR_APPOINTMENTS) {
+    if (location.pathname === ROUTES.DOCTOR_APPOINTMENTS || location.pathname === ROUTES.DOCTOR_TODAY) {
       clearAppointments()
     }
     if (location.pathname === ROUTES.ADMIN_APPLICATIONS) {

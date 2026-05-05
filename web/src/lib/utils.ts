@@ -103,6 +103,8 @@ export const STATUS_CONFIG: Record<AppointmentStatus, {
   Confirmed: { label: 'Confirmed', color: 'text-green-700', bg: 'bg-green-100' },
   Cancelled: { label: 'Cancelled', color: 'text-gray-600', bg: 'bg-gray-100' },
   Completed: { label: 'Completed', color: 'text-blue-700', bg: 'bg-blue-100' },
+  NoShow: { label: 'لم يحضر', color: 'text-red-700', bg: 'bg-red-100' },
+  Rescheduled: { label: 'تم إعادة الجدولة', color: 'text-purple-700', bg: 'bg-purple-100' },
 }
 
 export const DAY_NAMES_AR = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']

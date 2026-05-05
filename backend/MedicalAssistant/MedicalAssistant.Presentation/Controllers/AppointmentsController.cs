@@ -151,6 +151,49 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(updated);
         }
 
+        // PUT /appointments/{id}/no-show
+        [HttpPut("{id}/no-show")]
+        [Authorize(Roles = "Doctor,Secretary,Admin")]
+        [ProducesResponseType(typeof(AppointmentDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> NoShow(int id)
+        {
+            var current = await _appointmentService.GetAppointmentByIdAsync(id);
+            if (current == null) return NotFound(new { message = "Appointment not found." });
+            if (!await CanAccessAppointmentAsync(current)) return Forbid();
+
+            var updated = await UpdateStatusAsync(id, "NoShow", "Patient did not show up");
+            if (updated == null) return NotFound(new { message = "Appointment not found." });
+            return Ok(updated);
+        }
+
+        // PUT /appointments/{id}/reschedule
+        [HttpPut("{id}/reschedule")]
+        [Authorize(Roles = "Doctor,Secretary,Admin")]
+        [ProducesResponseType(typeof(AppointmentDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Reschedule(int id, [FromBody] RescheduleAppointmentBody body)
+        {
+            var current = await _appointmentService.GetAppointmentByIdAsync(id);
+            if (current == null) return NotFound(new { message = "Appointment not found." });
+            if (!await CanAccessAppointmentAsync(current)) return Forbid();
+
+            var dto = new UpdateAppointmentDto
+            {
+                Id = id,
+                Status = "Rescheduled",
+                Notes = body.Reason,
+                PatientId = current.PatientId,
+                DoctorId = current.DoctorId,
+                AppointmentDate = DateTime.TryParse(body.NewDate, out var date) ? date : DateTime.UtcNow,
+                AppointmentTime = TimeSpan.TryParse(body.NewTime, out var time) ? time : TimeSpan.Zero,
+            };
+
+            var updated = await _appointmentService.UpdateAppointmentAsync(dto);
+            if (updated == null) return NotFound(new { message = "Appointment not found." });
+            return Ok(updated);
+        }
+
         // DELETE /appointments/{id}
         [HttpDelete("{id}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -297,5 +340,12 @@ namespace MedicalAssistant.Presentation.Controllers
     public class CompleteAppointmentBody
     {
         public string? Notes { get; set; }
+    }
+
+    public class RescheduleAppointmentBody
+    {
+        public string NewDate { get; set; } = string.Empty;
+        public string NewTime { get; set; } = string.Empty;
+        public string? Reason { get; set; }
     }
 }

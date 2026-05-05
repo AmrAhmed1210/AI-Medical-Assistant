@@ -148,6 +148,74 @@ namespace MedicalAssistant.Services.Services
             if (dto.Assessment != null) visit.Assessment = dto.Assessment;
             if (dto.Plan != null) visit.Plan = dto.Plan;
             if (dto.Notes != null) visit.Notes = dto.Notes;
+            if (dto.FollowUpRequired.HasValue) visit.FollowUpRequired = dto.FollowUpRequired.Value;
+            if (dto.FollowUpAfterDays.HasValue) visit.FollowUpAfterDays = dto.FollowUpAfterDays.Value;
+            if (dto.FollowUpNotes != null) visit.FollowUpNotes = dto.FollowUpNotes;
+
+            // Update Symptoms
+            if (dto.Symptoms != null)
+            {
+                var existingSymptoms = await _unitOfWork.Repository<Symptom>().FindAsync(s => s.PatientVisitId == visitId);
+                foreach (var s in existingSymptoms) _unitOfWork.Repository<Symptom>().Delete(s);
+                foreach (var s in dto.Symptoms)
+                {
+                    await _unitOfWork.Repository<Symptom>().AddAsync(new Symptom
+                    {
+                        PatientVisitId = visitId,
+                        Name = s.Name,
+                        Severity = s.Severity,
+                        Onset = s.Onset,
+                        Location = s.Location,
+                        Duration = s.Duration,
+                        IsChronic = s.IsChronic,
+                        CreatedAt = DateTime.UtcNow,
+                    });
+                }
+            }
+
+            // Update Prescriptions
+            if (dto.Prescriptions != null)
+            {
+                var existingPrescriptions = await _unitOfWork.Repository<VisitPrescription>().FindAsync(p => p.PatientVisitId == visitId);
+                foreach (var p in existingPrescriptions) _unitOfWork.Repository<VisitPrescription>().Delete(p);
+                foreach (var p in dto.Prescriptions)
+                {
+                    await _unitOfWork.Repository<VisitPrescription>().AddAsync(new VisitPrescription
+                    {
+                        PatientVisitId = visitId,
+                        MedicationName = p.MedicationName,
+                        Dosage = p.Dosage,
+                        Frequency = p.Frequency,
+                        Duration = p.Duration,
+                        Quantity = p.Quantity,
+                        Instructions = p.Instructions,
+                        IsChronic = p.IsChronic,
+                        CreatedAt = DateTime.UtcNow,
+                    });
+                }
+            }
+
+            // Update Vitals
+            if (dto.VitalSigns != null)
+            {
+                var existingVitals = await _unitOfWork.Repository<VisitVitalSign>().FindAsync(v => v.PatientVisitId == visitId);
+                foreach (var v in existingVitals) _unitOfWork.Repository<VisitVitalSign>().Delete(v);
+                foreach (var v in dto.VitalSigns)
+                {
+                    await _unitOfWork.Repository<VisitVitalSign>().AddAsync(new VisitVitalSign
+                    {
+                        PatientId = visit.PatientId,
+                        PatientVisitId = visitId,
+                        Type = v.Type,
+                        Value = v.Value,
+                        Value2 = v.Value2,
+                        Unit = v.Unit,
+                        IsAbnormal = v.IsAbnormal,
+                        RecordedBy = "doctor",
+                        RecordedAt = DateTime.UtcNow,
+                    });
+                }
+            }
 
             _unitOfWork.Repository<PatientVisit>().Update(visit);
             await _unitOfWork.SaveChangesAsync();
@@ -190,7 +258,63 @@ namespace MedicalAssistant.Services.Services
             if (visit == null) return null;
             if (visit.DoctorId != doctor.Id) throw new UnauthorizedAccessException("Not allowed.");
 
-            return new VisitSummaryDto(visit.Id, visit.PatientId, visit.DoctorId, visit.VisitDate, visit.ChiefComplaint, visit.SummarySnapshot);
+            var patient = visit.Patient ?? await _unitOfWork.Repository<Patient>().GetByIdAsync(visit.PatientId);
+            var age = patient != null && patient.DateOfBirth > DateTime.MinValue
+                ? DateTime.UtcNow.Year - patient.DateOfBirth.Year
+                : 0;
+
+            var allergies = patient?.AllergyRecords?.Select(a => new AllergySummaryDto(
+                a.AllergenName,
+                a.Severity,
+                a.ReactionDescription ?? string.Empty
+            )).ToList() ?? new List<AllergySummaryDto>();
+
+            var symptoms = visit.Symptoms?.Select(s => new SymptomSummaryDto(
+                s.Name,
+                s.Severity,
+                s.Onset ?? string.Empty,
+                s.Location,
+                s.Duration,
+                s.IsChronic
+            )).ToList() ?? new List<SymptomSummaryDto>();
+
+            var vitals = visit.VitalSigns?.Select(v => new VitalSummaryDto(
+                v.Type,
+                v.Value,
+                v.Value2,
+                v.Unit,
+                v.IsAbnormal
+            )).ToList() ?? new List<VitalSummaryDto>();
+
+            var prescriptions = visit.Prescriptions?.Select(p => new PrescriptionSummaryDto(
+                p.MedicationName,
+                p.Dosage,
+                p.Frequency,
+                p.Duration,
+                p.Quantity,
+                p.Instructions,
+                p.IsChronic
+            )).ToList() ?? new List<PrescriptionSummaryDto>();
+
+            return new VisitSummaryDto(
+                visit.Id,
+                patient?.FullName ?? string.Empty,
+                age,
+                patient?.BloodType ?? string.Empty,
+                allergies,
+                visit.VisitDate,
+                visit.ChiefComplaint,
+                visit.ExaminationFindings,
+                visit.Assessment,
+                visit.Plan,
+                vitals,
+                prescriptions,
+                symptoms,
+                visit.Notes,
+                visit.FollowUpRequired,
+                visit.FollowUpAfterDays,
+                visit.FollowUpNotes
+            );
         }
 
         // Symptoms
@@ -394,6 +518,60 @@ namespace MedicalAssistant.Services.Services
             }
 
             return true;
+        }
+
+        public async Task<PatientHistoryDto?> GetPatientHistoryAsync(int doctorUserId, int patientId)
+        {
+            var doctor = await GetDoctorByUserIdAsync(doctorUserId) ?? throw new UnauthorizedAccessException("Doctor profile not found.");
+            
+            var patient = await _unitOfWork.Repository<Patient>().GetByIdAsync(patientId);
+            if (patient == null) return null;
+
+            var visits = await _unitOfWork.Repository<PatientVisit>().FindAsync(v => v.PatientId == patientId);
+            var lastVisits = visits.OrderByDescending(v => v.CreatedAt).Take(5).Select(v => new LastVisitSummaryDto(
+                v.Id.ToString(),
+                v.VisitDate.ToString("yyyy-MM-dd"),
+                v.ChiefComplaint
+            )).ToList();
+
+            var allergies = patient.AllergyRecords?.Select(a => new AllergySummaryDto(
+                a.AllergenName,
+                a.Severity,
+                a.ReactionDescription ?? string.Empty
+            )).ToList() ?? new List<AllergySummaryDto>();
+
+            var chronicDiseases = patient.ChronicDiseaseMonitors?.Select(c => new ChronicDiseaseSummaryDto(
+                c.Id.ToString(),
+                c.DiseaseName,
+                c.TargetValues
+            )).ToList() ?? new List<ChronicDiseaseSummaryDto>();
+
+            var medications = patient.MedicationTrackers?.Select(m => new MedicationSummaryDto(
+                m.Id.ToString(),
+                m.MedicationName,
+                m.Dosage,
+                m.Form
+            )).ToList() ?? new List<MedicationSummaryDto>();
+
+            var latestVitals = new Dictionary<string, string>();
+            var lastVisitWithVitals = visits.OrderByDescending(v => v.CreatedAt).FirstOrDefault(v => v.VitalSigns.Any());
+            if (lastVisitWithVitals != null)
+            {
+                foreach (var vital in lastVisitWithVitals.VitalSigns)
+                {
+                    var valueStr = vital.Value2.HasValue ? $"{vital.Value}/{vital.Value2.Value}" : vital.Value.ToString();
+                    latestVitals[vital.Type] = valueStr;
+                }
+            }
+
+            return new PatientHistoryDto(
+                patient.BloodType ?? string.Empty,
+                allergies,
+                chronicDiseases,
+                medications,
+                latestVitals,
+                lastVisits
+            );
         }
 
         // Documents

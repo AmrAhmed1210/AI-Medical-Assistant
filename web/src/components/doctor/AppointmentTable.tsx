@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle, XCircle, CheckCheck, Eye, Undo2, Trash2 } from 'lucide-react'
+import { CheckCircle, XCircle, CheckCheck, Eye, Undo2, Trash2, CalendarClock, UserX } from 'lucide-react'
 import type { AppointmentDto } from '@/lib/types'
 import { StatusBadge } from '@/components/ui/Badge'
 import { ConfirmDialog, Modal } from '@/components/ui/Modal'
@@ -12,6 +12,9 @@ interface AppointmentTableProps {
   onCancel?: (id: string) => Promise<void>
   onComplete?: (id: string) => Promise<void>
   onDelete?: (id: string) => Promise<void>
+  onNoShow?: (id: string) => Promise<void>
+  onReschedule?: (id: string) => Promise<void>
+  showSecretaryActions?: boolean
 }
 
 const formatPaymentMethod = (value?: string | null) => {
@@ -30,8 +33,11 @@ export function AppointmentTable({
   onCancel,
   onComplete,
   onDelete,
+  onNoShow,
+  onReschedule,
+  showSecretaryActions,
 }: AppointmentTableProps) {
-  const [actionItem, setActionItem] = useState<{ appointment: AppointmentDto; action: 'confirm' | 'unconfirm' | 'cancel' | 'complete' | 'delete' } | null>(null)
+  const [actionItem, setActionItem] = useState<{ appointment: AppointmentDto; action: 'confirm' | 'unconfirm' | 'cancel' | 'complete' | 'delete' | 'noShow' | 'reschedule' } | null>(null)
   const [detailItem, setDetailItem] = useState<AppointmentDto | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
@@ -45,6 +51,8 @@ export function AppointmentTable({
       if (action === 'cancel') await onCancel?.(appointment.id)
       if (action === 'complete') await onComplete?.(appointment.id)
       if (action === 'delete') await onDelete?.(appointment.id)
+      if (action === 'noShow') await onNoShow?.(appointment.id)
+      if (action === 'reschedule') await onReschedule?.(appointment.id)
     } finally {
       setLoadingId(null)
       setActionItem(null)
@@ -57,6 +65,8 @@ export function AppointmentTable({
     cancel: { title: 'Cancel Appointment', msg: 'Are you sure you want to cancel this appointment?', btn: 'Cancel', variant: 'danger' as const },
     complete: { title: 'Complete Appointment', msg: 'Are you sure you want to mark this appointment as completed?', btn: 'Complete', variant: 'primary' as const },
     delete: { title: 'Delete Appointment', msg: 'Are you sure you want to delete/cancel this appointment?', btn: 'Delete', variant: 'danger' as const },
+    noShow: { title: 'Mark No-Show', msg: 'Patient did not show up for this appointment. Mark as no-show?', btn: 'No-Show', variant: 'danger' as const },
+    reschedule: { title: 'Reschedule Appointment', msg: 'This will open the reschedule flow.', btn: 'Reschedule', variant: 'primary' as const },
   }
 
   return (
@@ -146,6 +156,28 @@ export function AppointmentTable({
                           <CheckCheck size={14} />
                           <span className="text-[10px] font-extrabold tracking-wider uppercase">Complete</span>
                         </button>
+                        {showSecretaryActions && (
+                          <>
+                            <button
+                              onClick={() => setActionItem({ appointment: appt, action: 'noShow' })}
+                              disabled={loadingId === appt.id}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-all shadow-sm active:scale-95"
+                              title="No-Show"
+                            >
+                              <UserX size={14} />
+                              <span className="text-[10px] font-extrabold tracking-wider uppercase">No-Show</span>
+                            </button>
+                            <button
+                              onClick={() => setActionItem({ appointment: appt, action: 'reschedule' })}
+                              disabled={loadingId === appt.id}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-purple-600 bg-purple-50 hover:bg-purple-100 transition-all shadow-sm active:scale-95"
+                              title="Reschedule"
+                            >
+                              <CalendarClock size={14} />
+                              <span className="text-[10px] font-extrabold tracking-wider uppercase">Reschedule</span>
+                            </button>
+                          </>
+                        )}
                       </>
                     )}
                     {appt.status !== 'Cancelled' && appt.status !== 'Completed' && (

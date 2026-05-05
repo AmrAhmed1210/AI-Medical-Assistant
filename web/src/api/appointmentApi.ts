@@ -34,4 +34,13 @@ export const appointmentApi = {
 
   complete: (id: string, notes?: string) =>
     axiosInstance.put<AppointmentDto>(`/api/appointments/${id}/complete`, { notes }).then((r) => r.data),
+
+  noShow: (id: string) =>
+    axiosInstance.put<AppointmentDto>(`/api/appointments/${id}/no-show`).then((r) => r.data),
+
+  reschedule: (id: string, newDate: string, newTime: string, reason?: string) =>
+    axiosInstance.put<AppointmentDto>(`/api/appointments/${id}/reschedule`, { newDate, newTime, reason }).then((r) => r.data),
+
+  getAvailableSlots: (date: string, doctorId?: number) =>
+    axiosInstance.get<{ time: string; available: boolean }[]>(`/api/appointments/available-slots`, { params: { date, doctorId } }).then((r) => r.data),
 }

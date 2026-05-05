@@ -54,6 +54,16 @@ const statusConfig: Record<string, { label: string; variant: BadgeProps['variant
     variant: 'danger',
     dot: 'bg-white/70',
   },
+  NoShow: {
+    label: 'No Show',
+    variant: 'danger',
+    dot: 'bg-white/70',
+  },
+  Rescheduled: {
+    label: 'Rescheduled',
+    variant: 'warning',
+    dot: 'bg-white/70',
+  },
 }
 
 export const StatusBadge = ({ status }: StatusBadgeProps) => {

@@ -22,6 +22,9 @@ namespace MedicalAssistant.Domain.Entities.PatientModule
         public string? Plan { get; set; }
         public string? Notes { get; set; }
         public string? SummarySnapshot { get; set; }
+        public bool? FollowUpRequired { get; set; }
+        public int? FollowUpAfterDays { get; set; }
+        public string? FollowUpNotes { get; set; }
 
         public DateOnly VisitDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
         public string Status { get; set; } = "active";

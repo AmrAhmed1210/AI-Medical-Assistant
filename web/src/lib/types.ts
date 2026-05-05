@@ -197,7 +197,7 @@ export interface SendMessageRequest {
 // 📅 Appointments
 // ============================================================================
 
-export type AppointmentStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed'
+export type AppointmentStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed' | 'NoShow' | 'Rescheduled'
 
 export interface AppointmentDto {
   id: string

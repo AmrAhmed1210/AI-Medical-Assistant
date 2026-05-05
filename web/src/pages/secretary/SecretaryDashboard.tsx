@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import type { AppointmentStatus, AppointmentDto } from '@/lib/types'
 import toast from 'react-hot-toast'
-import { RefreshCw, Calendar, Search } from 'lucide-react'
+import { RefreshCw, Calendar, Search, ClipboardList } from 'lucide-react'
 
 const STATUS_FILTERS: { label: string; value: AppointmentStatus | '' }[] = [
   { label: 'All', value: '' },
@@ -48,6 +48,19 @@ export default function SecretaryDashboard() {
       await cancel(id)
       toast.success('Appointment cancelled')
     } catch { toast.error('Failed to cancel appointment') }
+  }
+
+  const handleNoShow = async (id: string) => {
+    try {
+      await appointmentApi.noShow(id)
+      updateLocal(id, { status: 'NoShow' })
+      toast.success('Marked as no-show')
+    } catch { toast.error('Failed to mark no-show') }
+  }
+
+  const handleReschedule = async (id: string) => {
+    // For now just a placeholder - would open a modal in real implementation
+    toast('Reschedule flow would open here')
   }
 
   const toDayKey = (value: string | Date) => {
@@ -226,6 +239,9 @@ export default function SecretaryDashboard() {
                 onConfirm={handleConfirm}
                 onUnconfirm={handleUnconfirm}
                 onCancel={handleCancel}
+                onNoShow={handleNoShow}
+                onReschedule={handleReschedule}
+                showSecretaryActions
               />
             </div>
           </div>

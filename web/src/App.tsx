@@ -36,6 +36,11 @@ const SecretaryDashboard = lazy(() => import('@/pages/secretary/SecretaryDashboa
 const DoctorsList = lazy(() => import('@/pages/doctor/DoctorsList'))
 const DoctorDetails = lazy(() => import('@/pages/doctor/DoctorDetails'))
 
+// Doctor - Clinical
+const DoctorToday = lazy(() => import('@/pages/doctor/DoctorToday'))
+const DoctorWorkspace = lazy(() => import('@/pages/doctor/DoctorWorkspace'))
+const DoctorVisitSummary = lazy(() => import('@/pages/doctor/DoctorVisitSummary'))
+
 // Auth Guard
 function AuthGuard() {
   const { isAuthenticated } = useAuthStore()
@@ -120,6 +125,9 @@ export default function App() {
                 <Route path="/doctor/reviews" element={<DoctorReviews />} />
                 <Route path="/doctor/staff" element={<ManageSecretaries />} />
                 <Route path="/doctor/chat" element={<DoctorChat />} />
+                <Route path="/doctor/today" element={<DoctorToday />} />
+                <Route path="/doctor/workspace/:visitId" element={<DoctorWorkspace />} />
+                <Route path="/doctor/visits/:id/summary" element={<DoctorVisitSummary />} />
               </Route>
 
               {/* Secretary routes */}
