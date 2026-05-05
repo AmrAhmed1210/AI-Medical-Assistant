@@ -293,7 +293,7 @@ namespace MedicalAssistant.Services.Services
                 {
                     if (!TimeOnly.TryParse(timeStr, out var time)) continue;
                     var scheduled = DateTime.SpecifyKind(date.Add(time.ToTimeSpan()), DateTimeKind.Utc);
-                    if (scheduled < DateTime.UtcNow.AddHours(-1)) continue; // skip past doses
+                    if (scheduled < DateTime.UtcNow.Date.AddDays(-1)) continue; // skip only doses before yesterday
 
                     // Check if log already exists
                     var existing = await _unitOfWork.Repository<MedicationLog>()
