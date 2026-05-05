@@ -32,6 +32,7 @@ export default function MedicationsScreen() {
   const [dosage, setDosage] = useState("");
   const [form, setForm] = useState("Pill");
   const [selectedDays, setSelectedDays] = useState<string[]>([...DAYS]);
+  const [dayPreset, setDayPreset] = useState<"daily" | "weekdays" | "weekends" | "custom">("daily");
   const [timesPerDay, setTimesPerDay] = useState(1);
   const [doseTimes, setDoseTimes] = useState("08:00");
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
@@ -63,6 +64,14 @@ export default function MedicationsScreen() {
 
   const toggleDay = (day: string) => {
     setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
+  };
+
+  const applyDayPreset = (preset: "daily" | "weekdays" | "weekends" | "custom") => {
+    setDayPreset(preset);
+    if (preset === "daily") setSelectedDays([...DAYS]);
+    else if (preset === "weekdays") setSelectedDays(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"]);
+    else if (preset === "weekends") setSelectedDays(["Friday", "Saturday"]);
+    // custom leaves selectedDays as-is
   };
 
   const handleSave = async () => {
@@ -102,7 +111,7 @@ export default function MedicationsScreen() {
   };
 
   const resetForm = () => {
-    setMedName(""); setDosage(""); setForm("Pill"); setSelectedDays([...DAYS]);
+    setMedName(""); setDosage(""); setForm("Pill"); setSelectedDays([...DAYS]); setDayPreset("daily");
     setTimesPerDay(1); setDoseTimes("08:00"); setStartDate(new Date().toISOString().split("T")[0]);
     setEndDate(""); setPills(""); setInstructions(""); setIsChronic(false);
   };
@@ -310,14 +319,25 @@ export default function MedicationsScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Days of Week</Text>
+                <Text style={styles.inputLabel}>Schedule</Text>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                  {DAYS.map(d => (
-                    <TouchableOpacity key={d} style={[styles.daySelectChip, selectedDays.includes(d) && styles.daySelectChipActive]} onPress={() => toggleDay(d)}>
-                      <Text style={[styles.daySelectChipTxt, selectedDays.includes(d) && styles.daySelectChipTxtActive]}>{d.slice(0, 3)}</Text>
+                  {(["daily", "weekdays", "weekends", "custom"] as const).map(p => (
+                    <TouchableOpacity key={p} style={[styles.presetChip, dayPreset === p && styles.presetChipActive]} onPress={() => applyDayPreset(p)}>
+                      <Text style={[styles.presetChipTxt, dayPreset === p && styles.presetChipTxtActive]}>
+                        {p === "daily" ? "Daily" : p === "weekdays" ? "Weekdays" : p === "weekends" ? "Weekends" : "Custom"}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
+                {dayPreset === "custom" && (
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+                    {DAYS.map(d => (
+                      <TouchableOpacity key={d} style={[styles.daySelectChip, selectedDays.includes(d) && styles.daySelectChipActive]} onPress={() => toggleDay(d)}>
+                        <Text style={[styles.daySelectChipTxt, selectedDays.includes(d) && styles.daySelectChipTxtActive]}>{d.slice(0, 3)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
 
               <View style={styles.rowInputs}>
@@ -434,6 +454,10 @@ const styles = StyleSheet.create({
   formChipActive: { backgroundColor: COLORS.primary + "15", borderColor: COLORS.primary },
   formChipTxt: { fontSize: 12, fontWeight: "600", color: "#64748B" },
   formChipTxtActive: { color: COLORS.primary, fontWeight: "700" },
+  presetChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, backgroundColor: "#F1F5F9", borderWidth: 1, borderColor: "#E2E8F0" },
+  presetChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  presetChipTxt: { fontSize: 12, fontWeight: "600", color: "#64748B" },
+  presetChipTxtActive: { color: "#fff", fontWeight: "700" },
   daySelectChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: "#F1F5F9", borderWidth: 1, borderColor: "#E2E8F0" },
   daySelectChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   daySelectChipTxt: { fontSize: 12, fontWeight: "600", color: "#64748B" },

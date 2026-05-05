@@ -271,8 +271,10 @@ namespace MedicalAssistant.Services.Services
                 .Select(t => t.Trim()).ToList() ?? new List<string>();
             if (doseTimes.Count == 0) doseTimes = new List<string> { "08:00" };
 
-            var start = tracker.StartDate.ToDateTime(TimeOnly.MinValue);
-            var end = tracker.EndDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.UtcNow.AddDays(daysAhead);
+            var start = DateTime.SpecifyKind(tracker.StartDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+            var end = tracker.EndDate.HasValue
+                ? DateTime.SpecifyKind(tracker.EndDate.Value.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc)
+                : DateTime.UtcNow.AddDays(daysAhead);
             var maxDate = DateTime.UtcNow.AddDays(daysAhead);
             if (end > maxDate) end = maxDate;
 
@@ -285,7 +287,7 @@ namespace MedicalAssistant.Services.Services
                 foreach (var timeStr in doseTimes)
                 {
                     if (!TimeOnly.TryParse(timeStr, out var time)) continue;
-                    var scheduled = date.Add(time.ToTimeSpan());
+                    var scheduled = DateTime.SpecifyKind(date.Add(time.ToTimeSpan()), DateTimeKind.Utc);
                     if (scheduled < DateTime.UtcNow.AddHours(-1)) continue; // skip past doses
 
                     // Check if log already exists
@@ -367,8 +369,8 @@ namespace MedicalAssistant.Services.Services
         public async Task<IEnumerable<MedicationScheduleItemDto>> GetTodayScheduleAsync(int patientId, DateTime? now = null)
         {
             var baseline = now ?? DateTime.UtcNow;
-            var start = baseline.Date;
-            var end = baseline.Date.AddDays(1);
+            var start = DateTime.SpecifyKind(baseline.Date, DateTimeKind.Utc);
+            var end = DateTime.SpecifyKind(baseline.Date.AddDays(1), DateTimeKind.Utc);
 
             // Ensure logs exist for today by generating from active trackers
             var trackers = await _unitOfWork.Repository<MedicationTracker>()
