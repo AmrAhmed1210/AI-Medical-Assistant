@@ -130,17 +130,25 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(history);
         }
 
-        // GET /api/visits/{id}/summary  (Doctor)
+        // GET /api/visits/{id}/summary  (Doctor, Patient(own))
         [HttpGet("{id:int}/summary")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Patient")]
         public async Task<IActionResult> GetSummary(int id)
         {
             var userId = GetUserIdFromToken();
             if (!userId.HasValue) return Unauthorized(new { message = "Invalid token." });
 
-            var summary = await _visitService.GetVisitSummaryAsync(userId.Value, id);
-            if (summary == null) return NotFound(new { message = "Visit not found." });
+            VisitSummaryDto? summary;
+            if (User.IsInRole("Patient"))
+            {
+                summary = await _visitService.GetVisitSummaryForPatientAsync(userId.Value, id);
+            }
+            else
+            {
+                summary = await _visitService.GetVisitSummaryAsync(userId.Value, id);
+            }
 
+            if (summary == null) return NotFound(new { message = "Visit not found." });
             return Ok(summary);
         }
 

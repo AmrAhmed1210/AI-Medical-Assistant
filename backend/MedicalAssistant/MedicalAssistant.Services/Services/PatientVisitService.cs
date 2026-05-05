@@ -251,14 +251,8 @@ namespace MedicalAssistant.Services.Services
             return items.OrderByDescending(v => v.CreatedAt).Select(MapVisit).ToList();
         }
 
-        public async Task<VisitSummaryDto?> GetVisitSummaryAsync(int doctorUserId, int visitId)
+        private VisitSummaryDto BuildVisitSummary(PatientVisit visit, Patient? patient)
         {
-            var doctor = await GetDoctorByUserIdAsync(doctorUserId) ?? throw new UnauthorizedAccessException("Doctor profile not found.");
-            var visit = await _unitOfWork.Repository<PatientVisit>().GetByIdAsync(visitId);
-            if (visit == null) return null;
-            if (visit.DoctorId != doctor.Id) throw new UnauthorizedAccessException("Not allowed.");
-
-            var patient = visit.Patient ?? await _unitOfWork.Repository<Patient>().GetByIdAsync(visit.PatientId);
             var age = patient != null && patient.DateOfBirth > DateTime.MinValue
                 ? DateTime.UtcNow.Year - patient.DateOfBirth.Year
                 : 0;
@@ -315,6 +309,34 @@ namespace MedicalAssistant.Services.Services
                 visit.FollowUpAfterDays,
                 visit.FollowUpNotes
             );
+        }
+
+        public async Task<VisitSummaryDto?> GetVisitSummaryAsync(int doctorUserId, int visitId)
+        {
+            var doctor = await GetDoctorByUserIdAsync(doctorUserId) ?? throw new UnauthorizedAccessException("Doctor profile not found.");
+            var visit = await _unitOfWork.Repository<PatientVisit>().GetByIdAsync(visitId);
+            if (visit == null) return null;
+            if (visit.DoctorId != doctor.Id) throw new UnauthorizedAccessException("Not allowed.");
+
+            var patient = visit.Patient ?? await _unitOfWork.Repository<Patient>().GetByIdAsync(visit.PatientId);
+            return BuildVisitSummary(visit, patient);
+        }
+
+        public async Task<VisitSummaryDto?> GetVisitSummaryForPatientAsync(int patientUserId, int visitId)
+        {
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(patientUserId);
+            if (user == null || !string.Equals(user.Role, "Patient", StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Patient profile not found.");
+
+            var patient = (await _unitOfWork.Repository<Patient>().FindAsync(p => p.UserId == patientUserId)).FirstOrDefault();
+            if (patient == null) throw new UnauthorizedAccessException("Patient record not found.");
+
+            var visit = await _unitOfWork.Repository<PatientVisit>().GetByIdAsync(visitId);
+            if (visit == null) return null;
+            if (visit.PatientId != patient.Id) throw new UnauthorizedAccessException("Not allowed.");
+
+            var patientWithRecords = patient;
+            return BuildVisitSummary(visit, patientWithRecords);
         }
 
         // Symptoms
