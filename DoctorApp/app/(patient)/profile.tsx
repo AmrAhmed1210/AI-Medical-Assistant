@@ -15,6 +15,7 @@ import { useLanguage } from "../../context/LanguageContext";
 // Import services
 import { getMyProfile, updateMyProfile, Profile, uploadProfilePhoto } from "../../services/profileService";
 import { getMyAppointments, cancelAppointment, Appointment } from "../../services/appointmentService";
+import { getMyVisits, PatientVisit } from "../../services/visitService";
 import { logout } from "../../services/authService";
 import { getDoctorById } from "../../services/doctorService";
 import { getFollowedDoctorIds } from "../../services/followService";
@@ -85,7 +86,9 @@ export default function ProfileScreen() {
   const [editDateOfBirth, setEditDateOfBirth] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const [activeTab, setActiveTab] = useState<"info" | "bookings" | "scan" | "history">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "bookings" | "visits" | "scan" | "history">("info");
+  const [visits, setVisits] = useState<PatientVisit[]>([]);
+  const [loadingVisits, setLoadingVisits] = useState(false);
   const [history, setHistory] = useState<MedicalHistory>({ chronicDiseases: [], surgeries: [], scannedMeds: [] });
   const [historyModal, setHistoryModal] = useState<null | "chronic" | "surgery">(null);
   const [historyInput, setHistoryInput] = useState("");
@@ -122,6 +125,18 @@ export default function ProfileScreen() {
     }
   };
 
+  const fetchVisits = async () => {
+    try {
+      setLoadingVisits(true);
+      const data = await getMyVisits();
+      setVisits(data);
+    } catch {
+      setVisits([]);
+    } finally {
+      setLoadingVisits(false);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -140,6 +155,9 @@ export default function ProfileScreen() {
       const userEmail = prof.email;
       const hRaw = await AsyncStorage.getItem(`history_${userEmail}`);
       setHistory(hRaw ? JSON.parse(hRaw) : { chronicDiseases: [], surgeries: [], scannedMeds: [] });
+
+      // Load visits
+      fetchVisits();
     } catch (e: any) {
       Toast.show({ type: "error", text1: e.message || "Failed to load data" });
     } finally {
@@ -392,6 +410,7 @@ export default function ProfileScreen() {
           {[
             { id: "info", icon: "person-outline", label: "Profile" },
             { id: "bookings", icon: "calendar-outline", label: "Bookings" },
+            { id: "visits", icon: "medical-outline", label: "Visits" },
             { id: "scan", icon: "scan-outline", label: "Scan Rx" },
             { id: "history", icon: "document-text-outline", label: "Medical History" },
           ].map((tab) => (
@@ -545,7 +564,53 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Scan placeholder - simplified version in overwrite */}
+        {/* Visits Tab */}
+        {activeTab === "visits" && (
+          <View>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>My Visits</Text>
+            </View>
+            {loadingVisits ? (
+              <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 20 }} />
+            ) : visits.length === 0 ? (
+              <View style={styles.emptyState}>
+                <View style={styles.emptyCircle}>
+                  <Ionicons name="medical-outline" size={40} color={COLORS.primary} />
+                </View>
+                <Text style={styles.emptyStateTitle}>No Visits Found</Text>
+                <Text style={styles.emptyStateSub}>Your completed doctor visits will appear here.</Text>
+              </View>
+            ) : (
+              visits.map(v => (
+                <TouchableOpacity key={v.id} style={styles.bookingCard} onPress={() => router.push({ pathname: "/(patient)/visit-summary", params: { visitId: String(v.id) } })}>
+                  <View style={styles.bookingTop}>
+                    <View style={styles.docInfo}>
+                      <Text style={styles.bookingDocName}>Visit #{v.id}</Text>
+                      <Text style={styles.bookingSpec}>{v.chiefComplaint}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, v.status === "closed" && { backgroundColor: "#DCFCE7" }]}>
+                      <Text style={[styles.statusTxt, v.status === "closed" && { color: "#166534" }]}>{v.status}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.bookingMeta}>
+                    <View style={styles.metaIcon}>
+                      <Ionicons name="calendar-outline" size={12} color="#64748B" />
+                      <Text style={styles.metaTxt}>{v.visitDate}</Text>
+                    </View>
+                    {v.closedAt && (
+                      <View style={styles.metaIcon}>
+                        <Ionicons name="checkmark-circle-outline" size={12} color="#64748B" />
+                        <Text style={styles.metaTxt}>Closed</Text>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+        )}
+
+        {/* Scan placeholder */}
         {activeTab === "scan" && (
           <View style={styles.emptyState}>
             <Ionicons name="scan" size={50} color={COLORS.primary} />

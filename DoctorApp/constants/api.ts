@@ -71,4 +71,18 @@ export const API = {
     update: `${BASE_URL}/api/profile/me`,
     photo:  `${BASE_URL}/api/profile/photo`,
   },
+
+  // Patient Visits
+  visits: {
+    my:     `${BASE_URL}/api/visits/my`,
+    summary: (id: number | string) => `${BASE_URL}/api/visits/${id}/summary`,
+  },
+
+  // Patient Medical Records
+  records: {
+    allergies:       (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/allergies`,
+    chronicDiseases: (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/chronic-diseases`,
+    medications:     (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/medications`,
+    vitals:          (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/vitals`,
+  },
 };
