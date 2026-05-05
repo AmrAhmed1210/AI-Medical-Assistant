@@ -96,6 +96,8 @@ export const API = {
     medications:     (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/medications`,
     medicationsSelf: (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/medications/self`,
     medicationsSchedule: (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/medications/schedule`,
+    medicationUpdate: (medicationId: number | string) => `${BASE_URL}/api/medications/${medicationId}`,
+    medicationDelete: (medicationId: number | string) => `${BASE_URL}/api/medications/${medicationId}`,
     medicationLogTaken: (logId: number | string) => `${BASE_URL}/api/medication-logs/${logId}/taken`,
     vitals:          (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/vitals`,
     vitalsLatest:    (patientId: number | string, type: string) => `${BASE_URL}/api/patients/${patientId}/vitals/latest?type=${encodeURIComponent(type)}`,

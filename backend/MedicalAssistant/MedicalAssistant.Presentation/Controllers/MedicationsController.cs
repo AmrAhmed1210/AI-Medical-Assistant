@@ -123,11 +123,18 @@ namespace MedicalAssistant.Presentation.Controllers
             ));
         }
 
-        // PATCH /api/medications/{id}  (Doctor)
+        // PATCH /api/medications/{id}  (Doctor, Patient(own))
         [HttpPatch("medications/{id:int}")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Patient")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateMedicationTrackerDto dto)
         {
+            if (User.IsInRole("Patient"))
+            {
+                var med = await _patientRecordService.GetMedicationByIdAsync(id);
+                if (med == null) return NotFound(new { message = "Medication not found." });
+                if (!IsOwnPatient(med.PatientId)) return Forbid();
+            }
+
             var updates = new MedicationTracker
             {
                 ChronicDiseaseMonitorId = dto.ChronicDiseaseMonitorId,
@@ -175,11 +182,18 @@ namespace MedicalAssistant.Presentation.Controllers
             ));
         }
 
-        // DELETE /api/medications/{id}  (Doctor,Admin)
+        // DELETE /api/medications/{id}  (Doctor,Admin,Patient(own))
         [HttpDelete("medications/{id:int}")]
-        [Authorize(Roles = "Doctor,Admin")]
+        [Authorize(Roles = "Doctor,Admin,Patient")]
         public async Task<IActionResult> Deactivate(int id)
         {
+            if (User.IsInRole("Patient"))
+            {
+                var med = await _patientRecordService.GetMedicationByIdAsync(id);
+                if (med == null) return NotFound(new { message = "Medication not found." });
+                if (!IsOwnPatient(med.PatientId)) return Forbid();
+            }
+
             var ok = await _patientRecordService.DeactivateMedicationAsync(id);
             if (!ok) return NotFound(new { message = "Medication not found." });
             return Ok(new { message = "Medication deactivated." });

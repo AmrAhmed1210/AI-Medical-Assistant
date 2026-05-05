@@ -101,3 +101,26 @@ export const markMedicationTaken = async (logId: number): Promise<void> => {
     true
   );
 };
+
+// ============================================
+// Update Medication
+// ============================================
+export const updateMedication = async (medicationId: number, payload: Partial<CreateMedicationPayload>): Promise<MedicationTracker> => {
+  const data = await apiFetch<any>(
+    API.records.medicationUpdate(medicationId),
+    { method: "PATCH", body: JSON.stringify(payload) },
+    true
+  );
+  return data;
+};
+
+// ============================================
+// Delete (Deactivate) Medication
+// ============================================
+export const deleteMedication = async (medicationId: number): Promise<void> => {
+  await apiFetch<any>(
+    API.records.medicationDelete(medicationId),
+    { method: "DELETE" },
+    true
+  );
+};

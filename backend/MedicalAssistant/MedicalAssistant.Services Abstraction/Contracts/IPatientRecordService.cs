@@ -40,6 +40,7 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
 
         // Medication trackers
         Task<IEnumerable<MedicationTracker>> GetMedicationsAsync(int patientId, bool activeOnly = true);
+        Task<MedicationTracker?> GetMedicationByIdAsync(int medicationId);
         Task<MedicationTracker> AddMedicationAsync(int patientId, MedicationTracker tracker);
         Task<MedicationTracker?> UpdateMedicationAsync(int medicationId, MedicationTracker updates);
         Task<bool> DeactivateMedicationAsync(int medicationId);

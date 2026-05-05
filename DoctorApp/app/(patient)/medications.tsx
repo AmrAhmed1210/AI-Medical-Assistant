@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, ActivityIndicator, Modal, TextInput, Switch,
+  StatusBar, ActivityIndicator, Modal, TextInput, Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
@@ -9,9 +9,13 @@ import { SosBar } from "../../components/SosBar";
 import { getMyPatientId } from "../../services/authService";
 import {
   getPatientMedications, getMedicationSchedule, createPatientMedication, markMedicationTaken,
+  updateMedication, deleteMedication,
   type MedicationTracker, type MedicationScheduleItem, type CreateMedicationPayload,
 } from "../../services/medicationService";
 import { getAllergies } from "../../services/medicalRecordService";
+import {
+  requestNotificationPermissions, scheduleMedicationReminders,
+} from "../../services/medicationReminderService";
 import Toast from "react-native-toast-message";
 
 const DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -26,22 +30,23 @@ export default function MedicationsScreen() {
   const [activeTab, setActiveTab] = useState<"schedule" | "active">("schedule");
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
-  // Add form state
+  // Form state
   const [medName, setMedName] = useState("");
   const [dosage, setDosage] = useState("");
   const [form, setForm] = useState("Pill");
   const [selectedDays, setSelectedDays] = useState<string[]>([...DAYS]);
   const [dayPreset, setDayPreset] = useState<"daily" | "weekdays" | "weekends" | "custom">("daily");
-  const [timesPerDay, setTimesPerDay] = useState(1);
   const [doseTimes, setDoseTimes] = useState("08:00");
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const [durationMode, setDurationMode] = useState<"chronic" | "days" | "until">("days");
+  const [durationDays, setDurationDays] = useState("7");
   const [endDate, setEndDate] = useState("");
   const [pills, setPills] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [isChronic, setIsChronic] = useState(false);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); requestNotificationPermissions(); }, []);
 
   const loadData = async () => {
     try {
@@ -55,7 +60,7 @@ export default function MedicationsScreen() {
         getAllergies(pid).catch(() => []),
       ]);
       setMedications(meds);
-      setSchedule(sched);
+      setSchedule(sched.sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()));
       if (allergies.length > 0) setSosData({ bloodType: "", allergies });
     } catch (e: any) {
       Toast.show({ type: "error", text1: e.message || "Failed to load medications" });
@@ -71,7 +76,17 @@ export default function MedicationsScreen() {
     if (preset === "daily") setSelectedDays([...DAYS]);
     else if (preset === "weekdays") setSelectedDays(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"]);
     else if (preset === "weekends") setSelectedDays(["Friday", "Saturday"]);
-    // custom leaves selectedDays as-is
+  };
+
+  const computedEndDate = (): string | undefined => {
+    if (durationMode === "chronic") return undefined;
+    if (durationMode === "until") return endDate || undefined;
+    if (durationMode === "days" && durationDays) {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + Number(durationDays));
+      return d.toISOString().split("T")[0];
+    }
+    return undefined;
   };
 
   const handleSave = async () => {
@@ -83,37 +98,92 @@ export default function MedicationsScreen() {
       Toast.show({ type: "error", text1: "Please select at least one day" });
       return;
     }
+    const finalEnd = computedEndDate();
     const payload: CreateMedicationPayload = {
-      medicationName: medName.trim(),
-      dosage: dosage.trim(),
-      form,
-      frequency: `${timesPerDay}x daily`,
-      timesPerDay,
+      medicationName: medName.trim(), dosage: dosage.trim(), form,
+      frequency: `${doseTimes.split(",").length}x daily`,
+      timesPerDay: doseTimes.split(",").length,
       doseTimes: doseTimes.trim(),
       daysOfWeek: selectedDays.join(","),
       startDate,
-      endDate: endDate || undefined,
+      endDate: finalEnd,
       pillsRemaining: pills ? Number(pills) : undefined,
       refillThreshold: 5,
-      isChronic,
+      isChronic: durationMode === "chronic",
       instructions: instructions.trim() || undefined,
     };
     try {
       setSaving(true);
-      await createPatientMedication(patientId, payload);
-      Toast.show({ type: "success", text1: "Medication added!" });
-      resetForm();
-      setShowAddModal(false);
-      await loadData();
+      if (editingId) {
+        await updateMedication(editingId, payload);
+        Toast.show({ type: "success", text1: "Medication updated!" });
+      } else {
+        const created = await createPatientMedication(patientId, payload);
+        await scheduleMedicationReminders(
+          created.id, created.medicationName, created.dosage,
+          created.doseTimes, created.daysOfWeek, created.startDate, created.endDate
+        );
+        Toast.show({ type: "success", text1: "Medication added!" });
+      }
+      resetForm(); setShowAddModal(false); await loadData();
     } catch (e: any) {
-      Toast.show({ type: "error", text1: e.message || "Failed to add medication" });
+      Toast.show({ type: "error", text1: e.message || "Failed to save medication" });
     } finally { setSaving(false); }
   };
 
   const resetForm = () => {
     setMedName(""); setDosage(""); setForm("Pill"); setSelectedDays([...DAYS]); setDayPreset("daily");
-    setTimesPerDay(1); setDoseTimes("08:00"); setStartDate(new Date().toISOString().split("T")[0]);
-    setEndDate(""); setPills(""); setInstructions(""); setIsChronic(false);
+    setDoseTimes("08:00"); setStartDate(new Date().toISOString().split("T")[0]);
+    setDurationMode("days"); setDurationDays("7"); setEndDate("");
+    setPills(""); setInstructions(""); setEditingId(null);
+  };
+
+  const handleEdit = (med: MedicationTracker) => {
+    setEditingId(med.id);
+    setMedName(med.medicationName);
+    setDosage(med.dosage);
+    setForm(med.form);
+    setDoseTimes(med.doseTimes);
+    setStartDate(med.startDate);
+    setPills(med.pillsRemaining?.toString() ?? "");
+    setInstructions(med.instructions ?? "");
+
+    // Days preset
+    const days = med.daysOfWeek?.split(",").map(d => d.trim()) ?? [];
+    if (days.length === DAYS.length) setDayPreset("daily");
+    else if (days.length === 5 && days.includes("Sunday") && days.includes("Monday") && days.includes("Tuesday") && days.includes("Wednesday") && days.includes("Thursday")) setDayPreset("weekdays");
+    else if (days.length === 2 && days.includes("Friday") && days.includes("Saturday")) setDayPreset("weekends");
+    else setDayPreset("custom");
+    setSelectedDays(days.length > 0 ? days : [...DAYS]);
+
+    // Duration mode
+    if (med.isChronic) { setDurationMode("chronic"); setEndDate(""); setDurationDays("7"); }
+    else if (med.endDate) { setDurationMode("until"); setEndDate(med.endDate); setDurationDays("7"); }
+    else { setDurationMode("days"); setDurationDays("7"); setEndDate(""); }
+
+    setShowAddModal(true);
+  };
+
+  const handleDelete = (medId: number, medName: string) => {
+    Alert.alert(
+      "Delete Medication",
+      `Are you sure you want to delete "${medName}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete", style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteMedication(medId);
+              Toast.show({ type: "success", text1: "Medication deleted" });
+              await loadData();
+            } catch (e: any) {
+              Toast.show({ type: "error", text1: e.message || "Failed to delete" });
+            }
+          }
+        },
+      ]
+    );
   };
 
   const handleMarkTaken = async (logId?: number) => {
@@ -129,10 +199,10 @@ export default function MedicationsScreen() {
 
   const getStatusStyle = (status: string) => {
     const s = status?.toLowerCase() || "";
-    if (s === "taken") return { bg: "#E0F2F1", text: "#00695C", label: "Taken", icon: "checkmark-circle" as const };
-    if (s === "missed") return { bg: "#FFEBEE", text: "#C62828", label: "Missed", icon: "close-circle" as const };
-    if (s === "skipped") return { bg: "#FFF3E0", text: "#E65100", label: "Skipped", icon: "remove-circle" as const };
-    return { bg: "#E3F2FD", text: "#1565C0", label: "Pending", icon: "time" as const };
+    if (s === "taken") return { bg: "#E0F2F1", text: "#00695C", label: "Taken", icon: "checkmark-circle" as const, dot: "#10B981" };
+    if (s === "missed") return { bg: "#FFEBEE", text: "#C62828", label: "Missed", icon: "close-circle" as const, dot: "#EF4444" };
+    if (s === "skipped") return { bg: "#FFF3E0", text: "#E65100", label: "Skipped", icon: "remove-circle" as const, dot: "#F59E0B" };
+    return { bg: "#EFF6FF", text: "#2563EB", label: "Pending", icon: "time" as const, dot: COLORS.primary };
   };
 
   const getStockStyle = (pills: number, threshold: number) => {
@@ -184,9 +254,11 @@ export default function MedicationsScreen() {
 
       <View style={styles.tabRow}>
         <TouchableOpacity style={[styles.tabBtn, activeTab === "schedule" && styles.tabBtnActive]} onPress={() => setActiveTab("schedule")}>
+          <Ionicons name="time-outline" size={14} color={activeTab === "schedule" ? "#fff" : "#64748B"} />
           <Text style={[styles.tabBtnTxt, activeTab === "schedule" && styles.tabBtnTxtActive]}>Today&apos;s Doses</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.tabBtn, activeTab === "active" && styles.tabBtnActive]} onPress={() => setActiveTab("active")}>
+          <Ionicons name="medkit-outline" size={14} color={activeTab === "active" ? "#fff" : "#64748B"} />
           <Text style={[styles.tabBtnTxt, activeTab === "active" && styles.tabBtnTxtActive]}>My Prescriptions</Text>
         </TouchableOpacity>
       </View>
@@ -204,33 +276,61 @@ export default function MedicationsScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              schedule.map((item, i) => {
-                const status = getStatusStyle(item.status);
-                const time = new Date(item.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                const isPending = item.status?.toLowerCase() === "pending";
-                return (
-                  <View key={i} style={[styles.scheduleCard, isPending && { borderLeftWidth: 4, borderLeftColor: COLORS.primary }]}>
-                    <View style={styles.scheduleHeader}>
-                      <View style={styles.timeBadge}>
-                        <Ionicons name="time-outline" size={14} color="#1565C0" />
-                        <Text style={styles.timeBadgeText}>{time}</Text>
+              <View style={{ paddingTop: 8 }}>
+                {/* Summary */}
+                <View style={styles.summaryRow}>
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryNum}>{schedule.filter(s => s.status?.toLowerCase() === "pending").length}</Text>
+                    <Text style={styles.summaryLabel}>Pending</Text>
+                  </View>
+                  <View style={styles.summaryDivider} />
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryNum}>{schedule.filter(s => s.status?.toLowerCase() === "taken").length}</Text>
+                    <Text style={styles.summaryLabel}>Taken</Text>
+                  </View>
+                  <View style={styles.summaryDivider} />
+                  <View style={styles.summaryItem}>
+                    <Text style={styles.summaryNum}>{schedule.length}</Text>
+                    <Text style={styles.summaryLabel}>Total</Text>
+                  </View>
+                </View>
+
+                {/* Timeline */}
+                {schedule.map((item, i) => {
+                  const status = getStatusStyle(item.status);
+                  const time = new Date(item.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                  const isPending = item.status?.toLowerCase() === "pending";
+                  const isLast = i === schedule.length - 1;
+                  return (
+                    <View key={i} style={styles.timelineRow}>
+                      {/* Time column */}
+                      <View style={styles.timeCol}>
+                        <View style={[styles.timelineDot, { backgroundColor: status.dot }]} />
+                        {!isLast && <View style={styles.timelineLine} />}
+                        <Text style={styles.timelineTime}>{time}</Text>
                       </View>
-                      <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-                        <Ionicons name={status.icon} size={12} color={status.text} />
-                        <Text style={[styles.statusBadgeText, { color: status.text }]}>{status.label}</Text>
+
+                      {/* Card */}
+                      <View style={[styles.timelineCard, isPending && styles.timelineCardPending]}>
+                        <View style={styles.timelineCardHeader}>
+                          <Text style={styles.timelineMedName}>{item.medicationName}</Text>
+                          <View style={[styles.timelineStatusBadge, { backgroundColor: status.bg }]}>
+                            <Ionicons name={status.icon} size={10} color={status.text} />
+                            <Text style={[styles.timelineStatusText, { color: status.text }]}>{status.label}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.timelineDosage}>{item.dosage}</Text>
+                        {isPending && (
+                          <TouchableOpacity style={styles.timelineTakeBtn} onPress={() => handleMarkTaken(item.logId)}>
+                            <Ionicons name="checkmark" size={16} color="#fff" />
+                            <Text style={styles.timelineTakeBtnTxt}>Mark as Taken</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </View>
-                    <Text style={styles.medName}>{item.medicationName}</Text>
-                    <Text style={styles.medDosage}>{item.dosage}</Text>
-                    {isPending && (
-                      <TouchableOpacity style={styles.markBtn} onPress={() => handleMarkTaken(item.logId)}>
-                        <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                        <Text style={styles.markBtnTxt}>Mark as Taken</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              })
+                  );
+                })}
+              </View>
             )}
           </>
         ) : (
@@ -252,7 +352,7 @@ export default function MedicationsScreen() {
                   <View key={med.id} style={styles.medCard}>
                     <View style={styles.medHeader}>
                       <Text style={styles.medName}>{med.medicationName}</Text>
-                      <View style={{ flexDirection: "row", gap: 6 }}>
+                      <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
                         {med.isChronic && (
                           <View style={styles.chronicBadge}>
                             <Text style={styles.chronicBadgeText}>Chronic</Text>
@@ -261,6 +361,12 @@ export default function MedicationsScreen() {
                         <View style={[styles.stockBadge, { backgroundColor: stock.bg }]}>
                           <Text style={[styles.stockBadgeText, { color: stock.text }]}>{med.pillsRemaining ?? 0}</Text>
                         </View>
+                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleEdit(med)}>
+                          <Ionicons name="create-outline" size={16} color="#64748B" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(med.id, med.medicationName)}>
+                          <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                        </TouchableOpacity>
                       </View>
                     </View>
                     <Text style={styles.medMeta}>{med.dosage} • {med.frequency} • {med.form}</Text>
@@ -288,10 +394,17 @@ export default function MedicationsScreen() {
           <View style={styles.modalSheet}>
             <View style={styles.sheetHandle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Medication</Text>
-              <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <Ionicons name="close" size={24} color="#64748B" />
-              </TouchableOpacity>
+              <Text style={styles.modalTitle}>{editingId ? "Edit Medication" : "Add Medication"}</Text>
+              <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+                {editingId && (
+                  <TouchableOpacity onPress={() => { resetForm(); setShowAddModal(false); }}>
+                    <Ionicons name="trash-outline" size={22} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => { resetForm(); setShowAddModal(false); }}>
+                  <Ionicons name="close" size={24} color="#64748B" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -319,12 +432,12 @@ export default function MedicationsScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Schedule</Text>
+                <Text style={styles.inputLabel}>When to take</Text>
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                   {(["daily", "weekdays", "weekends", "custom"] as const).map(p => (
                     <TouchableOpacity key={p} style={[styles.presetChip, dayPreset === p && styles.presetChipActive]} onPress={() => applyDayPreset(p)}>
                       <Text style={[styles.presetChipTxt, dayPreset === p && styles.presetChipTxtActive]}>
-                        {p === "daily" ? "Daily" : p === "weekdays" ? "Weekdays" : p === "weekends" ? "Weekends" : "Custom"}
+                        {p === "daily" ? "Everyday" : p === "weekdays" ? "Weekdays" : p === "weekends" ? "Weekends" : "Custom"}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -340,34 +453,37 @@ export default function MedicationsScreen() {
                 )}
               </View>
 
-              <View style={styles.rowInputs}>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Times/Day</Text>
-                  <View style={styles.counterRow}>
-                    <TouchableOpacity style={styles.counterBtn} onPress={() => setTimesPerDay(Math.max(1, timesPerDay - 1))}>
-                      <Ionicons name="remove" size={16} color={COLORS.primary} />
-                    </TouchableOpacity>
-                    <Text style={styles.counterVal}>{timesPerDay}</Text>
-                    <TouchableOpacity style={styles.counterBtn} onPress={() => setTimesPerDay(Math.min(6, timesPerDay + 1))}>
-                      <Ionicons name="add" size={16} color={COLORS.primary} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <View style={[styles.inputGroup, { flex: 2 }]}>
-                  <Text style={styles.inputLabel}>Dose Times (comma separated)</Text>
-                  <TextInput style={styles.textInput} value={doseTimes} onChangeText={setDoseTimes} placeholder="08:00,14:00,20:00" />
-                </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Dose Times * (comma separated)</Text>
+                <TextInput style={styles.textInput} value={doseTimes} onChangeText={setDoseTimes} placeholder="08:00, 14:00, 20:00" />
               </View>
 
-              <View style={styles.rowInputs}>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Start Date</Text>
-                  <TextInput style={styles.textInput} value={startDate} onChangeText={setStartDate} />
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Duration</Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {(["days", "until", "chronic"] as const).map(mode => (
+                    <TouchableOpacity key={mode} style={[styles.presetChip, durationMode === mode && styles.presetChipActive]} onPress={() => setDurationMode(mode)}>
+                      <Text style={[styles.presetChipTxt, durationMode === mode && styles.presetChipTxtActive]}>
+                        {mode === "days" ? "For X days" : mode === "until" ? "Until date" : "Chronic"}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>End Date (optional)</Text>
-                  <TextInput style={styles.textInput} value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" />
-                </View>
+                {durationMode === "days" && (
+                  <View style={{ marginTop: 10 }}>
+                    <TextInput style={styles.textInput} value={durationDays} onChangeText={setDurationDays} keyboardType="number-pad" placeholder="Number of days e.g. 7" />
+                  </View>
+                )}
+                {durationMode === "until" && (
+                  <View style={{ marginTop: 10 }}>
+                    <TextInput style={styles.textInput} value={endDate} onChangeText={setEndDate} placeholder="End date YYYY-MM-DD" />
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Start Date</Text>
+                <TextInput style={styles.textInput} value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" />
               </View>
 
               <View style={styles.inputGroup}>
@@ -377,16 +493,11 @@ export default function MedicationsScreen() {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Instructions</Text>
-                <TextInput style={[styles.textInput, { height: 60 }]} value={instructions} onChangeText={setInstructions} placeholder="After meals, etc." multiline />
-              </View>
-
-              <View style={styles.switchRow}>
-                <Text style={styles.inputLabel}>Chronic (long-term)</Text>
-                <Switch value={isChronic} onValueChange={setIsChronic} trackColor={{ false: "#E2E8F0", true: COLORS.primary }} />
+                <TextInput style={[styles.textInput, { height: 60 }]} value={instructions} onChangeText={setInstructions} placeholder="After meals, with water, etc." multiline />
               </View>
 
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnTxt}>Save Medication</Text>}
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnTxt}>{editingId ? "Update Medication" : "Save Medication"}</Text>}
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -404,43 +515,61 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: "800", color: "#fff" },
   headerSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 },
   addBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
+
   tabRow: { flexDirection: "row", paddingHorizontal: 20, paddingVertical: 12, gap: 10 },
-  tabBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, backgroundColor: "#fff", alignItems: "center", borderWidth: 1, borderColor: "#E2E8F0" },
+  tabBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10, borderRadius: 12, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0" },
   tabBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   tabBtnTxt: { fontSize: 13, fontWeight: "600", color: "#64748B" },
   tabBtnTxtActive: { color: "#fff" },
+
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 },
+
   emptyCard: { backgroundColor: "#fff", borderRadius: 20, padding: 40, alignItems: "center", marginTop: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
   emptyTitle: { fontSize: 16, fontWeight: "700", color: "#1E293B", marginTop: 16 },
   emptyDesc: { fontSize: 13, color: "#94A3B8", marginTop: 6, textAlign: "center" },
   primaryBtnSmall: { backgroundColor: COLORS.primary, paddingHorizontal: 25, paddingVertical: 12, borderRadius: 20, marginTop: 16 },
   primaryBtnSmallTxt: { color: "#fff", fontSize: 13, fontWeight: "700" },
-  scheduleCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
-  scheduleHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  timeBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#E3F2FD", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  timeBadgeText: { fontSize: 12, fontWeight: "700", color: "#1565C0" },
-  statusBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  statusBadgeText: { fontSize: 12, fontWeight: "700" },
-  medName: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
-  medDosage: { fontSize: 13, color: "#64748B", marginTop: 4 },
-  markBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: COLORS.primary, paddingVertical: 12, borderRadius: 12, marginTop: 12 },
-  markBtnTxt: { color: "#fff", fontSize: 14, fontWeight: "700" },
+
+  summaryRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", backgroundColor: "#fff", borderRadius: 16, paddingVertical: 14, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  summaryItem: { flex: 1, alignItems: "center" },
+  summaryNum: { fontSize: 20, fontWeight: "800", color: "#1E293B" },
+  summaryLabel: { fontSize: 11, fontWeight: "600", color: "#94A3B8", marginTop: 2 },
+  summaryDivider: { width: 1, height: 30, backgroundColor: "#E2E8F0" },
+
+  timelineRow: { flexDirection: "row", marginBottom: 16 },
+  timeCol: { width: 56, alignItems: "center", position: "relative", paddingTop: 4 },
+  timelineDot: { width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: "#fff" },
+  timelineLine: { position: "absolute", top: 16, bottom: -16, width: 2, backgroundColor: "#E2E8F0", left: 27 },
+  timelineTime: { fontSize: 11, fontWeight: "700", color: "#64748B", marginTop: 4 },
+  timelineCard: { flex: 1, backgroundColor: "#fff", borderRadius: 16, padding: 14, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  timelineCardPending: { borderLeftWidth: 3, borderLeftColor: COLORS.primary },
+  timelineCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  timelineMedName: { fontSize: 15, fontWeight: "700", color: "#1E293B", flex: 1 },
+  timelineStatusBadge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  timelineStatusText: { fontSize: 10, fontWeight: "700" },
+  timelineDosage: { fontSize: 12, color: "#64748B", marginTop: 2 },
+  timelineTakeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: COLORS.primary, paddingVertical: 10, borderRadius: 10, marginTop: 10 },
+  timelineTakeBtnTxt: { color: "#fff", fontSize: 13, fontWeight: "700" },
+
   medCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
   medHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
+  medName: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
+  medMeta: { fontSize: 13, color: "#64748B" },
+  medTimes: { fontSize: 12, color: "#475569", marginTop: 4 },
+  medInstructions: { fontSize: 12, color: "#64748B", marginTop: 6, fontStyle: "italic" },
   chronicBadge: { backgroundColor: "#E0F2F1", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   chronicBadgeText: { fontSize: 10, fontWeight: "700", color: "#00695C" },
   stockBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   stockBadgeText: { fontSize: 10, fontWeight: "700" },
-  medMeta: { fontSize: 13, color: "#64748B" },
-  medTimes: { fontSize: 12, color: "#475569", marginTop: 4 },
-  medInstructions: { fontSize: 12, color: "#64748B", marginTop: 6, fontStyle: "italic" },
   dayChip: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, backgroundColor: "#F1F5F9" },
   dayChipActive: { backgroundColor: COLORS.primary + "18" },
   dayChipTxt: { fontSize: 10, fontWeight: "600", color: "#94A3B8" },
   dayChipTxtActive: { color: COLORS.primary },
   stockAlert: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   stockAlertText: { fontSize: 12, fontWeight: "700" },
+  actionBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: "#F1F5F9", justifyContent: "center", alignItems: "center" },
+
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   modalSheet: { backgroundColor: "#fff", borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: "90%" },
   sheetHandle: { width: 40, height: 4, backgroundColor: "#E2E8F0", borderRadius: 2, alignSelf: "center", marginBottom: 16 },
@@ -462,10 +591,6 @@ const styles = StyleSheet.create({
   daySelectChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   daySelectChipTxt: { fontSize: 12, fontWeight: "600", color: "#64748B" },
   daySelectChipTxtActive: { color: "#fff", fontWeight: "700" },
-  counterRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  counterBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: "#F1F5F9", justifyContent: "center", alignItems: "center" },
-  counterVal: { fontSize: 16, fontWeight: "700", color: "#1E293B", minWidth: 20, textAlign: "center" },
-  switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 },
   saveBtn: { backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 16, alignItems: "center", marginTop: 8 },
   saveBtnTxt: { color: "#fff", fontSize: 15, fontWeight: "800" },
 });

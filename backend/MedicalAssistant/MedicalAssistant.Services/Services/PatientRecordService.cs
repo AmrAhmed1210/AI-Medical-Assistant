@@ -249,6 +249,11 @@ namespace MedicalAssistant.Services.Services
             return items.OrderByDescending(m => m.CreatedAt);
         }
 
+        public async Task<MedicationTracker?> GetMedicationByIdAsync(int medicationId)
+        {
+            return await _unitOfWork.Repository<MedicationTracker>().GetByIdAsync(medicationId);
+        }
+
         public async Task<MedicationTracker> AddMedicationAsync(int patientId, MedicationTracker tracker)
         {
             tracker.PatientId = patientId;
