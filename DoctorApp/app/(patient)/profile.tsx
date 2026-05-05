@@ -676,10 +676,26 @@ export default function ProfileScreen() {
             
             {/* Displaying Medical History Items */}
             <View style={[styles.sectionHeader, { marginTop: 20 }]}>
-              <Text style={styles.sectionTitle}>Medical Records</Text>
+              <Text style={styles.sectionTitle}>My Medical Records</Text>
+              <TouchableOpacity onPress={() => router.push("/(patient)/medical-records")}>
+                <Text style={styles.seeAll}>View All</Text>
+              </TouchableOpacity>
             </View>
+            <TouchableOpacity style={styles.infoCard} onPress={() => router.push("/(patient)/medical-records")}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <View style={[styles.infoIconBox, { backgroundColor: COLORS.primary + "15" }]}>
+                  <Ionicons name="document-text-outline" size={20} color={COLORS.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#1E293B" }}>View Full Medical Records</Text>
+                  <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>Allergies, chronic diseases, medications & vitals</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
+              </View>
+            </TouchableOpacity>
+
             {history.chronicDiseases.length === 0 && history.surgeries.length === 0 ? (
-                <Text style={styles.emptyStateSub}>No medical records added yet.</Text>
+                <Text style={styles.emptyStateSub}>No local medical history added yet.</Text>
             ) : (
                 <>
                   {history.chronicDiseases.map((d, i) => (

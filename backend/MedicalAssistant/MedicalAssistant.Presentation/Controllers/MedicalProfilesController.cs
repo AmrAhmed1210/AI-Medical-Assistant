@@ -29,6 +29,16 @@ namespace MedicalAssistant.Presentation.Controllers
             return int.TryParse(claim, out var id) ? id : 0;
         }
 
+        // GET /api/patients/me  (Patient)
+        [HttpGet("me")]
+        [Authorize(Roles = "Patient")]
+        public IActionResult GetMyPatientId()
+        {
+            var patientId = GetPatientIdFromClaims();
+            if (patientId <= 0) return Unauthorized(new { message = "Invalid token." });
+            return Ok(new { patientId });
+        }
+
         // POST /api/patients/{id}/profile
         [HttpPost("{id:int}/profile")]
         [Authorize(Roles = "Doctor,Nurse")]

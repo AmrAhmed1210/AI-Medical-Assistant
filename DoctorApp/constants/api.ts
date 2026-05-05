@@ -78,6 +78,11 @@ export const API = {
     summary: (id: number | string) => `${BASE_URL}/api/visits/${id}/summary`,
   },
 
+  // Patient
+  patient: {
+    me: `${BASE_URL}/api/patients/me`,
+  },
+
   // Patient Medical Records
   records: {
     allergies:       (patientId: number | string) => `${BASE_URL}/api/patients/${patientId}/allergies`,

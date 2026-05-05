@@ -3,6 +3,28 @@ import { API } from "../constants/api";
 import { apiFetch } from "./http";
 
 // ============================================
+// Get Patient ID for logged-in patient
+// ============================================
+export const getMyPatientId = async (): Promise<number> => {
+  const stored = await AsyncStorage.getItem("patientId");
+  if (stored) {
+    const id = Number(stored);
+    if (id > 0) return id;
+  }
+  try {
+    const data = await apiFetch<any>(API.patient.me, { method: "GET" }, true);
+    const pid = Number(data?.patientId ?? 0);
+    if (pid > 0) {
+      await AsyncStorage.setItem("patientId", String(pid));
+      return pid;
+    }
+  } catch {
+    // fallback
+  }
+  return 0;
+};
+
+// ============================================
 // Types
 // ============================================
 export interface RegisterPayload {

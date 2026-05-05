@@ -152,6 +152,18 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(summary);
         }
 
+        // GET /api/visits/my  (Patient)
+        [HttpGet("my")]
+        [Authorize(Roles = "Patient")]
+        public async Task<IActionResult> GetMyVisits()
+        {
+            var userId = GetUserIdFromToken();
+            if (!userId.HasValue) return Unauthorized(new { message = "Invalid token." });
+
+            var visits = await _visitService.GetMyVisitsAsync(userId.Value);
+            return Ok(visits);
+        }
+
         // GET /api/visits/{id}/summary-pdf  (Doctor)
         // Placeholder: returns JSON for now.
         [HttpGet("{id:int}/summary-pdf")]

@@ -14,6 +14,7 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
         Task<bool> CloseVisitAsync(int doctorUserId, int visitId);
         Task<IEnumerable<PatientVisitDto>> GetVisitsForPatientAsync(int patientId);
         Task<IEnumerable<PatientVisitDto>> GetTodayVisitsForDoctorAsync(int doctorUserId);
+        Task<IEnumerable<PatientVisitDto>> GetMyVisitsAsync(int patientUserId);
         Task<VisitSummaryDto?> GetVisitSummaryAsync(int doctorUserId, int visitId);
         Task<VisitSummaryDto?> GetVisitSummaryForPatientAsync(int patientUserId, int visitId);
         Task<PatientHistoryDto?> GetPatientHistoryAsync(int doctorUserId, int patientId);

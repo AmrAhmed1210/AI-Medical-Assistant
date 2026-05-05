@@ -251,6 +251,19 @@ namespace MedicalAssistant.Services.Services
             return items.OrderByDescending(v => v.CreatedAt).Select(MapVisit).ToList();
         }
 
+        public async Task<IEnumerable<PatientVisitDto>> GetMyVisitsAsync(int patientUserId)
+        {
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(patientUserId);
+            if (user == null || !string.Equals(user.Role, "Patient", StringComparison.OrdinalIgnoreCase))
+                throw new UnauthorizedAccessException("Patient profile not found.");
+
+            var patient = (await _unitOfWork.Repository<Patient>().FindAsync(p => p.UserId == patientUserId)).FirstOrDefault();
+            if (patient == null) throw new UnauthorizedAccessException("Patient record not found.");
+
+            var items = await _unitOfWork.Repository<PatientVisit>().FindAsync(v => v.PatientId == patient.Id);
+            return items.OrderByDescending(v => v.CreatedAt).Select(MapVisit).ToList();
+        }
+
         private VisitSummaryDto BuildVisitSummary(PatientVisit visit, Patient? patient)
         {
             var age = patient != null && patient.DateOfBirth > DateTime.MinValue
