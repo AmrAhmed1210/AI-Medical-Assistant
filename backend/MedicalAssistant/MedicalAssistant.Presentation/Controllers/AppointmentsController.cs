@@ -25,7 +25,7 @@ namespace MedicalAssistant.Presentation.Controllers
 
         // POST /appointments
         [HttpPost]
-        [Authorize(Roles = "Patient")]
+        [Authorize(Roles = "Patient,Doctor,Secretary,Admin")]
         [ProducesResponseType(typeof(AppointmentDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create([FromBody] CreateAppointmentDto dto)
@@ -33,13 +33,21 @@ namespace MedicalAssistant.Presentation.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Get patientId from JWT token
-            var patientIdClaim = User.FindFirst("PatientId")?.Value
-                              ?? User.FindFirst("sub")?.Value;
-            if (!int.TryParse(patientIdClaim, out var patientId))
-                return Unauthorized(new { message = "Invalid token." });
+            var role = GetRole();
+            if (string.Equals(role, "Patient", StringComparison.OrdinalIgnoreCase))
+            {
+                // Get patientId from JWT token
+                var patientIdClaim = User.FindFirst("PatientId")?.Value
+                                  ?? User.FindFirst("sub")?.Value;
+                if (!int.TryParse(patientIdClaim, out var patientId))
+                    return Unauthorized(new { message = "Invalid token." });
 
-            dto.PatientId = patientId;
+                dto.PatientId = patientId;
+            }
+            else if (dto.PatientId <= 0)
+            {
+                return BadRequest(new { message = "PatientId is required for non-patient bookings." });
+            }
 
             // Reject bookings in the past
             if (!string.IsNullOrWhiteSpace(dto.Date) && !string.IsNullOrWhiteSpace(dto.Time))

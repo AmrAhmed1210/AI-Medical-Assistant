@@ -28,7 +28,7 @@ export interface MedicationTracker {
 }
 
 export interface MedicationScheduleItem {
-  logId?: number;
+  logId: number;
   medicationTrackerId: number;
   scheduledAt: string;
   medicationName: string;

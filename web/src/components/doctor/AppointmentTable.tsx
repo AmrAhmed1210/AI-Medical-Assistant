@@ -7,13 +7,13 @@ import { formatDateTime } from '@/lib/utils'
 
 interface AppointmentTableProps {
   appointments: AppointmentDto[]
-  onConfirm?: (id: string) => Promise<void>
-  onUnconfirm?: (id: string) => Promise<void>
-  onCancel?: (id: string) => Promise<void>
-  onComplete?: (id: string) => Promise<void>
-  onDelete?: (id: string) => Promise<void>
-  onNoShow?: (id: string) => Promise<void>
-  onReschedule?: (id: string) => Promise<void>
+  onConfirm?: (id: string) => Promise<void> | void
+  onUnconfirm?: (id: string) => Promise<void> | void
+  onCancel?: (id: string) => Promise<void> | void
+  onComplete?: (id: string) => Promise<void> | void
+  onDelete?: (id: string) => Promise<void> | void
+  onNoShow?: (id: string) => Promise<void> | void
+  onReschedule?: (id: string) => Promise<void> | void
   showSecretaryActions?: boolean
 }
 
@@ -126,14 +126,16 @@ export function AppointmentTable({
                         >
                           <XCircle size={14} />
                         </button>
-                        <button
-                          onClick={() => setActionItem({ appointment: appt, action: 'complete' })}
-                          disabled={loadingId === appt.id}
-                          className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50"
-                          title="Complete"
-                        >
-                          <CheckCheck size={14} />
-                        </button>
+                        {onComplete && (
+                          <button
+                            onClick={() => setActionItem({ appointment: appt, action: 'complete' })}
+                            disabled={loadingId === appt.id}
+                            className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50"
+                            title="Complete"
+                          >
+                            <CheckCheck size={14} />
+                          </button>
+                        )}
                       </>
                     )}
                     {appt.status === 'Confirmed' && (
@@ -147,15 +149,17 @@ export function AppointmentTable({
                           <Undo2 size={14} />
                           <span className="text-[10px] font-extrabold tracking-wider uppercase">Unconfirm</span>
                         </button>
-                        <button
-                          onClick={() => setActionItem({ appointment: appt, action: 'complete' })}
-                          disabled={loadingId === appt.id}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all shadow-sm active:scale-95"
-                          title="Complete"
-                        >
-                          <CheckCheck size={14} />
-                          <span className="text-[10px] font-extrabold tracking-wider uppercase">Complete</span>
-                        </button>
+                        {onComplete && (
+                          <button
+                            onClick={() => setActionItem({ appointment: appt, action: 'complete' })}
+                            disabled={loadingId === appt.id}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all shadow-sm active:scale-95"
+                            title="Complete"
+                          >
+                            <CheckCheck size={14} />
+                            <span className="text-[10px] font-extrabold tracking-wider uppercase">Complete</span>
+                          </button>
+                        )}
                         {showSecretaryActions && (
                           <>
                             <button
@@ -180,7 +184,7 @@ export function AppointmentTable({
                         )}
                       </>
                     )}
-                    {appt.status !== 'Cancelled' && appt.status !== 'Completed' && (
+                    {appt.status !== 'Cancelled' && appt.status !== 'Completed' && onDelete && (
                       <button
                         onClick={() => setActionItem({ appointment: appt, action: 'delete' })}
                         disabled={loadingId === appt.id}

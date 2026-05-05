@@ -217,8 +217,13 @@ export interface AppointmentDto {
 
 export interface BookAppointmentRequest {
   doctorId: string
+  patientId?: number
   scheduledAt: string
   sessionId?: string
+  date?: string
+  time?: string
+  paymentMethod?: string
+  notes?: string
 }
 
 export interface CancelAppointmentRequest {

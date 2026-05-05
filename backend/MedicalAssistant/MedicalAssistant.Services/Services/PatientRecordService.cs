@@ -396,6 +396,7 @@ namespace MedicalAssistant.Services.Services
                 {
                     var tr = trackerMap.GetValueOrDefault(l.MedicationTrackerId);
                     return new MedicationScheduleItemDto(
+                        l.Id,
                         l.MedicationTrackerId,
                         l.ScheduledAt,
                         tr?.MedicationName ?? string.Empty,

@@ -31,6 +31,7 @@ const ManageSecretaries = lazy(() => import('@/pages/doctor/ManageSecretaries'))
 
 // Secretary
 const SecretaryDashboard = lazy(() => import('@/pages/secretary/SecretaryDashboard'))
+const SecretaryDoctorSchedule = lazy(() => import('@/pages/secretary/SecretaryDoctorSchedule'))
 
 // Public pages
 const DoctorsList = lazy(() => import('@/pages/doctor/DoctorsList'))
@@ -133,6 +134,7 @@ export default function App() {
               {/* Secretary routes */}
               <Route element={<RoleGuard roles={['Secretary']} />}>
                 <Route path="/secretary/dashboard" element={<SecretaryDashboard />} />
+                <Route path="/secretary/schedule" element={<SecretaryDoctorSchedule />} />
               </Route>
 
             </Route>

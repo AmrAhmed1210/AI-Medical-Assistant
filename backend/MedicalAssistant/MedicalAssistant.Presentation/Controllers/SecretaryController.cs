@@ -12,15 +12,17 @@ namespace MedicalAssistant.Presentation.Controllers;
 public class SecretaryController : ControllerBase
 {
     private readonly ISecretaryService _secretaryService;
+    private readonly IDoctorService _doctorService;
 
-    public SecretaryController(ISecretaryService secretaryService)
+    public SecretaryController(ISecretaryService secretaryService, IDoctorService doctorService)
     {
         _secretaryService = secretaryService;
+        _doctorService = doctorService;
     }
 
     private int GetCurrentUserId()
     {
-        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                      ?? User.FindFirst("UserId")?.Value;
         return int.Parse(userIdStr ?? "0");
     }
@@ -54,5 +56,69 @@ public class SecretaryController : ControllerBase
     {
         var success = await _secretaryService.DeleteSecretaryAsync(GetCurrentUserId(), id);
         return success ? Ok() : NotFound();
+    }
+
+    // --- Secretary-specific endpoints ---
+
+    [HttpGet("my-doctor")]
+    [Authorize(Roles = "Secretary")]
+    public async Task<IActionResult> GetMyDoctor()
+    {
+        var secretaryUserId = GetCurrentUserId();
+        var doctorId = await _secretaryService.GetDoctorIdForSecretaryAsync(secretaryUserId);
+        if (!doctorId.HasValue)
+            return NotFound(new { message = "No doctor assigned." });
+
+        var profile = await _doctorService.GetProfileAsync(doctorId.Value);
+        if (profile == null)
+            return NotFound(new { message = "Doctor not found." });
+
+        return Ok(profile);
+    }
+
+    [HttpGet("my-doctor/patients")]
+    [Authorize(Roles = "Secretary")]
+    public async Task<IActionResult> GetMyDoctorPatients([FromQuery] string? search = null)
+    {
+        var secretaryUserId = GetCurrentUserId();
+        var doctorId = await _secretaryService.GetDoctorIdForSecretaryAsync(secretaryUserId);
+        if (!doctorId.HasValue)
+            return NotFound(new { message = "No doctor assigned." });
+
+        var patients = await _doctorService.GetPatientsAsync(doctorId.Value, search);
+        return Ok(patients);
+    }
+
+    [HttpGet("my-doctor/availability")]
+    [Authorize(Roles = "Secretary")]
+    public async Task<IActionResult> GetMyDoctorAvailability()
+    {
+        var secretaryUserId = GetCurrentUserId();
+        var doctorId = await _secretaryService.GetDoctorIdForSecretaryAsync(secretaryUserId);
+        if (!doctorId.HasValue)
+            return NotFound(new { message = "No doctor assigned." });
+
+        var availability = await _doctorService.GetAvailabilityAsync(doctorId.Value);
+        return Ok(availability);
+    }
+
+    [HttpPut("my-doctor/availability")]
+    [Authorize(Roles = "Secretary")]
+    public async Task<IActionResult> UpdateMyDoctorAvailability([FromBody] List<AvailabilityDto> data)
+    {
+        var secretaryUserId = GetCurrentUserId();
+        var doctorId = await _secretaryService.GetDoctorIdForSecretaryAsync(secretaryUserId);
+        if (!doctorId.HasValue)
+            return NotFound(new { message = "No doctor assigned." });
+
+        await _doctorService.UpdateAvailabilityAsync(doctorId.Value, data);
+
+        var schedule = await _doctorService.GetMyScheduleAsync(doctorId.Value);
+        if (schedule != null)
+        {
+            // Note: notification service not injected here, skip or inject if needed
+        }
+
+        return NoContent();
     }
 }

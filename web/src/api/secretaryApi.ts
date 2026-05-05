@@ -1,5 +1,5 @@
 import axiosInstance from './axiosInstance'
-import type { SecretaryDto, CreateSecretaryRequest } from '@/lib/types'
+import type { SecretaryDto, CreateSecretaryRequest, DoctorDetailDto, PatientSummaryDto, AvailabilityDto } from '@/lib/types'
 
 export const secretaryApi = {
   addSecretary: (data: CreateSecretaryRequest) =>
@@ -10,4 +10,17 @@ export const secretaryApi = {
 
   deleteSecretary: (id: number) =>
     axiosInstance.delete(`/api/Secretary/${id}`).then((r) => r.data),
+
+  // --- Secretary-specific ---
+  getMyDoctor: () =>
+    axiosInstance.get<DoctorDetailDto>('/api/Secretary/my-doctor').then((r) => r.data),
+
+  searchMyDoctorPatients: (search?: string) =>
+    axiosInstance.get<PatientSummaryDto[]>('/api/Secretary/my-doctor/patients', { params: { search } }).then((r) => r.data),
+
+  getMyDoctorAvailability: () =>
+    axiosInstance.get<AvailabilityDto[]>('/api/Secretary/my-doctor/availability').then((r) => r.data),
+
+  updateMyDoctorAvailability: (data: AvailabilityDto[]) =>
+    axiosInstance.put('/api/Secretary/my-doctor/availability', data).then((r) => r.data),
 }

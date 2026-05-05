@@ -31,6 +31,7 @@ export default function MedicationsScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [takingId, setTakingId] = useState<number | null>(null);
 
   // Form state
   const [medName, setMedName] = useState("");
@@ -39,6 +40,9 @@ export default function MedicationsScreen() {
   const [selectedDays, setSelectedDays] = useState<string[]>([...DAYS]);
   const [dayPreset, setDayPreset] = useState<"daily" | "weekdays" | "weekends" | "custom">("daily");
   const [doseTimes, setDoseTimes] = useState("08:00");
+  const [doseMode, setDoseMode] = useState<"fixed" | "interval">("fixed");
+  const [intervalHours, setIntervalHours] = useState("8");
+  const [timesPerDay, setTimesPerDay] = useState("1");
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [durationMode, setDurationMode] = useState<"chronic" | "days" | "until">("days");
   const [durationDays, setDurationDays] = useState("7");
@@ -99,11 +103,30 @@ export default function MedicationsScreen() {
       return;
     }
     const finalEnd = computedEndDate();
+    // Compute doseTimes from interval or fixed mode
+    let computedDoseTimes = doseTimes.trim();
+    let computedTimesPerDay = doseTimes.split(",").filter(Boolean).length;
+    if (doseMode === "interval") {
+      const hours = Number(intervalHours);
+      const count = Number(timesPerDay);
+      if (isNaN(hours) || hours < 1 || isNaN(count) || count < 1) {
+        Toast.show({ type: "error", text1: "Please enter valid interval and count" });
+        return;
+      }
+      const times: string[] = [];
+      let currentHour = 8;
+      for (let i = 0; i < count; i++) {
+        times.push(`${String(currentHour).padStart(2, "0")}:00`);
+        currentHour = (currentHour + hours) % 24;
+      }
+      computedDoseTimes = times.join(",");
+      computedTimesPerDay = count;
+    }
     const payload: CreateMedicationPayload = {
       medicationName: medName.trim(), dosage: dosage.trim(), form,
-      frequency: `${doseTimes.split(",").length}x daily`,
-      timesPerDay: doseTimes.split(",").length,
-      doseTimes: doseTimes.trim(),
+      frequency: `${computedTimesPerDay}x daily`,
+      timesPerDay: computedTimesPerDay,
+      doseTimes: computedDoseTimes,
       daysOfWeek: selectedDays.join(","),
       startDate,
       endDate: finalEnd,
@@ -133,7 +156,8 @@ export default function MedicationsScreen() {
 
   const resetForm = () => {
     setMedName(""); setDosage(""); setForm("Pill"); setSelectedDays([...DAYS]); setDayPreset("daily");
-    setDoseTimes("08:00"); setStartDate(new Date().toISOString().split("T")[0]);
+    setDoseTimes("08:00"); setDoseMode("fixed"); setIntervalHours("8"); setTimesPerDay("1");
+    setStartDate(new Date().toISOString().split("T")[0]);
     setDurationMode("days"); setDurationDays("7"); setEndDate("");
     setPills(""); setInstructions(""); setEditingId(null);
   };
@@ -155,6 +179,29 @@ export default function MedicationsScreen() {
     else if (days.length === 2 && days.includes("Friday") && days.includes("Saturday")) setDayPreset("weekends");
     else setDayPreset("custom");
     setSelectedDays(days.length > 0 ? days : [...DAYS]);
+
+    // Dose mode detection
+    const times = med.doseTimes?.split(",").map(t => t.trim()).filter(Boolean) ?? [];
+    if (times.length > 1) {
+      // Check if times are evenly spaced (interval mode)
+      const hours = times.map(t => Number(t.split(":")[0])).sort((a, b) => a - b);
+      const diffs: number[] = [];
+      for (let i = 1; i < hours.length; i++) diffs.push(hours[i] - hours[i - 1]);
+      const allSame = diffs.length > 0 && diffs.every(d => d === diffs[0]);
+      if (allSame && diffs[0] > 0) {
+        setDoseMode("interval");
+        setIntervalHours(String(diffs[0]));
+        setTimesPerDay(String(times.length));
+      } else {
+        setDoseMode("fixed");
+        setDoseTimes(med.doseTimes);
+        setTimesPerDay(String(times.length));
+      }
+    } else {
+      setDoseMode("fixed");
+      setDoseTimes(med.doseTimes || "08:00");
+      setTimesPerDay("1");
+    }
 
     // Duration mode
     if (med.isChronic) { setDurationMode("chronic"); setEndDate(""); setDurationDays("7"); }
@@ -189,11 +236,18 @@ export default function MedicationsScreen() {
   const handleMarkTaken = async (logId?: number) => {
     if (!logId) return;
     try {
+      setTakingId(logId);
+      // Optimistic update
+      setSchedule(prev => prev.map(s => s.logId === logId ? { ...s, status: "taken" } : s));
       await markMedicationTaken(logId);
       Toast.show({ type: "success", text1: "Marked as taken!" });
       await loadData();
     } catch (e: any) {
+      // Revert on error
+      await loadData();
       Toast.show({ type: "error", text1: e.message || "Failed to mark" });
+    } finally {
+      setTakingId(null);
     }
   };
 
@@ -321,9 +375,19 @@ export default function MedicationsScreen() {
                         </View>
                         <Text style={styles.timelineDosage}>{item.dosage}</Text>
                         {isPending && (
-                          <TouchableOpacity style={styles.timelineTakeBtn} onPress={() => handleMarkTaken(item.logId)}>
-                            <Ionicons name="checkmark" size={16} color="#fff" />
-                            <Text style={styles.timelineTakeBtnTxt}>Mark as Taken</Text>
+                          <TouchableOpacity
+                            style={[styles.timelineTakeBtn, takingId === item.logId && { opacity: 0.7 }]}
+                            onPress={() => handleMarkTaken(item.logId)}
+                            disabled={takingId === item.logId}
+                          >
+                            {takingId === item.logId ? (
+                              <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                              <>
+                                <Ionicons name="checkmark" size={16} color="#fff" />
+                                <Text style={styles.timelineTakeBtnTxt}>Mark as Taken</Text>
+                              </>
+                            )}
                           </TouchableOpacity>
                         )}
                       </View>
@@ -454,8 +518,33 @@ export default function MedicationsScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Dose Times * (comma separated)</Text>
-                <TextInput style={styles.textInput} value={doseTimes} onChangeText={setDoseTimes} placeholder="08:00, 14:00, 20:00" />
+                <Text style={styles.inputLabel}>Dose Schedule</Text>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  {(["fixed", "interval"] as const).map(m => (
+                    <TouchableOpacity key={m} style={[styles.presetChip, doseMode === m && styles.presetChipActive]} onPress={() => setDoseMode(m)}>
+                      <Text style={[styles.presetChipTxt, doseMode === m && styles.presetChipTxtActive]}>
+                        {m === "fixed" ? "Fixed times" : "Every X hours"}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {doseMode === "fixed" ? (
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={[styles.inputLabel, { marginBottom: 6 }]}>Times (comma separated)</Text>
+                    <TextInput style={styles.textInput} value={doseTimes} onChangeText={setDoseTimes} placeholder="08:00, 14:00, 20:00" />
+                  </View>
+                ) : (
+                  <View style={{ marginTop: 10, flexDirection: "row", gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { marginBottom: 6 }]}>Every (hours)</Text>
+                      <TextInput style={styles.textInput} value={intervalHours} onChangeText={setIntervalHours} keyboardType="number-pad" placeholder="8" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.inputLabel, { marginBottom: 6 }]}>Times per day</Text>
+                      <TextInput style={styles.textInput} value={timesPerDay} onChangeText={setTimesPerDay} keyboardType="number-pad" placeholder="3" />
+                    </View>
+                  </View>
+                )}
               </View>
 
               <View style={styles.inputGroup}>

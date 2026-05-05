@@ -64,6 +64,7 @@ namespace MedicalAssistant.Shared.DTOs.PatientRecords
     );
 
     public record MedicationScheduleItemDto(
+        int LogId,
         int MedicationTrackerId,
         DateTime ScheduledAt,
         string MedicationName,
