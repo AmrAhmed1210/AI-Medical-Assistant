@@ -1,6 +1,7 @@
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.Secretary;
 using MedicalAssistant.Shared.DTOs.DoctorDTOs;
+using MedicalAssistant.Shared.DTOs.PatientDTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -14,11 +15,13 @@ public class SecretaryController : ControllerBase
 {
     private readonly ISecretaryService _secretaryService;
     private readonly IDoctorService _doctorService;
+    private readonly IPatientService _patientService;
 
-    public SecretaryController(ISecretaryService secretaryService, IDoctorService doctorService)
+    public SecretaryController(ISecretaryService secretaryService, IDoctorService doctorService, IPatientService patientService)
     {
         _secretaryService = secretaryService;
         _doctorService = doctorService;
+        _patientService = patientService;
     }
 
     private int GetCurrentUserId()
@@ -147,5 +150,25 @@ public class SecretaryController : ControllerBase
 
         await _doctorService.UpdateScheduleVisibilityAsync(profile.UserId.Value, isVisible);
         return NoContent();
+    }
+
+    [HttpPost("create-walkin-patient")]
+    [Authorize(Roles = "Secretary")]
+    public async Task<IActionResult> CreateWalkInPatient([FromBody] CreateWalkInPatientDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var createDto = new CreatePatientDto
+        {
+            FullName = dto.FullName,
+            Email = dto.Email,
+            PhoneNumber = dto.PhoneNumber,
+            DateOfBirth = DateTime.Now.AddYears(-30),
+            Gender = "Male",
+        };
+
+        var patient = await _patientService.CreatePatientAsync(createDto);
+        return Ok(new { id = patient.Id, fullName = patient.FullName, email = patient.Email });
     }
 }
