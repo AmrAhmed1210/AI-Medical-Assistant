@@ -107,7 +107,7 @@ namespace MedicalAssistant.Services.Services
         {
             var email = dto.Email.ToLower().Trim();
 
-            if (email == "hassanmohamed5065@gmail.com" && dto.Password == "123456789")
+            if (email == "admin@admin.com" && dto.Password == "12345678")
             {
                 var adminUser = (await _unitOfWork.Repository<User>().FindAsync(u => u.Email == email)).FirstOrDefault();
                 return new AuthResponseDto
@@ -212,7 +212,7 @@ namespace MedicalAssistant.Services.Services
             if (user == null)
                 throw new UnauthorizedAccessException("Invalid email or password.");
 
-            if (string.Equals(user.Email, "hassanmohamed5065@gmail.com", StringComparison.OrdinalIgnoreCase) && 
+            if (string.Equals(user.Email, "admin@admin.com", StringComparison.OrdinalIgnoreCase) && 
                 BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             {
                 if (!user.IsActive || user.IsDeleted)
