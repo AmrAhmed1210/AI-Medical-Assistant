@@ -159,16 +159,35 @@ public class SecretaryController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var createDto = new CreatePatientDto
+        try
         {
-            FullName = dto.FullName,
-            Email = dto.Email,
-            PhoneNumber = dto.PhoneNumber,
-            DateOfBirth = DateTime.Now.AddYears(-30),
-            Gender = "Male",
-        };
+            var email = string.IsNullOrWhiteSpace(dto.Email) 
+                ? $"walkin_{Guid.NewGuid().ToString("N").Substring(0, 8)}@clinic.local"
+                : dto.Email;
 
-        var patient = await _patientService.CreatePatientAsync(createDto);
-        return Ok(new { id = patient.Id, fullName = patient.FullName, email = patient.Email });
+            var createDto = new CreatePatientDto
+            {
+                FullName = dto.FullName,
+                Email = email,
+                PhoneNumber = dto.PhoneNumber,
+                DateOfBirth = DateTime.Now.AddYears(-30),
+                Gender = "Male",
+                Address = null,
+                ImageUrl = null,
+                BloodType = null,
+                MedicalNotes = "Walk-in patient created by secretary",
+            };
+
+            var patient = await _patientService.CreatePatientAsync(createDto);
+            return Ok(new { id = patient.Id, fullName = patient.FullName, email = patient.Email });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to create patient", details = ex.Message });
+        }
     }
 }

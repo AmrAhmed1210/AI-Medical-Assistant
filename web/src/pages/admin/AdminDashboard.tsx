@@ -48,10 +48,10 @@ const URGENCY_CONFIG = {
 }
 
 const STAT_CONFIG = {
-  users:    { gradient: 'from-blue-600 to-indigo-700', icon: Users, shadow: 'shadow-blue-500/20' },
-  doctors:  { gradient: 'from-emerald-600 to-teal-700', icon: Stethoscope, shadow: 'shadow-emerald-500/20' },
-  patients: { gradient: 'from-orange-600 to-amber-700', icon: Users, shadow: 'shadow-orange-500/20' },
-  sessions: { gradient: 'from-rose-600 to-pink-700', icon: Activity, shadow: 'shadow-rose-500/20' },
+  users:    { gradient: 'from-primary-500 to-primary-600', icon: Users, shadow: 'shadow-primary-500/20' },
+  doctors:  { gradient: 'from-emerald-500 to-emerald-600', icon: Stethoscope, shadow: 'shadow-emerald-500/20' },
+  patients: { gradient: 'from-cyan-500 to-cyan-600', icon: Users, shadow: 'shadow-cyan-500/20' },
+  sessions: { gradient: 'from-violet-500 to-violet-600', icon: Activity, shadow: 'shadow-violet-500/20' },
 }
 
 // ── Stat Card Component ───────────────────────────────────────────────
@@ -166,7 +166,7 @@ export default function AdminDashboard() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-4xl font-black text-slate-900 tracking-tight">Dashboard / لوحة التحكم</h1>
-            <Badge className="bg-blue-600/10 text-blue-600 border-0 flex gap-1.5 items-center px-3 py-1 text-xs">
+            <Badge className="bg-primary-50 text-primary-600 border-0 flex gap-1.5 items-center px-3 py-1 text-xs">
               <Sparkles size={12} fill="currentColor" /> Admin Portal
             </Badge>
             {usingMock && (
@@ -224,15 +224,15 @@ export default function AdminDashboard() {
               <AreaChart data={stats?.sessionsPerDay || []}>
                 <defs>
                   <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15}/>
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#1E9E84" stopOpacity={0.15}/>
+                    <stop offset="95%" stopColor="#1E9E84" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
                 <Tooltip contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
-                <Area type="monotone" dataKey="count" stroke="#2563eb" strokeWidth={4} fillOpacity={1} fill="url(#colorArea)" />
+                <Area type="monotone" dataKey="count" stroke="#1E9E84" strokeWidth={4} fillOpacity={1} fill="url(#colorArea)" />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>

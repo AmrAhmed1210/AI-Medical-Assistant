@@ -39,6 +39,7 @@ interface FollowedDoctor {
   id: number;
   name: string;
   specialty: string;
+  photoUrl?: string;
 }
 
 // ── Rule-based parser ──────────────────────────────────────────────────────
@@ -471,34 +472,34 @@ export default function ProfileScreen() {
             </View>
             <View style={{ flexDirection: "row", gap: 14 }}>
               <TouchableOpacity
-                style={[styles.healthCard, { flex: 1, backgroundColor: "#FFFBFC", borderColor: "#FFD6E0", borderWidth: 1.5 }]}
+                style={[styles.healthCard, { flex: 1, backgroundColor: "#EEF2FF", borderColor: "#C7D2FE", borderWidth: 1 }]}
                 onPress={() => router.push("/(patient)/vitals" as any)}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                  <View style={[styles.healthIcon, { backgroundColor: "#FF4D6D" }]}>
-                    <Ionicons name="pulse" size={26} color="#fff" />
+                  <View style={[styles.healthIcon, { backgroundColor: "#6366F1" }]}>
+                    <Ionicons name="pulse" size={24} color="#fff" />
                   </View>
-                  <Ionicons name="chevron-forward-circle" size={24} color="#FF4D6D" />
+                  <Ionicons name="chevron-forward-circle" size={22} color="#6366F1" />
                 </View>
-                <Text style={[styles.healthTitle, { color: "#C9184A", marginTop: 14 }]}>My Vitals</Text>
+                <Text style={[styles.healthTitle, { color: "#3730A3", marginTop: 14 }]}>My Vitals</Text>
                 <Text style={styles.healthSub}>Blood pressure, sugar & more</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.healthCard, { flex: 1, backgroundColor: "#F0FCFA", borderColor: "#A7E9E1", borderWidth: 1.5 }]}
+                style={[styles.healthCard, { flex: 1, backgroundColor: "#F0FDF4", borderColor: "#BBF7D0", borderWidth: 1 }]}
                 onPress={() => router.push("/(patient)/medications" as any)}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                  <View style={[styles.healthIcon, { backgroundColor: "#00BCD4" }]}>
-                    <Ionicons name="medkit" size={26} color="#fff" />
+                  <View style={[styles.healthIcon, { backgroundColor: "#10B981" }]}>
+                    <Ionicons name="medkit" size={24} color="#fff" />
                   </View>
-                  <Ionicons name="chevron-forward-circle" size={24} color="#00BCD4" />
+                  <Ionicons name="chevron-forward-circle" size={22} color="#10B981" />
                 </View>
-                <Text style={[styles.healthTitle, { color: "#00695C", marginTop: 14 }]}>Medications</Text>
+                <Text style={[styles.healthTitle, { color: "#065F46", marginTop: 14 }]}>Medications</Text>
                 <Text style={styles.healthSub}>Pills schedule & reminders</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.infoCard}>
+            <View style={[styles.infoCard, { marginTop: 24 }]}>
               <Text style={styles.cardHeader}>Personal Details</Text>
               <InfoRow icon="person-outline" label="Full Name" value={profile?.name || "—"} isRTL={isRTL} />
               <InfoRow icon="mail-outline" label="Email" value={profile?.email || "—"} isRTL={isRTL} />
@@ -511,9 +512,9 @@ export default function ProfileScreen() {
               <Text style={styles.secondaryBtnTxt}>Edit Profile Information</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 12, borderColor: '#64748B' }]} onPress={handleContactSupport}>
-              <Ionicons name="headset-outline" size={18} color="#64748B" />
-              <Text style={[styles.secondaryBtnTxt, { color: '#64748B' }]}>Contact Technical Support</Text>
+            <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 12 }]} onPress={handleContactSupport}>
+              <Ionicons name="headset-outline" size={18} color="#475569" />
+              <Text style={styles.secondaryBtnTxt}>Contact Technical Support</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
@@ -808,25 +809,25 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20 },
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#fff" },
   headerMain: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 },
-  avatarCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center", borderWidth: 2, borderColor: "#fff", position: "relative", overflow: "visible" },
-  avatarImg: { width: "100%", height: "100%", borderRadius: 32 },
-  cameraBadge: { position: "absolute", bottom: -2, right: -2, backgroundColor: COLORS.primary, width: 22, height: 22, borderRadius: 11, justifyContent: "center", alignItems: "center", borderWidth: 1.5, borderColor: "#fff" },
+  avatarCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.25)", justifyContent: "center", alignItems: "center", borderWidth: 3, borderColor: "rgba(255,255,255,0.8)", position: "relative", overflow: "visible", shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5 },
+  avatarImg: { width: "100%", height: "100%", borderRadius: 36 },
+  cameraBadge: { position: "absolute", bottom: -2, right: -2, backgroundColor: "#fff", width: 24, height: 24, borderRadius: 12, justifyContent: "center", alignItems: "center", borderWidth: 1.5, borderColor: COLORS.primary },
   avatarTxt: { fontSize: 24, fontWeight: "800", color: "#fff" },
-  headerInfo: { marginLeft: 15 },
+  headerInfo: { marginLeft: 16 },
   heroName: { fontSize: 22, fontWeight: "800", color: "#fff" },
-  langBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start", marginTop: 5 },
-  langBadgeText: { color: "#fff", fontSize: 10, fontWeight: "600" },
-  statsRow: { flexDirection: "row", justifyContent: "space-around", paddingHorizontal: 20, marginTop: 10 },
-  statItem: { alignItems: "center" },
+  langBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4, alignSelf: "flex-start", marginTop: 6 },
+  langBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  statsRow: { flexDirection: "row", justifyContent: "space-around", paddingHorizontal: 20, marginTop: 15 },
+  statItem: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.1)", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, minWidth: 90 },
   statNum: { fontSize: 18, fontWeight: "800", color: "#fff" },
-  statLbl: { fontSize: 10, color: "rgba(255,255,255,0.7)", marginTop: 2 },
-  statLine: { width: 1, height: "60%", backgroundColor: "rgba(255,255,255,0.2)", alignSelf: "center" },
+  statLbl: { fontSize: 11, color: "rgba(255,255,255,0.8)", marginTop: 2, fontWeight: "500" },
+  statLine: { width: 1, height: "60%", backgroundColor: "rgba(255,255,255,0.15)", alignSelf: "center" },
   tabsWrap: { backgroundColor: "#fff", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
   tabsScroll: { paddingHorizontal: 20 },
-  tabBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, marginRight: 10, backgroundColor: "#F8FAFC" },
+  tabBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, marginRight: 10, backgroundColor: "#F8FAFC" },
   tabBtnActive: { backgroundColor: COLORS.primary + "15" },
-  tabBtnTxt: { fontSize: 12, fontWeight: "600", color: "#64748B" },
-  tabBtnTxtActive: { color: COLORS.primary },
+  tabBtnTxt: { fontSize: 13, fontWeight: "600", color: "#64748B" },
+  tabBtnTxtActive: { color: COLORS.primary, fontWeight: "700" },
   scrollContent: { padding: 20, paddingBottom: 100 },
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 15 },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
@@ -844,8 +845,8 @@ const styles = StyleSheet.create({
   infoIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: "#F1F5F9", justifyContent: "center", alignItems: "center" },
   infoLabel: { fontSize: 10, color: "#94A3B8", fontWeight: "600", marginBottom: 2 },
   infoValue: { fontSize: 14, color: "#1E293B", fontWeight: "600" },
-  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 15, marginTop: 12, borderRadius: 16, backgroundColor: "#FFF1F2" },
-  logoutBtnTxt: { fontSize: 14, fontWeight: "700", color: "#E11D48" },
+  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 15, marginTop: 12, borderRadius: 20, backgroundColor: "#FEF2F2" },
+  logoutBtnTxt: { fontSize: 14, fontWeight: "700", color: "#EF4444" },
   emptyState: { alignItems: "center", paddingVertical: 40 },
   emptyCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.primary + "10", justifyContent: "center", alignItems: "center", marginBottom: 15 },
   emptyStateTitle: { fontSize: 16, fontWeight: "700", color: "#1E293B", marginBottom: 5 },
@@ -877,10 +878,10 @@ const styles = StyleSheet.create({
   modalCancelTxt: { fontSize: 14, fontWeight: "700", color: "#64748B" },
   modalSaveBtn: { flex: 2, paddingVertical: 15, alignItems: "center", borderRadius: 16, backgroundColor: COLORS.primary },
   modalSaveTxt: { fontSize: 14, fontWeight: "700", color: "#fff" },
-  secondaryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 15, marginTop: 20, borderRadius: 16, borderColor: COLORS.primary, borderWidth: 1.5 },
-  secondaryBtnTxt: { fontSize: 14, fontWeight: "700", color: COLORS.primary },
-  healthCard: { borderRadius: 24, padding: 18, shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 6 },
-  healthIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: "center", alignItems: "center", marginBottom: 12 },
+  secondaryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 15, marginTop: 20, borderRadius: 20, backgroundColor: "#F8FAFC", borderColor: "#E2E8F0", borderWidth: 1 },
+  secondaryBtnTxt: { fontSize: 14, fontWeight: "600", color: "#475569" },
+  healthCard: { borderRadius: 24, padding: 18, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 4 },
+  healthIcon: { width: 48, height: 48, borderRadius: 16, justifyContent: "center", alignItems: "center", marginBottom: 12 },
   healthTitle: { fontSize: 15, fontWeight: "800", marginBottom: 4 },
   healthSub: { fontSize: 12, color: "#64748B", fontWeight: "500" },
 });

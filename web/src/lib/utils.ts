@@ -43,10 +43,10 @@ function parseDateSafe(input: string): Date | null {
   if (!raw) return null
 
   let isoLike = raw.includes('T') ? raw : raw.replace(' ', 'T')
-  // Treat timezone-less server timestamps as UTC to avoid +3h drift.
-  if (!/[zZ]|[+\-]\d{2}:\d{2}$/.test(isoLike)) {
-    isoLike = `${isoLike}Z`
-  }
+  
+  // Strip timezone 'Z' or offset to force parsing as local time, avoiding +3h drift for absolute clinic times.
+  isoLike = isoLike.replace(/Z$/i, '').replace(/[+\-]\d{2}:\d{2}$/, '')
+
   const tryIso = parseISO(isoLike)
   if (!Number.isNaN(tryIso.getTime())) return tryIso
 

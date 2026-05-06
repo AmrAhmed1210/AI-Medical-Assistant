@@ -178,19 +178,22 @@ export default function SecretaryDashboard() {
           return
         }
         patientId = Number(selectedPatient.id)
+        console.log('Booking for existing patient:', { patientId, doctorId: myDoctor.id, date: bookDate, time: bookTime })
       } else {
-        if (!newPatientName || !newPatientEmail || !newPatientPhone) {
-          toast.error('Please fill patient name, email and phone')
+        if (!newPatientName || !newPatientPhone) {
+          toast.error('Please fill patient name and phone')
           return
         }
+        console.log('Creating walk-in patient:', { fullName: newPatientName, email: newPatientEmail, phoneNumber: newPatientPhone })
         const newPatient = await secretaryApi.createWalkInPatient({
           fullName: newPatientName,
           email: newPatientEmail,
           phoneNumber: newPatientPhone,
         })
         patientId = newPatient.id
+        console.log('Created new patient:', newPatient)
       }
-      await appointmentApi.create({
+      const appointmentData = {
         doctorId: String(myDoctor.id),
         patientId,
         date: bookDate,
@@ -198,9 +201,15 @@ export default function SecretaryDashboard() {
         paymentMethod: bookPayment,
         notes: bookNotes,
         scheduledAt: `${bookDate}T${bookTime}`,
-      })
+      }
+      console.log('Creating appointment with data:', appointmentData)
+      console.log('Raw bookTime value:', bookTime)
+      console.log('ScheduledAt string:', `${bookDate}T${bookTime}`)
+      const result = await appointmentApi.create(appointmentData)
+      console.log('Appointment created:', result)
       toast.success('Appointment booked successfully')
       await fetchSecretaryAppointments()
+      console.log('Appointments after booking:', appointments)
       setBookOpen(false)
       setPatientSearchQuery('')
       setSelectedPatient(null)
@@ -212,8 +221,14 @@ export default function SecretaryDashboard() {
       setBookTime('')
       setBookPayment('cash')
       setBookNotes('')
-    } catch {
-      toast.error('Failed to book appointment')
+    } catch (error: any) {
+      console.error('Failed to book appointment:', error)
+      if (error.response?.data) {
+        console.error('Backend error:', error.response.data)
+        toast.error(`Failed to book: ${error.response.data.message || 'Unknown error'}`)
+      } else {
+        toast.error('Failed to book appointment')
+      }
     } finally {
       setBookLoading(false)
     }
@@ -364,7 +379,7 @@ export default function SecretaryDashboard() {
               key={f.value}
               onClick={() => setStatusFilter(f.value)}
               className={`px-3 py-1.5 text-xs rounded-xl font-medium transition-colors ${statusFilter === f.value
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
             >
@@ -387,7 +402,7 @@ export default function SecretaryDashboard() {
                     key={section.key}
                     onClick={() => setSelectedDayKey(section.key)}
                     className={`px-4 py-2 text-xs rounded-xl font-semibold transition-all duration-200 ${
-                      isSelected ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      isSelected ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
                     {section.label}
@@ -442,7 +457,7 @@ export default function SecretaryDashboard() {
               type="date"
               value={rescheduleDate}
               onChange={(e) => setRescheduleDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm"
             />
           </div>
           <div>
@@ -451,7 +466,7 @@ export default function SecretaryDashboard() {
               type="time"
               value={rescheduleTime}
               onChange={(e) => setRescheduleTime(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm"
             />
           </div>
           <div>
@@ -461,7 +476,7 @@ export default function SecretaryDashboard() {
               value={rescheduleReason}
               onChange={(e) => setRescheduleReason(e.target.value)}
               placeholder="e.g. Patient request"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm"
             />
           </div>
         </div>
@@ -535,7 +550,7 @@ export default function SecretaryDashboard() {
                   <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-gray-400" />
                 )}
                 {showPatientDropdown && patientResults.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-auto">
+                  <div className="absolute z-[9999] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-auto">
                     {patientResults.map((patient) => (
                       <button
                         key={patient.id}
@@ -554,7 +569,7 @@ export default function SecretaryDashboard() {
                   </div>
                 )}
                 {showPatientDropdown && !patientSearchLoading && patientSearchQuery.trim() && patientResults.length === 0 && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm text-gray-400">
+                  <div className="absolute z-[9999] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm text-gray-400">
                     No patients found
                   </div>
                 )}
@@ -616,7 +631,10 @@ export default function SecretaryDashboard() {
               <input
                 type="time"
                 value={bookTime}
-                onChange={(e) => setBookTime(e.target.value)}
+                onChange={(e) => {
+                  console.log('Time input changed to:', e.target.value)
+                  setBookTime(e.target.value)
+                }}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm"
               />
             </div>

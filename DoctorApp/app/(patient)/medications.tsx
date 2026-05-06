@@ -331,69 +331,114 @@ export default function MedicationsScreen() {
               </View>
             ) : (
               <View style={{ paddingTop: 8 }}>
-                {/* Summary */}
-                <View style={styles.summaryRow}>
-                  <View style={styles.summaryItem}>
-                    <Text style={styles.summaryNum}>{schedule.filter(s => s.status?.toLowerCase() === "pending").length}</Text>
-                    <Text style={styles.summaryLabel}>Pending</Text>
-                  </View>
-                  <View style={styles.summaryDivider} />
-                  <View style={styles.summaryItem}>
-                    <Text style={styles.summaryNum}>{schedule.filter(s => s.status?.toLowerCase() === "taken").length}</Text>
-                    <Text style={styles.summaryLabel}>Taken</Text>
-                  </View>
-                  <View style={styles.summaryDivider} />
-                  <View style={styles.summaryItem}>
-                    <Text style={styles.summaryNum}>{schedule.length}</Text>
-                    <Text style={styles.summaryLabel}>Total</Text>
-                  </View>
-                </View>
+                {/* Target Progress Card */}
+                {(() => {
+                  const todayItems = schedule.map(item => {
+                    const scheduledTime = new Date(item.scheduledAt);
+                    const isPast = new Date() > scheduledTime;
+                    const status = item.status?.toLowerCase() === "pending" && isPast ? "missed" : item.status?.toLowerCase() || "pending";
+                    return { ...item, effectiveStatus: status, scheduledTime };
+                  });
 
-                {/* Timeline */}
-                {schedule.map((item, i) => {
-                  const status = getStatusStyle(item.status);
-                  const time = new Date(item.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                  const isPending = item.status?.toLowerCase() === "pending";
-                  const isLast = i === schedule.length - 1;
+                  const total = todayItems.length;
+                  const taken = todayItems.filter(i => i.effectiveStatus === "taken").length;
+                  const progress = total > 0 ? taken / total : 0;
+                  
+                  const pendingItems = todayItems.filter(i => i.effectiveStatus !== "taken");
+                  const takenItems = todayItems.filter(i => i.effectiveStatus === "taken");
+
                   return (
-                    <View key={i} style={styles.timelineRow}>
-                      {/* Time column */}
-                      <View style={styles.timeCol}>
-                        <View style={[styles.timelineDot, { backgroundColor: status.dot }]} />
-                        {!isLast && <View style={styles.timelineLine} />}
-                        <Text style={styles.timelineTime}>{time}</Text>
+                    <>
+                      <View style={styles.targetCard}>
+                        <View style={styles.targetInfo}>
+                          <Text style={styles.targetTitle}>Daily Target</Text>
+                          <Text style={styles.targetDesc}>
+                            {taken === total && total > 0 
+                              ? "Awesome! You've taken all your meds today." 
+                              : `You have taken ${taken} out of ${total} doses.`}
+                          </Text>
+                        </View>
+                        <View style={styles.progressCircle}>
+                          {/* A simple CSS pie chart or just a circular indicator could go here, 
+                              but let's use a nice wide progress bar instead for React Native compat */}
+                          <Text style={styles.progressText}>{Math.round(progress * 100)}%</Text>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.progressBarBg}>
+                        <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
                       </View>
 
-                      {/* Card */}
-                      <View style={[styles.timelineCard, isPending && styles.timelineCardPending]}>
-                        <View style={styles.timelineCardHeader}>
-                          <Text style={styles.timelineMedName}>{item.medicationName}</Text>
-                          <View style={[styles.timelineStatusBadge, { backgroundColor: status.bg }]}>
-                            <Ionicons name={status.icon} size={10} color={status.text} />
-                            <Text style={[styles.timelineStatusText, { color: status.text }]}>{status.label}</Text>
-                          </View>
+                      {pendingItems.length === 0 && total > 0 && (
+                        <View style={styles.allDoneMsg}>
+                          <Ionicons name="checkmark-circle" size={40} color="#10B981" />
+                          <Text style={styles.allDoneTxt}>All done for today!</Text>
                         </View>
-                        <Text style={styles.timelineDosage}>{item.dosage}</Text>
-                        {isPending && (
-                          <TouchableOpacity
-                            style={[styles.timelineTakeBtn, takingId === item.logId && { opacity: 0.7 }]}
-                            onPress={() => handleMarkTaken(item.logId)}
-                            disabled={takingId === item.logId}
-                          >
-                            {takingId === item.logId ? (
-                              <ActivityIndicator size="small" color="#fff" />
-                            ) : (
-                              <>
-                                <Ionicons name="checkmark" size={16} color="#fff" />
-                                <Text style={styles.timelineTakeBtnTxt}>Mark as Taken</Text>
-                              </>
-                            )}
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </View>
+                      )}
+
+                      {/* Timeline */}
+                      {pendingItems.map((item, i) => {
+                        const status = getStatusStyle(item.effectiveStatus);
+                        const time = item.scheduledTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                        const isPending = item.effectiveStatus === "pending";
+                        const isMissed = item.effectiveStatus === "missed";
+                        const isLast = i === pendingItems.length - 1;
+                        return (
+                          <View key={i} style={styles.timelineRow}>
+                            <View style={styles.timeCol}>
+                              <View style={[styles.timelineDot, { backgroundColor: status.dot }]} />
+                              {!isLast && <View style={styles.timelineLine} />}
+                              <Text style={styles.timelineTime}>{time}</Text>
+                            </View>
+
+                            <View style={[styles.timelineCard, isPending && styles.timelineCardPending, isMissed && styles.timelineCardMissed]}>
+                              <View style={styles.timelineCardHeader}>
+                                <Text style={styles.timelineMedName}>{item.medicationName}</Text>
+                                <View style={[styles.timelineStatusBadge, { backgroundColor: status.bg }]}>
+                                  <Ionicons name={status.icon} size={10} color={status.text} />
+                                  <Text style={[styles.timelineStatusText, { color: status.text }]}>{status.label}</Text>
+                                </View>
+                              </View>
+                              <Text style={styles.timelineDosage}>{item.dosage}</Text>
+                              {(isPending || isMissed) && (
+                                <TouchableOpacity
+                                  style={[styles.timelineTakeBtn, takingId === item.logId && { opacity: 0.7 }]}
+                                  onPress={() => handleMarkTaken(item.logId)}
+                                  disabled={takingId === item.logId}
+                                >
+                                  {takingId === item.logId ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                  ) : (
+                                    <>
+                                      <Ionicons name="checkmark" size={16} color="#fff" />
+                                      <Text style={styles.timelineTakeBtnTxt}>Mark as Taken</Text>
+                                    </>
+                                  )}
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          </View>
+                        );
+                      })}
+                      
+                      {takenItems.length > 0 && (
+                        <View style={styles.takenSection}>
+                          <Text style={styles.takenSectionTitle}>Completed Today</Text>
+                          {takenItems.map((item, i) => (
+                             <View key={`taken-${i}`} style={styles.takenCard}>
+                                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                                <View style={{ flex: 1, marginLeft: 10 }}>
+                                  <Text style={styles.takenMedName}>{item.medicationName}</Text>
+                                  <Text style={styles.takenMedTime}>{item.dosage} • {item.scheduledTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text>
+                                </View>
+                             </View>
+                          ))}
+                        </View>
+                      )}
+                    </>
                   );
-                })}
+                })()}
+
               </View>
             )}
           </>
@@ -633,6 +678,7 @@ const styles = StyleSheet.create({
   timelineTime: { fontSize: 11, fontWeight: "700", color: "#64748B", marginTop: 4 },
   timelineCard: { flex: 1, backgroundColor: "#fff", borderRadius: 16, padding: 14, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
   timelineCardPending: { borderLeftWidth: 3, borderLeftColor: COLORS.primary },
+  timelineCardMissed: { borderLeftWidth: 3, borderLeftColor: "#EF4444" },
   timelineCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   timelineMedName: { fontSize: 15, fontWeight: "700", color: "#1E293B", flex: 1 },
   timelineStatusBadge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
@@ -640,6 +686,22 @@ const styles = StyleSheet.create({
   timelineDosage: { fontSize: 12, color: "#64748B", marginTop: 2 },
   timelineTakeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, backgroundColor: COLORS.primary, paddingVertical: 10, borderRadius: 10, marginTop: 10 },
   timelineTakeBtnTxt: { color: "#fff", fontSize: 13, fontWeight: "700" },
+
+  targetCard: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  targetInfo: { flex: 1, paddingRight: 12 },
+  targetTitle: { fontSize: 16, fontWeight: "800", color: "#1E293B", marginBottom: 4 },
+  targetDesc: { fontSize: 12, color: "#64748B", lineHeight: 18 },
+  progressCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: COLORS.primary + "15", justifyContent: "center", alignItems: "center", borderWidth: 3, borderColor: COLORS.primary },
+  progressText: { fontSize: 13, fontWeight: "800", color: COLORS.primary },
+  progressBarBg: { height: 8, backgroundColor: "#E2E8F0", borderRadius: 4, marginBottom: 20 },
+  progressBarFill: { height: "100%", backgroundColor: COLORS.primary, borderRadius: 4 },
+  allDoneMsg: { alignItems: "center", paddingVertical: 20 },
+  allDoneTxt: { fontSize: 15, fontWeight: "700", color: "#10B981", marginTop: 8 },
+  takenSection: { marginTop: 20, paddingTop: 20, borderTopWidth: 1, borderTopColor: "#E2E8F0" },
+  takenSectionTitle: { fontSize: 15, fontWeight: "700", color: "#1E293B", marginBottom: 12 },
+  takenCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#F8FAFC", padding: 12, borderRadius: 12, marginBottom: 8, borderWidth: 1, borderColor: "#E2E8F0" },
+  takenMedName: { fontSize: 14, fontWeight: "600", color: "#1E293B" },
+  takenMedTime: { fontSize: 12, color: "#64748B", marginTop: 2 },
 
   medCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
   medHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
