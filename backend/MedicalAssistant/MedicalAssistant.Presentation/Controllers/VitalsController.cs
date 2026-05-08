@@ -148,9 +148,9 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(data);
         }
 
-        // DELETE /api/vitals/{id}  (Doctor,Admin)
+        // DELETE /api/vitals/{id}  (Doctor,Patient,Admin)
         [HttpDelete("vitals/{id:int}")]
-        [Authorize(Roles = "Doctor,Admin")]
+        [Authorize(Roles = "Doctor,Patient,Admin")]
         public async Task<IActionResult> Delete(int id)
         {
             var ok = await _patientRecordService.DeleteVitalAsync(id);

@@ -21,7 +21,6 @@ interface NavItem {
 
 const doctorNav: NavItem[] = [
   { to: ROUTES.DOCTOR_DASHBOARD, icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
-  { to: ROUTES.DOCTOR_TODAY, icon: <Stethoscope size={18} />, label: 'Today\'s Visits' },
   { to: ROUTES.DOCTOR_APPOINTMENTS, icon: <Calendar size={18} />, label: 'Appointments' },
   { to: ROUTES.DOCTOR_PATIENTS, icon: <Users size={18} />, label: 'Patients' },
   { to: ROUTES.DOCTOR_REVIEWS, icon: <Star size={18} />, label: 'Reviews' },

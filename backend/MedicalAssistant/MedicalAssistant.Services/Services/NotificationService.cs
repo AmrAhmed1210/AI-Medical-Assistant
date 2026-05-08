@@ -317,6 +317,26 @@ public class NotificationService : INotificationService
             payload);
     }
 
+    public async Task NotifyMedicationAdded(string patientEmail, string doctorName, string medicationName)
+    {
+        var payload = new
+        {
+            doctorName,
+            medicationName,
+            message = $"Dr. {doctorName} added a new medication: {medicationName}",
+            type = "new_medication",
+            timestamp = DateTime.UtcNow
+        };
+
+        await SendGroupEventAsync(patientEmail, "NewMedication", payload);
+        await SendNotificationAsync(
+            patientEmail,
+            "new_medication",
+            "New Medication Added",
+            $"Dr. {doctorName} added {medicationName} to your list.",
+            payload);
+    }
+
     private async Task SendNotificationAsync(string group, string category, string title, string message, object? data = null)
     {
         await SendGroupEventAsync(group, "NotificationReceived", new

@@ -143,6 +143,16 @@ export default function DoctorPatients() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation()
+                              navigate(`/doctor/patients/${p.id}/records`)
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"
+                          >
+                            Visit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
                               setTargetPatient(p)
                               setMessageText('')
                             }}

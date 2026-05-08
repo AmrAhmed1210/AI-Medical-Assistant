@@ -29,6 +29,14 @@ namespace MedicalAssistant.Presentation.Controllers
             return int.TryParse(claim, out var id) ? id : 0;
         }
 
+        private bool IsDoctorOrOwner(int patientId)
+        {
+            var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+            if (role.Equals("Doctor", StringComparison.OrdinalIgnoreCase)) return true;
+            var currentPatientId = GetPatientIdFromClaims();
+            return currentPatientId == patientId;
+        }
+
         // GET /api/patients/{id}/surgeries
         [HttpGet("patients/{id:int}/surgeries")]
         public async Task<IActionResult> GetForPatient(int id)
@@ -44,9 +52,10 @@ namespace MedicalAssistant.Presentation.Controllers
 
         // POST /api/patients/{id}/surgeries
         [HttpPost("patients/{id:int}/surgeries")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Patient")]
         public async Task<IActionResult> CreateForPatient(int id, [FromBody] CreateSurgeryDto dto)
         {
+            if (!IsDoctorOrOwner(id)) return Forbid();
             if (dto == null) return BadRequest(new { message = "Invalid payload." });
 
             var surgery = new SurgeryHistory
@@ -65,7 +74,7 @@ namespace MedicalAssistant.Presentation.Controllers
 
         // PATCH /api/surgeries/{id}
         [HttpPatch("surgeries/{surgeryId:int}")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Patient")]
         public async Task<IActionResult> Update(int surgeryId, [FromBody] UpdateSurgeryDto dto)
         {
             var updates = new SurgeryHistory
@@ -85,7 +94,7 @@ namespace MedicalAssistant.Presentation.Controllers
 
         // DELETE /api/surgeries/{id}
         [HttpDelete("surgeries/{surgeryId:int}")]
-        [Authorize(Roles = "Doctor,Admin")]
+        [Authorize(Roles = "Doctor,Patient,Admin")]
         public async Task<IActionResult> Delete(int surgeryId)
         {
             var deleted = await _patientRecordService.DeleteSurgeryAsync(surgeryId);

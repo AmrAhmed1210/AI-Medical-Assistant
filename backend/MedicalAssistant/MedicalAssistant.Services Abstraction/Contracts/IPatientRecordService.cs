@@ -47,5 +47,12 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
         Task<IEnumerable<MedicationScheduleItemDto>> GetTodayScheduleAsync(int patientId, DateTime? now = null);
         Task<MedicationLog?> MarkMedicationTakenAsync(int logId);
         Task<IEnumerable<MedicationTracker>> GetLowStockMedicationsAsync(int patientId);
+
+        // Patient documents (scans, labs, reports)
+        Task<IEnumerable<PatientDocument>> GetPatientDocumentsAsync(int patientId, string? documentType = null);
+        Task<PatientDocument?> GetPatientDocumentByIdAsync(int documentId);
+        Task<PatientDocument> AddPatientDocumentAsync(int patientId, PatientDocument document);
+        Task<PatientDocument?> UpdatePatientDocumentAsync(int documentId, PatientDocument updates);
+        Task<bool> DeletePatientDocumentAsync(int documentId);
     }
 }

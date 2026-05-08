@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView,
-  Platform, Image
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
+  ActivityIndicator, Platform, StatusBar, Modal, TextInput,
+  KeyboardAvoidingView, Animated, Alert
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../constants/colors";
 import { getDoctorById, getReviewsByDoctor, addReview, updateMyReview, deleteMyReview, DoctorDetails, Review } from "../../services/doctorService";
 import { bookAppointment } from "../../services/appointmentService";
 import { apiFetch } from "../../services/http";
 import { BASE_URL } from "../../constants/api";
-import { onScheduleReady, onScheduleUpdated, startSignalRConnection, subscribeToDoctorSchedule } from "../../services/signalr";
+import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpdated, onNewConsultation, onNewMedication, subscribeToDoctorSchedule } from "../../services/signalr";
 import RatingStars from "../../components/RatingStars";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { addNotification } from "../../services/notificationService";
@@ -74,6 +75,14 @@ const getDayIndexFromLocalIsoDate = (isoDate: string): number => {
     return new Date(isoDate).getDay()
   }
   return new Date(year, month - 1, day).getDay()
+}
+
+const normalizeToDisplayDate = (isoDate: string): string => {
+  if (!isoDate) return ""
+  const [y, m, d] = isoDate.split("-").map(Number)
+  const date = new Date(y, m - 1, d)
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  return `${d} ${monthNames[date.getMonth()]}`
 }
 
 const normalizeBoolean = (value: unknown): boolean => {
@@ -301,14 +310,18 @@ type ModalStep = "payment" | "visa_form" | null;
 function StarRow({ value, onChange, size = 28 }: { value: number; onChange?: (n: number) => void; size?: number }) {
   return (
     <View style={{ flexDirection: "row", gap: 4 }}>
-      {[1, 2, 3, 4, 5].map((n) => (
-        <TouchableOpacity key={n} onPress={() => onChange?.(n)} disabled={!onChange}>
-          <Ionicons
-            name={n <= value ? "star" : "star-outline"}
-            size={size} color={n <= value ? "#FFB300" : "#CCC"}
-          />
-        </TouchableOpacity>
-      ))}
+      {[1, 2, 3, 4, 5].map((n) => {
+        const isFull = n <= Math.floor(value);
+        const isHalf = !isFull && n <= Math.ceil(value) && (value % 1 >= 0.3 && value % 1 <= 0.8);
+        return (
+          <TouchableOpacity key={n} onPress={() => onChange?.(n)} disabled={!onChange}>
+            <Ionicons
+              name={isFull ? "star" : (isHalf ? "star-half" : "star-outline")}
+              size={size} color={(isFull || isHalf) ? "#FFB300" : "#CCC"}
+            />
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -357,6 +370,13 @@ export default function DoctorDetailsScreen() {
     if (!hasSchedule) return getNextDays(7)
     return getNextAvailableDays(availability, 7)
   }, [availability, hasSchedule])
+
+  const selectedDayData = useMemo(() => days[selectedDay] || null, [days, selectedDay]);
+
+  const currentSlots = useMemo(() => {
+    if (!selectedDayData) return []
+    return getTimeSlotsForDay(selectedDayData.isoDate, availability, bookedSlots)
+  }, [selectedDayData, availability, bookedSlots])
 
   useEffect(() => {
     if (selectedDay >= days.length) {
@@ -435,9 +455,7 @@ export default function DoctorDetailsScreen() {
       const next = !followed
       await setFollowed(targetDoctorId, next)
       setIsFollowed(next)
-      
-      // If we follow, we definitely want notifications. 
-      // If we unfollow, we only keep notifications if explicitly subscribed.
+
       const subscribed = await checkIfSubscribed(targetDoctorId)
       setNotifyEnabled(next || subscribed)
 
@@ -460,12 +478,7 @@ export default function DoctorDetailsScreen() {
     try {
       const currentlyEnabled = notifyEnabled
       const next = !currentlyEnabled
-      
-      // If we are currently following, we can't really "disable" notifications 
-      // without unfollowing, unless the user wants to keep following but mute?
-      // But the requirement says "notify me should not follow".
-      // So if I'm not following, I can subscribe/unsubscribe.
-      
+
       await setSubscribed(id, next)
       setNotifyEnabled(next || isFollowed)
 
@@ -473,7 +486,7 @@ export default function DoctorDetailsScreen() {
         await apiFetch(`${BASE_URL}/api/doctors/${doctorId}/notify-schedule`, { method: 'POST' }, true)
         await startSignalRConnection()
         await subscribeToDoctorSchedule(id)
-        Alert.alert("🔔 Notifications On", "You will be notified when Dr. " + (doctor?.fullName || "the doctor") + " updates their schedule.")
+        Alert.alert("🔔 Notifications On", "You will be notified when Dr. " + (doctor?.name || "the doctor") + " updates their schedule.")
       } else {
         Alert.alert("🔕 Notifications Off", "You will no longer receive schedule alerts unless you follow this doctor.")
       }
@@ -490,14 +503,8 @@ export default function DoctorDetailsScreen() {
         { method: 'GET', allowedStatusCodes: [404] },
         false
       )
-      console.log('Availability raw data:', JSON.stringify(data, null, 2))
-
-      // Handle both nested structure and direct array
       const availData = data?.days ?? data?.Days ?? (Array.isArray(data) ? data : [])
       const bookedData = data?.bookedSlots ?? data?.BookedSlots ?? []
-
-      console.log('Availability data:', availData)
-      console.log('Booked slots:', bookedData)
 
       setBookedSlots(Array.isArray(bookedData) ? bookedData : [])
       if (availData.length > 0) {
@@ -569,7 +576,7 @@ export default function DoctorDetailsScreen() {
           }
         }
       } catch {
-        // ignore subscription issues
+        // ignore
       }
     }
 
@@ -655,51 +662,22 @@ export default function DoctorDetailsScreen() {
     setSavingReview(true);
     try {
       await addReview(Number(doctorId), myRating, myComment.trim(), myDisplayName || "Anonymous")
-
       await fetchAll();
       setMyRating(0); setMyComment(""); setShowAddReview(false);
     } catch (e: any) {
-      if ((e?.message ?? "").toLowerCase().includes("already reviewed")) {
-        Alert.alert("Review Exists", "You already reviewed this doctor. You can edit or delete your old review.", [
-          {
-            text: "Edit Old Review",
-            onPress: () => {
-              handleUpdateExistingReview().catch(() => undefined);
-            },
-          },
-          {
-            text: "Delete Old Review",
-            style: "destructive",
-            onPress: () => {
-              handleDeleteExistingReview().catch(() => undefined);
-            },
-          },
-          { text: "Cancel", style: "cancel" },
-        ]);
-      } else {
-        Alert.alert("Error", e.message);
-      }
+      Alert.alert("Error", e.message);
     } finally {
       setSavingReview(false);
     }
   };
 
   const handleUpdateExistingReview = async () => {
-    if (myRating === 0) {
-      Alert.alert("Rating required", "Please select a star rating.");
-      return;
-    }
-    if (!myComment.trim()) {
-      Alert.alert("Comment required", "Please write a comment.");
-      return;
-    }
-
+    if (myRating === 0 || !myComment.trim()) return;
     setSavingReview(true);
     try {
       await updateMyReview(Number(doctorId), myRating, myComment.trim(), myExistingReview?.id);
       await fetchAll();
       setShowAddReview(false);
-      Alert.alert("Updated", "Your review was updated successfully.");
     } catch (e: any) {
       Alert.alert("Error", e?.message ?? "Failed to update review.");
     } finally {
@@ -712,10 +690,7 @@ export default function DoctorDetailsScreen() {
     try {
       await deleteMyReview(Number(doctorId), myExistingReview?.id);
       await fetchAll();
-      setMyRating(0);
-      setMyComment("");
-      setShowAddReview(false);
-      Alert.alert("Deleted", "Your review was deleted.");
+      setMyRating(0); setMyComment(""); setShowAddReview(false);
     } catch (e: any) {
       Alert.alert("Error", e?.message ?? "Failed to delete review.");
     } finally {
@@ -723,351 +698,429 @@ export default function DoctorDetailsScreen() {
     }
   };
 
+  const calculatedRating = useMemo(() => {
+    if (reviews.length === 0) return doctor?.rating || 0;
+    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    return parseFloat((sum / reviews.length).toFixed(1));
+  }, [reviews, doctor?.rating]);
+
   const myExistingReview = useMemo(() => {
     const byMineFlag = reviews.find((review) => review.isMine === true)
     if (byMineFlag) return byMineFlag
-
     const myName = normalizeText(myDisplayName)
     if (!myName) return undefined
-
     return reviews.find((review) => normalizeText(review.author) === myName)
   }, [reviews, myDisplayName])
 
-  const confirmDeleteMyReview = () => {
-    if (!myExistingReview) return
+  const scrollY = useRef(new Animated.Value(0)).current;
 
-    Alert.alert(
-      "Delete Review",
-      "Are you sure you want to delete your review?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            handleDeleteExistingReview().catch(() => undefined)
-          },
-        },
-      ]
-    )
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [280, 200],
+    extrapolate: 'clamp',
+  });
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 150],
+    outputRange: [1, 0.9],
+    extrapolate: 'clamp',
+  });
+
+  const avatarScale = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [1, 0.8],
+    extrapolate: 'clamp',
+  });
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#059669" />
+        <Text style={styles.retryTxt}>Loading Doctor Details...</Text>
+      </View>
+    );
   }
 
-  const openReviewModal = () => {
-    if (myExistingReview) {
-      setMyRating(Number(myExistingReview.rating || 0));
-      setMyComment(myExistingReview.comment || "");
-    } else {
-      setMyRating(0);
-      setMyComment("");
-    }
-    setShowAddReview(true);
-  };
-
-  const avgRating = reviews.length > 0
-    ? (reviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / reviews.length).toFixed(1)
-    : (doctor?.rating ? doctor.rating.toFixed(1) : "0.0");
-  const reviewsCount = reviews.length > 0 ? reviews.length : (doctor?.reviewCount ?? 0);
-
-  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
-  if (error || !doctor) return (
-    <View style={styles.center}>
-      <Text style={styles.errorTxt}>⚠️ {error || "Doctor not found"}</Text>
-      <TouchableOpacity style={styles.retryBtn} onPress={fetchAll}>
-        <Text style={styles.retryTxt}>Retry</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const selectedDayData = days[selectedDay] ?? null;
-  const currentSlots = selectedDayData ? getTimeSlotsForDay(selectedDayData.isoDate, availability, bookedSlots) : [];
+  if (error || !doctor) {
+    return (
+      <View style={styles.center}>
+        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+        <Text style={styles.errorTxt}>{error || "Doctor not found"}</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={fetchAll}>
+          <Text style={styles.retryTxt}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color="#1A1A1A" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+
+      {/* TOP NAVIGATION BUTTONS (ALWAYS ON TOP) */}
+      <View style={styles.fixedHeaderNav}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.glassBtn}>
+          <Ionicons name="chevron-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TouchableOpacity 
+            onPress={() => router.push({ pathname: "/(patient)/messages", params: { doctorId: doctorId, doctorName: doctor?.name } } as any)} 
+            style={styles.glassBtn}
+          >
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => toggleFollow(Number(doctorId))} style={styles.glassBtn} disabled={following}>
+            <Ionicons name={isFollowed ? "heart" : "heart-outline"} size={22} color={isFollowed ? "#EF4444" : "#fff"} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* FIXED GREEN BACKGROUND */}
+      <View style={styles.magicHeader}>
+        <LinearGradient 
+          colors={["#064E3B", "#065F46"]} 
+          start={{ x: 0, y: 0 }} 
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        >
+          <View style={[styles.liquidBlob, { top: -60, right: -60, width: 300, height: 300, backgroundColor: '#059669', opacity: 0.15 }]} />
+          <View style={[styles.liquidBlob, { bottom: -40, left: -40, width: 250, height: 250, backgroundColor: '#10B981', opacity: 0.1 }]} />
+
+          <View style={styles.doctorHeroSection}>
+            <Animated.View style={[styles.profileImgContainer, { transform: [{ scale: avatarScale }] }]}>
+              <View style={styles.avatarGlassBorder}>
+                <Image
+                  source={{ uri: doctor?.imageUrl || doctor?.photoUrl || "https://cdn-icons-png.flaticon.com/512/3774/3774299.png" }}
+                  style={styles.profileImg}
+                />
+              </View>
+              {doctor?.isAvailable && <View style={styles.activePulse} />}
+            </Animated.View>
+
+            <View style={styles.heroInfo}>
+              <View style={styles.specBadge}>
+                <Text style={styles.specBadgeText}>{doctor?.specialty?.toUpperCase()}</Text>
+              </View>
+              <Text style={styles.heroName}>Dr. {doctor?.name}</Text>
+              <View style={styles.heroRatingRow}>
+                <Ionicons name="star" size={16} color="#FDE047" />
+                <Text style={styles.heroRatingText}>{calculatedRating}</Text>
+                <View style={styles.ratingDot} />
+                <Text style={styles.heroReviewCount}>{reviews.length || doctor?.reviewCount || 0} Reviews</Text>
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+      </View>
+
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: 300, paddingBottom: 120 }}
+      >
+        <View style={styles.contentCard}>
+          {/* Stats Bar */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <View style={[styles.statIconWrap, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="ribbon-outline" size={20} color="#059669" />
+              </View>
+              <Text style={styles.statLabel}>Experience</Text>
+              <Text style={styles.statValue}>{doctor?.experience || (doctor as any)?.yearsExperience || 0} Yrs</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <View style={[styles.statIconWrap, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="wallet-outline" size={20} color="#2563EB" />
+              </View>
+              <Text style={styles.statLabel}>Consultation</Text>
+              <Text style={styles.statValue}>${doctor?.consultationFee}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <View style={[styles.statIconWrap, { backgroundColor: '#FFF7ED' }]}>
+                <Ionicons name="chatbubble-ellipses-outline" size={20} color="#EA580C" />
+              </View>
+              <Text style={styles.statLabel}>Reviews</Text>
+              <Text style={styles.statValue}>{doctor?.reviewCount || 0}</Text>
+            </View>
+          </View>
+
+          {/* Bio Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About Doctor</Text>
+            <View style={styles.bioCard}>
+              <Text style={styles.bioText}>
+                {doctor?.bio || "Dr. " + doctor?.name + " is a highly skilled " + doctor?.specialty + " dedicated to providing exceptional care to all patients."}
+              </Text>
+            </View>
+          </View>
+
+          {/* Booking / Schedule Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Select Schedule</Text>
+              <TouchableOpacity onPress={fetchAvailability}>
+                <Ionicons name="refresh-circle-outline" size={24} color="#059669" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingAvailability ? (
+              <View style={styles.loaderContainer}>
+                <ActivityIndicator color="#059669" size="large" />
+              </View>
+            ) : hasSchedule ? (
+              <>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.daysScroll}>
+                  {days.map((d, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      activeOpacity={0.8}
+                      style={[styles.dayButton, selectedDay === i && styles.dayButtonActive]}
+                      onPress={() => { setSelectedDay(i); setSelectedTime(null); }}
+                    >
+                      <Text style={[styles.dayName, selectedDay === i && styles.dayTextActive]}>{d.label}</Text>
+                      <Text style={[styles.dayNum, selectedDay === i && styles.dayTextActive]}>{d.date.split(' ')[0]}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                <View style={styles.slotsContainer}>
+                  {currentSlots.length === 0 ? (
+                    <View style={styles.emptyState}>
+                      <Ionicons name="calendar-outline" size={40} color="#CBD5E1" />
+                      <Text style={styles.emptyStateText}>No available slots for this day</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.slotsGrid}>
+                      {currentSlots.map((s) => (
+                        <TouchableOpacity
+                          key={s}
+                          activeOpacity={0.7}
+                          style={[styles.slotCard, selectedTime === s && styles.slotCardActive]}
+                          onPress={() => setSelectedTime(s)}
+                        >
+                          <Text style={[styles.slotTime, selectedTime === s && styles.slotTimeActive]}>{s}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </>
+            ) : (
+              <View style={styles.waitingCard}>
+                <LinearGradient colors={["#F0FDF4", "#DCFCE7"]} style={styles.waitingGradient}>
+                  <Ionicons name="notifications-outline" size={40} color="#059669" />
+                  <Text style={styles.waitingTitle}>Schedule Pending</Text>
+                  <Text style={styles.waitingSub}>Be the first to know when Dr. {doctor?.name} opens their schedule.</Text>
+                  <TouchableOpacity
+                    style={[styles.notifyAction, notifyEnabled && styles.notifyActionActive]}
+                    onPress={handleNotifyMe}
+                  >
+                    <Text style={[styles.notifyActionText, notifyEnabled && { color: "#fff" }]}>
+                      {notifyEnabled ? '🔔 Already Notified' : 'Notify Me'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </View>
+            )}
+          </View>
+
+          {/* Reviews Section */}
+          <View style={[styles.section, { marginBottom: 20 }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Patient Reviews</Text>
+              <TouchableOpacity style={styles.addReviewLink} onPress={() => setShowAddReview(true)}>
+                <Text style={styles.addReviewLinkText}>{myExistingReview ? "Edit My Review" : "Add Review"}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.reviewsList}>
+              {reviews.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="chatbubbles-outline" size={40} color="#CBD5E1" />
+                  <Text style={styles.emptyStateText}>No reviews yet. Be the first to share your experience!</Text>
+                </View>
+              ) : (
+                reviews.slice(0, 3).map((r, i) => (
+                  <View key={i} style={styles.reviewItem}>
+                    <View style={styles.reviewHeaderRow}>
+                      <View style={styles.reviewerAvatar}>
+                        <Text style={styles.avatarInitial}>{r.author.charAt(0)}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.reviewerName}>{r.author}</Text>
+                        <View style={styles.starsContainer}>
+                          <StarRow value={r.rating} size={12} />
+                        </View>
+                      </View>
+                      <Text style={styles.reviewDateText}>{r.date ? new Date(r.date).toLocaleDateString() : ""}</Text>
+                    </View>
+                    <Text style={styles.reviewContent}>{r.comment}</Text>
+                  </View>
+                ))
+              )}
+            </View>
+          </View>
+        </View>
+      </Animated.ScrollView>
+
+      {/* FLOATING ACTION BUTTON */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity 
+          style={styles.messageTextBtn}
+          onPress={() => router.push({ pathname: "/(patient)/messages", params: { doctorId: doctorId, doctorName: doctor?.name } } as any)}
+        >
+          <Ionicons name="chatbubble-ellipses" size={20} color="#059669" />
+          <Text style={styles.messageBtnText}>Message</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.headerBtn, { right: 16 }]}
-          onPress={() => toggleFollow(Number(doctorId))}
-          disabled={following}
+          activeOpacity={0.8}
+          style={[styles.premiumBookBtn, (!selectedTime || !selectedDayData) && styles.disabledBookBtn]}
+          onPress={handleProceed}
+          disabled={booking || !selectedTime || !selectedDayData}
         >
-          {following ? (
-            <ActivityIndicator size="small" color={COLORS.primary} />
-          ) : (
-            <Ionicons name={isFollowed ? "heart" : "heart-outline"} size={24} color={isFollowed ? "#e53935" : "#1A1A1A"} />
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.profileCard}>
-          <View style={styles.avatarWrap}>
-            <View style={styles.avatarFallback}>
-              {doctor.photoUrl || (doctor as any).imageUrl ? (
-                <Image source={{ uri: doctor.photoUrl || (doctor as any).imageUrl }} style={styles.avatarImg} />
-              ) : (
-                <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} style={styles.avatarImg} />
-              )}
-            </View>
-            <View style={[styles.onlineDot, { backgroundColor: doctor.isAvailable ? "#4CAF50" : "#CBD5E1" }]} />
-          </View>
-          <Text style={styles.docName}>{doctor.name}</Text>
-          <Text style={styles.docSpec}>{doctor.specialty}</Text>
-          <Text style={[styles.docStatus, { color: doctor.isAvailable ? "#16A34A" : "#94A3B8" }]}>
-            {doctor.isAvailable ? "Online" : "Offline"}
-          </Text>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <RatingStars rating={Number(avgRating)} showText={false} size={14} />
-              <Text style={[styles.statVal, { marginTop: 4 }]}>{avgRating}</Text>
-              <Text style={styles.statLbl}>Rating</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Ionicons name="time-outline" size={14} color={COLORS.primary} />
-              <Text style={styles.statVal}>{doctor.experience || doctor.yearsExperience || 0} yrs</Text>
-              <Text style={styles.statLbl}>Experience</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Ionicons name="people-outline" size={14} color={COLORS.primary} />
-              <Text style={styles.statVal}>{reviewsCount}</Text>
-              <Text style={styles.statLbl}>Reviews</Text>
-            </View>
-          </View>
-        </View>
-
-        {doctor.bio && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About</Text>
-            <Text style={styles.bio}>{doctor.bio}</Text>
-          </View>
-        )}
-
-        <View style={styles.pills}>
-          <View style={styles.pill}>
-            <Ionicons name="location-outline" size={14} color={COLORS.primary} />
-            <Text style={styles.pillTxt}>{doctor.location || "Clinic Location"}</Text>
-          </View>
-          <View style={styles.pill}>
-            <Ionicons name="cash-outline" size={14} color={COLORS.primary} />
-            <Text style={styles.pillTxt}>${doctor.consultationFee} per visit</Text>
-          </View>
-        </View>
-
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={styles.messageDoctorBtn}
-            onPress={() =>
-              router.push({
-                pathname: "/(patient)/messages",
-                params: {
-                  doctorId: String(doctor.id),
-                  doctorName: doctor.name,
-                },
-              })
-            }
+          <LinearGradient
+            colors={(!selectedTime || !selectedDayData) ? ["#CBD5E1", "#94A3B8"] : ["#059669", "#047857"]}
+            style={styles.bookGradient}
           >
-            <Ionicons name="chatbubble-ellipses-outline" size={15} color="#fff" />
-            <Text style={styles.messageDoctorTxt}>Message Doctor</Text>
-          </TouchableOpacity>
-        </View>
-
-        {loadingAvailability ? (
-          <View style={[styles.section, { alignItems: 'center', paddingVertical: 40 }]}>
-            <ActivityIndicator color={COLORS.primary} size="large" />
-          </View>
-        ) : hasSchedule ? (
-          <>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Select Date</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-                {days.map((day, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    style={[styles.dayChip, selectedDay === i && styles.dayChipActive]}
-                    onPress={() => { setSelectedDay(i); setSelectedTime(null); }}
-                  >
-                    <Text style={[styles.dayLabel, selectedDay === i && styles.dayLabelActive]}>{day.label}</Text>
-                    <Text style={[styles.dayDate, selectedDay === i && styles.dayDateActive]}>{day.date}</Text>
-                  </TouchableOpacity>
-                ))}
-                {days.length === 0 && (
-                  <Text style={{ color: "#AAA", marginTop: 8 }}>No available dates configured yet.</Text>
-                )}
-              </ScrollView>
+            <Text style={styles.bookText}>
+              {booking ? "Wait..." : "Book Now"}
+            </Text>
+            <View style={styles.bookIconCircle}>
+              <Ionicons name="chevron-forward" size={16} color={(!selectedTime || !selectedDayData) ? "#94A3B8" : "#059669"} />
             </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Select Time</Text>
-              <View style={styles.timeGrid}>
-                {currentSlots.map((slot) => (
-                  <TouchableOpacity
-                    key={slot}
-                    style={[styles.timeChip, selectedTime === slot && styles.timeChipActive]}
-                    onPress={() => setSelectedTime(slot)}
-                  >
-                    <Text style={[styles.timeTxt, selectedTime === slot && styles.timeTxtActive]}>{slot}</Text>
-                  </TouchableOpacity>
-                ))}
-                {currentSlots.length === 0 && (
-                  <Text style={{ color: "#AAA", marginTop: 8 }}>No available slots on this day.</Text>
-                )}
-              </View>
-            </View>
-          </>
-        ) : (
-          <View style={styles.waitingContainer}>
-            <Text style={styles.waitingIcon}>⏳</Text>
-            <Text style={styles.waitingTitle}>Schedule Coming Soon</Text>
-            <Text style={styles.waitingText}>This doctor has not set their schedule yet.</Text>
-            <TouchableOpacity style={[styles.notifyBtn, notifyEnabled && styles.notifyBtnActive]} onPress={handleNotifyMe}>
-              <Text style={[styles.notifyBtnText, notifyEnabled && { color: "#fff" }]}>
-                {notifyEnabled ? '🔔 Notified!' : '🔔 Notify Me When Ready'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <View style={styles.reviewHeader}>
-            <Text style={styles.sectionTitle}>Reviews ({reviews.length})</Text>
-            <View style={styles.reviewActionsRow}>
-              {myExistingReview && (
-                <>
-                  <TouchableOpacity style={styles.editReviewBtn} onPress={openReviewModal}>
-                    <Ionicons name="create-outline" size={14} color={COLORS.primary} />
-                    <Text style={styles.editReviewTxt}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.deleteReviewBtn} onPress={confirmDeleteMyReview}>
-                    <Ionicons name="trash-outline" size={14} color="#DC2626" />
-                    <Text style={styles.deleteReviewTxt}>Delete</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-              <TouchableOpacity style={styles.addReviewBtn} onPress={openReviewModal}>
-                <Ionicons name="add" size={14} color="#fff" />
-                <Text style={styles.addReviewTxt}>{myExistingReview ? "Edit Review" : "Add Review"}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {reviews.length === 0 ? (
-            <View style={styles.noReviews}>
-              <Ionicons name="chatbubble-outline" size={32} color="#DDD" />
-              <Text style={styles.noReviewsTxt}>No reviews yet — be the first!</Text>
-            </View>
-          ) : (
-            reviews.map((r, i) => (
-              <View key={i} style={styles.reviewCard}>
-                <View style={styles.reviewTop}>
-                  <View style={styles.reviewAvatar}><Text style={styles.reviewAvatarTxt}>{r.author?.charAt(0).toUpperCase() || 'U'}</Text></View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.reviewAuthor}>{r.author}</Text>
-                    <Text style={styles.reviewDate}>{r.date ? new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "--"}</Text>
-                  </View>
-                  <StarRow value={r.rating} size={13} />
-                </View>
-                <Text style={styles.reviewComment}>{r.comment}</Text>
-              </View>
-            ))
-          )}
-        </View>
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
-      <View style={styles.bottomBar}>
-        <View style={styles.feePill}>
-          <Text style={styles.feeLbl}>Fee</Text>
-          <Text style={styles.feeAmt}>${doctor.consultationFee}</Text>
-        </View>
-        <TouchableOpacity style={[styles.bookBtn, (!selectedTime || !selectedDayData) && styles.bookBtnOff]} onPress={handleProceed} disabled={booking || !selectedTime || !selectedDayData}>
-          {booking ? <ActivityIndicator color="#fff" /> : <><Text style={styles.bookBtnTxt}>{!selectedDayData ? "No Dates" : selectedTime ? "Continue" : "Pick a Time"}</Text>{selectedTime && selectedDayData && <Ionicons name="arrow-forward" size={15} color="#fff" />}</>}
+          </LinearGradient>
         </TouchableOpacity>
       </View>
 
+      {/* MODALS (PAYMENT, VISA, SUCCESS, REVIEW) */}
       <Modal visible={modalStep === "payment"} transparent animationType="slide">
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setModalStep(null)}>
-          <View style={styles.sheet}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Choose Payment</Text>
-            <Text style={styles.sheetSub}>{selectedDayData?.date ?? "--"} · {selectedTime} · ${doctor.consultationFee}</Text>
-            <TouchableOpacity style={styles.payOption} onPress={() => handlePaymentChoice("visa")}>
-              <View style={[styles.payIconBg, { backgroundColor: "#EEF2FF" }]}><Ionicons name="card" size={22} color="#4F46E5" /></View>
-              <View style={{ flex: 1 }}><Text style={styles.payTitle}>Pay with Visa</Text><Text style={styles.paySub}>Credit / Debit card</Text></View>
-              <Ionicons name="chevron-forward" size={18} color="#CCC" />
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setModalStep(null)}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalIndicator} />
+            <Text style={styles.modalHeaderTitle}>Payment Method</Text>
+            <Text style={styles.modalHeaderSub}>Choose how you want to pay for your visit</Text>
+
+            <TouchableOpacity style={[styles.payMethodCard, payMethod === "visa" && styles.payMethodActive]} onPress={() => handlePaymentChoice("visa")}>
+              <View style={[styles.payIconBox, { backgroundColor: '#EFF6FF' }]}><Ionicons name="card" size={24} color="#2563EB" /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payTitle}>Credit / Debit Card</Text>
+                <Text style={styles.paySub}>Visa, Mastercard, etc.</Text>
+              </View>
+              <View style={[styles.radioCircle, payMethod === "visa" && styles.radioActive]} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.payOption} onPress={() => handlePaymentChoice("cash")}>
-              <View style={[styles.payIconBg, { backgroundColor: "#ECFDF5" }]}><Ionicons name="cash" size={22} color={COLORS.primary} /></View>
-              <View style={{ flex: 1 }}><Text style={styles.payTitle}>Pay on Arrival</Text><Text style={styles.paySub}>Cash at clinic</Text></View>
-              <Ionicons name="chevron-forward" size={18} color="#CCC" />
+
+            <TouchableOpacity style={[styles.payMethodCard, payMethod === "cash" && styles.payMethodActive]} onPress={() => handlePaymentChoice("cash")}>
+              <View style={[styles.payIconBox, { backgroundColor: '#F0FDF4' }]}><Ionicons name="cash" size={24} color="#059669" /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.payTitle}>Cash at Clinic</Text>
+                <Text style={styles.paySub}>Pay after consultation</Text>
+              </View>
+              <View style={[styles.radioCircle, payMethod === "cash" && styles.radioActive]} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalStep(null)}><Text style={styles.cancelTxt}>Cancel</Text></TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
 
+      {/* Visa Form Modal */}
       <Modal visible={modalStep === "visa_form"} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.overlay}>
-          <View style={[styles.sheet, { paddingBottom: 36 }]}>
-            <View style={styles.sheetHandle} />
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
-              <TouchableOpacity onPress={() => setModalStep("payment")} style={{ marginRight: 10 }}><Ionicons name="chevron-back" size={22} color="#333" /></TouchableOpacity>
-              <Text style={styles.sheetTitle}>Card Details</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalIndicator} />
+            <View style={styles.modalHeaderWithBack}>
+              <TouchableOpacity onPress={() => setModalStep("payment")}><Ionicons name="arrow-back" size={24} color="#1E293B" /></TouchableOpacity>
+              <Text style={styles.modalHeaderTitle}>Card Details</Text>
+              <View style={{ width: 24 }} />
             </View>
-            <Text style={styles.sheetSub}>All transactions are secure & encrypted</Text>
-            <Text style={styles.fieldLabel}>Cardholder Name</Text>
-            <TextInput style={[styles.input, cardErrors.cardName && styles.inputError]} placeholder="Name on card" placeholderTextColor="#BBB" value={cardName} onChangeText={setCardName} autoCapitalize="words" />
-            {cardErrors.cardName && <Text style={styles.fieldError}>{cardErrors.cardName}</Text>}
-            <Text style={styles.fieldLabel}>Card Number</Text>
-            <View style={[styles.inputRow, cardErrors.cardNumber && styles.inputError]}><Ionicons name="card-outline" size={18} color="#AAA" /><TextInput style={[styles.input, { flex: 1, borderWidth: 0, marginBottom: 0, padding: 0 }]} placeholder="0000 0000 0000 0000" placeholderTextColor="#BBB" value={cardNumber} onChangeText={(v) => setCardNumber(formatCardNumber(v))} keyboardType="numeric" maxLength={19} /></View>
-            {cardErrors.cardNumber && <Text style={styles.fieldError}>{cardErrors.cardNumber}</Text>}
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <View style={{ flex: 1 }}><Text style={styles.fieldLabel}>Expiry Date</Text><TextInput style={[styles.input, cardErrors.expiry && styles.inputError]} placeholder="MM/YY" placeholderTextColor="#BBB" value={expiry} onChangeText={(v) => setExpiry(formatExpiry(v))} keyboardType="numeric" maxLength={5} />{cardErrors.expiry && <Text style={styles.fieldError}>{cardErrors.expiry}</Text>}</View>
-              <View style={{ flex: 1 }}><Text style={styles.fieldLabel}>CVV</Text><TextInput style={[styles.input, cardErrors.cvv && styles.inputError]} placeholder="•••" placeholderTextColor="#BBB" value={cvv} onChangeText={(v) => setCvv(v.replace(/\D/g, "").slice(0, 4))} keyboardType="numeric" secureTextEntry maxLength={4} />{cardErrors.cvv && <Text style={styles.fieldError}>{cardErrors.cvv}</Text>}</View>
-            </View>
-            <TouchableOpacity style={styles.confirmPayBtn} onPress={handleVisaConfirm}><Ionicons name="lock-closed" size={15} color="#fff" /><Text style={styles.confirmPayTxt}>Pay ${doctor.consultationFee} Securely</Text></TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
-      <Modal visible={showAddReview} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.overlay}>
-          <View style={[styles.sheet, { paddingBottom: 36 }]}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Write a Review</Text>
-            <Text style={styles.sheetSub}>Share your experience with {doctor.name}</Text>
-            <Text style={styles.fieldLabel}>Your Rating</Text>
-            <StarRow value={myRating} onChange={setMyRating} size={32} />
-            {myRating > 0 && <Text style={[styles.fieldLabel, { color: "#FFB300", marginTop: 6 }]}>{["", "Poor", "Fair", "Good", "Very Good", "Excellent"][myRating]}</Text>}
-            <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Your Comment</Text>
-            <TextInput style={[styles.input, styles.textarea]} placeholder="Tell others about your experience..." placeholderTextColor="#BBB" value={myComment} onChangeText={setMyComment} multiline numberOfLines={4} textAlignVertical="top" />
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-              <TouchableOpacity style={[styles.confirmPayBtn, { flex: 1, backgroundColor: "#F0F0F0" }]} onPress={() => setShowAddReview(false)}><Text style={[styles.confirmPayTxt, { color: "#555" }]}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={[styles.confirmPayBtn, { flex: 2 }]} onPress={myExistingReview ? handleUpdateExistingReview : submitReview} disabled={savingReview}>{savingReview ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.confirmPayTxt}>{myExistingReview ? "Update Review" : "Submit Review"}</Text>}</TouchableOpacity>
-            </View>
-            {myExistingReview && (
-              <TouchableOpacity style={[styles.confirmPayBtn, { backgroundColor: "#DC2626", marginTop: 8 }]} onPress={handleDeleteExistingReview} disabled={savingReview}>
-                <Text style={styles.confirmPayTxt}>Delete My Review</Text>
+            <View style={styles.visaFormContainer}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabelText}>Cardholder Name</Text>
+                <TextInput style={styles.premiumInput} placeholder="e.g. John Doe" value={cardName} onChangeText={setCardName} />
+                {cardErrors.cardName && <Text style={styles.formError}>{cardErrors.cardName}</Text>}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabelText}>Card Number</Text>
+                <TextInput style={styles.premiumInput} placeholder="0000 0000 0000 0000" value={cardNumber} onChangeText={(v) => setCardNumber(formatCardNumber(v))} keyboardType="numeric" maxLength={19} />
+                {cardErrors.cardNumber && <Text style={styles.formError}>{cardErrors.cardNumber}</Text>}
+              </View>
+
+              <View style={styles.visaInlineRow}>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.inputLabelText}>Expiry Date</Text>
+                  <TextInput style={styles.premiumInput} placeholder="MM/YY" value={expiry} onChangeText={(v) => setExpiry(formatExpiry(v))} keyboardType="numeric" maxLength={5} />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.inputLabelText}>CVV</Text>
+                  <TextInput style={styles.premiumInput} placeholder="000" value={cvv} onChangeText={(v) => setCvv(v.slice(0, 4))} keyboardType="numeric" secureTextEntry />
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.confirmPaymentBtn} onPress={handleVisaConfirm}>
+                <LinearGradient colors={["#2563EB", "#1D4ED8"]} style={styles.confirmPaymentGradient}>
+                  <Text style={styles.confirmPaymentText}>Pay ${doctor?.consultationFee}</Text>
+                </LinearGradient>
               </TouchableOpacity>
-            )}
+            </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Success Modal */}
       <Modal visible={showSuccess} transparent animationType="fade">
-        <View style={styles.successOverlay}>
+        <View style={styles.successContainer}>
           <View style={styles.successCard}>
-            <View style={styles.successIconWrap}><Ionicons name="checkmark-circle" size={64} color={COLORS.primary} /></View>
-            <Text style={styles.successTitle}>Booking Confirmed!</Text>
-            <Text style={styles.successDoc}>{doctor.name}</Text>
-            <View style={styles.successDetails}>
-              <View style={styles.successRow}><Ionicons name="calendar-outline" size={15} color={COLORS.primary} /><Text style={styles.successDetailTxt}>{selectedDayData?.date ?? "--"} · {selectedTime}</Text></View>
-              <View style={styles.successRow}><Ionicons name={payMethod === "visa" ? "card-outline" : "cash-outline"} size={15} color={COLORS.primary} /><Text style={styles.successDetailTxt}>{payMethod === "visa" ? "Paid by Visa" : "Pay on Arrival"}</Text></View>
+            <View style={styles.successIconOuter}>
+              <View style={styles.successIconInner}>
+                <Ionicons name="checkmark" size={60} color="#fff" />
+              </View>
             </View>
-            <TouchableOpacity style={styles.doneBtn} onPress={() => { setShowSuccess(false); router.back(); }}><Text style={styles.doneBtnTxt}>Done</Text></TouchableOpacity>
+            <Text style={styles.successMainTitle}>Booking Requested!</Text>
+            <Text style={styles.successMainSub}>Your appointment with Dr. {doctor?.name} is waiting for approval. You'll receive a notification soon.</Text>
+            <TouchableOpacity style={styles.successActionBtn} onPress={() => { setShowSuccess(false); router.back(); }}>
+              <Text style={styles.successActionText}>Go to Appointments</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Review Modal */}
+      <Modal visible={showAddReview} transparent animationType="fade">
+        <View style={styles.reviewModalContainer}>
+          <View style={styles.reviewModalBox}>
+            <Text style={styles.reviewModalTitle}>Rate Your Visit</Text>
+            <Text style={styles.reviewModalSub}>How was your experience with Dr. {doctor?.name}?</Text>
+
+            <View style={styles.ratingStarsWrap}>
+              <StarRow value={myRating} onChange={setMyRating} size={42} />
+            </View>
+
+            <TextInput
+              style={styles.reviewTextInput}
+              placeholder="Tell us about the doctor, the clinic, or the service..."
+              value={myComment}
+              onChangeText={setMyComment}
+              multiline
+              numberOfLines={4}
+            />
+
+            <View style={styles.reviewBtnRow}>
+              <TouchableOpacity style={styles.reviewCancelBtn} onPress={() => setShowAddReview(false)}>
+                <Text style={styles.reviewCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.reviewSubmitBtn} onPress={myExistingReview ? handleUpdateExistingReview : submitReview} disabled={savingReview}>
+                <LinearGradient colors={["#059669", "#047857"]} style={styles.reviewSubmitGradient}>
+                  <Text style={styles.reviewSubmitBtnText}>{savingReview ? "..." : "Submit"}</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1076,115 +1129,136 @@ export default function DoctorDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F6FA" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
-  errorTxt: { color: "#e53935", fontSize: 14, textAlign: "center" },
-  retryBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 9, borderRadius: 18 },
-  retryTxt: { color: "#fff", fontWeight: "600" },
-  headerRow: { position: "absolute", top: 48, left: 16, right: 16, zIndex: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  backBtn: { backgroundColor: "#fff", borderRadius: 14, padding: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 4 },
-  headerBtn: { backgroundColor: "#fff", borderRadius: 14, padding: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 4 },
-  profileCard: { backgroundColor: "#fff", alignItems: "center", paddingTop: 88, paddingBottom: 24, paddingHorizontal: 20, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 4 },
-  avatarWrap: { position: "relative", marginBottom: 12 },
-  avatarFallback: { width: 84, height: 84, borderRadius: 42, backgroundColor: COLORS.primary + "20", justifyContent: "center", alignItems: "center", borderWidth: 3, borderColor: COLORS.primary + "30", overflow: "hidden" },
-  avatarImg: { width: "100%", height: "100%", borderRadius: 42 },
-  avatarTxt: { fontSize: 32, fontWeight: "800", color: COLORS.primary },
-  onlineDot: { position: "absolute", bottom: 4, right: 4, width: 15, height: 15, borderRadius: 8, backgroundColor: "#4CAF50", borderWidth: 3, borderColor: "#fff" },
-  docName: { fontSize: 20, fontWeight: "800", color: "#1A1A1A" },
-  docSpec: { fontSize: 13, color: COLORS.primary, fontWeight: "600", marginTop: 3 },
-  docStatus: { fontSize: 12, fontWeight: "700", marginTop: 6 },
-  statsRow: { flexDirection: "row", alignItems: "center", marginTop: 18, paddingTop: 18, borderTopWidth: 1, borderTopColor: "#F0F0F0", width: "100%", justifyContent: "center" },
-  statItem: { flex: 1, alignItems: "center", gap: 3 },
-  statDivider: { width: 1, height: 32, backgroundColor: "#F0F0F0" },
-  statVal: { fontSize: 14, fontWeight: "700", color: "#1A1A1A" },
-  statLbl: { fontSize: 10, color: "#AAA" },
-  section: { marginTop: 20, paddingHorizontal: 18 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", marginBottom: 12 },
-  bio: { fontSize: 13, color: "#666", lineHeight: 20 },
-  pills: { flexDirection: "row", flexWrap: "wrap", gap: 10, paddingHorizontal: 18, marginTop: 14 },
-  pill: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: COLORS.primary + "12", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
-  pillTxt: { fontSize: 12, color: "#444", fontWeight: "500" },
-  quickActions: { paddingHorizontal: 18, marginTop: 12 },
-  messageDoctorBtn: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 18,
-  },
-  messageDoctorTxt: { color: "#fff", fontSize: 12, fontWeight: "700" },
-  dayChip: { alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, backgroundColor: "#fff", borderWidth: 1.5, borderColor: "#EEE", minWidth: 68 },
-  dayChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  dayLabel: { fontSize: 10, color: "#AAA", fontWeight: "500" },
-  dayLabelActive: { color: "rgba(255,255,255,0.8)" },
-  dayDate: { fontSize: 13, color: "#1A1A1A", fontWeight: "700", marginTop: 2 },
-  dayDateActive: { color: "#fff" },
-  timeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  timeChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, backgroundColor: "#fff", borderWidth: 1.5, borderColor: "#EEE" },
-  timeChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  timeTxt: { fontSize: 12, color: "#333", fontWeight: "500" },
-  timeTxtActive: { color: "#fff" },
-  reviewHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  reviewActionsRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  editReviewBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#ECFEFF", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, borderWidth: 1, borderColor: "#99F6E4" },
-  editReviewTxt: { color: COLORS.primary, fontSize: 12, fontWeight: "700" },
-  deleteReviewBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#FEF2F2", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, borderWidth: 1, borderColor: "#FECACA" },
-  deleteReviewTxt: { color: "#DC2626", fontSize: 12, fontWeight: "700" },
-  addReviewBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 18 },
-  addReviewTxt: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  noReviews: { alignItems: "center", paddingVertical: 24, gap: 8 },
-  noReviewsTxt: { fontSize: 13, color: "#BBB" },
-  reviewCard: { backgroundColor: "#fff", borderRadius: 14, padding: 14, marginBottom: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
-  reviewTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
-  reviewAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.primary + "20", justifyContent: "center", alignItems: "center" },
-  reviewAvatarTxt: { fontSize: 15, fontWeight: "700", color: COLORS.primary },
-  reviewAuthor: { fontSize: 13, fontWeight: "700", color: "#1A1A1A" },
-  reviewDate: { fontSize: 11, color: "#BBB", marginTop: 1 },
-  reviewComment: { fontSize: 13, color: "#555", lineHeight: 20 },
-  bottomBar: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#fff", paddingHorizontal: 18, paddingTop: 12, paddingBottom: 28, borderTopWidth: 1, borderTopColor: "#F0F0F0", flexDirection: "row", alignItems: "center", gap: 12 },
-  feePill: { backgroundColor: COLORS.primary + "12", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, alignItems: "center" },
-  feeLbl: { fontSize: 9, color: COLORS.primary, fontWeight: "600" },
-  feeAmt: { fontSize: 15, fontWeight: "800", color: COLORS.primary },
-  bookBtn: { flex: 1, backgroundColor: COLORS.primary, borderRadius: 16, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
-  bookBtnOff: { backgroundColor: "#DDD" },
-  bookBtnTxt: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: "#fff", borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 22, paddingTop: 14, paddingBottom: 28 },
-  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#DDD", alignSelf: "center", marginBottom: 18 },
-  sheetTitle: { fontSize: 19, fontWeight: "800", color: "#1A1A1A", marginBottom: 3 },
-  sheetSub: { fontSize: 12, color: "#AAA", marginBottom: 20 },
-  payOption: { flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: "#FAFAFA", borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1.5, borderColor: "#F0F0F0" },
-  payIconBg: { width: 44, height: 44, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-  payTitle: { fontSize: 14, fontWeight: "700", color: "#1A1A1A" },
-  paySub: { fontSize: 11, color: "#AAA", marginTop: 2 },
-  cancelBtn: { alignItems: "center", paddingVertical: 12, marginTop: 4 },
-  cancelTxt: { color: "#AAA", fontSize: 14, fontWeight: "500" },
-  fieldLabel: { fontSize: 12, fontWeight: "600", color: "#555", marginBottom: 6, marginTop: 12 },
-  input: { backgroundColor: "#F7F7F7", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: "#1A1A1A", borderWidth: 1.5, borderColor: "#EFEFEF", marginBottom: 2 },
-  inputRow: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#F7F7F7", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1.5, borderColor: "#EFEFEF", marginBottom: 2 },
-  inputError: { borderColor: "#e53935" },
-  fieldError: { fontSize: 11, color: "#e53935", marginBottom: 4 },
-  textarea: { height: 90, paddingTop: 12 },
-  confirmPayBtn: { backgroundColor: COLORS.primary, borderRadius: 16, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 16 },
-  confirmPayTxt: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  successOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", padding: 24 },
-  successCard: { backgroundColor: "#fff", borderRadius: 28, padding: 28, alignItems: "center", width: "100%" },
-  successIconWrap: { width: 90, height: 90, borderRadius: 45, backgroundColor: COLORS.primary + "15", justifyContent: "center", alignItems: "center", marginBottom: 14 },
-  successTitle: { fontSize: 20, fontWeight: "800", color: "#1A1A1A" },
-  successDoc: { fontSize: 14, color: COLORS.primary, fontWeight: "600", marginTop: 3, marginBottom: 18 },
-  successDetails: { backgroundColor: "#F8F8F8", borderRadius: 14, padding: 14, width: "100%", gap: 10 },
-  successRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  successDetailTxt: { fontSize: 13, color: "#555", fontWeight: "500" },
-  doneBtn: { backgroundColor: COLORS.primary, borderRadius: 18, paddingHorizontal: 44, paddingVertical: 13, marginTop: 18 },
-  doneBtnTxt: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  waitingContainer: { alignItems: "center", paddingVertical: 40, paddingHorizontal: 20 },
-  waitingIcon: { fontSize: 40, marginBottom: 12 },
-  waitingTitle: { fontSize: 18, fontWeight: "700", color: "#1A1A1A", marginBottom: 6 },
-  waitingText: { fontSize: 13, color: "#666", textAlign: "center", marginBottom: 20 },
-  notifyBtn: { backgroundColor: "#EEF2FF", paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20, borderWidth: 1, borderColor: "#4F46E5" },
-  notifyBtnActive: { backgroundColor: "#4F46E5" },
-  notifyBtnText: { color: "#4F46E5", fontWeight: "700", fontSize: 14 },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: '#fff' },
+  retryTxt: { color: "#64748B", fontWeight: "500", marginTop: 10 },
+  errorTxt: { color: "#EF4444", fontSize: 16, fontWeight: '600', marginTop: 10 },
+  retryBtn: { backgroundColor: "#059669", paddingHorizontal: 40, paddingVertical: 14, borderRadius: 30, marginTop: 20, elevation: 4 },
+
+  magicHeader: { position: 'absolute', top: 0, left: 0, right: 0, height: 340, overflow: 'hidden', zIndex: 0 },
+  fixedHeaderNav: { position: 'absolute', top: 50, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, zIndex: 1000 },
+  liquidBlob: { position: 'absolute', borderRadius: 150 },
+  headerNav: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 50, zIndex: 10 },
+  glassBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+
+  doctorHeroSection: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 110 },
+  profileImgContainer: { position: 'relative' },
+  avatarGlassBorder: { padding: 4, borderRadius: 54, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  profileImg: { width: 100, height: 100, borderRadius: 50 },
+  activePulse: { position: 'absolute', bottom: 4, right: 4, width: 18, height: 18, borderRadius: 9, backgroundColor: '#10B981', borderWidth: 3, borderColor: '#064E3B' },
+
+  heroInfo: { marginLeft: 20, flex: 1 },
+  specBadge: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 6 },
+  specBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  heroName: { fontSize: 26, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
+  heroRatingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+  heroRatingText: { color: '#fff', fontSize: 14, fontWeight: '800', marginLeft: 4 },
+  ratingDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.4)', marginHorizontal: 8 },
+  heroReviewCount: { color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: '600' },
+
+  contentCard: { backgroundColor: '#F8FAFC', borderTopLeftRadius: 45, borderTopRightRadius: 45, paddingHorizontal: 20, paddingTop: 30, marginTop: -45, minHeight: 600, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, elevation: 5 },
+  statsContainer: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 30, padding: 20, marginBottom: 35, elevation: 15, shadowColor: '#064E3B', shadowOpacity: 0.1, shadowRadius: 25, borderWidth: 1, borderColor: '#F1F5F9' },
+  statItem: { flex: 1, alignItems: 'center' },
+  statIconWrap: { width: 44, height: 44, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  statLabel: { fontSize: 10, color: '#94A3B8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  statValue: { fontSize: 15, fontWeight: '900', color: '#1E293B', marginTop: 2 },
+  statDivider: { width: 1, height: '60%', backgroundColor: '#F1F5F9', alignSelf: 'center' },
+
+  section: { marginBottom: 35 },
+  sectionTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginBottom: 18, letterSpacing: -0.5 },
+  bioCard: { backgroundColor: '#fff', padding: 20, borderRadius: 28, borderWidth: 1, borderColor: '#F1F5F9', elevation: 2, shadowColor: '#000', shadowOpacity: 0.02 },
+  bioText: { fontSize: 15, color: '#64748B', lineHeight: 24, fontWeight: '500' },
+
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
+  loaderContainer: { paddingVertical: 40, alignItems: 'center' },
+  daysScroll: { marginBottom: 25 },
+  dayButton: { width: 68, height: 85, backgroundColor: '#fff', borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 15, borderWidth: 1.5, borderColor: '#F1F5F9', elevation: 3 },
+  dayButtonActive: { backgroundColor: '#059669', borderColor: '#059669', elevation: 12, shadowColor: '#059669', shadowOpacity: 0.4, shadowRadius: 15 },
+  dayName: { fontSize: 12, color: '#94A3B8', fontWeight: '700', textTransform: 'uppercase' },
+  dayNum: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginTop: 4 },
+  dayTextActive: { color: '#fff' },
+
+  slotsContainer: { marginTop: 10 },
+  slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  slotCard: { paddingHorizontal: 14, paddingVertical: 14, borderRadius: 18, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#F1F5F9', flex: 1, minWidth: '28%', alignItems: 'center', elevation: 2 },
+  slotCardActive: { backgroundColor: '#ECFDF5', borderColor: '#059669', elevation: 6, shadowColor: '#059669', shadowOpacity: 0.2 },
+  slotTime: { fontSize: 13, fontWeight: '700', color: '#475569' },
+  slotTimeActive: { color: '#059669', fontWeight: '900' },
+  emptyState: { alignItems: 'center', paddingVertical: 40, backgroundColor: '#fff', borderRadius: 28, borderWidth: 1, borderColor: '#F1F5F9', borderStyle: 'dashed' },
+  emptyStateText: { color: '#94A3B8', marginTop: 12, fontSize: 14, fontWeight: '600' },
+
+  waitingCard: { borderRadius: 24, overflow: 'hidden', elevation: 5 },
+  waitingGradient: { padding: 25, alignItems: 'center' },
+  waitingTitle: { fontSize: 18, fontWeight: '800', color: '#065F46', marginTop: 12 },
+  waitingSub: { fontSize: 14, color: '#059669', textAlign: 'center', marginTop: 6, marginBottom: 20, opacity: 0.8 },
+  notifyAction: { backgroundColor: '#fff', paddingHorizontal: 25, paddingVertical: 12, borderRadius: 15, borderWidth: 1, borderColor: '#059669' },
+  notifyActionActive: { backgroundColor: '#059669' },
+  notifyActionText: { color: '#059669', fontWeight: '700' },
+
+  reviewsList: { gap: 18 },
+  reviewItem: { backgroundColor: '#fff', padding: 20, borderRadius: 28, borderWidth: 1, borderColor: '#F1F5F9', elevation: 2, shadowColor: '#000', shadowOpacity: 0.02 },
+  reviewHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  reviewerAvatar: { width: 44, height: 44, borderRadius: 15, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  avatarInitial: { color: '#059669', fontWeight: '900', fontSize: 16 },
+  reviewerName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  starsContainer: { marginTop: 4 },
+  reviewDateText: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
+  reviewContent: { fontSize: 14, color: '#64748B', lineHeight: 22, fontWeight: '500' },
+  addReviewLink: { backgroundColor: '#ECFDF5', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 12 },
+  addReviewLinkText: { color: '#059669', fontSize: 13, fontWeight: '800' },
+
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', paddingHorizontal: 20, paddingVertical: 18, paddingBottom: Platform.OS === 'ios' ? 34 : 20, flexDirection: 'row', alignItems: 'center', borderTopLeftRadius: 35, borderTopRightRadius: 35, shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 15, elevation: 25, gap: 12 },
+  messageTextBtn: { flex: 0.45, height: 56, borderRadius: 20, backgroundColor: '#F0FDF4', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#059669', gap: 8 },
+  messageBtnText: { color: '#059669', fontSize: 15, fontWeight: '800' },
+  premiumBookBtn: { flex: 1, height: 56, borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#059669', shadowOpacity: 0.3, shadowRadius: 12 },
+  disabledBookBtn: { elevation: 0, shadowOpacity: 0 },
+  bookGradient: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15 },
+  bookText: { color: '#fff', fontSize: 16, fontWeight: '800', marginRight: 10 },
+  bookIconCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 35, borderTopRightRadius: 35, padding: 24, paddingBottom: 40 },
+  modalIndicator: { width: 40, height: 5, backgroundColor: '#F1F5F9', borderRadius: 5, alignSelf: 'center', marginBottom: 20 },
+  modalHeaderTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B' },
+  modalHeaderSub: { fontSize: 14, color: '#64748B', marginTop: 4, marginBottom: 25 },
+  payMethodCard: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#F8FAFC', borderRadius: 20, marginBottom: 12, borderWidth: 1.5, borderColor: '#F1F5F9' },
+  payMethodActive: { borderColor: '#059669', backgroundColor: '#F0FDF4' },
+  payIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  payTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
+  paySub: { fontSize: 12, color: '#64748B' },
+  radioCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#CBD5E1' },
+  radioActive: { borderColor: '#059669', borderWidth: 6 },
+
+  modalHeaderWithBack: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+  visaFormContainer: { gap: 15 },
+  inputGroup: { gap: 8 },
+  inputLabelText: { fontSize: 13, fontWeight: '700', color: '#64748B', marginLeft: 4 },
+  premiumInput: { backgroundColor: '#F8FAFC', height: 55, borderRadius: 16, paddingHorizontal: 16, borderWidth: 1.5, borderColor: '#F1F5F9', fontSize: 15, fontWeight: '600', color: '#1E293B' },
+  visaInlineRow: { flexDirection: 'row', gap: 15 },
+  confirmPaymentBtn: { marginTop: 10, height: 55, borderRadius: 16, overflow: 'hidden' },
+  confirmPaymentGradient: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  confirmPaymentText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  formError: { color: '#EF4444', fontSize: 12, marginLeft: 4 },
+
+  successContainer: { flex: 1, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', padding: 30 },
+  successCard: { alignItems: 'center', width: '100%' },
+  successIconOuter: { width: 140, height: 140, borderRadius: 70, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center', marginBottom: 40 },
+  successIconInner: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center', elevation: 15, shadowColor: '#059669', shadowOpacity: 0.4, shadowRadius: 20 },
+  successMainTitle: { fontSize: 28, fontWeight: '900', color: '#1E293B', marginBottom: 15, textAlign: 'center' },
+  successMainSub: { fontSize: 16, color: '#64748B', textAlign: 'center', lineHeight: 26, marginBottom: 50, paddingHorizontal: 10 },
+  successActionBtn: { backgroundColor: '#059669', width: '100%', height: 60, borderRadius: 22, justifyContent: 'center', alignItems: 'center', elevation: 10, shadowColor: '#059669', shadowOpacity: 0.3, shadowRadius: 15 },
+  successActionText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+
+  reviewModalContainer: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', padding: 20 },
+  reviewModalBox: { backgroundColor: '#fff', borderRadius: 30, padding: 25, alignItems: 'center' },
+  reviewModalTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B' },
+  reviewModalSub: { fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 6, marginBottom: 20 },
+  ratingStarsWrap: { marginVertical: 10 },
+  reviewTextInput: { width: '100%', height: 120, backgroundColor: '#F8FAFC', borderRadius: 20, padding: 15, textAlignVertical: 'top', borderWidth: 1.5, borderColor: '#F1F5F9', marginTop: 15, fontSize: 14 },
+  reviewBtnRow: { flexDirection: 'row', gap: 12, marginTop: 25, width: '100%' },
+  reviewCancelBtn: { flex: 1, height: 55, borderRadius: 15, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F1F5F9' },
+  reviewCancelBtnText: { color: '#64748B', fontWeight: '700' },
+  reviewSubmitBtn: { flex: 2, height: 55, borderRadius: 15, overflow: 'hidden' },
+  reviewSubmitGradient: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  reviewSubmitBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
 });

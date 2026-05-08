@@ -144,33 +144,30 @@ export default function DoctorChat() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary-600 to-primary-400 rounded-xl blur-lg opacity-30" />
-          <div className="relative bg-gradient-to-br from-primary-600 to-primary-500 rounded-xl p-3 shadow-lg">
-            <MessageSquare size={28} className="text-white" />
-          </div>
+        <div className="bg-emerald-600 rounded-xl p-3 shadow-sm">
+          <MessageSquare size={24} className="text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Conversations</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Connect with your patients in real-time</p>
+          <h1 className="text-xl font-bold text-slate-800">Conversations</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Connect with your patients in real-time</p>
         </div>
       </div>
 
       <div className="flex gap-4 h-[calc(100vh-200px)]">
         {/* Sessions list */}
-        <motion.div className="w-72 bg-gradient-to-b from-white to-gray-50 rounded-xl border border-gray-100 shadow-sm overflow-y-auto flex-shrink-0"
+        <motion.div className="w-72 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-y-auto flex-shrink-0"
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-primary-50 to-transparent">
-            <p className="text-sm font-semibold text-gray-700">Active Conversations</p>
-            <p className="text-xs text-gray-500 mt-1">{sessions.length} session(s)</p>
+          <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+            <p className="text-sm font-semibold text-slate-700">Active Conversations</p>
+            <p className="text-xs text-slate-500 mt-1">{sessions.length} session(s)</p>
           </div>
           {isLoadingSessions ? <PageLoader /> : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-slate-50">
               {sessions.length === 0 ? (
-                <div className="p-8 text-center text-gray-400">
+                <div className="p-8 text-center text-slate-400">
                   <MessageSquare size={32} className="mx-auto mb-2 opacity-30" />
                   <p className="text-sm">No conversations yet</p>
                 </div>
@@ -181,26 +178,26 @@ export default function DoctorChat() {
                   whileHover={{ x: 4 }}
                   className={cn(
                     'w-full flex items-start gap-3 p-3 transition-colors',
-                    selectedSession?.id === s.id && 'bg-gradient-to-r from-primary-50 to-transparent border-l-2 border-primary-600'
+                    selectedSession?.id === s.id && 'bg-emerald-50/60 border-l-2 border-emerald-600'
                   )}
                 >
                   <div className={cn(
                     'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm',
-                    selectedSession?.id === s.id ? 'bg-gradient-to-br from-primary-600 to-primary-500' : 'bg-primary-100'
+                    selectedSession?.id === s.id ? 'bg-emerald-600' : 'bg-emerald-50'
                   )}>
                     {s.patientPhotoUrl ? (
                       <img src={s.patientPhotoUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <User size={16} className={selectedSession?.id === s.id ? 'text-white' : 'text-primary-600'} />
+                      <User size={16} className={selectedSession?.id === s.id ? 'text-white' : 'text-emerald-600'} />
                     )}
                   </div>
                   <div className="flex-1 min-w-0 text-left relative">
-                    <p className="text-sm font-medium text-gray-800 truncate pr-6">
+                    <p className="text-sm font-medium text-slate-800 truncate pr-6">
                       {toDisplaySessionTitle(s.title, s.id)}
                     </p>
-                    <p className="text-xs text-gray-400">{formatTimeAgo(s.lastMessageAt || s.updatedAt || s.createdAt)}</p>
+                    <p className="text-xs text-slate-400">{formatTimeAgo(s.lastMessageAt || s.updatedAt || s.createdAt)}</p>
                     {s.lastMessage && (
-                      <p className="text-xs text-gray-500 truncate mt-1 pr-4">{s.lastMessage}</p>
+                      <p className="text-xs text-slate-500 truncate mt-1 pr-4">{s.lastMessage}</p>
                     )}
                     {s.urgencyLevel && <UrgencyBadge level={s.urgencyLevel} />}
                     
@@ -217,13 +214,13 @@ export default function DoctorChat() {
         </motion.div>
 
         {/* Chat area */}
-        <motion.div className="flex-1 bg-gradient-to-br from-white via-blue-50/30 to-white rounded-xl border border-gray-100 shadow-sm flex flex-col overflow-hidden"
+        <motion.div className="flex-1 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col overflow-hidden"
           initial={{ x: 20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
           {!selectedSession ? (
-            <div className="flex-1 flex items-center justify-center text-gray-400">
+            <div className="flex-1 flex items-center justify-center text-slate-400">
               <motion.div className="text-center"
                 animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 3, repeat: Infinity }}
@@ -237,7 +234,7 @@ export default function DoctorChat() {
               {/* Header */}
               <div className={cn(
                 'flex items-center gap-3 px-5 py-4 border-b backdrop-blur-sm',
-                hasHighUrgency ? 'bg-gradient-to-r from-red-50 to-transparent border-red-200' : 'border-gray-100 bg-gradient-to-r from-primary-50/50 to-transparent'
+                hasHighUrgency ? 'bg-red-50/60 border-red-200' : 'border-slate-100 bg-slate-50/30'
               )}>
                 {hasHighUrgency && (
                   <motion.div className="flex items-center gap-2" animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
@@ -248,23 +245,23 @@ export default function DoctorChat() {
                 <div className={cn('flex items-center gap-2', hasHighUrgency && 'ml-auto')}>
                   <div className={cn(
                     'w-8 h-8 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0',
-                    hasHighUrgency ? 'bg-red-100' : 'bg-primary-100'
+                    hasHighUrgency ? 'bg-red-100' : 'bg-emerald-50'
                   )}>
                     {selectedSession.patientPhotoUrl ? (
                       <img src={selectedSession.patientPhotoUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <User size={14} className={hasHighUrgency ? 'text-red-600' : 'text-primary-600'} />
+                      <User size={14} className={hasHighUrgency ? 'text-red-600' : 'text-emerald-600'} />
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-800">
+                    <p className="text-sm font-medium text-slate-800">
                       {toDisplaySessionTitle(selectedSession.title, selectedSession.id)}
                     </p>
                     {selectedSession.urgencyLevel && <UrgencyBadge level={selectedSession.urgencyLevel} />}
                   </div>
                   <button
                     onClick={handleDeleteSession}
-                    className="ml-2 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                    className="ml-2 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                     title="Delete Conversation"
                   >
                     <Trash2 size={16} />
@@ -289,24 +286,24 @@ export default function DoctorChat() {
                     >
                       <div className={cn(
                         'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden',
-                        msg.role === 'doctor' ? 'bg-gradient-to-br from-blue-100 to-blue-50' :
-                          msg.role === 'assistant' ? 'bg-gradient-to-br from-purple-100 to-purple-50' : 'bg-gradient-to-br from-green-100 to-green-50'
+                        msg.role === 'doctor' ? 'bg-emerald-50' :
+                          msg.role === 'assistant' ? 'bg-purple-50' : 'bg-slate-100'
                       )}>
                         {msg.role === 'assistant' ? (
                           <Activity size={14} className="text-purple-600" />
                         ) : msg.senderPhotoUrl ? (
                           <img src={msg.senderPhotoUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <User size={14} className={msg.role === 'doctor' ? 'text-blue-600' : 'text-green-600'} />
+                          <User size={14} className={msg.role === 'doctor' ? 'text-emerald-600' : 'text-slate-600'} />
                         )}
                       </div>
                       <div className={cn(
                         'px-4 py-3 rounded-2xl text-sm shadow-md hover:shadow-lg transition-shadow',
                         msg.role === 'doctor'
-                          ? 'bg-gradient-to-br from-primary-600 to-primary-500 text-white rounded-br-none'
+                          ? 'bg-emerald-600 text-white rounded-br-none'
                           : msg.role === 'assistant'
-                            ? 'bg-gradient-to-br from-purple-100 to-purple-50 text-gray-800 rounded-bl-none border border-purple-200'
-                            : 'bg-gradient-to-br from-gray-100 to-gray-50 text-gray-800 rounded-tl-none'
+                            ? 'bg-purple-50 text-slate-800 rounded-bl-none border border-purple-200'
+                            : 'bg-slate-100 text-slate-800 rounded-tl-none'
                       )}>
                         {msg.messageType === 'image' && msg.attachmentUrl ? (
                           <img 
@@ -320,7 +317,7 @@ export default function DoctorChat() {
                             className="flex items-center gap-2 mb-2 p-2 bg-black/5 rounded-lg cursor-pointer"
                             onClick={() => window.open(msg.attachmentUrl!, '_blank')}
                           >
-                            <FileText size={20} className={msg.role === 'doctor' ? 'text-white' : 'text-primary-600'} />
+                            <FileText size={20} className={msg.role === 'doctor' ? 'text-white' : 'text-emerald-600'} />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-bold truncate">{msg.fileName || 'Document'}</p>
                               <p className="text-[10px] opacity-70">Attachment</p>
@@ -328,10 +325,10 @@ export default function DoctorChat() {
                           </div>
                         ) : null}
                         <p className="leading-relaxed">{msg.content}</p>
-                        <p className={cn('text-[11px] mt-1', msg.role === 'doctor' ? 'text-white/80' : 'text-gray-500')}>
+                        <p className={cn('text-[11px] mt-1', msg.role === 'doctor' ? 'text-white/80' : 'text-slate-500')}>
                           {msg.senderName || (msg.role === 'doctor' ? 'You' : toDisplaySessionTitle(selectedSession.title, selectedSession.id))}
                         </p>
-                        <p className={cn('text-[11px] mt-2 font-medium', msg.role === 'doctor' ? 'text-white/70' : 'text-gray-500')}>
+                        <p className={cn('text-[11px] mt-2 font-medium', msg.role === 'doctor' ? 'text-white/70' : 'text-slate-500')}>
                           {formatTimeAgo(msg.timestamp)}
                         </p>
                       </div>
@@ -342,7 +339,7 @@ export default function DoctorChat() {
               </div>
 
               {/* Input */}
-              <div className="p-5 border-t border-gray-100 bg-gradient-to-t from-white to-transparent">
+              <div className="p-5 border-t border-slate-100 bg-white">
                 <motion.div className="flex items-center gap-2"
                   initial={{ y: 10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
@@ -353,14 +350,14 @@ export default function DoctorChat() {
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                     placeholder="Type your message..."
-                    className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/30 focus:border-transparent transition-all bg-white"
+                    className="flex-1 px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/30 focus:border-emerald-400 transition-all bg-white"
                   />
                   <div className="flex gap-1">
-                    <label className="p-3 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-xl cursor-pointer transition-all">
+                    <label className="p-3 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl cursor-pointer transition-all">
                       <ImageIcon size={18} />
                       <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
                     </label>
-                    <label className="p-3 text-gray-500 hover:text-primary-600 hover:bg-primary-50 rounded-xl cursor-pointer transition-all">
+                    <label className="p-3 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl cursor-pointer transition-all">
                       <Paperclip size={18} />
                       <input type="file" className="hidden" onChange={handleFileUpload} />
                     </label>
@@ -370,7 +367,7 @@ export default function DoctorChat() {
                     disabled={!message.trim()}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="p-3 bg-gradient-to-br from-primary-600 to-primary-500 text-white rounded-xl hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md"
+                    className="p-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
                   >
                     <Send size={16} />
                   </motion.button>

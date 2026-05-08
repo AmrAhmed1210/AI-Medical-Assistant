@@ -73,13 +73,29 @@ namespace MedicalAssistant.Services.Services
                 PhoneNumber = dto.PhoneNumber?.Trim().Length > 0 ? dto.PhoneNumber.Trim() : "N/A",
                 PasswordHash = hashedPassword,
                 DateOfBirth = birthDateUtc ?? DateTime.UtcNow.AddYears(-25),
-                Gender      = "N/A",
+                Gender      = dto.Gender ?? "N/A",
+                BloodType   = dto.BloodType ?? "N/A",
                 IsActive    = true,
                 CreatedAt   = DateTime.UtcNow,
                 UserId      = user.Id
             };
 
             await _unitOfWork.Patients.AddAsync(patient);
+            await _unitOfWork.SaveChangesAsync();
+
+            // Create Medical Profile
+            var medicalProfile = new MedicalProfile
+            {
+                PatientId = patient.Id,
+                BloodType = dto.BloodType,
+                WeightKg = dto.Weight,
+                HeightCm = dto.Height,
+                IsSmoker = dto.SmokingStatus != "Non-Smoker",
+                SmokingDetails = dto.SmokingStatus,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            await _unitOfWork.Repository<MedicalProfile>().AddAsync(medicalProfile);
             await _unitOfWork.SaveChangesAsync();
 
             await _notificationService.NotifyNewUserRegistered(

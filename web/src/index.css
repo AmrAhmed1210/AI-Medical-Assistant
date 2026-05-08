@@ -12,6 +12,7 @@
   html {
     direction: rtl;
     font-family: 'Tajawal', sans-serif;
+    scroll-behavior: smooth;
   }
 
   body {
@@ -20,20 +21,20 @@
   }
 
   ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 8px;
+    height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    @apply bg-slate-100/60 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
+    @apply bg-emerald-300/60 rounded-full border-2 border-transparent bg-clip-padding;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400;
+    @apply bg-emerald-400/80;
   }
 }
 

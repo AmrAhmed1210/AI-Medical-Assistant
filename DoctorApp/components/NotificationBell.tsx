@@ -7,9 +7,10 @@ import { Notification, markAllAsRead, getNotifications, deleteNotification } fro
 interface NotificationBellProps {
   onPress?: () => void
   isRTL?: boolean
+  light?: boolean
 }
 
-export function NotificationBell({ onPress, isRTL = false }: NotificationBellProps) {
+export function NotificationBell({ onPress, isRTL = false, light = false }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [modalVisible, setModalVisible] = useState(false)
 
@@ -46,7 +47,7 @@ export function NotificationBell({ onPress, isRTL = false }: NotificationBellPro
         style={styles.bellButton}
         onPress={openNotifications}
       >
-        <Ionicons name="notifications-outline" size={24} color={COLORS.primary} />
+        <Ionicons name="notifications-outline" size={24} color={light ? "#fff" : COLORS.primary} />
         {unreadCount > 0 && (
           <View style={styles.badge}>
             <Text style={styles.badgeText}>

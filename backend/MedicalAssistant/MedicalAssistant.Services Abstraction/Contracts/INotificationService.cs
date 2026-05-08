@@ -20,4 +20,5 @@ public interface INotificationService
     Task NotifyDoctorNewMessage(string doctorEmail, string patientName, string message, int? sessionId = null, int? doctorId = null, int? patientId = null, string? patientPhotoUrl = null);
     Task NotifyNewConsultation(string patientEmail, string doctorName, string title, string scheduledAt, int consultationId);
     Task NotifyNewDoctorApplication(string applicantName, string applicantEmail);
+    Task NotifyMedicationAdded(string patientEmail, string doctorName, string medicationName);
 }

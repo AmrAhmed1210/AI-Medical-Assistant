@@ -96,8 +96,8 @@ export default function DoctorProfile() {
           <Camera size={24} className="text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Doctor Profile</h1>
-          <p className="text-gray-600 mt-1">Manage your personal and professional profile information</p>
+          <h1 className="text-xl font-bold text-gray-900">Doctor Profile</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Manage your personal and professional profile information</p>
         </div>
       </motion.div>
 
@@ -134,8 +134,8 @@ export default function DoctorProfile() {
 
               <div className="space-y-3">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">{form.fullName || 'Doctor Name'}</h3>
-                  <p className="text-primary-600 font-medium text-sm">{profile?.specialty || 'General Practice'}</p>
+                  <h3 className="text-lg font-bold text-gray-900 mb-0.5">{form.fullName || 'Doctor Name'}</h3>
+                  <p className="text-primary-600 font-medium text-xs">{profile?.specialty || 'General Practice'}</p>
                 </div>
 
                 <div className="flex items-center justify-center gap-1">
@@ -193,7 +193,7 @@ export default function DoctorProfile() {
         >
           <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-white via-gray-50/30 to-white">
             <CardHeader className="pb-6">
-              <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+              <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-3">
                 <div className="p-2 bg-primary-50 rounded-xl">
                   <Save size={20} className="text-primary-600" />
                 </div>
@@ -274,7 +274,7 @@ export default function DoctorProfile() {
       >
         <Card className="border-0 shadow-xl bg-gradient-to-br from-white via-gray-50/30 to-white">
           <CardHeader className="pb-4">
-            <CardTitle className="text-xl font-bold text-gray-900 flex items-center gap-3">
+            <CardTitle className="text-lg font-bold text-gray-900 flex items-center gap-3">
               <div className="p-2 bg-amber-50 rounded-xl">
                 <MessageSquare size={20} className="text-amber-600" />
               </div>

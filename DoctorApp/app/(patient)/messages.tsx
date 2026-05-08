@@ -14,6 +14,7 @@ import {
   View,
   Image,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { COLORS } from "../../constants/colors";
@@ -136,7 +137,7 @@ export default function MessagesScreen() {
         const newSession: SessionItem = {
           id: Number(sessionId),
           userId: 0, // Not strictly needed for UI list
-          title: `chat|d:${payload.doctorId || 0}|`, 
+          title: `chat|d:${payload.doctorId || 0}|`,
           createdAt: timestamp,
           updatedAt: timestamp,
           lastMessage: content,
@@ -234,7 +235,7 @@ export default function MessagesScreen() {
 
   const ensureDirectSession = useCallback(async () => {
     if (!Number.isFinite(targetDoctorId) || targetDoctorId <= 0) return;
-    
+
     // If we already handled this doctor in this "navigation session", skip UNLESS there is a new initialMessage
     if (handledDoctorIdRef.current === targetDoctorId && !initialMessage) return;
     handledDoctorIdRef.current = targetDoctorId;
@@ -280,7 +281,7 @@ export default function MessagesScreen() {
     try {
       const data = await getMyProfile();
       setProfile(data);
-    } catch {}
+    } catch { }
   };
 
   const initialMessageSentRef = useRef(false);
@@ -288,7 +289,7 @@ export default function MessagesScreen() {
   useEffect(() => {
     if (loading) return;
     if (initialMessage && initialMessageSentRef.current) return;
-    
+
     ensureDirectSession().then(() => {
       if (initialMessage) initialMessageSentRef.current = true;
     }).catch(() => undefined);
@@ -344,12 +345,12 @@ export default function MessagesScreen() {
     try {
       const { url, fileName } = await uploadMessageFile(uri, name);
       const saved = await sendSessionMessage(selectedSessionId, type === 'image' ? '[Image]' : `[File: ${fileName}]`, type, url, fileName);
-      
+
       setSelectedSession((prev) => {
         if (!prev) return prev;
         return { ...prev, messages: [...(prev.messages || []), saved] };
       });
-      
+
       setLastMessageBySession((prev) => ({ ...prev, [selectedSessionId]: type === 'image' ? 'Sent an image' : 'Sent a file' }));
       await loadSessions(true);
     } catch (e: any) {
@@ -387,7 +388,7 @@ export default function MessagesScreen() {
         const confirmed = (prev.messages || []).filter((m) => Number(m.id) > 0);
         return { ...prev, messages: [...confirmed, saved] };
       });
-      
+
       // Update session list preview immediately
       setSessions(prev => {
         const idx = prev.findIndex(s => s.id == selectedSessionId);
@@ -447,28 +448,38 @@ export default function MessagesScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Messages</Text>
-          <Text style={styles.headerSubtitle}>Chat with your doctors</Text>
-        </View>
-        {(loading || refreshing) && <ActivityIndicator color={COLORS.primary} />}
+      <View style={styles.magicHeader}>
+        <LinearGradient colors={["#064E3B", "#059669"]} style={StyleSheet.absoluteFill}>
+          <View style={styles.headerTop}>
+            <View>
+              <Text style={styles.headerTitle}>Messages</Text>
+              <Text style={styles.headerSubtitle}>Seamless care with your team</Text>
+            </View>
+            <TouchableOpacity style={styles.headerAction}>
+              <Ionicons name="ellipsis-horizontal" size={20} color="rgba(255,255,255,0.8)" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={18} color="rgba(255,255,255,0.7)" />
+            <TextInput
+              placeholder="Search conversations..."
+              style={styles.searchInput}
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              value={search}
+              onChangeText={setSearch}
+            />
+          </View>
+          <View style={[styles.liquidBlob, { top: -30, right: -30, width: 180, height: 180, backgroundColor: '#10B981', opacity: 0.1 }]} />
+          <View style={[styles.liquidBlob, { bottom: -20, left: -20, width: 140, height: 140, backgroundColor: '#34D399', opacity: 0.1 }]} />
+        </LinearGradient>
       </View>
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#999" />
-          <TextInput
-            placeholder="Search conversations..."
-            style={styles.searchInput}
-            placeholderTextColor="#999"
-            value={search}
-            onChangeText={setSearch}
-          />
-        </View>
-      </View>
-
-      <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+        decelerationRate="fast"
+        bounces={true}
+      >
         {loading ? (
           <View style={styles.emptyWrap}>
             <ActivityIndicator color={COLORS.primary} />
@@ -508,19 +519,20 @@ export default function MessagesScreen() {
 
                 <View style={styles.convoDetails}>
                   <View style={styles.convoHeader}>
-                    <Text style={styles.doctorName}>{docData.name}</Text>
+                    <Text style={styles.doctorName} numberOfLines={1}>{docData.name}</Text>
                     <Text style={styles.timeText}>{formatTimeAgo(lastAt)}</Text>
                   </View>
-                  <Text style={styles.messageText} numberOfLines={1}>
-                    {preview}
-                  </Text>
-                </View>
-
-                {unread > 0 && (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadText}>{unread}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={styles.messageText} numberOfLines={1}>
+                      {preview}
+                    </Text>
+                    {unread > 0 && (
+                      <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadText}>{unread}</Text>
+                      </View>
+                    )}
                   </View>
-                )}
+                </View>
               </TouchableOpacity>
             );
           })
@@ -549,7 +561,13 @@ export default function MessagesScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.chatMessages} contentContainerStyle={{ paddingVertical: 8 }}>
+          <ScrollView
+            style={styles.chatMessages}
+            contentContainerStyle={{ paddingVertical: 15 }}
+            decelerationRate="fast"
+            bounces={true}
+            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+          >
             {(selectedSession?.messages || []).map((msg) => {
               const isMine = msg.role?.toLowerCase() !== "doctor";
               const senderPhoto = isMine ? profile?.photoUrl : msg.senderPhotoUrl || getDisplayDoctorData(selectedSession!).photoUrl;
@@ -565,15 +583,18 @@ export default function MessagesScreen() {
                       )}
                     </View>
                   )}
-                  
-                  <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleDoctor]}>
+
+                  <LinearGradient
+                    colors={isMine ? [COLORS.primary, "#047857"] : ["#fff", "#F8FAFC"]}
+                    style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleDoctor]}
+                  >
                     <Text style={[styles.senderName, isMine ? styles.senderNameMine : styles.senderNameDoctor]}>
                       {msg.senderName || msg.role}
                     </Text>
                     {msg.messageType === 'image' && msg.attachmentUrl ? (
-                      <Image 
-                        source={{ uri: msg.attachmentUrl }} 
-                        style={styles.messageImage} 
+                      <Image
+                        source={{ uri: msg.attachmentUrl }}
+                        style={styles.messageImage}
                         resizeMode="cover"
                       />
                     ) : msg.messageType === 'file' ? (
@@ -594,7 +615,7 @@ export default function MessagesScreen() {
                     <Text style={[styles.bubbleTime, isMine ? styles.bubbleTimeMine : styles.bubbleTimeDoctor]}>
                       {formatTimeAgo(msg.timestamp)}
                     </Text>
-                  </View>
+                  </LinearGradient>
 
                   {isMine && (
                     <View style={styles.bubbleAvatar}>
@@ -613,30 +634,41 @@ export default function MessagesScreen() {
           </ScrollView>
 
           <View style={styles.chatComposer}>
-            <TouchableOpacity style={styles.attachBtn} onPress={handlePickImage}>
-              <Ionicons name="image-outline" size={22} color="#6B7280" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.attachBtn} onPress={handlePickDocument}>
-              <Ionicons name="document-attach-outline" size={22} color="#6B7280" />
-            </TouchableOpacity>
-            <TextInput
-              value={chatInput}
-              onChangeText={setChatInput}
-              placeholder="Type a message..."
-              placeholderTextColor="#9CA3AF"
-              style={styles.chatInput}
-            />
-            <TouchableOpacity
-              style={[styles.sendBtn, (!chatInput.trim() || sending) && styles.sendBtnDisabled]}
-              disabled={!chatInput.trim() || sending}
-              onPress={handleSendMessage}
-            >
-              {sending ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Ionicons name="send" size={16} color="#fff" />
-              )}
-            </TouchableOpacity>
+            <View style={styles.composerActions}>
+              <TouchableOpacity style={styles.attachBtn} onPress={handlePickImage}>
+                <LinearGradient colors={["#F1F5F9", "#E2E8F0"]} style={styles.attachIconWrap}>
+                  <Ionicons name="image" size={18} color="#475569" />
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachBtn} onPress={handlePickDocument}>
+                <LinearGradient colors={["#F1F5F9", "#E2E8F0"]} style={styles.attachIconWrap}>
+                  <Ionicons name="document-attach" size={18} color="#475569" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                value={chatInput}
+                onChangeText={setChatInput}
+                placeholder="Type a message..."
+                placeholderTextColor="#9CA3AF"
+                style={styles.chatInput}
+                multiline
+              />
+              <TouchableOpacity
+                style={[styles.sendBtn, (!chatInput.trim() || sending) && styles.sendBtnDisabled]}
+                disabled={!chatInput.trim() || sending}
+                onPress={handleSendMessage}
+              >
+                <LinearGradient colors={["#059669", "#064E3B"]} style={styles.sendIconWrap}>
+                  {sending ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="send" size={16} color="#fff" />
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -645,173 +677,78 @@ export default function MessagesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 14,
-  },
-  headerTitle: { fontSize: 24, fontWeight: "bold", color: "#333" },
-  headerSubtitle: { fontSize: 14, color: "#666", marginTop: 2 },
-  searchContainer: { paddingHorizontal: 20, marginBottom: 12 },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F3F4F6",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 48,
-  },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: "#111827" },
-  listContainer: { flex: 1, paddingHorizontal: 20 },
-  convoItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  magicHeader: { height: 220, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, overflow: 'hidden', elevation: 15, shadowColor: '#064E3B', shadowOpacity: 0.2, shadowRadius: 20 },
+  headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 60, marginBottom: 20, zIndex: 10 },
+  headerTitle: { fontSize: 24, fontWeight: "800", color: "#fff", letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 2 },
+  headerAction: { width: 40, height: 40, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  searchBar: { flexDirection: "row", alignItems: "center", backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 18, paddingHorizontal: 16, height: 52, marginHorizontal: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: "#fff", fontWeight: '600' },
+  liquidBlob: { position: 'absolute', borderRadius: 100 },
+  listContainer: { flex: 1 },
+  convoItem: { flexDirection: "row", alignItems: "center", paddingVertical: 16, paddingHorizontal: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#F8FAFC" },
   avatarContainer: { position: "relative" },
-  avatarFallback: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: COLORS.primary + "20",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  avatarImg: { width: "100%", height: "100%", borderRadius: 28 },
-  avatarTxt: { fontSize: 20, fontWeight: "800", color: COLORS.primary },
-  onlineBadge: {
-    position: "absolute",
-    bottom: 1,
-    right: 1,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#10B981",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-  convoDetails: { flex: 1, marginLeft: 14 },
-  convoHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  doctorName: { fontSize: 15, fontWeight: "700", color: "#111827", maxWidth: "70%" },
-  timeText: { fontSize: 12, color: "#9CA3AF" },
-  messageText: { fontSize: 13, color: "#6B7280" },
-  unreadBadge: {
-    backgroundColor: COLORS.primary,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: "center",
-    alignItems: "center",
-    marginLeft: 8,
-  },
-  unreadText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
-  emptyWrap: { alignItems: "center", justifyContent: "center", paddingVertical: 50, gap: 6 },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#374151" },
-  emptySub: { fontSize: 13, color: "#9CA3AF" },
+  avatarFallback: { width: 56, height: 56, borderRadius: 24, backgroundColor: "#ECFDF5", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  avatarImg: { width: "100%", height: "100%", borderRadius: 24 },
+  onlineBadge: { position: "absolute", bottom: 0, right: 0, width: 14, height: 14, borderRadius: 7, backgroundColor: "#10B981", borderWidth: 3, borderColor: "#fff" },
+  convoDetails: { flex: 1, marginLeft: 15 },
+  convoHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
+  doctorName: { fontSize: 15, fontWeight: "700", color: "#1E293B" },
+  timeText: { fontSize: 11, color: "#94A3B8" },
+  messageText: { fontSize: 13, color: "#64748B", flex: 1, marginRight: 8 },
+  unreadBadge: { backgroundColor: "#059669", minWidth: 20, height: 20, borderRadius: 10, justifyContent: "center", alignItems: "center", paddingHorizontal: 6 },
+  unreadText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  emptyWrap: { alignItems: "center", justifyContent: "center", paddingVertical: 100, gap: 15 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#475569" },
+  emptySub: { fontSize: 14, color: "#94A3B8", textAlign: "center", paddingHorizontal: 50 },
 
   chatContainer: { flex: 1, backgroundColor: "#F8FAFC" },
-  chatHeader: {
-    paddingTop: 52,
-    paddingBottom: 12,
-    paddingHorizontal: 14,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEF2F7",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  backBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chatTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
-  chatSub: { fontSize: 12, color: "#6B7280", marginTop: 2 },
-  chatMessages: { flex: 1, paddingHorizontal: 10 },
-  bubbleRow: { flexDirection: "row", marginVertical: 4 },
+  chatHeader: { paddingTop: 60, paddingBottom: 15, paddingHorizontal: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#F1F5F9", flexDirection: "row", alignItems: "center", gap: 12 },
+  backBtn: { width: 40, height: 40, borderRadius: 14, backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" },
+  chatTitle: { fontSize: 17, fontWeight: "700", color: "#1E293B" },
+  chatSub: { fontSize: 11, color: "#10B981", fontWeight: "600", marginTop: 1 },
+  deleteBtn: { width: 40, height: 40, borderRadius: 14, backgroundColor: "#FEF2F2", alignItems: "center", justifyContent: "center" },
+  chatMessages: { flex: 1, paddingHorizontal: 16 },
+  bubbleRow: { flexDirection: "row", marginVertical: 8 },
   bubbleRowMine: { justifyContent: "flex-end" },
   bubbleRowDoctor: { justifyContent: "flex-start" },
-  bubble: { maxWidth: "78%", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9 },
-  bubbleMine: { backgroundColor: COLORS.primary, borderBottomRightRadius: 4 },
-  bubbleDoctor: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E7EB", borderBottomLeftRadius: 4 },
-  bubbleTxt: { fontSize: 14, lineHeight: 19 },
+  bubble: { maxWidth: "80%", borderRadius: 24, paddingHorizontal: 18, paddingVertical: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
+  bubbleMine: { borderBottomRightRadius: 4 },
+  bubbleDoctor: { borderBottomLeftRadius: 4 },
+  bubbleTxt: { fontSize: 14, lineHeight: 20 },
   bubbleTxtMine: { color: "#fff" },
-  bubbleTxtDoctor: { color: "#1F2937" },
-  senderName: { fontSize: 11, fontWeight: "700", marginBottom: 4 },
-  bubbleAvatar: { width: 28, height: 28, borderRadius: 14, marginHorizontal: 6, alignSelf: "flex-end", overflow: "hidden" },
-  bubbleAvatarImg: { width: "100%", height: "100%", borderRadius: 14 },
-  avatarMini: { width: "100%", height: "100%", borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  senderNameMine: { color: "#E2E8F0" },
-  senderNameDoctor: { color: "#6B7280" },
-  bubbleTime: { fontSize: 11, marginTop: 4 },
-  bubbleTimeMine: { color: "#E2E8F0" },
-  bubbleTimeDoctor: { color: "#9CA3AF" },
-  chatComposer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#EEF2F7",
-  },
-  chatInput: {
-    flex: 1,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#111827",
-  },
-  sendBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  bubbleTxtDoctor: { color: "#1E293B" },
+  senderName: { fontSize: 11, fontWeight: "800", marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  bubbleAvatar: { width: 34, height: 34, borderRadius: 12, marginHorizontal: 8, alignSelf: "flex-end", overflow: "hidden" },
+  bubbleAvatarImg: { width: "100%", height: "100%", borderRadius: 12 },
+  avatarMini: { width: "100%", height: "100%", borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  senderNameMine: { color: "rgba(255,255,255,0.6)" },
+  senderNameDoctor: { color: "#94A3B8" },
+  bubbleTime: { fontSize: 10, marginTop: 6, textAlign: 'right' },
+  bubbleTimeMine: { color: "rgba(255,255,255,0.6)" },
+  bubbleTimeDoctor: { color: "#94A3B8" },
+  chatComposer: { paddingHorizontal: 16, paddingVertical: 15, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#F1F5F9" },
+  composerActions: { flexDirection: "row", gap: 10, marginBottom: 12 },
+  attachBtn: { flex: 1, padding: 4 },
+  attachIconWrap: { height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
+  inputWrapper: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#F1F5F9", borderRadius: 20, padding: 6 },
+  chatInput: { flex: 1, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: "#1E293B", maxHeight: 100 },
+  sendBtn: { width: 44, height: 44 },
+  sendIconWrap: { width: "100%", height: "100%", borderRadius: 16, justifyContent: "center", alignItems: "center" },
   sendBtnDisabled: { opacity: 0.5 },
-  attachBtn: {
-    padding: 8,
-  },
   messageImage: {
     width: 200,
-    height: 200,
-    borderRadius: 8,
+    height: 150,
+    borderRadius: 12,
     marginVertical: 4,
   },
-  fileContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 4,
-  },
-  fileInfo: {
-    flex: 1,
-  },
-  fileName: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  fileContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  fileInfo: { flex: 1 },
+  fileName: { fontSize: 13, fontWeight: '600' },
   fileNameMine: { color: '#fff' },
-  fileNameDoctor: { color: '#111827' },
-  fileType: {
-    fontSize: 10,
-  },
-  fileTypeMine: { color: '#E2E8F0' },
-  fileTypeDoctor: { color: '#6B7280' },
+  fileNameDoctor: { color: '#1E293B' },
+  fileType: { fontSize: 11 },
+  fileTypeMine: { color: 'rgba(255,255,255,0.7)' },
+  fileTypeDoctor: { color: '#94A3B8' },
 });

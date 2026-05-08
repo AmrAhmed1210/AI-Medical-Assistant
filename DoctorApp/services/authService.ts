@@ -39,6 +39,11 @@ export interface RegisterPayload {
   role:        string;
   phoneNumber?: string;
   dateOfBirth?: string; // ISO format: YYYY-MM-DD
+  gender?:      string;
+  bloodType?:   string;
+  weight?:      number;
+  height?:      number;
+  smokingStatus?: string;
 }
 
 export interface LoginPayload {
@@ -108,6 +113,11 @@ export const registerApi = async (payload: RegisterPayload): Promise<AuthRespons
       role: payload.role || "Patient",
       phoneNumber: payload.phoneNumber || "",
       dateOfBirth: normalizedDateOfBirth,
+      gender:      payload.gender || "",
+      bloodType:   payload.bloodType || "",
+      weight:      payload.weight || 0,
+      height:      payload.height || 0,
+      smokingStatus: payload.smokingStatus || "No",
     };
 
     const dto = await apiFetch<any>(

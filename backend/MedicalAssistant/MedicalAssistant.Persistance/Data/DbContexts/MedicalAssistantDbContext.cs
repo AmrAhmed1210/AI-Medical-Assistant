@@ -71,6 +71,7 @@ namespace MedicalAssistant.Persistance.Data.DbContexts
         public DbSet<VisitVitalSign> VisitVitalSigns { get; set; }
         public DbSet<VisitPrescription> VisitPrescriptions { get; set; }
         public DbSet<VisitDocument> VisitDocuments { get; set; }
+        public DbSet<PatientDocument> PatientDocuments { get; set; }
         public DbSet<AnalysisResult> AnalysisResults { get; set; }
     }
 }

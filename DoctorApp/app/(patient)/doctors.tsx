@@ -2,11 +2,12 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, FlatList, StyleSheet, ActivityIndicator,
   TextInput, TouchableOpacity, RefreshControl, ScrollView,
-  Platform, StatusBar,
+  Platform, StatusBar, Animated
 } from "react-native";
 import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../constants/colors";
 import DoctorCard from "@/components/DoctorCard";
 import { useLanguage } from "../../context/LanguageContext";
@@ -21,15 +22,16 @@ export default function DoctorsScreen() {
   const params = useLocalSearchParams<{ specialty?: string }>();
   const { tr, isRTL } = useLanguage();
 
-  const [doctors,    setDoctors]    = useState<Doctor[]>([]);
-  const [filtered,   setFiltered]   = useState<Doctor[]>([]);
-  const [loading,    setLoading]    = useState(true);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [filtered, setFiltered] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error,      setError]      = useState("");
-  const [search,     setSearch]     = useState("");
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
   const [activeSpec, setActiveSpec] = useState("All");
   const [highlightedDoctorId, setHighlightedDoctorId] = useState<string | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (params.specialty) {
@@ -114,15 +116,15 @@ export default function DoctorsScreen() {
               prev.map((d) =>
                 d.id === doctorId
                   ? {
-                      ...d,
-                      name: details.name ?? details.fullName ?? d.name,
-                      specialty: details.specialty ?? d.specialty,
-                      consultationFee: details.consultationFee ?? details.consultFee ?? d.consultationFee,
-                      imageUrl: details.imageUrl ?? details.photoUrl ?? d.imageUrl,
-                      isAvailable: typeof details.isAvailable === "boolean" ? details.isAvailable : d.isAvailable,
-                      bio: details.bio ?? "",
-                      photoUrl: details.photoUrl ?? null,
-                    }
+                    ...d,
+                    name: details.name ?? details.fullName ?? d.name,
+                    specialty: details.specialty ?? d.specialty,
+                    consultationFee: details.consultationFee ?? details.consultFee ?? d.consultationFee,
+                    imageUrl: details.imageUrl ?? details.photoUrl ?? d.imageUrl,
+                    isAvailable: typeof details.isAvailable === "boolean" ? details.isAvailable : d.isAvailable,
+                    bio: details.bio ?? "",
+                    photoUrl: details.photoUrl ?? null,
+                  }
                   : d
               )
             );
@@ -178,34 +180,76 @@ export default function DoctorsScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F6FA" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.title, isRTL && styles.textRight]}>{tr("find_doctor")}</Text>
-          <Text style={[styles.subtitle, isRTL && styles.textRight]}>{filtered.length} {tr("stats_doctors")}</Text>
-        </View>
-        <View style={styles.headerAvatar}>
-          <Ionicons name="search" size={18} color={COLORS.primary} />
-        </View>
-      </View>
+      {/* ANIMATED HEADER: Luxury Emerald */}
+      <Animated.View style={[styles.magicHeader, { 
+        height: scrollY.interpolate({
+          inputRange: [0, 100],
+          outputRange: [220, 120],
+          extrapolate: 'clamp',
+        })
+      }]}>
+        <LinearGradient
+          colors={["#064E3B", "#059669"]}
+          style={StyleSheet.absoluteFill}
+        >
+          <Animated.View style={[styles.headerTop, {
+            opacity: scrollY.interpolate({
+              inputRange: [0, 80],
+              outputRange: [1, 0],
+              extrapolate: 'clamp',
+            })
+          }]}>
+            <View>
+              <Text style={styles.headerTitle}>{tr("find_doctor")}</Text>
+              <View style={styles.statBadge}>
+                <Text style={styles.statBadgeText}>{filtered.length} {tr("stats_doctors")}</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.headerActionBtn} onPress={() => fetchDoctors()}>
+              <Ionicons name="refresh" size={20} color="#fff" />
+            </TouchableOpacity>
+          </Animated.View>
 
-      <View style={[styles.searchBox, isRTL && styles.rowReverse]}>
-        <Ionicons name="search-outline" size={16} color="#BBB" />
-        <TextInput
-          style={[styles.searchInput, isRTL && styles.textRight]}
-          placeholder={tr("search")}
-          placeholderTextColor="#BBB"
-          value={search}
-          onChangeText={setSearch}
-          textAlign={isRTL ? "right" : "left"}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch("")}>
-            <Ionicons name="close-circle" size={16} color="#CCC" />
-          </TouchableOpacity>
-        )}
-      </View>
+          {/* SEARCH BAR GLASS */}
+          <Animated.View style={[styles.searchContainer, {
+            opacity: scrollY.interpolate({
+              inputRange: [0, 100],
+              outputRange: [1, 0],
+              extrapolate: 'clamp',
+            }),
+            transform: [{
+              translateY: scrollY.interpolate({
+                inputRange: [0, 100],
+                outputRange: [0, -20],
+                extrapolate: 'clamp',
+              })
+            }]
+          }]}>
+            <View style={styles.searchGlass}>
+              <Ionicons name="search" size={20} color="rgba(255,255,255,0.7)" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder={tr("search")}
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                value={search}
+                onChangeText={setSearch}
+                textAlign={isRTL ? "right" : "left"}
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch("")}>
+                  <Ionicons name="close-circle" size={20} color="rgba(255,255,255,0.5)" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </Animated.View>
+
+          {/* DECOR */}
+          <View style={[styles.liquidBlob, { top: -30, right: -30, width: 180, height: 180, backgroundColor: '#10B981', opacity: 0.1 }]} />
+          <View style={[styles.liquidBlob, { bottom: -20, left: -20, width: 140, height: 140, backgroundColor: '#34D399', opacity: 0.1 }]} />
+        </LinearGradient>
+      </Animated.View>
 
       <View style={styles.chipsWrapper}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
@@ -221,9 +265,14 @@ export default function DoctorsScreen() {
         </ScrollView>
       </View>
 
-      <FlatList
+      <Animated.FlatList
         data={filtered}
         keyExtractor={(item) => String(item.id)}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
         renderItem={({ item }) => {
           const years = (item as any).yearsExperience ?? (item as any).experience ?? 0;
           const hasSchedule = ((item as any).hasSchedule ?? true) && ((item as any).isScheduleVisible ?? true);
@@ -235,6 +284,7 @@ export default function DoctorsScreen() {
                 experience: `${years} yrs`,
                 hasSchedule,
               }}
+              compact={true}
               highlight={String(item.id) === highlightedDoctorId}
             />
           );
@@ -261,41 +311,29 @@ export default function DoctorsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:   { flex: 1, backgroundColor: "#F4F6FA", paddingTop: STATUS_BAR_HEIGHT },
-  center:      { flex: 1, justifyContent: "center", alignItems: "center", gap: 12, backgroundColor: "#F4F6FA" },
-  rowReverse:  { flexDirection: "row-reverse" },
-  textRight:   { textAlign: "right" },
-  errorTxt:    { color: "#e53935", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
-  retryBtn:    { backgroundColor: COLORS.primary, paddingHorizontal: 24, paddingVertical: 9, borderRadius: 18 },
-  retryTxt:    { color: "#fff", fontWeight: "600", fontSize: 13 },
-  header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14,
-  },
-  headerAvatar: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: COLORS.primary + "15",
-    justifyContent: "center", alignItems: "center",
-    borderWidth: 1.5, borderColor: COLORS.primary + "30",
-  },
-  title:       { fontSize: 22, fontWeight: "800", color: "#1A1A1A", letterSpacing: -0.3 },
-  subtitle:    { fontSize: 12, color: "#AAA", marginTop: 2 },
-  searchBox: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "#fff", borderRadius: 14,
-    marginHorizontal: 18, paddingHorizontal: 14, paddingVertical: 11,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
-  },
-  searchInput:   { flex: 1, fontSize: 13, color: "#1A1A1A", padding: 0 },
-  chipsWrapper:  { marginTop: 8, marginBottom: 4 },
-  chipsRow:      { paddingHorizontal: 18, paddingVertical: 6, gap: 8, alignItems: "center" },
-  chip:          { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1.5, borderColor: "#E8E8E8" },
-  chipActive:    { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipTxt:       { fontSize: 13, color: "#777", fontWeight: "500" },
-  chipTxtActive: { color: "#fff", fontWeight: "600" },
-  listContent:   { paddingTop: 12, paddingBottom: 24 },
-  empty:         { alignItems: "center", paddingTop: 60, gap: 8 },
-  emptyTxt:      { fontSize: 15, fontWeight: "600", color: "#BBB" },
-  emptySubTxt:   { fontSize: 12, color: "#CCC" },
+  container: { flex: 1, backgroundColor: "#fff" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12, backgroundColor: "#fff" },
+  magicHeader: { height: 220, borderBottomLeftRadius: 40, borderBottomRightRadius: 40, overflow: 'hidden', elevation: 15, shadowColor: '#064E3B', shadowOpacity: 0.2, shadowRadius: 20 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60, zIndex: 10 },
+  headerTitle: { fontSize: 20, fontWeight: '900', color: '#fff', letterSpacing: -0.5 },
+  headerActionBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  statBadge: { backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, marginTop: 4 },
+  statBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  searchContainer: { paddingHorizontal: 20, marginTop: 25, zIndex: 10 },
+  searchGlass: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', height: 52, borderRadius: 18, paddingHorizontal: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  searchInput: { flex: 1, color: '#fff', fontSize: 15, marginLeft: 10, fontWeight: '600' },
+  liquidBlob: { position: 'absolute', borderRadius: 100 },
+  chipsWrapper: { marginTop: 15, marginBottom: 5 },
+  chipsRow: { paddingHorizontal: 20, gap: 12 },
+  chip: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 18, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#F1F5F9' },
+  chipActive: { backgroundColor: '#064E3B', borderColor: '#064E3B', elevation: 5, shadowColor: '#064E3B', shadowOpacity: 0.3, shadowRadius: 10 },
+  chipTxt: { fontSize: 12, color: '#64748B', fontWeight: '800' },
+  chipTxtActive: { color: '#fff' },
+  listContent: { paddingHorizontal: 15, paddingTop: 10, paddingBottom: 100 },
+  empty: { alignItems: 'center', paddingTop: 80, gap: 15 },
+  emptyTxt: { fontSize: 16, fontWeight: '900', color: '#1E293B' },
+  emptySubTxt: { fontSize: 14, color: '#94A3B8', textAlign: 'center' },
+  errorTxt: { color: '#EF4444', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
+  retryBtn: { backgroundColor: '#059669', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20, marginTop: 15 },
+  retryTxt: { color: '#fff', fontWeight: '900', fontSize: 14 },
 });

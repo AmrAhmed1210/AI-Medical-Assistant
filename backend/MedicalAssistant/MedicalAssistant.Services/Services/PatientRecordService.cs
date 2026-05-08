@@ -417,5 +417,54 @@ namespace MedicalAssistant.Services.Services
 
             return items.OrderBy(m => m.PillsRemaining);
         }
+
+        // Patient documents (scans, labs, reports)
+        public async Task<IEnumerable<PatientDocument>> GetPatientDocumentsAsync(int patientId, string? documentType = null)
+        {
+            var query = await _unitOfWork.Repository<PatientDocument>().FindAsync(d => d.PatientId == patientId);
+            if (!string.IsNullOrWhiteSpace(documentType))
+                query = query.Where(d => d.DocumentType == documentType);
+            return query.OrderByDescending(d => d.UploadedAt);
+        }
+
+        public async Task<PatientDocument?> GetPatientDocumentByIdAsync(int documentId)
+        {
+            return await _unitOfWork.Repository<PatientDocument>().GetByIdAsync(documentId);
+        }
+
+        public async Task<PatientDocument> AddPatientDocumentAsync(int patientId, PatientDocument document)
+        {
+            document.PatientId = patientId;
+            document.UploadedAt = DateTime.UtcNow;
+            await _unitOfWork.Repository<PatientDocument>().AddAsync(document);
+            await _unitOfWork.SaveChangesAsync();
+            return document;
+        }
+
+        public async Task<PatientDocument?> UpdatePatientDocumentAsync(int documentId, PatientDocument updates)
+        {
+            var existing = await _unitOfWork.Repository<PatientDocument>().GetByIdAsync(documentId);
+            if (existing == null) return null;
+
+            if (updates.DocumentType != null) existing.DocumentType = updates.DocumentType;
+            if (updates.Title != null) existing.Title = updates.Title;
+            if (updates.Description != null) existing.Description = updates.Description;
+            if (updates.DocumentDate != default) existing.DocumentDate = updates.DocumentDate;
+            if (updates.FileUrl != null) existing.FileUrl = updates.FileUrl;
+            if (updates.FileType != null) existing.FileType = updates.FileType;
+
+            _unitOfWork.Repository<PatientDocument>().Update(existing);
+            await _unitOfWork.SaveChangesAsync();
+            return existing;
+        }
+
+        public async Task<bool> DeletePatientDocumentAsync(int documentId)
+        {
+            var existing = await _unitOfWork.Repository<PatientDocument>().GetByIdAsync(documentId);
+            if (existing == null) return false;
+            _unitOfWork.Repository<PatientDocument>().Delete(existing);
+            await _unitOfWork.SaveChangesAsync();
+            return true;
+        }
     }
 }

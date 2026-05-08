@@ -82,6 +82,8 @@ namespace MedicalAssistant.Presentation.Controllers
             if (patient is null)
                 return NotFound(new { message = "Patient profile not found." });
 
+            var profile = (await _unitOfWork.Repository<MedicalProfile>().FindAsync(mp => mp.PatientId == patient.Id)).FirstOrDefault();
+
             return Ok(new
             {
                 id = patient.Id.ToString(),
@@ -90,7 +92,12 @@ namespace MedicalAssistant.Presentation.Controllers
                 phone = patient.PhoneNumber,
                 role = "Patient",
                 dateOfBirth = patient.DateOfBirth.ToString("yyyy-MM-dd"),
-                photoUrl = patient.ImageUrl
+                photoUrl = patient.ImageUrl,
+                gender = patient.Gender,
+                bloodType = patient.BloodType,
+                weight = profile?.WeightKg,
+                height = profile?.HeightCm,
+                smokingStatus = profile?.SmokingDetails
             });
         }
 
@@ -121,7 +128,11 @@ namespace MedicalAssistant.Presentation.Controllers
                 PhoneNumber = dto.Phone ?? patient.PhoneNumber,
                 Email = patient.Email,
                 DateOfBirth = dto.BirthDate ?? dto.DateOfBirth ?? patient.DateOfBirth,
-                Gender = patient.Gender,
+                Gender = dto.Gender ?? patient.Gender,
+                BloodType = dto.BloodType ?? patient.BloodType,
+                Weight = dto.Weight,
+                Height = dto.Height,
+                SmokingStatus = dto.SmokingStatus,
                 IsActive = patient.IsActive
             };
 
@@ -156,5 +167,10 @@ namespace MedicalAssistant.Presentation.Controllers
         public string? Phone { get; set; }
         public DateTime? BirthDate { get; set; }
         public DateTime? DateOfBirth { get; set; }
+        public string? Gender { get; set; }
+        public string? BloodType { get; set; }
+        public decimal? Weight { get; set; }
+        public decimal? Height { get; set; }
+        public string? SmokingStatus { get; set; }
     }
 }

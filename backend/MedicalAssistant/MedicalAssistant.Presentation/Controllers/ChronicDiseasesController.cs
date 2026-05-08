@@ -61,11 +61,13 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(dto);
         }
 
-        // POST /api/patients/{id}/chronic-diseases  (Doctor)
+        // POST /api/patients/{id}/chronic-diseases  (Doctor, Patient(own))
         [HttpPost("patients/{id:int}/chronic-diseases")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Patient")]
         public async Task<IActionResult> Create(int id, [FromBody] CreateChronicDiseaseMonitorDto dto)
         {
+            if (!IsDoctor() && !IsOwnPatient(id)) return Forbid();
+
             var entity = new ChronicDiseaseMonitor
             {
                 DiseaseName = dto.DiseaseName,
@@ -98,9 +100,9 @@ namespace MedicalAssistant.Presentation.Controllers
             ));
         }
 
-        // PATCH /api/chronic-diseases/{id}  (Doctor)
+        // PATCH /api/chronic-diseases/{id}  (Doctor, Patient)
         [HttpPatch("chronic-diseases/{id:int}")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Patient")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateChronicDiseaseMonitorDto dto)
         {
             var updates = new ChronicDiseaseMonitor
@@ -136,9 +138,9 @@ namespace MedicalAssistant.Presentation.Controllers
             ));
         }
 
-        // DELETE /api/chronic-diseases/{id}  (Doctor,Admin)
+        // DELETE /api/chronic-diseases/{id}  (Doctor,Patient,Admin)
         [HttpDelete("chronic-diseases/{id:int}")]
-        [Authorize(Roles = "Doctor,Admin")]
+        [Authorize(Roles = "Doctor,Patient,Admin")]
         public async Task<IActionResult> Deactivate(int id)
         {
             var ok = await _patientRecordService.DeactivateChronicDiseaseAsync(id);

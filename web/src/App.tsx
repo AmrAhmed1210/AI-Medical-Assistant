@@ -24,6 +24,7 @@ const DoctorProfile = lazy(() => import('@/pages/doctor/DoctorProfile'))
 const DoctorSchedule = lazy(() => import('@/pages/doctor/DoctorSchedule'))
 const DoctorAppointments = lazy(() => import('@/pages/doctor/DoctorAppointments'))
 const DoctorPatients = lazy(() => import('@/pages/doctor/DoctorPatients'))
+const DoctorPatientRecords = lazy(() => import('@/pages/doctor/DoctorPatientRecords'))
 const DoctorReports = lazy(() => import('@/pages/doctor/DoctorReports'))
 const DoctorChat = lazy(() => import('@/pages/doctor/DoctorChat'))
 const DoctorReviews = lazy(() => import('@/pages/doctor/DoctorReviews'))
@@ -122,6 +123,7 @@ export default function App() {
                 <Route path="/doctor/schedule" element={<DoctorSchedule />} />
                 <Route path="/doctor/appointments" element={<DoctorAppointments />} />
                 <Route path="/doctor/patients" element={<DoctorPatients />} />
+                <Route path="/doctor/patients/:patientId/records" element={<DoctorPatientRecords />} />
                 <Route path="/doctor/reports" element={<DoctorReports />} />
                 <Route path="/doctor/reviews" element={<DoctorReviews />} />
                 <Route path="/doctor/staff" element={<ManageSecretaries />} />

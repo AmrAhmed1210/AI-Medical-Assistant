@@ -51,6 +51,27 @@ export interface VitalReading {
   notes?: string;
 }
 
+export interface SurgeryRecord {
+  id: number;
+  surgeryName: string;
+  surgeryDate?: string;
+  hospitalName?: string;
+  doctorName?: string;
+  complications?: string;
+  notes?: string;
+}
+
+export interface PatientDocument {
+  id: number;
+  documentType: string;
+  title: string;
+  fileUrl: string;
+  fileType: string;
+  description?: string;
+  documentDate: string;
+  uploadedAt: string;
+}
+
 // ============================================
 // Get Allergies
 // ============================================
@@ -109,3 +130,89 @@ export const getVitals = async (patientId: number): Promise<VitalReading[]> => {
   );
   return Array.isArray(data) ? data : [];
 };
+
+export const deleteMedication = async (medId: number): Promise<void> =>
+  apiFetch<any>(API.records.medicationDelete(medId), { method: "DELETE" }, true);
+
+// ============================================
+// Allergy CRUD
+// ============================================
+export const createAllergy = async (patientId: number, payload: Omit<AllergyRecord, "id">): Promise<AllergyRecord> =>
+  apiFetch<any>(API.records.allergies(patientId), { method: "POST", body: JSON.stringify(payload) }, true);
+
+export const updateAllergy = async (allergyId: number, payload: Partial<AllergyRecord>): Promise<AllergyRecord> =>
+  apiFetch<any>(API.records.allergyUpdate(allergyId), { method: "PATCH", body: JSON.stringify(payload) }, true);
+
+export const deleteAllergy = async (allergyId: number): Promise<void> =>
+  apiFetch<any>(API.records.allergyDelete(allergyId), { method: "DELETE" }, true);
+
+// ============================================
+// Surgery CRUD
+// ============================================
+export const getSurgeries = async (patientId: number): Promise<SurgeryRecord[]> => {
+  const data = await apiFetch<any>(API.records.surgeries(patientId), { method: "GET" }, true);
+  return Array.isArray(data) ? data : [];
+};
+
+export const createSurgery = async (patientId: number, payload: Omit<SurgeryRecord, "id">): Promise<SurgeryRecord> =>
+  apiFetch<any>(API.records.surgeries(patientId), { method: "POST", body: JSON.stringify(payload) }, true);
+
+export const updateSurgery = async (surgeryId: number, payload: Partial<SurgeryRecord>): Promise<SurgeryRecord> =>
+  apiFetch<any>(API.records.surgeryUpdate(surgeryId), { method: "PATCH", body: JSON.stringify(payload) }, true);
+
+export const deleteSurgery = async (surgeryId: number): Promise<void> =>
+  apiFetch<any>(API.records.surgeryDelete(surgeryId), { method: "DELETE" }, true);
+
+// ============================================
+// Chronic Disease CRUD
+// ============================================
+export const createChronicDisease = async (patientId: number, payload: any): Promise<any> =>
+  apiFetch<any>(API.records.chronicDiseases(patientId), { method: "POST", body: JSON.stringify(payload) }, true);
+
+export const updateChronicDisease = async (chronicId: number, payload: any): Promise<any> =>
+  apiFetch<any>(API.records.chronicUpdate(chronicId), { method: "PATCH", body: JSON.stringify(payload) }, true);
+
+export const deleteChronicDisease = async (chronicId: number): Promise<void> =>
+  apiFetch<any>(API.records.chronicDelete(chronicId), { method: "DELETE" }, true);
+
+// ============================================
+// Vital CRUD
+// ============================================
+export const createVital = async (patientId: number, payload: any): Promise<any> =>
+  apiFetch<any>(API.records.vitals(patientId), { method: "POST", body: JSON.stringify(payload) }, true);
+
+export const deleteVital = async (vitalId: number): Promise<void> =>
+  apiFetch<any>(API.records.vitalDelete(vitalId), { method: "DELETE" }, true);
+
+// ============================================
+// Patient Documents (Scans / Labs)
+// ============================================
+export const getPatientDocuments = async (patientId: number, type?: string): Promise<PatientDocument[]> => {
+  const url = type ? `${API.records.documents(patientId)}?type=${encodeURIComponent(type)}` : API.records.documents(patientId);
+  const data = await apiFetch<any>(url, { method: "GET" }, true);
+  return Array.isArray(data) ? data : [];
+};
+
+export const uploadPatientDocument = async (
+  patientId: number,
+  uri: string,
+  documentType: string,
+  title: string,
+  description?: string
+): Promise<PatientDocument> => {
+  const formData = new FormData();
+
+  const filename = uri.split("/").pop() || "document.jpg";
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : "image/jpeg";
+
+  formData.append("file", { uri, name: filename, type } as any);
+  formData.append("documentType", documentType);
+  formData.append("title", title);
+  if (description) formData.append("description", description);
+
+  return apiFetch<any>(API.records.documentUpload(patientId), { method: "POST", body: formData }, true);
+};
+
+export const deletePatientDocument = async (docId: number): Promise<void> =>
+  apiFetch<any>(API.records.documentDelete(docId), { method: "DELETE" }, true);

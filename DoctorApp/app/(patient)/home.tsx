@@ -1,55 +1,82 @@
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image
+  TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image, Dimensions
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  Heart, Droplets, Calendar, Pill, Search,
+  ChevronRight, Star, Bell, LayoutGrid, Stethoscope,
+  ArrowRight, HeartPulse, Thermometer, Activity, User, Sparkles, Clock
+} from "lucide-react-native";
 import { COLORS } from "../../constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect, useState, useCallback } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../../context/LanguageContext";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Animated, Platform } from "react-native";
 import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor } from "../../services/doctorService";
 import { getMyProfile, Profile } from "../../services/profileService";
 import { getMyAppointments, Appointment } from "../../services/appointmentService";
 import { getMedicationSchedule, type MedicationScheduleItem } from "../../services/medicationService";
-import { getLatestVital, type VitalReading } from "../../services/vitalService";
+import { getLatestVital, getPatientVitals, type VitalReading } from "../../services/vitalService";
 import { getMyPatientId } from "../../services/authService";
 import { NotificationBell } from "../../components/NotificationBell";
-import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpdated, onNewConsultation } from "../../services/signalr";
-import { addNotification, createScheduleReadyNotification } from "../../services/notificationService";
-import { checkIfFollowed, getFollowedDoctorIds, setFollowed } from "../../services/followService";
+import DoctorCard from "../../components/DoctorCard";
+import { addNotification } from "../../services/notificationService";
+import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpdated, onNewConsultation, onNewMedication } from "../../services/signalr";
+import { scheduleAppointmentReminders } from "../../services/appointmentReminders";
+// Service loaded successfully
+
+const { width } = Dimensions.get("window");
 
 export default function HomeScreen() {
   const router = useRouter();
   const { tr, isRTL } = useLanguage();
-  const [userName,     setUserName]     = useState("");
-  const [popularDocs,  setPopularDocs]  = useState<Doctor[]>([]);
-  const [nextBooking,  setNextBooking]  = useState<Appointment | null>(null);
-  const [loadingDocs,  setLoadingDocs]  = useState(true);
-  const [followedIds,  setFollowedIds]  = useState<number[]>([]);
-  const [profile,      setProfile]      = useState<Profile | null>(null);
-  const [nextDose,     setNextDose]     = useState<MedicationScheduleItem | null>(null);
-  const [lastBP,       setLastBP]       = useState<VitalReading | null>(null);
-  const [lastSugar,    setLastSugar]    = useState<VitalReading | null>(null);
+  const [userName, setUserName] = useState("");
+  const [popularDocs, setPopularDocs] = useState<Doctor[]>([]);
+  const [nextBooking, setNextBooking] = useState<Appointment | null>(null);
+  const [loadingDocs, setLoadingDocs] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [nextDose, setNextDose] = useState<MedicationScheduleItem | null>(null);
+  const [lastBP, setLastBP] = useState<VitalReading | null>(null);
+  const [lastSugar, setLastSugar] = useState<VitalReading | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(true);
+  const [showVitalReminder, setShowVitalReminder] = useState(false);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const CATEGORIES = [
-    { icon: "heart-outline",   label: tr("spec_cardiology"),  specialty: "Cardiology"  },
-    { icon: "eye-outline",     label: tr("spec_eye"),         specialty: "Eye"         },
-    { icon: "fitness-outline", label: tr("spec_ortho"),       specialty: "Orthopedics" },
-    { icon: "body-outline",    label: tr("spec_neurology"),   specialty: "Neurology"   },
-    { icon: "bandage-outline", label: tr("spec_dermatology"), specialty: "Dermatology" },
-    { icon: "person-outline",  label: tr("spec_general"),     specialty: "General"     },
+    { icon: Heart, label: tr("spec_cardiology"), specialty: "Cardiology" },
+    { icon: Search, label: tr("spec_eye"), specialty: "Eye" },
+    { icon: Activity, label: tr("spec_ortho"), specialty: "Orthopedics" },
+    { icon: Stethoscope, label: tr("spec_neurology"), specialty: "Neurology" },
+    { icon: Thermometer, label: tr("spec_dermatology"), specialty: "Dermatology" },
   ];
 
   useEffect(() => {
-    AsyncStorage.getItem("userName").then((n) => { if (n) setUserName(n); });
-    loadFollowedDoctors();
     fetchPopularDoctors();
     fetchNextBooking();
     fetchProfile();
     fetchHealthData();
+    checkDailyReminder();
+
+    // Real-time updates
+    const unsubMed = onNewMedication(() => {
+      fetchHealthData();
+    });
+
+    return () => {
+      unsubMed();
+    };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchHealthData();
+      fetchNextBooking();
+      checkDailyReminder();
+    }, [])
+  );
 
   const fetchProfile = async () => {
     try {
@@ -64,149 +91,52 @@ export default function HomeScreen() {
       setLoadingHealth(true);
       const pid = await getMyPatientId();
       if (!pid) { setLoadingHealth(false); return; }
-
       const [schedule, bp, sugar] = await Promise.all([
         getMedicationSchedule(pid).catch(() => []),
         getLatestVital(pid, "Blood Pressure").catch(() => null),
         getLatestVital(pid, "Blood Sugar").catch(() => null),
       ]);
-
-      // Find next pending dose
       const pending = schedule
         .filter((s) => s.status?.toLowerCase() === "pending")
         .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
       setNextDose(pending[0] || null);
       setLastBP(bp);
       setLastSugar(sugar);
-    } catch {
-      // ignore
     } finally {
       setLoadingHealth(false);
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadFollowedDoctors();
-      fetchPopularDoctors();
-      fetchNextBooking();
-      fetchHealthData();
-    }, [])
-  );
-
-  useEffect(() => {
-    let mounted = true;
-    const setupSignalR = async () => {
-      const conn = await startSignalRConnection();
-      if (!conn || !mounted) return;
-
-      onScheduleReady(async (data: any) => {
-        const eventDoctorId = Number(data?.doctorId ?? data?.DoctorId);
-        const eventDoctorName = String(data?.doctorName ?? data?.DoctorName ?? 'Doctor');
-        if (!Number.isFinite(eventDoctorId) || eventDoctorId <= 0) return;
-        if (await checkIfFollowed(eventDoctorId)) {
-          await addNotification({
-            id: `schedule_ready_${eventDoctorId}_${Date.now()}`,
-            type: 'schedule',
-            title: '📅 Schedule Ready',
-            message: `Dr. ${eventDoctorName}'s schedule is now available!`,
-            timestamp: Date.now(),
-            doctorId: eventDoctorId,
-            doctorName: eventDoctorName,
-            icon: '📅',
-          });
-          fetchPopularDoctors();
-        }
-      });
-
-      onScheduleUpdated(async (data: any) => {
-        const eventDoctorId = Number(data?.doctorId ?? data?.DoctorId);
-        const eventDoctorName = String(data?.doctorName ?? data?.DoctorName ?? 'Doctor');
-        if (!Number.isFinite(eventDoctorId) || eventDoctorId <= 0) return;
-        if (await checkIfFollowed(eventDoctorId)) {
-          await addNotification({
-            id: `schedule_updated_${eventDoctorId}_${Date.now()}`,
-            type: 'schedule',
-            title: '📅 Schedule Updated',
-            message: `Dr. ${eventDoctorName} updated their availability`,
-            timestamp: Date.now(),
-            doctorId: eventDoctorId,
-            doctorName: eventDoctorName,
-            icon: '📅',
-          });
-          fetchPopularDoctors();
-        }
-      });
-
-      onDoctorUpdated(async (data: any) => {
-        const eventDoctorId = Number(data?.doctorId ?? data?.DoctorId);
-        const eventDoctorName = String(data?.doctorName ?? data?.DoctorName ?? "Doctor");
-        if (!Number.isFinite(eventDoctorId) || eventDoctorId <= 0) return;
-        if (!(await checkIfFollowed(eventDoctorId))) return;
-
-        await addNotification({
-          id: `doctor_update_${eventDoctorId}_${Date.now()}`,
-          type: "update",
-          title: "👨‍⚕️ Doctor Updated",
-          message: `Dr. ${eventDoctorName} updated their profile`,
-          timestamp: Date.now(),
-          doctorId: eventDoctorId,
-          doctorName: eventDoctorName,
-          icon: "👨‍⚕️",
-        });
-      });
-
-      onNewConsultation(async (data: any) => {
-        const doctorName = String(data?.doctorName ?? data?.DoctorName ?? 'Doctor');
-        const title = String(data?.title ?? data?.Title ?? 'Consultation');
-        const scheduledAt = String(data?.scheduledAt ?? data?.ScheduledAt ?? '');
-
-        Alert.alert(
-          'New Consultation',
-          `Dr. ${doctorName} scheduled a consultation: ${title}`,
-          [
-            { text: 'Dismiss', style: 'cancel' },
-            {
-              text: 'View',
-              onPress: () => router.push('/(patient)/profile'),
-            },
-          ]
-        );
-
-        await addNotification({
-          id: `consultation_${Date.now()}`,
-          type: 'appointment_confirmed',
-          title: '🩺 New Consultation',
-          message: `Dr. ${doctorName} scheduled: ${title}${scheduledAt ? ` at ${scheduledAt}` : ''}`,
-          timestamp: Date.now(),
-          doctorName,
-          icon: '🩺',
-        });
-      });
-    };
-    setupSignalR();
-    return () => { mounted = false; };
-  }, []);
-
-  const loadFollowedDoctors = async () => {
+  const checkDailyReminder = async () => {
     try {
-      const ids = await getFollowedDoctorIds();
-      setFollowedIds(ids);
-    } catch {
-      setFollowedIds([]);
-    }
-  };
+      const pid = await getMyPatientId();
+      if (!pid) return;
 
-  const toggleFollowDoctor = async (doctorId: number) => {
-    try {
-      const currentlyFollowed = await checkIfFollowed(doctorId);
-      await setFollowed(doctorId, !currentlyFollowed);
-      const next = currentlyFollowed
-        ? followedIds.filter((id) => id !== doctorId)
-        : [...followedIds, doctorId];
-      setFollowedIds(next);
-    } catch {
-      // ignore storage failure
+      const vitals = await getPatientVitals(pid).catch(() => []);
+      const today = new Date().toISOString().split('T')[0];
+
+      const recordedToday = vitals.some(v => v.recordedAt.split('T')[0] === today);
+
+      if (!recordedToday) {
+        setShowVitalReminder(true);
+        // Only send notification if not already notified today to avoid spamming
+        const lastNotified = await AsyncStorage.getItem("last_vital_notification_date");
+        if (lastNotified !== today) {
+          await addNotification({
+            id: `reminder_${Date.now()}`,
+            type: 'message',
+            icon: '📊',
+            title: 'Daily Vital Check-in',
+            message: 'You haven\'t recorded your health measurements for today yet.',
+            timestamp: Date.now()
+          });
+          await AsyncStorage.setItem("last_vital_notification_date", today);
+        }
+      } else {
+        setShowVitalReminder(false);
+      }
+    } catch (e) {
+      console.log("Reminder check failed", e);
     }
   };
 
@@ -214,41 +144,7 @@ export default function HomeScreen() {
     try {
       setLoadingDocs(true);
       const data = await getAllDoctors();
-      const candidates = [...data]
-        .sort((a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0));
-      const enriched = await Promise.all(
-        candidates.map(async (doc) => {
-          try {
-            const [details, reviews] = await Promise.all([
-              getDoctorById(doc.id),
-              getReviewsByDoctor(doc.id).catch(() => []),
-            ]);
-
-            const avg = reviews.length > 0
-              ? reviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) / reviews.length
-              : Number((details as any).rating ?? doc.rating ?? 0);
-
-            return {
-              ...doc,
-              rating: Number.isFinite(avg) ? Number(avg.toFixed(1)) : 0,
-              reviewCount: reviews.length > 0
-                ? reviews.length
-                : Number((details as any).reviewCount ?? doc.reviewCount ?? 0),
-              isAvailable: typeof (details as any).isAvailable === "boolean"
-                ? (details as any).isAvailable
-                : doc.isAvailable,
-            };
-          } catch {
-            return doc;
-          }
-        })
-      );
-      const ranked = [...enriched].sort(
-        (a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0)
-      );
-      setPopularDocs(ranked);
-    } catch {
-      // silently fail
+      setPopularDocs(data.slice(0, 10));
     } finally {
       setLoadingDocs(false);
     }
@@ -257,367 +153,445 @@ export default function HomeScreen() {
   const fetchNextBooking = async () => {
     try {
       const appts = await getMyAppointments();
-      // Active = Pending OR Confirmed
-      const active = appts.find(a => {
-        const s = a.status?.toLowerCase();
-        return s === "pending" || s === "confirmed";
-      });
-      setNextBooking(active ?? null);
-    } catch {
+      const now = new Date();
+      console.log("Total appointments from API:", appts?.length);
+
+      // Filter future active bookings robustly
+      const futureAppts = (appts || [])
+        .filter(a => {
+          const status = a.status?.toLowerCase() || "";
+          const isRelevant = status === "pending" || status === "confirmed";
+
+          const apptDate = new Date(a.date);
+          let [h, m] = (a.time || "0:0").split(':').map(val => parseInt(val, 10));
+          if (a.time?.toLowerCase().includes("pm") && h < 12) h += 12;
+          if (a.time?.toLowerCase().includes("am") && h === 12) h = 0;
+          
+          if (!isNaN(apptDate.getTime())) {
+            apptDate.setHours(h, isNaN(m) ? 0 : m, 0, 0);
+            const isFuture = apptDate > now;
+            console.log(`Checking Appt: Dr.${a.doctorName}, Date:${a.date}, Time:${a.time}, Status:${status}, isFuture:${isFuture}`);
+            return isRelevant && isFuture;
+          }
+          return false;
+        })
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      const active = futureAppts[0] || null;
+      console.log("FINAL Next Appointment Detected:", active ? active.doctorName : "NONE");
+      setNextBooking(active);
+
+      if (active && typeof scheduleAppointmentReminders === 'function') {
+        scheduleAppointmentReminders(futureAppts.slice(0, 3)).catch((err: any) => console.error(err));
+      }
+    } catch (e) {
+      console.log("Fetch next booking failed", e);
       setNextBooking(null);
     }
   };
 
-  const firstName = userName ? userName.split(" ")[0] : "Guest";
-  const goToSpecialty = (specialty: string) =>
-    router.push({ pathname: "/(patient)/doctors", params: { specialty } });
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, 150],
+    outputRange: [0, -40],
+    extrapolate: 'clamp',
+  });
+
+  const searchScale = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [1, 0.9],
+    extrapolate: 'clamp',
+  });
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  const blob1Move = scrollY.interpolate({
+    inputRange: [0, 200],
+    outputRange: [0, -30],
+    extrapolate: 'clamp',
+  });
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.content}
-    >
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F6FA" />
-
-      {/* Header */}
-      <View style={[styles.header, isRTL && styles.rowReverse]}>
-        <View>
-          <Text style={[styles.greeting, isRTL && styles.textRight]}>{tr("greeting")}</Text>
-          <Text style={[styles.userName, isRTL && styles.textRight]}>{firstName}</Text>
-        </View>
-        <View style={[styles.headerRight, isRTL && styles.rowReverse]}>
-          <NotificationBell isRTL={isRTL} />
-          <TouchableOpacity onPress={() => router.push("/(patient)/profile")} style={[styles.avatarBtn, profile?.photoUrl && { borderWidth: 0 }]}>
-            {profile?.photoUrl ? (
-              <Image source={{ uri: profile.photoUrl }} style={styles.headerAvatar} />
-            ) : (
-              <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} style={styles.headerAvatar} />
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Upcoming Booking Banner */}
-      {nextBooking && (
-        <TouchableOpacity
-          style={[styles.bookingBanner, isRTL && { borderLeftWidth: 0, borderRightWidth: 4, borderRightColor: COLORS.primary }]}
-          onPress={() => router.push("/(patient)/profile")}
-          activeOpacity={0.85}
-        >
-          <View style={styles.bannerLeft}>
-            <Ionicons name="calendar" size={20} color="#fff" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.bannerTitle, isRTL && styles.textRight]}>{tr("upcoming_appointment")}</Text>
-            <Text style={[styles.bannerSub, isRTL && styles.textRight]}>
-              {nextBooking.doctorName} · {nextBooking.date} {nextBooking.time}
-            </Text>
-          </View>
-          <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={16} color={COLORS.primary} />
-        </TouchableOpacity>
-      )}
-
-      {/* Hero Card */}
-      <View style={styles.heroCard}>
-        <View style={styles.heroLeft}>
-          <Text style={[styles.heroTitle, isRTL && styles.textRight]}>{tr("hero_title")}</Text>
-          <TouchableOpacity style={styles.heroBtn} onPress={() => router.push("/(patient)/doctors")}>
-            <Text style={styles.heroBtnText}>{tr("hero_btn")}</Text>
-            <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={12} color={COLORS.primary} />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.heroDecor}>
-          <View style={styles.decorCircle1} />
-          <View style={styles.decorCircle2} />
-          <Ionicons name="medical" size={42} color="rgba(255,255,255,0.75)" />
-        </View>
-      </View>
-
-      {/* Health Metrics — clean grid */}
-      <View style={styles.metricsSection}>
-        <View style={styles.metricsGrid}>
-          <MetricCard
-            icon="medkit"
-            iconColor="#1565C0"
-            iconBg="#E3F2FD"
-            label="Next Dose"
-            value={nextDose ? nextDose.medicationName : "—"}
-            sub={nextDose ? new Date(nextDose.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "No pending doses"}
-            loading={loadingHealth}
-            onPress={() => router.push("/(patient)/medications")}
-          />
-          <MetricCard
-            icon="heart"
-            iconColor={lastBP && !lastBP.isNormal ? "#C62828" : "#00695C"}
-            iconBg={lastBP && !lastBP.isNormal ? "#FFEBEE" : "#E0F2F1"}
-            label="Last BP"
-            value={lastBP ? `${lastBP.value}${lastBP.value2 != null ? `/${lastBP.value2}` : ""}` : "—"}
-            sub={lastBP ? lastBP.unit : "No reading yet"}
-            loading={loadingHealth}
-            abnormal={lastBP ? !lastBP.isNormal : false}
-            onPress={() => router.push("/(patient)/vitals")}
-          />
-          <MetricCard
-            icon="water"
-            iconColor={lastSugar && !lastSugar.isNormal ? "#C62828" : "#E65100"}
-            iconBg={lastSugar && !lastSugar.isNormal ? "#FFEBEE" : "#FFF3E0"}
-            label="Blood Sugar"
-            value={lastSugar ? String(lastSugar.value) : "—"}
-            sub={lastSugar ? lastSugar.unit : "No reading yet"}
-            loading={loadingHealth}
-            abnormal={lastSugar ? !lastSugar.isNormal : false}
-            onPress={() => router.push("/(patient)/vitals")}
-          />
-          <MetricCard
-            icon="calendar"
-            iconColor="#7B1FA2"
-            iconBg="#F3E5F5"
-            label="Next Appt"
-            value={nextBooking ? new Date(nextBooking.scheduledAt).toLocaleDateString([], { month: "short", day: "numeric" }) : "—"}
-            sub={nextBooking ? nextBooking.doctorName || "Doctor" : "No upcoming"}
-            loading={false}
-            onPress={() => router.push("/(patient)/profile")}
-          />
-        </View>
-      </View>
-
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        {[
-          { val: "200+", lbl: tr("stats_doctors"),      accent: false },
-          { val: "98%",  lbl: tr("stats_satisfaction"), accent: true  },
-          { val: "10k+", lbl: tr("stats_patients"),     accent: false },
-        ].map((s, i) => (
-          <View key={i} style={[styles.statCard, s.accent && styles.statCardAccent]}>
-            <Text style={[styles.statNum, s.accent && styles.statNumAccent]}>{s.val}</Text>
-            <Text style={[styles.statLbl, s.accent && styles.statLblAccent]}>{s.lbl}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Specialties */}
-      <View style={[styles.rowHeader, isRTL && styles.rowReverse]}>
-        <Text style={[styles.sectionTitle, isRTL && styles.textRight]}>{tr("specialties")}</Text>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catsRow}>
-        {CATEGORIES.map((cat, i) => (
-          <TouchableOpacity key={i} style={styles.catItem} onPress={() => goToSpecialty(cat.specialty)}>
-            <View style={styles.catIcon}>
-              <Ionicons name={cat.icon as any} size={18} color={COLORS.primary} />
-            </View>
-            <Text style={styles.catLabel}>{cat.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Popular Doctors */}
-      <View style={[styles.rowHeader, isRTL && styles.rowReverse]}>
-        <Text style={[styles.sectionTitle, isRTL && styles.textRight]}>{tr("popular_doctors")}</Text>
-        <TouchableOpacity onPress={() => router.push("/(patient)/doctors")}>
-          <Text style={styles.seeAll}>{tr("see_all")}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {loadingDocs ? (
-        <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
-      ) : (
-        <View style={styles.popularList}>
-          {popularDocs.map((doc) => {
-            const isFollowed = followedIds.includes(Number(doc.id));
-            return (
-              <TouchableOpacity
-                key={doc.id}
-                style={styles.docCard}
-                activeOpacity={0.82}
-                onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(doc.id) } })}
-              >
-                <View style={styles.docAvatar}>
-                  {doc.imageUrl && !doc.imageUrl.includes('default') ? (
-                    <Image source={{ uri: doc.imageUrl }} style={styles.docAvatarImg} />
+    <View style={styles.main}>
+      <StatusBar barStyle="light-content" />
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        bounces={true}
+      >
+        <Animated.View style={[styles.magicHeaderContainer, { transform: [{ translateY: headerTranslateY }] }]}>
+          <LinearGradient colors={["#064E3B", "#059669"]} style={styles.magicHeader}>
+            <Animated.View style={[styles.headerTop, { opacity: headerOpacity }]}>
+              <View>
+                <Text style={styles.greetText}>{getGreeting()}</Text>
+                <View style={styles.nameRow}>
+                  <Text style={styles.userName}>{profile?.name?.split(" ")[0] || "Patient"}</Text>
+                  <Sparkles size={16} color="#FDE047" style={{ marginLeft: 4 }} />
+                </View>
+              </View>
+              <View style={styles.headerRight}>
+                <TouchableOpacity style={styles.headerIconBtn} onPress={() => router.push("/(patient)/doctors")}>
+                  <Search size={22} color="#fff" />
+                </TouchableOpacity>
+                <NotificationBell light />
+                <TouchableOpacity style={styles.avatarWrap} onPress={() => router.push("/(patient)/profile")}>
+                  {profile?.photoUrl ? (
+                    <Image source={{ uri: profile.photoUrl }} style={styles.avatarImg} />
                   ) : (
-                    <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} style={styles.docAvatarImg} />
+                    <View style={styles.avatarFallback}><User size={18} color="#fff" /></View>
                   )}
-                  {doc.isAvailable && <View style={styles.onlineIndicator} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.docName, isRTL && styles.textRight]}>{doc.name}</Text>
-                  <Text style={[styles.docSpec, isRTL && styles.textRight]}>{doc.specialty}</Text>
-                  <View style={[styles.ratingRow, isRTL && styles.rowReverse]}>
-                    <Ionicons name="star" size={11} color="#FFB300" />
-                    <Text style={styles.ratingVal}>{doc.rating}</Text>
-                    <Text style={styles.ratingCnt}>({doc.reviewCount})</Text>
-                  </View>
-                </View>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
 
-                <View style={styles.docActionsCol}>
-                  <TouchableOpacity
-                    style={[styles.followBtn, isFollowed && styles.followBtnActive]}
-                    onPress={(e) => {
-                      e.stopPropagation?.();
-                      toggleFollowDoctor(Number(doc.id)).catch(() => undefined);
-                    }}
-                  >
-                    <Ionicons
-                      name={isFollowed ? "heart" : "heart-outline"}
-                      size={14}
-                      color={isFollowed ? "#fff" : "#E11D48"}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.bookBtn}
-                    onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(doc.id) } })}
-                  >
-                    <Text style={styles.bookTxt}>{tr("book")}</Text>
-                  </TouchableOpacity>
+            <Animated.View style={{ transform: [{ scale: searchScale }] }}>
+              <TouchableOpacity
+                style={styles.findDoctorBtn}
+                activeOpacity={0.8}
+                onPress={() => router.push("/(patient)/doctors")}
+              >
+                <View style={styles.findDoctorContent}>
+                  <Stethoscope size={20} color="#059669" />
+                  <Text style={styles.findDoctorText}>Find a Specialist Doctor</Text>
+                </View>
+                <View style={styles.findDoctorArrow}>
+                  <ArrowRight size={18} color="#059669" />
                 </View>
               </TouchableOpacity>
-            );
-          })}
+            </Animated.View>
+
+            <Animated.View style={[styles.headerDecor1, { transform: [{ translateY: blob1Move }] }]} />
+            <Animated.View style={[styles.headerDecor2, { transform: [{ translateY: Animated.multiply(blob1Move, 1.5) }] }]} />
+          </LinearGradient>
+        </Animated.View>
+
+        {/* FLOATING GLASS TIP CARD */}
+        <View style={styles.tipWrapper}>
+          <LinearGradient
+            colors={["rgba(255, 255, 255, 0.95)", "rgba(254, 252, 232, 0.9)"]}
+            style={styles.magicTipCard}
+          >
+            <View style={styles.tipIconBox}>
+              <View style={styles.innerIconBox}>
+                <Ionicons name="bulb" size={22} color="#D97706" />
+              </View>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.tipTitle}>Daily Wellness</Text>
+              <Text style={styles.tipDesc}>"Small steps lead to great health. Stay active and hydrated."</Text>
+            </View>
+            <TouchableOpacity style={styles.tipArrow}>
+              <ChevronRight size={18} color="#D97706" />
+            </TouchableOpacity>
+          </LinearGradient>
         </View>
-      )}
-    </ScrollView>
+
+        {nextBooking && (
+          <View style={styles.reminderContainer}>
+            <TouchableOpacity
+              onPress={() => router.push("/(patient)/profile?tab=activity")}
+              activeOpacity={0.9}
+            >
+              <LinearGradient
+                colors={["#ECFDF5", "#F0FDF4"]}
+                style={styles.reminderCardCalm}
+              >
+                <View style={styles.reminderHeaderCompact}>
+                  <View style={styles.reminderIconBoxCalm}>
+                    <Calendar size={18} color="#059669" />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 15 }}>
+                    <Text style={styles.reminderTitleCalm}>Upcoming Appointment</Text>
+                    <Text style={styles.reminderDoctorCalm}>Dr. {nextBooking.doctorName} • {nextBooking.time}</Text>
+                  </View>
+                  <ChevronRight size={20} color="#059669" />
+                </View>
+
+                {/* Decorative element */}
+                <View style={[styles.cardCircle, { backgroundColor: 'rgba(5, 150, 105, 0.05)' }]} />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* DAILY VITAL REMINDER CARD - Refined as a Health Task */}
+        {showVitalReminder && (
+          <View style={styles.vitalTaskContainer}>
+            <LinearGradient colors={["#F0F9FF", "#E0F2FE"]} style={styles.vitalTaskCard}>
+              <View style={styles.vitalTaskIconBox}>
+                <Activity size={20} color="#0EA5E9" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 15 }}>
+                <Text style={styles.vitalTaskTitle}>Daily Vitals Record</Text>
+                <Text style={styles.vitalTaskDesc}>Track your heart rate & BP today</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.vitalTaskBtn}
+                onPress={() => router.push("/(patient)/vitals")}
+              >
+                <Text style={styles.vitalTaskBtnText}>Record</Text>
+                <ChevronRight size={14} color="#fff" />
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        )}
+
+        {/* MEDICATION DUE REMINDER CARD */}
+        {nextDose && (
+          <View style={styles.medTaskContainer}>
+            <LinearGradient colors={["#EEF2FF", "#E0E7FF"]} style={styles.medTaskCard}>
+              <View style={styles.medTaskIconBox}>
+                <Pill size={20} color="#4F46E5" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 15 }}>
+                <Text style={styles.medTaskTitle}>Medication Due</Text>
+                <Text style={styles.medTaskName}>{nextDose.medicationName} • {nextDose.dosage}</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.medTaskBtn}
+                onPress={() => router.push("/(patient)/medications")}
+              >
+                <Text style={styles.medTaskBtnText}>Take</Text>
+                <ArrowRight size={14} color="#fff" />
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        )}
+
+        <View style={styles.metricsArea}>
+          <View style={styles.metricsRow}>
+            <TouchableOpacity
+              style={{ width: '48%' }}
+              onPress={() => router.push("/(patient)/medications" as any)}
+            >
+              <SmallMetric icon={Pill} color="#6366F1" bg="#EEF2FF" label="Your Medications" val={nextDose ? nextDose.medicationName : "Up to date"} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{ width: '48%' }}
+              onPress={() => router.push("/(patient)/vitals" as any)}
+            >
+              <SmallMetric icon={HeartPulse} color="#EC4899" bg="#FDF2F8" label="Record Vitals" val={lastBP ? `${lastBP.value}/${lastBP.value2}` : "No readings"} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Medical History & Records</Text>
+        </View>
+        <View style={styles.quickAccessRow}>
+          <TouchableOpacity 
+            style={styles.fullHistoryBtn} 
+            onPress={() => router.push("/(patient)/profile?tab=history")}
+            activeOpacity={0.8}
+          >
+            <LinearGradient colors={["#ECFDF5", "#fff"]} style={styles.fullHistoryGradient}>
+              <View style={styles.historyIconCircle}>
+                <Clock size={24} color="#059669" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fullHistoryTitle}>View Full Medical History</Text>
+                <Text style={styles.fullHistorySub}>Allergies, Surgeries, Records & Folders</Text>
+              </View>
+              <ChevronRight size={20} color="#059669" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.bottomMetricsRow}>
+          <SmallMetric icon={Activity} color="#0EA5E9" bg="#F0F9FF" label="Vitals" val="Latest" onPress={() => router.push("/(patient)/vitals")} />
+          <SmallMetric icon={Pill} color="#F59E0B" bg="#FFF7ED" label="Meds" val="Schedule" onPress={() => router.push("/(patient)/medications")} />
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Medical Specialists</Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
+          {CATEGORIES.map((cat, i) => (
+            <TouchableOpacity
+              key={i}
+              style={styles.catCard}
+              onPress={() => router.push({ pathname: "/(patient)/doctors", params: { specialty: cat.specialty } } as any)}
+            >
+              <LinearGradient colors={["#fff", "#F1F5F9"]} style={styles.catIconBox}>
+                <cat.icon size={24} color={COLORS.primary} />
+              </LinearGradient>
+              <Text style={styles.catText}>{cat.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Top Rated Doctors</Text>
+          <TouchableOpacity onPress={() => router.push("/(patient)/doctors")}><Text style={styles.seeMore}>View All</Text></TouchableOpacity>
+        </View>
+
+        <View style={styles.docList}>
+          {loadingDocs ? (
+            <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
+          ) : (
+            popularDocs.map((doc) => (
+              <DoctorCard
+                key={doc.id}
+                doctor={{
+                  ...doc,
+                  id: String(doc.id),
+                  experience: "5+ yrs",
+                  location: "Main Clinic"
+                }}
+              />
+            ))
+          )}
+        </View>
+      </Animated.ScrollView>
+
+      {/* ULTRA-LUXURY FLOATING SEARCH */}
+      <TouchableOpacity
+        style={styles.floatingSearch}
+        activeOpacity={0.95}
+        onPress={() => router.push("/(patient)/doctors")}
+      >
+        <LinearGradient colors={["#FBBF24", "#D97706"]} style={styles.fabGradient}>
+          <Search size={28} color="#fff" />
+        </LinearGradient>
+      </TouchableOpacity>
+    </View>
   );
 }
 
-function MetricCard({
-  icon, iconColor, iconBg, label, value, sub, loading, abnormal, onPress,
-}: {
-  icon: any; iconColor: string; iconBg: string; label: string;
-  value: string; sub: string; loading: boolean; abnormal?: boolean; onPress: () => void;
-}) {
+function SmallMetric({ icon: Icon, color, bg, label, val, onPress }: any) {
   return (
-    <TouchableOpacity style={styles.metricCard} onPress={onPress} activeOpacity={0.85}>
-      <View style={[styles.metricIconWrap, { backgroundColor: iconBg }]}>
-        <Ionicons name={icon} size={18} color={iconColor} />
+    <TouchableOpacity style={styles.smallMetric} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.mIcon, { backgroundColor: bg }]}>
+        <Icon size={20} color={color} />
       </View>
-      <View style={styles.metricTextWrap}>
-        <Text style={styles.metricLabel}>{label}</Text>
-        {loading ? (
-          <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: 4 }} />
-        ) : (
-          <>
-            <Text style={[styles.metricValue, abnormal && styles.metricValueAbnormal]} numberOfLines={1}>{value}</Text>
-            <Text style={styles.metricSub} numberOfLines={1}>{sub}</Text>
-          </>
-        )}
+      <View>
+        <Text style={styles.mLabel}>{label}</Text>
+        <Text style={styles.mVal}>{val}</Text>
       </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  container:  { flex: 1, backgroundColor: "#F4F6FA" },
-  content:    { paddingBottom: 28 },
-  rowReverse: { flexDirection: "row-reverse" },
-  textRight:  { textAlign: "right" },
-  header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 18, paddingTop: 52, paddingBottom: 14,
+  main: { flex: 1, backgroundColor: "#F8FAFC" },
+  scroll: { paddingBottom: 100 },
+  magicHeaderContainer: { zIndex: 10 },
+  magicHeader: {
+    height: 250, paddingHorizontal: 20, paddingTop: 60,
+    borderBottomLeftRadius: 40, borderBottomRightRadius: 40,
+    position: 'relative', overflow: 'hidden'
   },
-  greeting:  { fontSize: 12, color: "#999", marginBottom: 1 },
-  userName:  { fontSize: 22, fontWeight: "800", color: "#1A1A1A", letterSpacing: -0.3 },
-  avatarBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: COLORS.primary + "15",
-    justifyContent: "center", alignItems: "center",
-    borderWidth: 1.5, borderColor: COLORS.primary + "30",
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, marginBottom: 20 },
+  findDoctorBtn: {
+    zIndex: 10, marginTop: 10, backgroundColor: '#fff', height: 58, borderRadius: 20,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, elevation: 10, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10
   },
-  heroCard: {
-    marginHorizontal: 18, borderRadius: 20, backgroundColor: COLORS.primary,
-    flexDirection: "row", alignItems: "center", paddingLeft: 20, paddingVertical: 18,
-    overflow: "hidden", shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
+  findDoctorContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  findDoctorText: { color: '#064E3B', fontSize: 15, fontWeight: '800' },
+  findDoctorArrow: { width: 34, height: 34, borderRadius: 12, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center' },
+  greetText: { fontSize: 13, color: "rgba(255,255,255,0.8)", fontWeight: '500' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  userName: { fontSize: 19, fontWeight: "700", color: "#fff" },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  headerIconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+  avatarWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
+  avatarImg: { width: '100%', height: '100%', borderRadius: 22 },
+  avatarFallback: { width: '100%', height: '100%', borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  headerDecor1: { position: 'absolute', width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.1)', top: -50, right: -30 },
+  headerDecor2: { position: 'absolute', width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.05)', bottom: -20, left: 20 },
+
+  tipWrapper: { paddingHorizontal: 20, marginTop: -30, zIndex: 20 },
+  magicTipCard: {
+    flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 28,
+    elevation: 8, shadowColor: COLORS.primary, shadowOpacity: 0.15, shadowRadius: 15,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)'
   },
-  heroLeft:     { flex: 1, zIndex: 1 },
-  heroTitle:    { color: "#fff", fontSize: 17, fontWeight: "800", lineHeight: 24, marginBottom: 12 },
-  heroBtn: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: "#fff", paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 18, alignSelf: "flex-start",
+  tipIconBox: { width: 50, height: 50, borderRadius: 18, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' },
+  innerIconBox: { width: 38, height: 38, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
+  tipTitle: { fontSize: 14, fontWeight: '800', color: '#92400E', marginBottom: 2 },
+  tipDesc: { fontSize: 12, color: '#B45309', lineHeight: 17, fontWeight: '500' },
+  tipArrow: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(217, 119, 6, 0.1)', justifyContent: 'center', alignItems: 'center' },
+
+  metricsArea: { paddingHorizontal: 10, marginTop: 25, overflow: 'visible' },
+  metricsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15, overflow: 'visible' },
+  smallMetric: { flex: 1, marginHorizontal: 8, backgroundColor: '#fff', padding: 15, borderRadius: 22, flexDirection: 'row', alignItems: 'center', gap: 10, elevation: 5, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'visible' },
+  mIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  mLabel: { fontSize: 9, color: '#94A3B8', fontWeight: '700', textTransform: 'uppercase' },
+  mVal: { fontSize: 12, fontWeight: '700', color: '#1E293B', marginTop: 1 },
+
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 25, marginBottom: 15 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
+  seeMore: { fontSize: 13, color: COLORS.primary, fontWeight: "700" }, catScroll: { paddingHorizontal: 20, gap: 15, paddingBottom: 10 },
+  catCard: { alignItems: 'center' },
+  catIconBox: { width: 56, height: 56, borderRadius: 20, justifyContent: 'center', alignItems: 'center', elevation: 5, shadowOpacity: 0.05, backgroundColor: '#fff', borderWidth: 1, borderColor: '#F1F5F9' },
+  catText: { fontSize: 10, fontWeight: '700', color: '#475569', marginTop: 6 },
+  docList: { paddingHorizontal: 16, gap: 0, paddingBottom: 15 },
+  floatingSearch: {
+    position: 'absolute', bottom: 30, right: 25,
+    width: 64, height: 64, borderRadius: 32,
+    elevation: 12, shadowColor: '#D97706', shadowOpacity: 0.4, shadowRadius: 15
   },
-  heroBtnText:  { color: COLORS.primary, fontWeight: "700", fontSize: 12 },
-  heroDecor:    { width: 90, alignItems: "center", justifyContent: "center", position: "relative" },
-  decorCircle1: { position: "absolute", width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(255,255,255,0.1)", right: -20 },
-  decorCircle2: { position: "absolute", width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(255,255,255,0.07)", right: 5, top: -10 },
-  statsRow:     { flexDirection: "row", marginHorizontal: 18, marginTop: 14, gap: 10 },
-  statCard: {
-    flex: 1, backgroundColor: "#fff", borderRadius: 14, paddingVertical: 10, alignItems: "center",
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
-  },
-  statCardAccent: { backgroundColor: COLORS.primary },
-  statNum:        { fontSize: 15, fontWeight: "800", color: "#1A1A1A" },
-  statNumAccent:  { color: "#fff" },
-  statLbl:        { fontSize: 10, color: "#999", marginTop: 1 },
-  statLblAccent:  { color: "rgba(255,255,255,0.75)" },
-  rowHeader: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 18, marginTop: 22, marginBottom: 12,
-  },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A1A" },
-  seeAll:       { fontSize: 12, color: COLORS.primary, fontWeight: "600" },
-  catsRow:      { paddingHorizontal: 18, gap: 14 },
-  catItem:      { alignItems: "center", gap: 5 },
-  catIcon: {
-    width: 48, height: 48, borderRadius: 16,
-    backgroundColor: COLORS.primary + "15", justifyContent: "center", alignItems: "center",
-  },
-  catLabel: { fontSize: 10, color: "#555", fontWeight: "500" },
-  popularList: { paddingHorizontal: 18, paddingBottom: 4 },
-  docCard: {
-    flexDirection: "row", alignItems: "center", backgroundColor: "#fff",
-    marginBottom: 10, borderRadius: 16, padding: 12, gap: 10,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
-  },
-  headerRight:  { flexDirection: "row", alignItems: "center", gap: 8 },
-  headerAvatar: { width: "100%", height: "100%", borderRadius: 20 },
-  docAvatar:    { width: 50, height: 50, borderRadius: 25, backgroundColor: COLORS.primary + "20", justifyContent: "center", alignItems: "center", position: "relative", overflow: "hidden" },
-  docAvatarImg: { width: "100%", height: "100%", borderRadius: 25 },
-  docAvatarTxt: { fontSize: 20, fontWeight: "700", color: COLORS.primary },
-  onlineIndicator: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#4CAF50", position: "absolute", bottom: 2, right: 2, borderWidth: 2, borderColor: "#fff" },
-  docName:      { fontSize: 14, fontWeight: "700", color: "#1A1A1A" },
-  docSpec:      { fontSize: 11, color: COLORS.primary, fontWeight: "500", marginTop: 1 },
-  ratingRow:    { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 3 },
-  ratingVal:    { fontSize: 11, fontWeight: "600", color: "#333" },
-  ratingCnt:    { fontSize: 10, color: "#AAA" },
-  docActionsCol:{ alignItems: "center", gap: 8 },
-  followBtn:    { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: "#FBCFE8", alignItems: "center", justifyContent: "center", backgroundColor: "#FFF1F2" },
-  followBtnActive: { backgroundColor: "#E11D48", borderColor: "#E11D48" },
-  bookBtn:      { backgroundColor: COLORS.primary, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18 },
-  bookTxt:      { color: "#fff", fontWeight: "700", fontSize: 12 },
-  bookingBanner: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: "#fff", marginHorizontal: 18, marginBottom: 14,
-    borderRadius: 16, padding: 14,
-    borderLeftWidth: 4, borderLeftColor: COLORS.primary,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 3,
-  },
-  bannerLeft:  { width: 38, height: 38, borderRadius: 12, backgroundColor: COLORS.primary, justifyContent: "center", alignItems: "center" },
-  bannerTitle: { fontSize: 12, fontWeight: "700", color: "#1A1A1A" },
-  bannerSub:   { fontSize: 11, color: "#888", marginTop: 2 },
-  metricsSection: { marginHorizontal: 18, marginTop: 16, marginBottom: 4 },
-  metricsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  metricCard: {
-    width: "47.5%",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  metricIconWrap: { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
-  metricTextWrap: { flex: 1 },
-  metricLabel: { fontSize: 11, fontWeight: "700", color: "#94A3B8", marginBottom: 3, textTransform: "uppercase" },
-  metricValue: { fontSize: 15, fontWeight: "800", color: "#1E293B" },
-  metricValueAbnormal: { color: "#C62828" },
-  metricSub: { fontSize: 11, color: "#64748B", marginTop: 2 },
+  fabGradient: { width: '100%', height: '100%', borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
+
+  reminderContainer: { paddingHorizontal: 20, marginTop: 15 },
+  reminderCard: { borderRadius: 24, padding: 16, elevation: 8, shadowColor: '#064E3B', shadowOpacity: 0.25, shadowRadius: 15, overflow: 'hidden' },
+  reminderHeaderCompact: { flexDirection: 'row', alignItems: 'center' },
+  reminderIconBoxSmall: { width: 40, height: 40, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  reminderTitleSmall: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 0.5 },
+  reminderDoctorSmall: { fontSize: 16, fontWeight: '700', color: '#fff', marginTop: 2 },
+  cardCircle: { position: 'absolute', bottom: -30, right: -30, width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,255,255,0.08)' },
+
+  vitalTaskContainer: { paddingHorizontal: 20, marginTop: 15 },
+  vitalTaskCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#BAE6FD' },
+  vitalTaskIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
+  vitalTaskTitle: { fontSize: 11, fontWeight: '700', color: '#0EA5E9', textTransform: 'uppercase', letterSpacing: 0.5 },
+  vitalTaskDesc: { fontSize: 15, fontWeight: '700', color: '#0C4A6E', marginTop: 1 },
+  vitalTaskBtn: { backgroundColor: '#0EA5E9', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
+  vitalTaskBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+
+  medTaskContainer: { paddingHorizontal: 20, marginTop: 15 },
+  medTaskCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#C7D2FE' },
+  medTaskIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
+  medTaskTitle: { fontSize: 11, fontWeight: '700', color: '#4F46E5', textTransform: 'uppercase', letterSpacing: 0.5 },
+  medTaskName: { fontSize: 15, fontWeight: '700', color: '#1E1B4B', marginTop: 1 },
+  medTaskBtn: { backgroundColor: '#4F46E5', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
+  medTaskBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  
+  reminderCardCalm: { borderRadius: 24, padding: 16, elevation: 8, shadowColor: '#059669', shadowOpacity: 0.1, shadowRadius: 15, overflow: 'hidden', borderWidth: 1, borderColor: '#DCFCE7' },
+  reminderIconBoxCalm: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
+  reminderTitleCalm: { fontSize: 11, fontWeight: '700', color: '#059669', textTransform: 'uppercase', letterSpacing: 0.5 },
+  reminderDoctorCalm: { fontSize: 15, fontWeight: '700', color: '#064E3B', marginTop: 1 },
+
+  quickAccessRow: { paddingHorizontal: 20, marginBottom: 15 },
+  fullHistoryBtn: { borderRadius: 24, overflow: 'hidden', elevation: 6, shadowColor: '#059669', shadowOpacity: 0.1, shadowRadius: 15, borderWidth: 1, borderColor: '#DCFCE7' },
+  fullHistoryGradient: { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 15 },
+  historyIconCircle: { width: 50, height: 50, borderRadius: 16, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 4 },
+  fullHistoryTitle: { fontSize: 15, fontWeight: '800', color: '#064E3B' },
+  fullHistorySub: { fontSize: 11, color: '#059669', fontWeight: '600', marginTop: 2 },
+
+  bottomMetricsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 25 },
+  seeAllTxt: { fontSize: 12, fontWeight: '700', color: '#059669' },
+
+  reminderDesc: { fontSize: 13, color: '#475569', lineHeight: 20, marginBottom: 18, fontWeight: '500' },
+  reminderBtn: { borderRadius: 16, overflow: 'hidden', alignSelf: 'flex-start' },
+  reminderBtnGradient: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingVertical: 12 },
+  reminderBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });

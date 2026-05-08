@@ -40,7 +40,9 @@ namespace MedicalAssistant.Shared.DTOs.PatientDTOs
         public string? BloodType { get; set; }
 
         public string? MedicalNotes { get; set; }
-
         public bool IsActive { get; set; }
+        public decimal? Weight { get; set; }
+        public decimal? Height { get; set; }
+        public string? SmokingStatus { get; set; }
     }
 }

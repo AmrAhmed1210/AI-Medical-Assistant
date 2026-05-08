@@ -1,4 +1,4 @@
-import { API } from "../constants/api";
+import { API, BASE_URL } from "../constants/api";
 import { apiFetch } from "./http";
 
 // ============================================
@@ -108,6 +108,31 @@ export const NORMAL_RANGES: Record<string, { min: number; max: number; unit: str
   "Temperature": { min: 36.1, max: 37.2, unit: "°C" },
   "SpO2": { min: 95, max: 100, unit: "%" },
   "Respiratory Rate": { min: 12, max: 20, unit: "breaths/min" },
+};
+
+// ============================================
+// Update Vital Reading
+// ============================================
+export const updateVitalReading = async (vitalId: number, payload: Partial<CreateVitalPayload>): Promise<VitalReading> => {
+  return apiFetch<VitalReading>(
+    `${BASE_URL}/api/vitals/${vitalId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    },
+    true
+  );
+};
+
+// ============================================
+// Delete Vital Reading
+// ============================================
+export const deleteVitalReading = async (vitalId: number): Promise<void> => {
+  await apiFetch<void>(
+    API.records.vitalDelete(vitalId),
+    { method: "DELETE" },
+    true
+  );
 };
 
 export function checkVitalNormal(type: string, value: number, value2?: number): boolean {

@@ -47,6 +47,11 @@ export interface Profile {
   role: string;
   dateOfBirth?: string;
   photoUrl?: string;
+  gender?: string;
+  bloodType?: string;
+  weight?: number;
+  height?: number;
+  smokingStatus?: string;
 }
 
 // ============================================
@@ -63,7 +68,12 @@ export const updateMyProfile = async (
   name: string,
   email: string,
   phone: string,
-  dateOfBirth: string
+  dateOfBirth: string,
+  gender?: string,
+  bloodType?: string,
+  weight?: number,
+  height?: number,
+  smokingStatus?: string
 ): Promise<void> => {
   const normalized = normalizeDateOfBirth(dateOfBirth);
   await apiFetch<unknown>(
@@ -76,6 +86,11 @@ export const updateMyProfile = async (
         phone,
         birthDate: normalized,
         dateOfBirth: normalized,
+        gender,
+        bloodType,
+        weight,
+        height,
+        smokingStatus,
       }),
     },
     true

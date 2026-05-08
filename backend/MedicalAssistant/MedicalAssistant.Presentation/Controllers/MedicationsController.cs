@@ -14,10 +14,20 @@ namespace MedicalAssistant.Presentation.Controllers
     public class MedicationsController : ControllerBase
     {
         private readonly IPatientRecordService _patientRecordService;
+        private readonly INotificationService _notificationService;
+        private readonly IPatientService _patientService;
+        private readonly IDoctorService _doctorService;
 
-        public MedicationsController(IPatientRecordService patientRecordService)
+        public MedicationsController(
+            IPatientRecordService patientRecordService,
+            INotificationService notificationService,
+            IPatientService patientService,
+            IDoctorService doctorService)
         {
             _patientRecordService = patientRecordService;
+            _notificationService = notificationService;
+            _patientService = patientService;
+            _doctorService = doctorService;
         }
 
         private int? GetPatientIdFromToken()
@@ -98,6 +108,23 @@ namespace MedicalAssistant.Presentation.Controllers
             };
 
             var created = await _patientRecordService.AddMedicationAsync(id, entity);
+
+            // Send notification to patient
+            try
+            {
+                var patient = await _patientService.GetPatientByIdAsync(id);
+                if (patient != null && !string.IsNullOrEmpty(patient.Email))
+                {
+                    string doctorName = "Your Doctor";
+                    if (doctorId.HasValue)
+                    {
+                        var doctor = await _doctorService.GetDoctorByIdAsync(doctorId.Value);
+                        if (doctor != null) doctorName = doctor.FullName;
+                    }
+                    await _notificationService.NotifyMedicationAdded(patient.Email, doctorName, created.MedicationName);
+                }
+            }
+            catch { /* Ignore notification failures */ }
 
             return Ok(new MedicationTrackerDto(
                 created.Id,

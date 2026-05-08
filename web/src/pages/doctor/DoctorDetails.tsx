@@ -7,13 +7,13 @@ import {
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import { doctorApi } from '@/api/doctorApi'
+import { appointmentApi } from '@/api/appointmentApi'
 import axiosInstance from '@/api/axiosInstance'
 import type { DoctorDetailDto } from '@/lib/types'
 
 interface DoctorDetails extends DoctorDetailDto {
   rating?: number
   totalReviews?: number
-  availableSlots?: string[]
 }
 
 export default function DoctorDetails() {
@@ -21,6 +21,8 @@ export default function DoctorDetails() {
   const navigate = useNavigate()
   const [doctor, setDoctor] = useState<DoctorDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [availableSlots, setAvailableSlots] = useState<string[]>([])
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false)
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
 
@@ -36,10 +38,6 @@ export default function DoctorDetails() {
         ...response,
         rating: 4.5, // Mock data - should come from API
         totalReviews: 28, // Mock data - should come from API
-        availableSlots: [
-          '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-          '14:00', '14:30', '15:00', '15:30', '16:00', '16:30'
-        ] // Mock data - should come from API
       }
       
       setDoctor(transformedDoctor)
@@ -55,6 +53,25 @@ export default function DoctorDetails() {
   useEffect(() => {
     fetchDoctorDetails()
   }, [id])
+
+  useEffect(() => {
+    if (!selectedDate || !id) return
+
+    const fetchSlots = async () => {
+      setIsLoadingSlots(true)
+      try {
+        const slots = await appointmentApi.getAvailableSlots(selectedDate, parseInt(id))
+        setAvailableSlots(slots.filter(s => s.available).map(s => s.time))
+      } catch (error) {
+        console.error('Error fetching available slots:', error)
+        setAvailableSlots([])
+      } finally {
+        setIsLoadingSlots(false)
+      }
+    }
+
+    fetchSlots()
+  }, [selectedDate, id])
 
   const handleBookAppointment = async () => {
     if (!doctor || !selectedDate || !selectedTime) {
@@ -134,8 +151,8 @@ export default function DoctorDetails() {
               transition={{ delay: 0.1 }}
               className="flex-1"
             >
-              <h1 className="text-3xl font-bold mb-2">{doctor.fullName}</h1>
-              <p className="text-xl text-white/90 mb-4">{doctor.specialty}</p>
+              <h1 className="text-2xl font-bold mb-1">{doctor.fullName}</h1>
+              <p className="text-lg text-white/90 mb-3">{doctor.specialty}</p>
               
               <div className="flex flex-wrap gap-4 text-sm">
                 {doctor.rating && (
@@ -168,7 +185,7 @@ export default function DoctorDetails() {
               {doctor.consultFee && (
                 <div className="bg-white/20 backdrop-blur-sm rounded-xl px-6 py-3 text-center">
                   <p className="text-sm text-white/70">رسوم الاستشارة</p>
-                  <p className="text-2xl font-bold">{doctor.consultFee} ر.س</p>
+                  <p className="text-xl font-bold">{doctor.consultFee} ر.س</p>
                 </div>
               )}
               <button className="bg-white text-emerald-600 hover:bg-white/90 px-6 py-3 rounded-xl font-semibold transition-colors">
@@ -190,8 +207,8 @@ export default function DoctorDetails() {
               transition={{ delay: 0.3 }}
               className="bg-white rounded-2xl shadow-sm p-6"
             >
-              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <BookOpen size={20} className="text-emerald-600" />
+              <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <BookOpen size={18} className="text-emerald-600" />
                 نبذة عن الطبيب
               </h2>
               {doctor.bio ? (
@@ -208,8 +225,8 @@ export default function DoctorDetails() {
               transition={{ delay: 0.4 }}
               className="bg-white rounded-2xl shadow-sm p-6"
             >
-              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <Calendar size={20} className="text-emerald-600" />
+              <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <Calendar size={18} className="text-emerald-600" />
                 حجز موعد
               </h2>
 
@@ -233,10 +250,13 @@ export default function DoctorDetails() {
                   <select
                     value={selectedTime}
                     onChange={(e) => setSelectedTime(e.target.value)}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    disabled={!selectedDate || isLoadingSlots}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
                   >
-                    <option value="">اختر الوقت</option>
-                    {doctor.availableSlots?.map(slot => (
+                    <option value="">
+                      {isLoadingSlots ? 'جاري التحميل...' : availableSlots.length === 0 ? 'لا توجد أوقات متاحة' : 'اختر الوقت'}
+                    </option>
+                    {availableSlots.map(slot => (
                       <option key={slot} value={slot}>{slot}</option>
                     ))}
                   </select>
@@ -262,7 +282,7 @@ export default function DoctorDetails() {
               transition={{ delay: 0.5 }}
               className="bg-white rounded-2xl shadow-sm p-6"
             >
-              <h3 className="font-bold text-slate-800 mb-4">معلومات التواصل</h3>
+              <h3 className="font-bold text-slate-800 mb-3 text-sm">معلومات التواصل</h3>
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-slate-600">
                   <Mail size={18} className="text-slate-400" />
@@ -287,7 +307,7 @@ export default function DoctorDetails() {
                 transition={{ delay: 0.6 }}
                 className="bg-white rounded-2xl shadow-sm p-6"
               >
-                <h3 className="font-bold text-slate-800 mb-4">الخبرات</h3>
+                <h3 className="font-bold text-slate-800 mb-3 text-sm">الخبرات</h3>
                 <div className="flex items-center gap-3">
                   <Award size={18} className="text-emerald-600" />
                   <span className="text-slate-600">{doctor.yearsExperience} سنوات خبرة</span>
@@ -302,8 +322,8 @@ export default function DoctorDetails() {
               transition={{ delay: 0.7 }}
               className="bg-white rounded-2xl shadow-sm p-6"
             >
-              <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <Languages size={18} className="text-emerald-600" />
+              <h3 className="font-bold text-slate-800 mb-3 text-sm flex items-center gap-2">
+                <Languages size={16} className="text-emerald-600" />
                 اللغات
               </h3>
               <div className="space-y-2">

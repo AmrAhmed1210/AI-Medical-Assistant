@@ -1,208 +1,259 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, TextInput, Modal, Alert, ActivityIndicator, Image,
-  RefreshControl,
+  RefreshControl, Dimensions, KeyboardAvoidingView, Platform, Animated
 } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import {
+  User, Mail, Phone, Calendar, Globe, Settings,
+  ChevronRight, LogOut, MessageSquare,
+  HeartPulse, Pill, Edit3, Headphones,
+  Activity, Sparkles, ShieldCheck, CreditCard, Bell, MapPin, Star,
+  ClipboardList, Plus, PlusCircle, AlertCircle, History, FileText, XCircle, Trash2, Camera, FolderOpen, Clock, CheckCircle2,
+  Users, Droplet, Scale, Ruler, Cigarette
+} from "lucide-react-native";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import Toast from "react-native-toast-message";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "../../constants/colors";
 import { useLanguage } from "../../context/LanguageContext";
 
 // Import services
 import { getMyProfile, updateMyProfile, Profile, uploadProfilePhoto } from "../../services/profileService";
-import { getMyAppointments, cancelAppointment, Appointment } from "../../services/appointmentService";
+import { getMyAppointments, Appointment, cancelAppointment } from "../../services/appointmentService";
+import { scheduleAppointmentReminders } from "../../services/appointmentReminders";
 import { getMyVisits, PatientVisit } from "../../services/visitService";
-import { logout } from "../../services/authService";
-import { getDoctorById } from "../../services/doctorService";
-import { getFollowedDoctorIds } from "../../services/followService";
+import { logout, getMyPatientId } from "../../services/authService";
+import { addNotification } from "../../services/notificationService";
 import { startSupportSession } from "../../services/sessionService";
+import { getChronicDiseases, getSurgeries, getAllergies, AllergyRecord, ChronicDisease, SurgeryRecord } from "../../services/medicalRecordService";
 
-// Types
-interface Medicine {
-  name: string;
-  dose: string;
-  frequency: string;
-  duration: string;
-}
-
-interface MedicalHistory {
-  chronicDiseases: string[];
-  surgeries: string[];
-  scannedMeds: Medicine[];
-}
-
-interface FollowedDoctor {
-  id: number;
-  name: string;
-  specialty: string;
-  photoUrl?: string;
-}
-
-// ── Rule-based parser ──────────────────────────────────────────────────────
-const DRUG_NAMES = [
-  "paracetamol", "amoxicillin", "ibuprofen", "omeprazole", "metformin",
-  "aspirin", "cetirizine", "atorvastatin", "metronidazole", "doxycycline",
-  "vitamin d", "calcium", "iron", "folic acid", "zinc", "pantoprazole",
-  "clarithromycin", "levothyroxine", "amlodipine", "omega-3",
-];
-
-function parsePrescriptionText(text: string): Medicine[] {
-  const lower = text.toLowerCase();
-  const name = DRUG_NAMES.find((d) => lower.includes(d))?.replace(/\b\w/g, (c) => c.toUpperCase()) ?? "Unknown";
-  const doseM = text.match(/(\d+\.?\d*)\s*(mg|mcg|ml|g|iu|%)/i);
-  const dose = doseM ? doseM[0] : "N/A";
-  const freqMap: [RegExp, string][] = [
-    [/once\s+daily|1\s*x\s*daily|od/i, "Once daily"],
-    [/twice\s+daily|2\s*x\s*daily|bd/i, "Twice daily"],
-    [/3\s+times\s+daily|tds|tid|3x/i, "3 times daily"],
-    [/every\s+8\s+hours|q8h/i, "Every 8 hours"],
-    [/every\s+12\s+hours|q12h/i, "Every 12 hours"],
-    [/at\s+night|before\s+sleep|bedtime/i, "At night"],
-    [/when\s+needed|as\s+needed|prn/i, "When needed"],
-  ];
-  const freq = freqMap.find(([re]) => re.test(text))?.[1] ?? "N/A";
-  const durM = text.match(/(\d+)\s*(day|days|week|weeks|month|months)/i);
-  const dur = durM ? durM[0] : "N/A";
-  return [{ name, dose, frequency: freq, duration: dur }];
-}
+const { width, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { tr, isRTL, lang, switchLanguage } = useLanguage();
+  const { tr, isRTL, lang, setLang } = useLanguage() as any;
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [followedDoctors, setFollowedDoctors] = useState<FollowedDoctor[]>([]);
-  const [loadingFollowed, setLoadingFollowed] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const [editModal, setEditModal] = useState(false);
-  const [editName, setEditName] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [editDateOfBirth, setEditDateOfBirth] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const [activeTab, setActiveTab] = useState<"info" | "bookings" | "visits" | "scan" | "history">("info");
   const [visits, setVisits] = useState<PatientVisit[]>([]);
-  const [loadingVisits, setLoadingVisits] = useState(false);
-  const [history, setHistory] = useState<MedicalHistory>({ chronicDiseases: [], surgeries: [], scannedMeds: [] });
-  const [historyModal, setHistoryModal] = useState<null | "chronic" | "surgery">(null);
-  const [historyInput, setHistoryInput] = useState("");
 
-  const [scanImage, setScanImage] = useState<string | null>(null);
-  const [scanResult, setScanResult] = useState<Medicine[] | null>(null);
-  const [scanLoading, setScanLoading] = useState(false);
-  const [rawOCR, setRawOCR] = useState<string>("");
+  const [chronicDiseases, setChronicDiseases] = useState<ChronicDisease[]>([]);
+  const [surgeries, setSurgeries] = useState<SurgeryRecord[]>([]);
+  const [allergies, setAllergies] = useState<AllergyRecord[]>([]);
 
-  const fetchFollowedDoctors = async () => {
-    try {
-      setLoadingFollowed(true);
-      const ids = await getFollowedDoctorIds();
-      if (ids.length === 0) {
-        setFollowedDoctors([]);
-        return;
-      }
-      const details = await Promise.all(
-        ids.map(async (id) => {
-          try {
-            const doc: any = await getDoctorById(id);
-            return {
-              id: Number(doc.id ?? id),
-              name: String(doc.name ?? "Doctor"),
-              specialty: String(doc.specialty ?? "General"),
-              photoUrl: doc.imageUrl || doc.photoUrl,
-            } as FollowedDoctor;
-          } catch { return null; }
-        })
-      );
-      setFollowedDoctors(details.filter((d): d is FollowedDoctor => d !== null));
-    } finally {
-      setLoadingFollowed(false);
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"info" | "activity" | "history" | "visits">("info");
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchVisits = async () => {
-    try {
-      setLoadingVisits(true);
-      const data = await getMyVisits();
-      setVisits(data);
-    } catch {
-      setVisits([]);
-    } finally {
-      setLoadingVisits(false);
-    }
-  };
+  const [isEditModalVisible, setEditModalVisible] = useState(false);
+  const [editData, setEditData] = useState({ 
+    name: "", phone: "", dateOfBirth: "", 
+    gender: "", bloodType: "", weight: "", height: "", smokingStatus: "" 
+  });
+  const [updating, setUpdating] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [isQuickAddOpen, setQuickAddOpen] = useState(false);
 
-  const fetchData = async () => {
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (tab === "activity") setActiveTab("activity");
+    else if (tab === "history") setActiveTab("history");
+    else if (tab === "visits") setActiveTab("visits");
+  }, [tab]);
+
+  const DOCUMENT_FOLDERS = [
+    { id: "Blood Test", label: "Blood", icon: "water", color: "#EF4444", bg: "#FEF2F2" },
+    { id: "X-Ray", label: "Scans", icon: "scan", color: "#6366F1", bg: "#EEF2FF" },
+    { id: "MRI", label: "MRI/CT", icon: "layers", color: "#8B5CF6", bg: "#F5F3FF" },
+    { id: "Prescription", label: "Scripts", icon: "receipt", color: "#10B981", bg: "#ECFDF5" },
+    { id: "Other", label: "Other", icon: "document-text", color: "#64748B", bg: "#F1F5F9" },
+  ];
+
+  const fetchAll = async () => {
     try {
       setLoading(true);
-      const [prof, appts] = await Promise.all([
-        getMyProfile(),
-        getMyAppointments(),
-        fetchFollowedDoctors(),
+      const pid = await getMyPatientId();
+      const [p, appts, v] = await Promise.all([
+        getMyProfile().catch(() => null),
+        getMyAppointments().catch(() => []),
+        getMyVisits().catch(() => []),
       ]);
-      setProfile(prof);
-      setAppointments(appts);
-      setEditName(prof.name);
-      setEditEmail(prof.email || "");
-      setEditPhone(prof.phone || "");
-      setEditDateOfBirth(prof.dateOfBirth || "");
 
-      const userEmail = prof.email;
-      const hRaw = await AsyncStorage.getItem(`history_${userEmail}`);
-      setHistory(hRaw ? JSON.parse(hRaw) : { chronicDiseases: [], surgeries: [], scannedMeds: [] });
-
-      // Load visits
-      fetchVisits();
-    } catch (e: any) {
-      Toast.show({ type: "error", text1: e.message || "Failed to load data" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useFocusEffect(useCallback(() => { fetchData(); }, []));
-
-  const saveProfile = async () => {
-    if (!editName.trim()) {
-      Alert.alert("Error", "Name is required");
-      return;
-    }
-    setSaving(true);
-    try {
-      await updateMyProfile(editName, editEmail, editPhone, editDateOfBirth);
-      await AsyncStorage.setItem("userName", editName);
-      await AsyncStorage.setItem("userEmail", editEmail);
-      setProfile(prev => prev ? { ...prev, name: editName, email: editEmail, phone: editPhone, dateOfBirth: editDateOfBirth } : prev);
-      setEditModal(false);
-      Toast.show({ type: "success", text1: "Profile updated!" });
-    } catch (e: any) {
-      Toast.show({ type: "error", text1: e.message });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const cancelBooking = (id: number) => {
-    Alert.alert(tr("cancel_booking"), tr("cancel_booking_confirm"), [
-      { text: tr("no"), style: "cancel" },
-      {
-        text: tr("yes_cancel"), style: "destructive", onPress: async () => {
+      if (p) {
+        setProfile(p);
+        setEditData({ 
+          name: p.name || "", 
+          phone: p.phone || "", 
+          dateOfBirth: p.dateOfBirth || "",
+          gender: p.gender || "Male",
+          bloodType: p.bloodType || "O+",
+          weight: p.weight?.toString() || "",
+          height: p.height?.toString() || "",
+          smokingStatus: p.smokingStatus || "Non-Smoker"
+        });
+      }
+      
+      // Auto-cancel past pending appointments with robust parsing
+      const now = new Date();
+      const processedAppts = (appts || []).map(a => {
+        const status = a.status?.toLowerCase() || "";
+        if (status === "pending") {
           try {
-            await cancelAppointment(id);
-            setAppointments(prev => prev.filter(a => a.id !== id));
-            Toast.show({ type: "success", text1: "Appointment cancelled" });
-          } catch (e: any) {
-            Toast.show({ type: "error", text1: e.message });
+            const apptDate = new Date(a.date);
+            let [h, m] = (a.time || "0:0").split(':').map(val => parseInt(val, 10));
+            if (a.time?.toLowerCase().includes("pm") && h < 12) h += 12;
+            if (a.time?.toLowerCase().includes("am") && h === 12) h = 0;
+            
+            if (!isNaN(apptDate.getTime())) {
+              apptDate.setHours(h, isNaN(m) ? 0 : m, 0, 0);
+              if (apptDate < now) {
+                return { ...a, status: "Cancelled", isAutoCancelled: true };
+              }
+            }
+          } catch (e) {
+            console.log("Date parsing failed for appt", a.id, e);
           }
         }
-      },
-    ]);
+        return a;
+      });
+
+      setAppointments(processedAppts);
+      setVisits(v || []);
+
+      // Schedule reminders for the upcoming bookings
+      const futureOnly = processedAppts.filter(a => 
+        (a.status?.toLowerCase() === "pending" || a.status?.toLowerCase() === "confirmed") && 
+        !((a as any).isAutoCancelled)
+      );
+      scheduleAppointmentReminders(futureOnly.slice(0, 5));
+
+      const anyAutoCancelled = processedAppts.some((a: any) => a.isAutoCancelled);
+      
+      // Only notify if something was newly auto-cancelled in this session
+      const lastNotifiedKey = "@last_auto_cancel_notif";
+      const lastNotified = await AsyncStorage.getItem(lastNotifiedKey);
+      const currentCancelIds = processedAppts.filter((a: any) => a.isAutoCancelled).map(a => a.id).join(',');
+
+      if (anyAutoCancelled && lastNotified !== currentCancelIds) {
+        addNotification({
+          id: `cancel_${Date.now()}`,
+          type: 'message',
+          icon: '⚠️',
+          title: 'Booking Update',
+          message: 'Overdue pending bookings have been moved to history.',
+          timestamp: Date.now()
+        });
+        await AsyncStorage.setItem(lastNotifiedKey, currentCancelIds);
+      }
+
+      if (pid > 0) {
+        const [cd, sur, alg] = await Promise.all([
+          getChronicDiseases(pid).catch(() => []),
+          getSurgeries(pid).catch(() => []),
+          getAllergies(pid).catch(() => []),
+        ]);
+        setChronicDiseases(cd);
+        setSurgeries(sur);
+        setAllergies(alg);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => { fetchAll(); }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchAll();
+  }, []);
+
+  const handleUpdateProfile = async () => {
+    try {
+      if (!profile) return;
+      setUpdating(true);
+      await updateMyProfile(
+        editData.name, 
+        profile.email, 
+        editData.phone, 
+        editData.dateOfBirth,
+        editData.gender,
+        editData.bloodType,
+        Number(editData.weight) || 0,
+        Number(editData.height) || 0,
+        editData.smokingStatus
+      );
+      setEditModalVisible(false);
+      Toast.show({ type: "success", text1: tr("success"), text2: "Profile updated successfully" });
+      fetchAll();
+    } catch (err: any) {
+      Alert.alert(tr("error"), err.message || "Failed to update profile.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handlePickImage = async () => {
+    Alert.alert(
+      "Update Profile Photo",
+      "Would you like to take a new photo or choose from your gallery?",
+      [
+        { text: "Take Photo", onPress: () => pickImage(true) },
+        { text: "Choose from Gallery", onPress: () => pickImage(false) },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
+  };
+
+  const pickImage = async (useCamera: boolean) => {
+    try {
+      // Permission check
+      if (useCamera) {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert("Permission Needed", "Camera access is required to take photos.");
+          return;
+        }
+      }
+
+      const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      };
+
+      const result = useCamera 
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+
+      if (!result.canceled && result.assets && result.assets[0].uri) {
+        setPhotoUploading(true);
+        await uploadProfilePhoto(result.assets[0].uri);
+        Toast.show({ type: "success", text1: "Success", text2: "Profile photo updated!" });
+        fetchAll();
+      }
+    } catch (err: any) {
+      Alert.alert("Error", "Failed to upload photo: " + (err.message || "Unknown error"));
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleSupport = async () => {
+    try {
+      const session = await startSupportSession();
+      router.push({ pathname: "/(patient)/messages", params: { sessionId: session.id, title: "Technical Support" } } as any);
+    } catch {
+      Alert.alert("Error", "Could not start support session.");
+    }
   };
 
   const handleLogout = () => {
@@ -211,677 +262,608 @@ export default function ProfileScreen() {
       {
         text: tr("logout"), style: "destructive", onPress: async () => {
           await logout();
-          router.replace("/(auth)");
+          router.replace("/(auth)/login");
         }
-      },
+      }
     ]);
   };
 
-  const handleContactSupport = async () => {
-    setLoading(true);
+  const removeBookingLocally = async (id: number) => {
     try {
-      const session = await startSupportSession();
-      router.push({
-        pathname: "/(patient)/messages",
-        params: {
-          sessionId: String(session.id),
-          doctorName: "Technical Support",
-        }
-      });
-    } catch (e: any) {
-      Toast.show({ type: "error", text1: "Failed to open support chat" });
-    } finally {
-      setLoading(false);
+      await cancelAppointment(id); // REAL DELETE FROM SERVER
+      setAppointments(prev => prev.filter(a => a.id !== id));
+      Toast.show({ type: "success", text1: "Booking Removed", text2: "History has been updated" });
+    } catch (error) {
+      console.error("Failed to delete booking", error);
+      Toast.show({ type: "error", text1: "Delete Failed", text2: "Could not remove from server" });
     }
   };
 
-  const pickFromGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-    if (!result.canceled) {
-      setScanImage(result.assets[0].uri);
-      setScanResult(null);
-      setRawOCR("");
-    }
-  };
+  if (loading && !refreshing) {
+    return <View style={styles.center}><ActivityIndicator size="large" color="#059669" /></View>;
+  }
 
-  const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") return;
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-    if (!result.canceled) {
-      setScanImage(result.assets[0].uri);
-      setScanResult(null);
-      setRawOCR("");
-    }
-  };
+  // Header Parallax Interpolations
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, 200],
+    outputRange: [0, -80],
+    extrapolate: 'clamp',
+  });
 
-  const handleUploadPhoto = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Required", "Please allow gallery access to upload a photo.");
-        return;
-      }
+  const avatarScale = scrollY.interpolate({
+    inputRange: [-100, 0, 150],
+    outputRange: [1.2, 1, 0.8],
+    extrapolate: 'clamp',
+  });
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
+  const avatarTranslateY = scrollY.interpolate({
+    inputRange: [0, 150],
+    outputRange: [0, 10],
+    extrapolate: 'clamp',
+  });
 
-      if (!result.canceled) {
-        setLoading(true);
-        const url = await uploadProfilePhoto(result.assets[0].uri);
-        setProfile(prev => prev ? { ...prev, photoUrl: url } : prev);
-        Toast.show({ type: "success", text1: "Photo uploaded!" });
-      }
-    } catch (e: any) {
-      Toast.show({ type: "error", text1: "Upload failed" });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const blobTranslateY = scrollY.interpolate({
+    inputRange: [0, 300],
+    outputRange: [0, -50],
+    extrapolate: 'clamp',
+  });
 
-  const analyzeImage = async () => {
-    if (!scanImage) return;
-    setScanLoading(true);
-    try {
-      const OCR_URL = "http://192.168.1.6:8000/scan";
-      const form = new FormData();
-      form.append("file", { uri: scanImage, type: "image/jpeg", name: "presc.jpg" } as any);
-      const res = await fetch(OCR_URL, { method: "POST", body: form, headers: { "Content-Type": "multipart/form-data" } });
-      if (!res.ok) throw new Error("Server error");
-      const data = await res.json();
-      const rawText: string = data.text ?? "";
-      const medicines: Medicine[] = data.medicines ?? parsePrescriptionText(rawText);
-      setRawOCR(rawText);
-      setScanResult(medicines);
-      const email = profile?.email ?? "guest";
-      const hRaw2 = await AsyncStorage.getItem(`history_${email}`);
-      const hist2: MedicalHistory = hRaw2 ? JSON.parse(hRaw2) : { chronicDiseases: [], surgeries: [], scannedMeds: [] };
-      const updatedHist = { ...hist2, scannedMeds: [...medicines, ...hist2.scannedMeds] };
-      await AsyncStorage.setItem(`history_${email}`, JSON.stringify(updatedHist));
-      setHistory(updatedHist);
-    } catch {
-      Alert.alert("Error", "Could not analyze image. Please try again.");
-    } finally {
-      setScanLoading(false);
-    }
-  };
-
-  const saveHistory = async (updated: MedicalHistory) => {
-    const email = profile?.email ?? "guest";
-    await AsyncStorage.setItem(`history_${email}`, JSON.stringify(updated));
-    setHistory(updated);
-  };
-
-  const addHistoryItem = async () => {
-    if (!historyInput.trim() || !historyModal) return;
-    const updated = { ...history };
-    if (historyModal === "chronic") updated.chronicDiseases = [...history.chronicDiseases, historyInput.trim()];
-    else updated.surgeries = [...history.surgeries, historyInput.trim()];
-    await saveHistory(updated);
-    setHistoryInput("");
-    setHistoryModal(null);
-  };
-
-  const removeHistoryItem = async (type: "chronic" | "surgery" | "med", index: number) => {
-    const updated = { ...history };
-    if (type === "chronic") updated.chronicDiseases = history.chronicDiseases.filter((_, i) => i !== index);
-    else if (type === "surgery") updated.surgeries = history.surgeries.filter((_, i) => i !== index);
-    else updated.scannedMeds = history.scannedMeds.filter((_, i) => i !== index);
-    await saveHistory(updated);
-  };
-
-  const clearScan = () => {
-    setScanImage(null);
-    setScanResult(null);
-    setRawOCR("");
-  };
-
-  const fullName = profile?.name || "User";
-  const initials = fullName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-
-  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 200],
+    outputRange: [1, 0.9],
+    extrapolate: 'clamp',
+  });
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+    <View style={styles.main}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Profile Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={22} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{tr("my_profile")}</Text>
-          <TouchableOpacity onPress={() => setEditModal(true)}>
-            <Ionicons name="settings-outline" size={20} color="#fff" />
+      {/* 1. FIXED BUTTONS LAYER (Z-INDEX 1000) */}
+      <View style={styles.fixedHeaderTop}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
-
-        <View style={styles.headerMain}>
-          <TouchableOpacity style={styles.avatarCircle} onPress={handleUploadPhoto}>
-            {profile?.photoUrl ? (
-              <Image source={{ uri: profile.photoUrl }} style={styles.avatarImg} />
-            ) : (
-              <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} style={styles.avatarImg} />
-            )}
-            <View style={styles.cameraBadge}>
-              <Ionicons name="camera" size={12} color="#fff" />
-            </View>
+        <Text style={styles.headerTitle} numberOfLines={1}>{tr("my_profile")}</Text>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => router.push("/(patient)/vitals" as any)} style={styles.headerActionBtn}>
+            <Activity size={18} color="#fff" />
           </TouchableOpacity>
-          <View style={styles.headerInfo}>
-            <Text style={styles.heroName}>{fullName}</Text>
-            <TouchableOpacity onPress={() => switchLanguage(lang === "en" ? "ar" : "en")} style={styles.langBadge}>
-              <Text style={styles.langBadgeText}>{lang === "en" ? "العربية" : "English"}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNum}>
-              {appointments.filter(a => {
-                const s = a.status?.toLowerCase();
-                return s === "pending" || s === "confirmed";
-              }).length}
-            </Text>
-            <Text style={styles.statLbl}>Active Bookings</Text>
-          </View>
-          <View style={styles.statLine} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNum}>{followedDoctors.length}</Text>
-            <Text style={styles.statLbl}>Following</Text>
-          </View>
-          <View style={styles.statLine} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNum}>{history.chronicDiseases.length + history.surgeries.length}</Text>
-            <Text style={styles.statLbl}>Medical Records</Text>
-          </View>
+          <TouchableOpacity onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')} style={styles.headerActionBtn}>
+            <Globe size={18} color="#fff" />
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabsWrap}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll}>
-          {[
-            { id: "info", icon: "person-outline", label: "Profile" },
-            { id: "bookings", icon: "calendar-outline", label: "Bookings" },
-            { id: "visits", icon: "medical-outline", label: "Visits" },
-            { id: "scan", icon: "scan-outline", label: "Scan Rx" },
-            { id: "history", icon: "document-text-outline", label: "Medical History" },
-          ].map((tab) => (
-            <TouchableOpacity
-              key={tab.id}
-              style={[styles.tabBtn, activeTab === tab.id && styles.tabBtnActive]}
-              onPress={() => setActiveTab(tab.id as any)}
-            >
-              <Ionicons name={tab.icon as any} size={16} color={activeTab === tab.id ? COLORS.primary : "#94A3B8"} />
-              <Text style={[styles.tabBtnTxt, activeTab === tab.id && styles.tabBtnTxtActive]}>{tab.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      {/* 2. ANIMATED BACKGROUND HEADER */}
+      <Animated.View style={[styles.magicHeader, { transform: [{ translateY: headerTranslateY }], opacity: headerOpacity }]}>
+        <LinearGradient colors={["#064E3B", "#059669"]} style={StyleSheet.absoluteFill}>
+          <Animated.View style={[styles.liquidBlob, { top: 0, left: -20, width: 250, height: 250, backgroundColor: '#10B981', transform: [{ translateY: blobTranslateY }] }]} />
+          <Animated.View style={[styles.liquidBlob, { bottom: -50, right: -50, width: 200, height: 200, backgroundColor: '#34D399', transform: [{ translateY: Animated.multiply(blobTranslateY, 1.5) }] }]} />
+          <View style={styles.goldDustContainer}>
+            {[...Array(8)].map((_, i) => <View key={i} style={[styles.goldParticle, { top: `${Math.random() * 90}%`, left: `${Math.random() * 95}%` }]} />)}
+          </View>
+          <View style={styles.emeraldWave} />
+        </LinearGradient>
+      </Animated.View>
 
-      <ScrollView
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchData} colors={[COLORS.primary]} />}
+        contentContainerStyle={styles.scroll}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        overScrollMode="always"
+        bounces={true}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#059669" />}
       >
-        {/* Info Tab */}
-        {activeTab === "info" && (
-          <View>
-            {/* Followed Doctors - Highlighted */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Followed Doctors</Text>
-              <TouchableOpacity onPress={() => router.push("/(patient)/doctors")}>
-                <Text style={styles.seeAll}>Find more</Text>
-              </TouchableOpacity>
-            </View>
-
-            {loadingFollowed ? (
-              <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 10 }} />
-            ) : followedDoctors.length === 0 ? (
-              <View style={styles.followedEmptyCard}>
-                <Text style={styles.followedEmptyText}>Keep track of your favorite doctors here.</Text>
-              </View>
-            ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.followedList}>
-                {followedDoctors.map(doc => (
-                  <TouchableOpacity key={doc.id} style={styles.circleDoc} onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(doc.id) } })}>
-                    <View style={styles.circleAvatar}>
-                      {doc.photoUrl ? (
-                        <Image source={{ uri: doc.photoUrl }} style={styles.avatarImg} />
-                      ) : (
-                        <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} style={styles.avatarImg} />
-                      )}
-                    </View>
-                    <Text style={styles.circleName} numberOfLines={1}>{doc.name.split(" ")[0]}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-
-            {/* Health Hub */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Health Hub</Text>
-            </View>
-            <View style={{ flexDirection: "row", gap: 14 }}>
-              <TouchableOpacity
-                style={[styles.healthCard, { flex: 1, backgroundColor: "#EEF2FF", borderColor: "#C7D2FE", borderWidth: 1 }]}
-                onPress={() => router.push("/(patient)/vitals" as any)}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                  <View style={[styles.healthIcon, { backgroundColor: "#6366F1" }]}>
-                    <Ionicons name="pulse" size={24} color="#fff" />
-                  </View>
-                  <Ionicons name="chevron-forward-circle" size={22} color="#6366F1" />
-                </View>
-                <Text style={[styles.healthTitle, { color: "#3730A3", marginTop: 14 }]}>My Vitals</Text>
-                <Text style={styles.healthSub}>Blood pressure, sugar & more</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.healthCard, { flex: 1, backgroundColor: "#F0FDF4", borderColor: "#BBF7D0", borderWidth: 1 }]}
-                onPress={() => router.push("/(patient)/medications" as any)}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                  <View style={[styles.healthIcon, { backgroundColor: "#10B981" }]}>
-                    <Ionicons name="medkit" size={24} color="#fff" />
-                  </View>
-                  <Ionicons name="chevron-forward-circle" size={22} color="#10B981" />
-                </View>
-                <Text style={[styles.healthTitle, { color: "#065F46", marginTop: 14 }]}>Medications</Text>
-                <Text style={styles.healthSub}>Pills schedule & reminders</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.infoCard, { marginTop: 24 }]}>
-              <Text style={styles.cardHeader}>Personal Details</Text>
-              <InfoRow icon="person-outline" label="Full Name" value={profile?.name || "—"} isRTL={isRTL} />
-              <InfoRow icon="mail-outline" label="Email" value={profile?.email || "—"} isRTL={isRTL} />
-              <InfoRow icon="call-outline" label="Phone" value={profile?.phone || "—"} isRTL={isRTL} />
-              <InfoRow icon="calendar-outline" label="Date of Birth" value={profile?.dateOfBirth || "Not set"} isRTL={isRTL} />
-            </View>
-
-            <TouchableOpacity style={styles.secondaryBtn} onPress={() => setEditModal(true)}>
-              <Ionicons name="create-outline" size={18} color={COLORS.primary} />
-              <Text style={styles.secondaryBtnTxt}>Edit Profile Information</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 12 }]} onPress={handleContactSupport}>
-              <Ionicons name="headset-outline" size={18} color="#475569" />
-              <Text style={styles.secondaryBtnTxt}>Contact Technical Support</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={18} color="#FF4444" />
-              <Text style={styles.logoutBtnTxt}>Sign Out</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Bookings Tab */}
-        {activeTab === "bookings" && (
-          <View>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Active Bookings</Text>
-            </View>
-            {appointments.filter(a => {
-              const status = String(a.status ?? "").toLowerCase();
-              return status === "pending" || status === "confirmed";
-            }).length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyCircle}>
-                  <Ionicons name="calendar-outline" size={40} color={COLORS.primary} />
-                </View>
-                <Text style={styles.emptyStateTitle}>No Active Bookings</Text>
-                <Text style={styles.emptyStateSub}>Pending and confirmed bookings will appear here.</Text>
-                <TouchableOpacity style={styles.primaryBtnSmall} onPress={() => router.push("/(patient)/doctors")}>
-                  <Text style={styles.primaryBtnSmallTxt}>Book Now</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              appointments
-                .filter(a => {
-                  const status = String(a.status ?? "").toLowerCase();
-                  return status === "pending" || status === "confirmed";
-                })
-                .map(b => (
-                  <TouchableOpacity 
-                    key={b.id} 
-                    style={styles.bookingCard}
-                    onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { doctorId: String(b.doctorId) } })}
-                  >
-                    <View style={styles.bookingTop}>
-                      <View style={styles.docInfo}>
-                        <Text style={styles.bookingDocName}>{b.doctorName}</Text>
-                        <Text style={styles.bookingSpec}>{b.specialty}</Text>
-                      </View>
-                      <View style={[
-                        styles.statusBadge,
-                        String(b.status ?? "").toLowerCase() === "confirmed" && { backgroundColor: "#DCFCE7" }
-                      ]}>
-                        <Text style={[
-                          styles.statusTxt,
-                          String(b.status ?? "").toLowerCase() === "confirmed" && { color: "#166534" }
-                        ]}>{b.status}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.bookingMeta}>
-                      <View style={styles.metaIcon}>
-                        <Ionicons name="calendar-outline" size={12} color="#64748B" />
-                        <Text style={styles.metaTxt}>{b.date}</Text>
-                      </View>
-                      <View style={styles.metaIcon}>
-                        <Ionicons name="time-outline" size={12} color="#64748B" />
-                        <Text style={styles.metaTxt}>{b.time}</Text>
-                      </View>
-                    </View>
-                    {(String(b.status ?? "").toLowerCase() === "pending" || String(b.status ?? "").toLowerCase() === "confirmed") && (
-                      <TouchableOpacity 
-                        style={styles.cancelBookBtn} 
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          cancelBooking(b.id);
-                        }}
-                      >
-                        <Text style={styles.cancelBookBtnTxt}>Cancel Request</Text>
-                      </TouchableOpacity>
+        <View style={styles.contentOverlap}>
+          {/* PROFILE CARD - NOW STABLE */}
+          <View style={styles.profileCardWrap}>
+            <Animated.View style={[styles.glassProfileCard, { transform: [{ scale: avatarScale }, { translateY: avatarTranslateY }] }]}>
+              <LinearGradient colors={["rgba(255,255,255,1)", "rgba(252,255,254,0.98)"]} style={styles.cardGlassOverlay} />
+              <LinearGradient colors={["#FBBF24", "#D97706", "#FBBF24"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.goldHairline} />
+              <View style={styles.profileMain}>
+                <View style={styles.avatarGlowContainer}>
+                  <View style={styles.avatarPulse} />
+                  <View style={styles.avatarGlow}>
+                    {photoUploading ? (
+                      <ActivityIndicator color="#059669" style={styles.profileImg} />
+                    ) : (
+                      <Image source={{ uri: profile?.photoUrl || "https://via.placeholder.com/150" }} style={styles.profileImg} />
                     )}
+                    <TouchableOpacity style={styles.editPhotoBtn} onPress={handlePickImage} activeOpacity={0.8}>
+                      <LinearGradient colors={["#FBBF24", "#D97706"]} style={styles.editPhotoGradient}>
+                        <Camera size={12} color="#fff" />
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={styles.profileInfo}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.profileName} numberOfLines={1}>{profile?.name || "Patient Name"}</Text>
+                    <LinearGradient colors={["#FBBF24", "#D97706"]} style={styles.eliteStarBadge}><Star size={10} color="#fff" fill="#fff" /></LinearGradient>
+                  </View>
+                  <Text style={styles.profileEmail} numberOfLines={1}>{profile?.email || "patient@example.com"}</Text>
+                  <View style={styles.badgeRow}>
+                    <LinearGradient colors={["#ECFDF5", "#D1FAE5"]} style={styles.premiumBadge}><ShieldCheck size={12} color="#059669" /><Text style={styles.badgeText}>{tr("verified_patient")}</Text></LinearGradient>
+                  </View>
+                </View>
+              </View>
+            </Animated.View>
+          </View>
+
+          {/* TABS */}
+          <View style={styles.tabsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+              <TabItem label={tr("info")} active={activeTab === "info"} onPress={() => setActiveTab("info")} icon={User} />
+              <TabItem label={tr("active_bookings")} active={activeTab === "activity"} onPress={() => setActiveTab("activity")} icon={Calendar} />
+              <TabItem label={tr("history")} active={activeTab === "history"} onPress={() => setActiveTab("history")} icon={History} />
+              <TabItem label={tr("my_visits")} active={activeTab === "visits"} onPress={() => setActiveTab("visits")} icon={FileText} />
+            </ScrollView>
+          </View>
+
+          {/* SECTIONS */}
+          <View style={styles.contentArea}>
+            {activeTab === "info" && (
+              <View style={styles.section}>
+                <View style={styles.infoQuickActions}>
+                  <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/(patient)/vitals")} activeOpacity={0.8}>
+                    <LinearGradient colors={["#0EA5E9", "#0284C7"]} style={styles.actionIconBox}><HeartPulse size={22} color="#fff" /></LinearGradient>
+                    <Text style={styles.actionLabel}>{tr("vitals")}</Text>
                   </TouchableOpacity>
-              ))
-            )}
-          </View>
-        )}
-
-        {/* Visits Tab */}
-        {activeTab === "visits" && (
-          <View>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>My Visits</Text>
-            </View>
-            {loadingVisits ? (
-              <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 20 }} />
-            ) : visits.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyCircle}>
-                  <Ionicons name="medical-outline" size={40} color={COLORS.primary} />
+                  <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/(patient)/medications")} activeOpacity={0.8}>
+                    <LinearGradient colors={["#6366F1", "#4F46E5"]} style={styles.actionIconBox}><Pill size={22} color="#fff" /></LinearGradient>
+                    <Text style={styles.actionLabel}>{tr("medications")}</Text>
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.emptyStateTitle}>No Visits Found</Text>
-                <Text style={styles.emptyStateSub}>Your completed doctor visits will appear here.</Text>
+                <View style={styles.luxuryInfoBox}>
+                  <InfoRow icon={Mail} label={tr("email")} value={profile?.email || "—"} />
+                  <View style={styles.boxDivider} /><InfoRow icon={Phone} label={tr("phone")} value={profile?.phone || "—"} />
+                  <View style={styles.boxDivider} /><InfoRow icon={Calendar} label={tr("date_of_birth")} value={profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : "—"} />
+                  <View style={styles.boxDivider} /><InfoRow icon={Users} label="Gender" value={profile?.gender || "—"} />
+                  <View style={styles.boxDivider} /><InfoRow icon={Droplet} label="Blood Type" value={profile?.bloodType || "—"} />
+                  <View style={styles.boxDivider} /><InfoRow icon={Scale} label="Weight" value={profile?.weight ? `${profile.weight} kg` : "—"} />
+                  <View style={styles.boxDivider} /><InfoRow icon={Ruler} label="Height" value={profile?.height ? `${profile.height} cm` : "—"} />
+                  <View style={styles.boxDivider} /><InfoRow icon={Cigarette} label="Smoking" value={profile?.smokingStatus || "—"} />
+                </View>
+                <TouchableOpacity style={styles.supportBtn} onPress={handleSupport} activeOpacity={0.7}><View style={styles.supportIcon}><Headphones size={20} color="#F59E0B" /></View><Text style={styles.supportText}>{tr("contact_support")}</Text><ChevronRight size={18} color="#CBD5E1" /></TouchableOpacity>
+                <TouchableOpacity style={styles.luxuryBtn} onPress={() => setEditModalVisible(true)} activeOpacity={0.8}><LinearGradient colors={["#059669", "#047857"]} style={styles.btnGradient}><Edit3 size={18} color="#fff" /><Text style={styles.btnText}>{tr("edit_profile")}</Text></LinearGradient></TouchableOpacity>
               </View>
-            ) : (
-              visits.map(v => (
-                <TouchableOpacity key={v.id} style={styles.bookingCard} onPress={() => router.push({ pathname: "/(patient)/visit-summary" as any, params: { visitId: String(v.id) } })}>
-                  <View style={styles.bookingTop}>
-                    <View style={styles.docInfo}>
-                      <Text style={styles.bookingDocName}>Visit #{v.id}</Text>
-                      <Text style={styles.bookingSpec}>{v.chiefComplaint}</Text>
-                    </View>
-                    <View style={[styles.statusBadge, v.status === "closed" && { backgroundColor: "#DCFCE7" }]}>
-                      <Text style={[styles.statusTxt, v.status === "closed" && { color: "#166534" }]}>{v.status}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.bookingMeta}>
-                    <View style={styles.metaIcon}>
-                      <Ionicons name="calendar-outline" size={12} color="#64748B" />
-                      <Text style={styles.metaTxt}>{v.visitDate}</Text>
-                    </View>
-                    {v.closedAt && (
-                      <View style={styles.metaIcon}>
-                        <Ionicons name="checkmark-circle-outline" size={12} color="#64748B" />
-                        <Text style={styles.metaTxt}>Closed</Text>
+            )}
+
+            {activeTab === "activity" && (
+              <View style={styles.section}>
+                {/* Upcoming Bookings Section */}
+                <View style={styles.activitySubHeader}>
+                  <Calendar size={18} color="#059669" />
+                  <Text style={styles.activitySubTitle}>Upcoming Appointments</Text>
+                </View>
+                
+                {appointments.filter(a => (a.status === "Pending" || a.status === "Confirmed") && !((a as any).isAutoCancelled)).length === 0 ? 
+                  <EmptyState icon={Calendar} text={tr("no_active_bookings")} /> :
+                  appointments.filter(a => (a.status === "Pending" || a.status === "Confirmed") && !((a as any).isAutoCancelled))
+                    .map(appt => <BookingCard key={appt.id} appt={appt} tr={tr} onDelete={removeBookingLocally} />)}
+
+                {/* Past Bookings Section */}
+                <View style={[styles.activitySubHeader, { marginTop: 20 }]}>
+                  <History size={18} color="#94A3B8" />
+                  <Text style={[styles.activitySubTitle, { color: '#64748B' }]}>Past & Expired Bookings</Text>
+                </View>
+
+                {appointments.filter(a => a.status === "Cancelled" || a.status === "Completed" || (a as any).isAutoCancelled).length === 0 ?
+                  <Text style={styles.emptyHistoryTxt}>No past booking activity</Text> :
+                  appointments.filter(a => a.status === "Cancelled" || a.status === "Completed" || (a as any).isAutoCancelled)
+                    .map(appt => <BookingCard key={appt.id} appt={appt} tr={tr} onDelete={removeBookingLocally} />)}
+              </View>
+            )}
+
+            {activeTab === "history" && (
+              <View style={styles.section}>
+                {/* Folders Section */}
+                <View style={styles.activitySubHeader}>
+                  <FolderOpen size={18} color="#059669" />
+                  <Text style={styles.activitySubTitle}>Medical Records & Files</Text>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foldersHorizontalScroll}>
+                  {DOCUMENT_FOLDERS.map(f => (
+                    <TouchableOpacity 
+                      key={f.id} 
+                      style={styles.profileFolderCard} 
+                      onPress={() => router.push({ pathname: "/(patient)/medical-records/documents", params: { folder: f.id } } as any)}
+                    >
+                      <LinearGradient colors={[f.bg, '#fff']} style={styles.profileFolderGradient}>
+                        <Ionicons name={f.icon as any} size={24} color={f.color} />
+                        <Text style={[styles.profileFolderLabel, { color: f.color }]}>{f.label}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                <View style={[styles.activitySubHeader, { marginTop: 20 }]}>
+                  <ClipboardList size={18} color="#059669" />
+                  <Text style={styles.activitySubTitle}>General Health History</Text>
+                </View>
+                <HistoryCard icon={HeartPulse} color="#EF4444" title={tr("chronic_diseases")} items={chronicDiseases.map(d => d.diseaseName)} onAdd={() => router.push({ pathname: "/(patient)/medical-records/[category]", params: { category: "chronic" } } as any)} />
+                <HistoryCard icon={ClipboardList} color="#6366F1" title={tr("surgeries")} items={surgeries.map(s => s.surgeryName)} onAdd={() => router.push({ pathname: "/(patient)/medical-records/[category]", params: { category: "surgeries" } } as any)} />
+                <HistoryCard icon={AlertCircle} color="#F59E0B" title={tr("allergies")} items={allergies.map(a => a.allergenName)} onAdd={() => router.push({ pathname: "/(patient)/medical-records/[category]", params: { category: "allergies" } } as any)} />
+              </View>
+            )}
+
+            {activeTab === "visits" && (
+              <View style={styles.section}>
+                {visits.length === 0 ? <EmptyState icon={FileText} text={tr("no_visits")} /> :
+                  visits.map(v => (
+                    <View key={v.id} style={styles.luxuryCard}>
+                      <View style={styles.cardHeader}>
+                        <View style={[styles.cardIcon, { backgroundColor: '#EEF2FF' }]}>
+                          <FileText size={18} color="#6366F1" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.cardName}>{(v as any).doctor || (v as any).doctorName || "Doctor"}</Text>
+                          <Text style={styles.cardSub}>{(v as any).doctorSpecialty || (v as any).specialty || "Specialist"}</Text>
+                        </View>
+                        <Text style={styles.visitDate}>{v.visitDate ? new Date(v.visitDate).toLocaleDateString() : ""}</Text>
                       </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
-          </View>
-        )}
-
-        {/* Scan placeholder */}
-        {activeTab === "scan" && (
-          <View style={styles.emptyState}>
-            <Ionicons name="scan" size={50} color={COLORS.primary} />
-            <Text style={styles.emptyStateTitle}>Features coming soon</Text>
-          </View>
-        )}
-
-        {/* History Tab */}
-        {activeTab === "history" && (
-          <View>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Booking History</Text>
-            </View>
-            {appointments.filter(a => {
-              const status = String(a.status ?? "").toLowerCase();
-              return status === "completed" || status === "cancelled";
-            }).length === 0 ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyCircle}>
-                  <Ionicons name="time-outline" size={40} color={COLORS.primary} />
-                </View>
-                <Text style={styles.emptyStateTitle}>No History Found</Text>
-                <Text style={styles.emptyStateSub}>Your completed and cancelled bookings will appear here.</Text>
-              </View>
-            ) : (
-              appointments
-                .filter(a => {
-                  const status = String(a.status ?? "").toLowerCase();
-                  return status === "completed" || status === "cancelled";
-                })
-                .map(b => (
-                <View key={b.id} style={[styles.bookingCard, { opacity: 0.8 }]}>
-                  <View style={styles.bookingTop}>
-                    <View style={styles.docInfo}>
-                      <Text style={styles.bookingDocName}>{b.doctorName}</Text>
-                      <Text style={styles.bookingSpec}>{b.specialty}</Text>
+                      <Text style={styles.visitDiagnosis} numberOfLines={2}>
+                        {v.chiefComplaint || "No diagnosis recorded"}
+                      </Text>
                     </View>
-                    <View style={[
-                      styles.statusBadge,
-                      String(b.status ?? "").toLowerCase() === "completed" && { backgroundColor: "#DCFCE7" },
-                      String(b.status ?? "").toLowerCase() === "cancelled" && { backgroundColor: "#FEE2E2" }
-                    ]}>
-                      <Text style={[
-                        styles.statusTxt,
-                        String(b.status ?? "").toLowerCase() === "completed" && { color: "#166534" },
-                        String(b.status ?? "").toLowerCase() === "cancelled" && { color: "#991B1B" }
-                      ]}>{b.status}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.bookingMeta}>
-                    <View style={styles.metaIcon}>
-                      <Ionicons name="calendar-outline" size={12} color="#64748B" />
-                      <Text style={styles.metaTxt}>{b.date}</Text>
-                    </View>
-                    <View style={styles.metaIcon}>
-                      <Ionicons name="time-outline" size={12} color="#64748B" />
-                      <Text style={styles.metaTxt}>{b.time}</Text>
-                    </View>
-                  </View>
-                </View>
-              ))
-            )}
-            
-            {/* Displaying Medical History Items */}
-            <View style={[styles.sectionHeader, { marginTop: 20 }]}>
-              <Text style={styles.sectionTitle}>My Medical Records</Text>
-              <TouchableOpacity onPress={() => router.push("/(patient)/medical-records" as any)}>
-                <Text style={styles.seeAll}>View All</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity style={styles.infoCard} onPress={() => router.push("/(patient)/medical-records" as any)}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View style={[styles.infoIconBox, { backgroundColor: COLORS.primary + "15" }]}>
-                  <Ionicons name="document-text-outline" size={20} color={COLORS.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#1E293B" }}>View Full Medical Records</Text>
-                  <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>Allergies, chronic diseases, medications & vitals</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
-              </View>
-            </TouchableOpacity>
-
-            {history.chronicDiseases.length === 0 && history.surgeries.length === 0 ? (
-                <Text style={styles.emptyStateSub}>No local medical history added yet.</Text>
-            ) : (
-                <>
-                  {history.chronicDiseases.map((d, i) => (
-                      <Text key={`chronic-${i}`} style={{ color: "#475569", marginBottom: 4 }}>• {d}</Text>
                   ))}
-                  {history.surgeries.map((s, i) => (
-                      <Text key={`surg-${i}`} style={{ color: "#475569", marginBottom: 4 }}>• {s} (Surgery)</Text>
-                  ))}
-                </>
+              </View>
             )}
+
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}><LogOut size={20} color="#EF4444" /><Text style={styles.logoutText}>{tr("logout")}</Text></TouchableOpacity>
+          </View>
+        </View>
+      </Animated.ScrollView>
+
+      {/* FAB */}
+      <View style={styles.fabContainer}>
+        {isQuickAddOpen && (
+          <View style={styles.quickAddMenu}>
+            <QuickAddOption icon={HeartPulse} label={tr("vitals")} color="#0EA5E9" onPress={() => { setQuickAddOpen(false); router.push("/(patient)/vitals"); }} />
+            <QuickAddOption icon={Pill} label={tr("medications")} color="#6366F1" onPress={() => { setQuickAddOpen(false); router.push("/(patient)/medications"); }} />
+            <QuickAddOption icon={ClipboardList} label={tr("history")} color="#059669" onPress={() => { setQuickAddOpen(false); setActiveTab("history"); }} />
           </View>
         )}
-      </ScrollView>
+        <TouchableOpacity style={styles.shinyFab} onPress={() => setQuickAddOpen(!isQuickAddOpen)} activeOpacity={0.9}>
+          <LinearGradient colors={["#059669", "#064E3B"]} style={styles.fabGradient}><Plus size={30} color="#fff" /><View style={styles.fabShine} /></LinearGradient>
+        </TouchableOpacity>
+      </View>
 
-      {/* Edit Profile Modal */}
-      <Modal visible={editModal} transparent animationType="slide">
+      <Modal visible={isEditModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.bottomSheet}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Update Profile</Text>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.modalContent}>
+            <View style={styles.modalHeader}><Text style={styles.modalTitle}>{tr("edit_profile")}</Text><TouchableOpacity onPress={() => setEditModalVisible(false)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity></View>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <InputBox label={tr("full_name")} value={editData.name} onChange={(t) => setEditData({ ...editData, name: t })} icon={User} />
+              <InputBox label={tr("phone")} value={editData.phone} onChange={(t) => setEditData({ ...editData, phone: t })} icon={Phone} />
+              <InputBox label={tr("date_of_birth")} value={editData.dateOfBirth} onChange={(t) => setEditData({ ...editData, dateOfBirth: t })} icon={Calendar} />
+              
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}><InputBox label="Weight (kg)" value={editData.weight} onChange={(t) => setEditData({ ...editData, weight: t })} icon={Scale} /></View>
+                <View style={{ flex: 1 }}><InputBox label="Height (cm)" value={editData.height} onChange={(t) => setEditData({ ...editData, height: t })} icon={Ruler} /></View>
+              </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Full Name</Text>
-              <TextInput style={styles.textInput} value={editName} onChangeText={setEditName} placeholder="Name" />
-            </View>
+              <InputBox label="Gender" value={editData.gender} onChange={(t) => setEditData({ ...editData, gender: t })} icon={Users} />
+              <InputBox label="Blood Type" value={editData.bloodType} onChange={(t) => setEditData({ ...editData, bloodType: t })} icon={Droplet} />
+              <InputBox label="Smoking Status" value={editData.smokingStatus} onChange={(t) => setEditData({ ...editData, smokingStatus: t })} icon={Cigarette} />
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Email</Text>
-              <TextInput style={styles.textInput} value={editEmail} onChangeText={setEditEmail} keyboardType="email-address" />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Phone</Text>
-              <TextInput style={styles.textInput} value={editPhone} onChangeText={setEditPhone} keyboardType="phone-pad" />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Date of Birth (YYYY-MM-DD)</Text>
-              <TextInput style={styles.textInput} value={editDateOfBirth} onChangeText={setEditDateOfBirth} placeholder="1990-01-01" />
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditModal(false)}>
-                <Text style={styles.modalCancelTxt}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalSaveBtn} onPress={saveProfile} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.modalSaveTxt}>Save Updates</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleUpdateProfile} disabled={updating} activeOpacity={0.8}><LinearGradient colors={["#059669", "#047857"]} style={styles.saveBtnGradient}>{updating ? <ActivityIndicator color="#fff" /> : <><CheckCircle2 size={20} color="#fff" /><Text style={styles.saveBtnText}>{tr("save")}</Text></>}</LinearGradient></TouchableOpacity>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
-
       <Toast />
     </View>
   );
 }
 
-function InfoRow({ icon, label, value, isRTL }: { icon: any; label: string; value: string; isRTL?: boolean }) {
+function TabItem({ label, active, onPress, icon: Icon }: any) {
   return (
-    <View style={[styles.infoRow, isRTL && { flexDirection: "row-reverse" }]}>
-      <View style={styles.infoIconBox}>
-        <Ionicons name={icon} size={16} color={COLORS.primary} />
+    <TouchableOpacity style={[styles.tabItem, active && styles.tabItemActive]} onPress={onPress} activeOpacity={0.9}>
+      <Icon size={16} color={active ? "#fff" : "#64748B"} /><Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
+      {active && <View style={styles.activeIndicator} />}
+    </TouchableOpacity>
+  );
+}
+
+function InfoRow({ icon: Icon, label, value }: any) {
+  return (
+    <View style={styles.infoRow}><View style={styles.infoIconBox}><Icon size={18} color="#059669" /></View><View style={{ flex: 1 }}><Text style={styles.infoLabel}>{label}</Text><Text style={styles.infoValue}>{value}</Text></View><ChevronRight size={14} color="#CBD5E1" /></View>
+  );
+}
+
+function HistoryCard({ icon: Icon, color, title, items, onAdd }: any) {
+  return (
+    <View style={styles.historyCard}>
+      <View style={styles.historyHeader}>
+        <View style={[styles.historyIconCircle, { backgroundColor: color + '15' }]}>
+          <Icon size={18} color={color} />
+        </View>
+        <Text style={styles.historyTitle}>{title}</Text>
+        <TouchableOpacity style={styles.miniAddBtn} onPress={onAdd} activeOpacity={0.7}>
+          <Plus size={16} color="#fff" />
+        </TouchableOpacity>
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.infoLabel, isRTL && { textAlign: "right" }]}>{label}</Text>
-        <Text style={[styles.infoValue, isRTL && { textAlign: "right" }]}>{value}</Text>
+      <View style={styles.historyItemsList}>
+        {items.length === 0 ? 
+          <Text style={styles.historyEmpty}>No records found</Text> :
+          items.map((it: any, i: number) => (
+            <View key={i} style={styles.historyItemRow}>
+              <View style={[styles.luxuryBullet, { backgroundColor: color }]} />
+              <Text style={styles.historyTextContent}>{it}</Text>
+            </View>
+          ))
+        }
       </View>
     </View>
   );
 }
 
+function InputBox({ label, value, onChange, icon: Icon }: { label: string, value: string, onChange: (t: string) => void, icon: any }) {
+  return (
+    <View style={styles.inputBox}><Text style={styles.inputLabel}>{label}</Text><View style={styles.inputWrapper}><Icon size={18} color="#94A3B8" /><TextInput style={styles.input} value={value} onChangeText={onChange} placeholderTextColor="#CBD5E1" /></View></View>
+  );
+}
+
+function BookingCard({ appt, tr, onDelete }: any) {
+  const router = useRouter();
+  const isConfirmed = appt.status?.toLowerCase() === "confirmed";
+  const isPending = appt.status?.toLowerCase() === "pending";
+  const isCancelled = appt.status?.toLowerCase() === "cancelled" || (appt as any).isAutoCancelled;
+  const isCompleted = appt.status?.toLowerCase() === "completed";
+
+  // Define colors based on status
+  let cardBg = ["#F8FAFC", "#fff"];
+  let iconBg = "#F1F5F9";
+  let iconColor = "#64748B";
+  let statusBg = "#F1F5F9";
+  let statusText = "#64748B";
+
+  if (isConfirmed) {
+    cardBg = ["#F0FDF4", "#fff"];
+    iconBg = "#DCFCE7";
+    iconColor = "#059669";
+    statusBg = "#059669";
+    statusText = "#fff";
+  } else if (isPending) {
+    cardBg = ["#FFF7ED", "#fff"];
+    iconBg = "#FFEDD5";
+    iconColor = "#D97706";
+    statusBg = "#F59E0B";
+    statusText = "#fff";
+  } else if (isCancelled) {
+    cardBg = ["#FEF2F2", "#fff"];
+    iconBg = "#FEE2E2";
+    iconColor = "#EF4444";
+    statusBg = "#EF4444";
+    statusText = "#fff";
+  }
+
+  return (
+    <View style={styles.bookingCardModern}>
+      <LinearGradient colors={cardBg as any} style={styles.bookingCardGradient}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.cardIconBox, { backgroundColor: iconBg }]}>
+            <Calendar size={20} color={iconColor} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardDoctorName}>Dr. {appt.doctorName}</Text>
+            <Text style={styles.cardSpecialtyText}>{appt.specialty}</Text>
+          </View>
+          <View style={[styles.statusTagModern, { backgroundColor: statusBg }]}>
+            <Text style={styles.statusTagText}>{appt.status?.toUpperCase()}</Text>
+          </View>
+        </View>
+
+        <View style={styles.bookingInfoRow}>
+          <View style={styles.infoPill}>
+            <Ionicons name="calendar" size={14} color="#64748B" />
+            <Text style={styles.infoPillText}>{appt.date}</Text>
+          </View>
+          <View style={styles.infoPill}>
+            <Ionicons name="time" size={14} color="#64748B" />
+            <Text style={styles.infoPillText}>{appt.time}</Text>
+          </View>
+        </View>
+
+        <View style={styles.bookingActionRowModern}>
+          {/* Cancel button only for future active bookings */}
+          {!isCancelled && !isCompleted && (isPending || isConfirmed) ? (
+            <TouchableOpacity 
+              style={styles.cancelBookingActionBtn}
+              onPress={() => {
+                Alert.alert("Cancel Booking", "Are you sure you want to cancel this appointment?", [
+                  { text: "No", style: "cancel" },
+                  { text: "Yes, Cancel", style: "destructive", onPress: () => {
+                    onDelete(appt.id);
+                    Toast.show({ type: "info", text1: "Booking Cancelled" });
+                  }}
+                ]);
+              }}
+            >
+              <XCircle size={14} color="#EF4444" />
+              <Text style={styles.cancelBtnText}>Cancel Booking</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={styles.manageBookingBtn}
+              onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { id: appt.doctorId } } as any)}
+            >
+              <Text style={styles.manageBtnText}>View Doctor</Text>
+              <ChevronRight size={14} color="#059669" />
+            </TouchableOpacity>
+          )}
+          
+          <TouchableOpacity 
+            style={styles.deleteBookingBtn} 
+            onPress={() => {
+              Alert.alert(
+                "Remove from History",
+                "Are you sure you want to remove this record?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Delete", style: "destructive", onPress: () => onDelete(appt.id) }
+                ]
+              );
+            }}
+          >
+            <Trash2 size={16} color="#94A3B8" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+}
+
+function EmptyState({ icon: Icon, text }: any) {
+  return (
+    <View style={styles.emptyBox}><Icon size={40} color="#E2E8F0" /><Text style={styles.emptyText}>{text}</Text></View>
+  );
+}
+
+function QuickAddOption({ icon: Icon, label, color, onPress }: any) {
+  return (
+    <TouchableOpacity style={styles.quickOption} onPress={onPress} activeOpacity={0.8}><Text style={styles.quickOptionLabel}>{label}</Text><View style={[styles.quickOptionIcon, { backgroundColor: color }]}><Icon size={20} color="#fff" /></View></TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  main: { flex: 1, backgroundColor: "#fff" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { backgroundColor: COLORS.primary, paddingBottom: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-  headerTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20 },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#fff" },
-  headerMain: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, marginBottom: 20 },
-  avatarCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,255,255,0.25)", justifyContent: "center", alignItems: "center", borderWidth: 3, borderColor: "rgba(255,255,255,0.8)", position: "relative", overflow: "visible", shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5 },
-  avatarImg: { width: "100%", height: "100%", borderRadius: 36 },
-  cameraBadge: { position: "absolute", bottom: -2, right: -2, backgroundColor: "#fff", width: 24, height: 24, borderRadius: 12, justifyContent: "center", alignItems: "center", borderWidth: 1.5, borderColor: COLORS.primary },
-  avatarTxt: { fontSize: 24, fontWeight: "800", color: "#fff" },
-  headerInfo: { marginLeft: 16 },
-  heroName: { fontSize: 22, fontWeight: "800", color: "#fff" },
-  langBadge: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4, alignSelf: "flex-start", marginTop: 6 },
-  langBadgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
-  statsRow: { flexDirection: "row", justifyContent: "space-around", paddingHorizontal: 20, marginTop: 15 },
-  statItem: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.1)", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, minWidth: 90 },
-  statNum: { fontSize: 18, fontWeight: "800", color: "#fff" },
-  statLbl: { fontSize: 11, color: "rgba(255,255,255,0.8)", marginTop: 2, fontWeight: "500" },
-  statLine: { width: 1, height: "60%", backgroundColor: "rgba(255,255,255,0.15)", alignSelf: "center" },
-  tabsWrap: { backgroundColor: "#fff", paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
-  tabsScroll: { paddingHorizontal: 20 },
-  tabBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, marginRight: 10, backgroundColor: "#F8FAFC" },
-  tabBtnActive: { backgroundColor: COLORS.primary + "15" },
-  tabBtnTxt: { fontSize: 13, fontWeight: "600", color: "#64748B" },
-  tabBtnTxtActive: { color: COLORS.primary, fontWeight: "700" },
-  scrollContent: { padding: 20, paddingBottom: 100 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 15 },
-  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
-  seeAll: { fontSize: 12, color: COLORS.primary, fontWeight: "600" },
-  followedEmptyCard: { backgroundColor: "#F1F5F9", borderRadius: 16, padding: 20, alignItems: "center", borderStyle: "dashed", borderWidth: 1, borderColor: "#CBD5E1" },
-  followedEmptyText: { fontSize: 13, color: "#64748B", textAlign: "center" },
-  followedList: { marginBottom: 20 },
-  circleDoc: { alignItems: "center", marginRight: 20, width: 60 },
-  circleAvatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.primary + "15", justifyContent: "center", alignItems: "center", marginBottom: 6, borderWidth: 1, borderColor: COLORS.primary + "30" },
-  circleAvatarTxt: { fontSize: 20, fontWeight: "700", color: COLORS.primary },
-  circleName: { fontSize: 11, color: "#475569", fontWeight: "600", textAlign: "center" },
-  infoCard: { backgroundColor: "#fff", borderRadius: 20, padding: 15, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
-  cardHeader: { fontSize: 13, fontWeight: "700", color: "#64748B", marginBottom: 15, marginLeft: 5 },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 15, paddingVertical: 12 },
-  infoIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: "#F1F5F9", justifyContent: "center", alignItems: "center" },
-  infoLabel: { fontSize: 10, color: "#94A3B8", fontWeight: "600", marginBottom: 2 },
-  infoValue: { fontSize: 14, color: "#1E293B", fontWeight: "600" },
-  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 15, marginTop: 12, borderRadius: 20, backgroundColor: "#FEF2F2" },
-  logoutBtnTxt: { fontSize: 14, fontWeight: "700", color: "#EF4444" },
-  emptyState: { alignItems: "center", paddingVertical: 40 },
-  emptyCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.primary + "10", justifyContent: "center", alignItems: "center", marginBottom: 15 },
-  emptyStateTitle: { fontSize: 16, fontWeight: "700", color: "#1E293B", marginBottom: 5 },
-  emptyStateSub: { fontSize: 13, color: "#64748B", textAlign: "center", marginBottom: 20 },
-  primaryBtnSmall: { backgroundColor: COLORS.primary, paddingHorizontal: 25, paddingVertical: 10, borderRadius: 20 },
-  primaryBtnSmallTxt: { color: "#fff", fontSize: 13, fontWeight: "700" },
-  bookingCard: { backgroundColor: "#fff", borderRadius: 20, padding: 15, marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, position: "relative", overflow: "hidden" },
-  bookingAccent: { position: "absolute", left: 0, top: 0, bottom: 0, width: 4, backgroundColor: COLORS.primary },
-  bookingTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
-  docInfo: { flex: 1 },
-  bookingDocName: { fontSize: 15, fontWeight: "700", color: "#1E293B" },
-  bookingSpec: { fontSize: 11, color: COLORS.primary, fontWeight: "600", marginTop: 2 },
-  statusBadge: { backgroundColor: "#F1F5F9", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  statusTxt: { fontSize: 10, fontWeight: "700", color: "#64748B", textTransform: "uppercase" },
-  bookingMeta: { flexDirection: "row", gap: 15 },
-  metaIcon: { flexDirection: "row", alignItems: "center", gap: 5 },
-  metaTxt: { fontSize: 12, color: "#64748B" },
-  cancelBookBtn: { borderTopWidth: 1, borderTopColor: "#F1F5F9", marginTop: 12, paddingTop: 10, alignItems: "center" },
-  cancelBookBtnTxt: { fontSize: 12, fontWeight: "700", color: "#E11D48" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  bottomSheet: { backgroundColor: "#fff", borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 25 },
-  sheetHandle: { width: 40, height: 4, backgroundColor: "#E2E8F0", borderRadius: 2, alignSelf: "center", marginBottom: 20 },
-  sheetTitle: { fontSize: 20, fontWeight: "800", color: "#1E293B", marginBottom: 20 },
-  inputGroup: { marginBottom: 15 },
-  inputLabel: { fontSize: 12, fontWeight: "600", color: "#64748B", marginBottom: 6 },
-  textInput: { backgroundColor: "#F8FAFC", borderRadius: 12, paddingHorizontal: 15, paddingVertical: 12, fontSize: 14, color: "#1E293B", borderWidth: 1, borderColor: "#E2E8F0" },
-  modalActions: { flexDirection: "row", gap: 12, marginTop: 20 },
-  modalCancelBtn: { flex: 1, paddingVertical: 15, alignItems: "center", borderRadius: 16, backgroundColor: "#F1F5F9" },
-  modalCancelTxt: { fontSize: 14, fontWeight: "700", color: "#64748B" },
-  modalSaveBtn: { flex: 2, paddingVertical: 15, alignItems: "center", borderRadius: 16, backgroundColor: COLORS.primary },
-  modalSaveTxt: { fontSize: 14, fontWeight: "700", color: "#fff" },
-  secondaryBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 15, marginTop: 20, borderRadius: 20, backgroundColor: "#F8FAFC", borderColor: "#E2E8F0", borderWidth: 1 },
-  secondaryBtnTxt: { fontSize: 14, fontWeight: "600", color: "#475569" },
-  healthCard: { borderRadius: 24, padding: 18, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 4 },
-  healthIcon: { width: 48, height: 48, borderRadius: 16, justifyContent: "center", alignItems: "center", marginBottom: 12 },
-  healthTitle: { fontSize: 15, fontWeight: "800", marginBottom: 4 },
-  healthSub: { fontSize: 12, color: "#64748B", fontWeight: "500" },
+  scroll: { paddingBottom: 120, zIndex: 10, paddingTop: 260 },
+  fixedHeaderTop: { position: 'absolute', top: 0, left: 0, right: 0, height: 120, paddingTop: 60, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 9999 },
+  headerLeft: { width: 50, alignItems: 'flex-start' },
+  headerRight: { width: 90, flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
+  backBtn: { width: 40, height: 40, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  headerTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: 0.5, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.2)', textShadowRadius: 5 },
+  headerActionBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  magicHeader: { height: 320, borderBottomLeftRadius: 50, borderBottomRightRadius: 50, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0, overflow: 'hidden' },
+  liquidBlob: { position: 'absolute', borderRadius: 125, opacity: 0.15 },
+  goldDustContainer: { ...StyleSheet.absoluteFillObject },
+  goldParticle: { position: 'absolute', width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#FBBF24', opacity: 0.4 },
+  emeraldWave: { position: 'absolute', bottom: -10, left: 0, right: 0, height: 40, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 100, transform: [{ scaleX: 2 }] },
+  contentOverlap: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, minHeight: SCREEN_HEIGHT, paddingTop: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 30, elevation: 15 },
+  profileCardWrap: { paddingHorizontal: 20, marginTop: -80, zIndex: 20, marginBottom: 15 },
+  glassProfileCard: { backgroundColor: '#fff', borderRadius: 24, padding: 18, elevation: 15, shadowColor: '#064E3B', shadowOpacity: 0.15, shadowRadius: 25, position: 'relative', overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
+  cardGlassOverlay: { ...StyleSheet.absoluteFillObject, opacity: 0.6 },
+  goldHairline: { position: 'absolute', top: 0, left: '15%', right: '15%', height: 4, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 },
+  profileMain: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  avatarGlowContainer: { position: 'relative', width: 72, height: 72, justifyContent: 'center', alignItems: 'center' },
+  avatarPulse: { position: 'absolute', width: 78, height: 78, borderRadius: 39, backgroundColor: '#059669', opacity: 0.12 },
+  avatarGlow: { width: 64, height: 64, borderRadius: 32, borderWidth: 3, borderColor: '#fff', elevation: 12, shadowColor: '#059669', shadowOpacity: 0.35, shadowRadius: 15 },
+  profileImg: { width: '100%', height: '100%', borderRadius: 32 },
+  editPhotoBtn: { position: 'absolute', bottom: 0, right: 0, width: 28, height: 28, borderRadius: 14, overflow: 'hidden', borderWidth: 3, borderColor: '#fff', elevation: 5 },
+  editPhotoGradient: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
+  profileInfo: { flex: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  profileName: { fontSize: 16, fontWeight: '700', color: '#064E3B', letterSpacing: -0.5 },
+  eliteStarBadge: { width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', elevation: 3 },
+  profileEmail: { fontSize: 11, color: '#64748B', marginTop: 3, fontWeight: '600' },
+  badgeRow: { flexDirection: 'row', marginTop: 10 },
+  premiumBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(5, 150, 105, 0.1)' },
+  badgeText: { fontSize: 10, fontWeight: '800', color: '#059669', textTransform: 'uppercase', letterSpacing: 0.5 },
+  tabsContainer: { marginTop: 10 },
+  tabsScroll: { paddingHorizontal: 20, gap: 12 },
+  tabItem: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+  tabItemActive: { backgroundColor: '#064E3B', borderColor: '#064E3B', elevation: 5 },
+  tabLabel: { fontSize: 12, fontWeight: '800', color: '#64748B' },
+  tabLabelActive: { color: '#fff' },
+  activeIndicator: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#FBBF24', marginLeft: 4 },
+  infoQuickActions: { flexDirection: 'row', gap: 15, marginBottom: 12, paddingVertical: 8, paddingHorizontal: 4 },
+  actionCard: { flex: 1, backgroundColor: '#fff', padding: 15, borderRadius: 24, alignItems: 'center', elevation: 12, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 12, borderWidth: 1, borderColor: '#F8FAFC' },
+  actionIconBox: { width: 44, height: 44, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginBottom: 10, elevation: 5, shadowOpacity: 0.15 },
+  actionLabel: { fontSize: 11, fontWeight: '700', color: '#1E293B' },
+  contentArea: { paddingHorizontal: 20, marginTop: 10, paddingBottom: 40 },
+  section: { gap: 16 },
+  luxuryInfoBox: { backgroundColor: '#fff', borderRadius: 28, padding: 8, elevation: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15, borderWidth: 1, borderColor: '#F1F5F9', marginVertical: 4 },
+  boxDivider: { height: 1, backgroundColor: '#F8FAFC', marginHorizontal: 20 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 15, padding: 14 },
+  infoIconBox: { width: 40, height: 40, borderRadius: 14, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center' },
+  infoLabel: { fontSize: 10, color: '#94A3B8', fontWeight: '700', textTransform: 'uppercase' },
+  infoValue: { fontSize: 12, fontWeight: '700', color: '#1E293B', marginTop: 1 },
+  supportBtn: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#FFFBEB', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#FEF3C7' },
+  supportIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 3 },
+  supportText: { flex: 1, fontSize: 13, fontWeight: '900', color: '#92400E' },
+  luxuryBtn: { marginTop: 5 },
+  btnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, height: 58, borderRadius: 24, elevation: 8, shadowColor: '#059669', shadowOpacity: 0.3 },
+  btnText: { color: '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  historyCard: { backgroundColor: '#fff', borderRadius: 28, padding: 20, elevation: 8, shadowOpacity: 0.05, borderWidth: 1, borderColor: '#F8FAFC' },
+  historyHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 15 },
+  historyIconCircle: { width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  historyTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', flex: 1 },
+  miniAddBtn: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center' },
+  historyItemsList: { paddingLeft: 8 },
+  historyItemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 10 },
+  luxuryBullet: { width: 6, height: 6, borderRadius: 3 },
+  historyTextContent: { fontSize: 14, color: '#475569', fontWeight: '500' },
+  historyEmpty: { fontSize: 13, color: '#94A3B8', fontStyle: 'italic', paddingLeft: 16 },
+  bookingCardModern: { backgroundColor: '#fff', borderRadius: 28, marginBottom: 18, elevation: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15, overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
+  bookingCardGradient: { padding: 20 },
+  cardIconBox: { width: 48, height: 48, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  cardDoctorName: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
+  cardSpecialtyText: { fontSize: 12, color: '#64748B', fontWeight: '600', marginTop: 2 },
+  statusTagModern: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  statusTagText: { fontSize: 9, fontWeight: '900', color: '#fff' },
+  bookingInfoRow: { flexDirection: 'row', gap: 10, marginTop: 18, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  infoPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  infoPillText: { fontSize: 11, fontWeight: '700', color: '#475569' },
+  manageBookingBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  bookingActionRowModern: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 },
+  deleteBookingBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  cancelBookingActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF2F2', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FEE2E2' },
+  cancelBtnText: { fontSize: 11, fontWeight: '800', color: '#EF4444' },
+  manageBtnText: { fontSize: 12, fontWeight: '800', color: '#059669' },
+
+  luxuryCard: { backgroundColor: '#fff', borderRadius: 28, padding: 18, elevation: 6, shadowOpacity: 0.04, borderWidth: 1, borderColor: '#F8FAFC' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  cardIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' },
+  cardName: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+  cardSub: { fontSize: 11, color: '#64748B', fontWeight: '500' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  statusText: { fontSize: 10, fontWeight: '800' },
+  cardFooter: { flexDirection: 'row', gap: 14, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  footerItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  footerText: { fontSize: 11, color: '#64748B', fontWeight: '600' },
+  visitDate: { fontSize: 12, color: '#94A3B8', fontWeight: '700' },
+  visitDiagnosis: { fontSize: 12, color: '#475569', marginTop: 12, lineHeight: 18, fontWeight: '500' },
+  emptyBox: { alignItems: 'center', padding: 40, backgroundColor: '#fff', borderRadius: 28, borderWidth: 1, borderColor: '#F1F5F9', borderStyle: 'dashed' },
+  emptyText: { fontSize: 14, color: '#94A3B8', fontWeight: '700', marginTop: 12 },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 40, paddingVertical: 18, backgroundColor: '#FEF2F2', borderRadius: 24, borderWidth: 1, borderColor: '#FEE2E2' },
+  logoutText: { color: '#EF4444', fontSize: 15, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(6, 78, 59, 0.4)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 24, maxHeight: '85%', elevation: 20 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: '#064E3B' },
+  modalBody: { gap: 18 },
+  inputBox: { gap: 10 },
+  inputLabel: { fontSize: 14, fontWeight: '800', color: '#64748B', marginLeft: 6 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#F8FAFC', paddingHorizontal: 18, height: 60, borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+  input: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1E293B' },
+  saveBtn: { marginTop: 15 },
+  saveBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, height: 60, borderRadius: 20, elevation: 10, shadowColor: '#059669', shadowOpacity: 0.4 },
+  saveBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  fabContainer: { position: 'absolute', bottom: 30, right: 25, alignItems: 'flex-end', zIndex: 1000 },
+  shinyFab: { width: 64, height: 64, borderRadius: 32, elevation: 15, shadowColor: '#059669', shadowOpacity: 0.4, shadowRadius: 15 },
+  fabGradient: { width: '100%', height: '100%', borderRadius: 32, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' },
+  fabShine: { position: 'absolute', top: -30, left: -30, width: 60, height: 120, transform: [{ rotate: '45deg' }], backgroundColor: 'rgba(255,255,255,0.2)' },
+  quickAddMenu: { marginBottom: 15, gap: 12, alignItems: 'flex-end' },
+  quickOption: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, elevation: 8, shadowOpacity: 0.1, borderWidth: 1, borderColor: '#F1F5F9' },
+  quickOptionLabel: { fontSize: 12, fontWeight: '800', color: '#1E293B' },
+  quickOptionIcon: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center', elevation: 5 },
+  activitySubHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15, paddingLeft: 5 },
+  activitySubTitle: { fontSize: 15, fontWeight: '800', color: '#064E3B' },
+  emptyHistoryTxt: { fontSize: 13, color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', marginVertical: 20 },
+
+  // Profile Folders
+  foldersHorizontalScroll: { paddingRight: 20, marginBottom: 15, gap: 12 },
+  profileFolderCard: { width: 90, height: 100 },
+  profileFolderGradient: { flex: 1, borderRadius: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', elevation: 4, shadowOpacity: 0.05 },
+  profileFolderLabel: { fontSize: 10, fontWeight: '800', marginTop: 8 },
 });

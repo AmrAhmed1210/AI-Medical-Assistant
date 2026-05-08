@@ -1,30 +1,41 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, ActivityIndicator, TextInput, Switch, Alert,
+  StatusBar, ActivityIndicator, TextInput, Switch, Alert, Dimensions, Animated, Platform
 } from "react-native";
+import { useRouter } from "expo-router";
+import { useLanguage } from "../../context/LanguageContext";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { 
+  Activity, Droplets, Heart as HeartIcon, Thermometer, Wind, Beaker, Plus, Info, Timer, Sparkles, AlertCircle, Trash2, Edit
+} from "lucide-react-native";
 import { COLORS } from "../../constants/colors";
 import { SosBar } from "../../components/SosBar";
 import { getMyPatientId } from "../../services/authService";
 import {
   getPatientVitals, getLatestVital, addVitalReading,
   NORMAL_RANGES, checkVitalNormal, getVitalRangeText,
+  updateVitalReading, deleteVitalReading,
   type VitalReading, type CreateVitalPayload,
 } from "../../services/vitalService";
 import { getAllergies, getChronicDiseases, type ChronicDisease } from "../../services/medicalRecordService";
 import Toast from "react-native-toast-message";
 
+const { width } = Dimensions.get("window");
+
 const VITAL_TYPES = [
-  { key: "Blood Pressure", unit: "mmHg", hasValue2: true },
-  { key: "Blood Sugar", unit: "mg/dL", hasValue2: false },
-  { key: "Heart Rate", unit: "bpm", hasValue2: false },
-  { key: "Temperature", unit: "C", hasValue2: false },
-  { key: "SpO2", unit: "%", hasValue2: false },
-  { key: "Respiratory Rate", unit: "breaths/min", hasValue2: false },
+  { key: "Blood Pressure", unit: "mmHg", hasValue2: true, icon: Activity, color: "#6366F1", bg: "#EEF2FF" },
+  { key: "Blood Sugar", unit: "mg/dL", hasValue2: false, icon: Droplets, color: "#EC4899", bg: "#FDF2F8" },
+  { key: "Heart Rate", unit: "bpm", hasValue2: false, icon: HeartIcon, color: "#F43F5E", bg: "#FFF1F2" },
+  { key: "Temperature", unit: "C", hasValue2: false, icon: Thermometer, color: "#F59E0B", bg: "#FFFBEB" },
+  { key: "SpO2", unit: "%", hasValue2: false, icon: Wind, color: "#10B981", bg: "#ECFDF5" },
+  { key: "Respiratory Rate", unit: "breaths/min", hasValue2: false, icon: Beaker, color: "#8B5CF6", bg: "#F5F3FF" },
 ];
 
 export default function VitalsScreen() {
+  const router = useRouter();
+  const { tr, isRTL } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [patientId, setPatientId] = useState<number | null>(null);
   const [vitals, setVitals] = useState<VitalReading[]>([]);
@@ -40,6 +51,7 @@ export default function VitalsScreen() {
   const [value2, setValue2] = useState("");
   const [notes, setNotes] = useState("");
   const [isNormal, setIsNormal] = useState(true);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -120,11 +132,17 @@ export default function VitalsScreen() {
 
     try {
       setSaving(true);
-      await addVitalReading(patientId!, payload);
-      Toast.show({ type: "success", text1: "Vital recorded successfully" });
+      if (editingId) {
+        await updateVitalReading(editingId, payload);
+        Toast.show({ type: "success", text1: "Vital updated successfully" });
+      } else {
+        await addVitalReading(patientId!, payload);
+        Toast.show({ type: "success", text1: "Vital recorded successfully" });
+      }
       setValue("");
       setValue2("");
       setNotes("");
+      setEditingId(null);
       setShowAddForm(false);
       await loadData();
     } catch (e: any) {
@@ -139,203 +157,399 @@ export default function VitalsScreen() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    Alert.alert(
+      "Delete Reading",
+      "Are you sure you want to delete this record?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              await deleteVitalReading(id);
+              Toast.show({ type: "success", text1: "Reading deleted" });
+              await loadData();
+            } catch (e: any) {
+              Toast.show({ type: "error", text1: "Failed to delete" });
+            }
+          } 
+        }
+      ]
+    );
+  };
+
+  const handleEditInit = (v: VitalReading) => {
+    setSelectedType(v.readingType);
+    setValue(v.value.toString());
+    setValue2(v.value2?.toString() || "");
+    setNotes(v.notes || "");
+    setIsNormal(v.isNormal);
+    setEditingId(v.id);
+    setShowAddForm(true);
+    // Scroll to top for visibility if needed, but simple show form is okay
+  };
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color="#059669" />
       </View>
     );
   }
 
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, 150],
+    outputRange: [300, 180],
+    extrapolate: 'clamp',
+  });
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 150],
+    outputRange: [1, 0.9],
+    extrapolate: 'clamp',
+  });
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
-
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Vitals Tracker</Text>
-        <Text style={styles.headerSubtitle}>Monitor your health readings</Text>
-      </View>
-
-      {sosData && <SosBar bloodType={sosData.bloodType} allergies={sosData.allergies} />}
-
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
-        {/* Quick Add Button */}
-        <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddForm(!showAddForm)}>
-          <Ionicons name={showAddForm ? "close-circle" : "add-circle"} size={20} color="#fff" />
-          <Text style={styles.addBtnTxt}>{showAddForm ? "Cancel" : "Log New Reading"}</Text>
-        </TouchableOpacity>
-
-        {/* Add Form */}
-        {showAddForm && (
-          <View style={styles.formCard}>
-            <Text style={styles.formTitle}>New Vital Reading</Text>
-
-            {/* Type Selector */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
-              {VITAL_TYPES.map((t) => (
-                <TouchableOpacity
-                  key={t.key}
-                  style={[styles.typeChip, selectedType === t.key && styles.typeChipActive]}
-                  onPress={() => { setSelectedType(t.key); setValue(""); setValue2(""); }}
-                >
-                  <Text style={[styles.typeChipTxt, selectedType === t.key && styles.typeChipTxtActive]}>{t.key}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* Value Inputs */}
-            <View style={styles.inputRow}>
-              <View style={styles.inputWrap}>
-                <Text style={styles.inputLabel}>Value {currentTypeInfo.hasValue2 && "(Systolic)"}</Text>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="numeric"
-                  value={value}
-                  onChangeText={(t) => { setValue(t); validateAndSetNormal(); }}
-                  placeholder={getVitalRangeText(selectedType + (currentTypeInfo.hasValue2 ? " Systolic" : ""))}
-                />
-              </View>
-              {currentTypeInfo.hasValue2 && (
-                <View style={styles.inputWrap}>
-                  <Text style={styles.inputLabel}>Diastolic</Text>
-                  <TextInput
-                    style={styles.input}
-                    keyboardType="numeric"
-                    value={value2}
-                    onChangeText={(t) => { setValue2(t); validateAndSetNormal(); }}
-                    placeholder={getVitalRangeText("Blood Pressure Diastolic")}
-                  />
-                </View>
-              )}
-            </View>
-
-            {!isNormal && (
-              <View style={styles.abnormalBanner}>
-                <Text style={styles.abnormalText}>⚠ Outside normal range</Text>
-              </View>
-            )}
-
-            <View style={styles.inputWrap}>
-              <Text style={styles.inputLabel}>Notes (optional)</Text>
-              <TextInput style={styles.input} value={notes} onChangeText={setNotes} placeholder="e.g., after meal, fasting..." />
-            </View>
-
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-              {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.saveBtnTxt}>Save Reading</Text>}
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      
+      {/* ANIMATED LUXURY HEADER */}
+      <Animated.View style={[styles.magicHeader, { height: headerHeight, opacity: headerOpacity }]}>
+        <LinearGradient colors={["#064E3B", "#059669"]} style={StyleSheet.absoluteFill}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity style={styles.glassBtn} onPress={() => router.back()}>
+              <Ionicons name="chevron-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Vitals Dashboard</Text>
+            <TouchableOpacity style={styles.glassBtn} onPress={loadData}>
+              <Ionicons name="refresh" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
-        )}
+          
+          <View style={styles.heroContent}>
+            <View style={styles.heroTextRow}>
+              <View>
+                <Text style={styles.heroLabel}>Health Summary</Text>
+                <Text style={styles.heroMain}>Biometric Data</Text>
+              </View>
+              <View style={styles.premiumTag}>
+                <Sparkles size={12} color="#FDE047" />
+                <Text style={styles.premiumText}>Live Analysis</Text>
+              </View>
+            </View>
+          </View>
 
-        {/* Latest Vitals Summary */}
-        <Text style={styles.sectionTitle}>Latest Readings</Text>
-        <View style={styles.latestGrid}>
-          {VITAL_TYPES.map((t) => {
-            const reading = latestVitals[t.key];
-            const isAbnormal = reading && !reading.isNormal;
-            return (
-              <View key={t.key} style={[styles.latestCard, isAbnormal && styles.latestCardAbnormal]}>
-                <Text style={styles.latestType}>{t.key}</Text>
-                {reading ? (
-                  <>
-                    <Text style={[styles.latestValue, isAbnormal && styles.latestValueAbnormal]}>
-                      {reading.value}{reading.value2 != null ? ` / ${reading.value2}` : ""} {reading.unit}
-                    </Text>
-                    <Text style={styles.latestDate}>{new Date(reading.recordedAt).toLocaleDateString()}</Text>
-                  </>
-                ) : (
-                  <Text style={styles.latestEmpty}>—</Text>
+          {/* Decorative Blobs */}
+          <View style={[styles.liquidBlob, { top: -40, right: -60, width: 220, height: 220, backgroundColor: '#10B981', opacity: 0.2 }]} />
+          <View style={[styles.liquidBlob, { bottom: -20, left: -50, width: 180, height: 180, backgroundColor: '#34D399', opacity: 0.15 }]} />
+        </LinearGradient>
+      </Animated.View>
+
+      {sosData && <View style={styles.sosContainer}><SosBar bloodType={sosData.bloodType} allergies={sosData.allergies} /></View>}
+
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: 260, paddingBottom: 100 }}
+      >
+        <View style={styles.contentOverlap}>
+
+          {/* Quick Add Toggle */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Latest Health Metrics</Text>
+            <TouchableOpacity style={styles.addBtnSmall} onPress={() => setShowAddForm(!showAddForm)}>
+              <LinearGradient colors={["#059669", "#047857"]} style={styles.addBtnSmallGradient}>
+                <Plus size={18} color="#fff" />
+                <Text style={styles.addBtnSmallText}>{showAddForm ? tr("cancel") : "Add New"}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* Add Form with Glass Style */}
+          {showAddForm && (
+            <View style={styles.formCard}>
+              <View style={styles.formIndicator} />
+              <Text style={styles.formTitle}>{editingId ? "Edit Reading" : "New Vital Reading"}</Text>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll} contentContainerStyle={{ paddingRight: 20 }}>
+                {VITAL_TYPES.map((t) => (
+                  <TouchableOpacity
+                    key={t.key}
+                    style={[styles.typeChip, selectedType === t.key && styles.typeChipActive]}
+                    onPress={() => { setSelectedType(t.key); setValue(""); setValue2(""); }}
+                  >
+                    <t.icon size={16} color={selectedType === t.key ? "#fff" : "#64748B"} />
+                    <Text style={[styles.typeChipTxt, selectedType === t.key && styles.typeChipTxtActive]}>{t.key}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <View style={styles.inputRow}>
+                <View style={styles.inputWrap}>
+                  <Text style={styles.inputLabel}>Value {currentTypeInfo.hasValue2 && "(Systolic)"}</Text>
+                  <TextInput
+                    style={styles.premiumInput}
+                    keyboardType="numeric"
+                    value={value}
+                    onChangeText={(t) => { setValue(t); validateAndSetNormal(); }}
+                    placeholder={getVitalRangeText(selectedType + (currentTypeInfo.hasValue2 ? " Systolic" : ""))}
+                    placeholderTextColor="#CBD5E1"
+                  />
+                </View>
+                {currentTypeInfo.hasValue2 && (
+                  <View style={styles.inputWrap}>
+                    <Text style={styles.inputLabel}>Diastolic</Text>
+                    <TextInput
+                      style={styles.premiumInput}
+                      keyboardType="numeric"
+                      value={value2}
+                      onChangeText={(t) => { setValue2(t); validateAndSetNormal(); }}
+                      placeholder={getVitalRangeText("Blood Pressure Diastolic")}
+                      placeholderTextColor="#CBD5E1"
+                    />
+                  </View>
                 )}
               </View>
-            );
-          })}
-        </View>
 
-        {/* History List */}
-        <Text style={styles.sectionTitle}>History</Text>
-        {vitals.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="pulse-outline" size={48} color="#CBD5E1" />
-            <Text style={styles.emptyTitle}>No readings yet</Text>
-            <Text style={styles.emptyDesc}>Tap &quot;Log New Reading&quot; to record your first vital.</Text>
+              {!isNormal && (
+                <View style={styles.abnormalBanner}>
+                  <AlertCircle size={16} color="#991B1B" />
+                  <Text style={styles.abnormalText}>Outside normal range</Text>
+                </View>
+              )}
+
+              <View style={styles.inputWrap}>
+                <Text style={styles.inputLabel}>Notes (optional)</Text>
+                <TextInput style={styles.premiumInput} value={notes} onChangeText={setNotes} placeholder="e.g., after meal..." placeholderTextColor="#CBD5E1" />
+              </View>
+
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving} activeOpacity={0.8}>
+                <LinearGradient colors={["#059669", "#047857"]} style={styles.saveBtnGradient}>
+                  {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.saveBtnTxt}>{editingId ? "Update Record" : "Save Record"}</Text>}
+                </LinearGradient>
+              </TouchableOpacity>
+              {editingId && (
+                <TouchableOpacity 
+                  style={{ marginTop: 12, alignItems: 'center' }} 
+                  onPress={() => { setEditingId(null); setValue(""); setValue2(""); setNotes(""); setShowAddForm(false); }}
+                >
+                  <Text style={{ color: '#64748B', fontWeight: '600' }}>Cancel Edit</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          <View style={styles.liveIndicatorRow}>
+            <View style={styles.liveIndicator}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>Live Sync Active</Text>
+            </View>
           </View>
-        ) : (
-          vitals.map((v, i) => {
-            const isAbnormal = !v.isNormal;
-            return (
-              <View key={i} style={[styles.historyCard, isAbnormal && styles.historyCardAbnormal]}>
-                <View style={styles.historyHeader}>
-                  <Text style={styles.historyType}>{v.readingType}</Text>
-                  <View style={[styles.historyBadge, isAbnormal ? styles.historyBadgeAbnormal : styles.historyBadgeNormal]}>
-                    <Text style={[styles.historyBadgeTxt, isAbnormal ? styles.historyBadgeTxtAbnormal : styles.historyBadgeTxtNormal]}>
-                      {isAbnormal ? "Abnormal" : "Normal"}
-                    </Text>
+
+          <View style={styles.latestGrid}>
+            {VITAL_TYPES.map((t) => {
+              const reading = latestVitals[t.key];
+              const isAbnormal = reading && !reading.isNormal;
+              return (
+                <View key={t.key} style={styles.latestCardWrap}>
+                  <View style={[styles.latestCard, isAbnormal && styles.latestCardAbnormal]}>
+                    <View style={styles.cardHeaderRow}>
+                      <View style={[styles.iconCircle, { backgroundColor: t.bg }]}>
+                        <t.icon size={16} color={t.color} />
+                      </View>
+                      {isAbnormal && <View style={styles.alertDot} />}
+                    </View>
+                    
+                    <Text style={styles.latestType}>{t.key}</Text>
+                    
+                    {reading ? (
+                      <View style={styles.readingContent}>
+                        <View style={styles.valueRow}>
+                          <Text style={[styles.latestValue, isAbnormal && styles.latestValueAbnormal]}>
+                            {reading.value}{reading.value2 != null ? `/${reading.value2}` : ""}
+                          </Text>
+                          <Text style={styles.latestUnit}>{reading.unit}</Text>
+                        </View>
+                        <View style={styles.readingMeta}>
+                          <Timer size={10} color="#94A3B8" />
+                          <Text style={styles.latestDate}>{new Date(reading.recordedAt).toLocaleDateString()}</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <TouchableOpacity style={styles.addPlaceholder} onPress={() => { setSelectedType(t.key); setShowAddForm(true); }}>
+                        <Text style={styles.addPlaceholderText}>Record</Text>
+                        <Plus size={10} color="#94A3B8" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
-                <Text style={[styles.historyValue, isAbnormal && styles.historyValueAbnormal]}>
-                  {v.value}{v.value2 != null ? ` / ${v.value2}` : ""} {v.unit}
-                </Text>
-                {v.notes && <Text style={styles.historyNotes}>{v.notes}</Text>}
-                <Text style={styles.historyDate}>{new Date(v.recordedAt).toLocaleString()}</Text>
-              </View>
-            );
-          })
-        )}
-        <View style={{ height: 40 }} />
-      </ScrollView>
+              );
+            })}
+          </View>
+
+          {/* History Section */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Medical Timeline</Text>
+            <View style={styles.historyBadgeCount}><Text style={styles.historyBadgeCountText}>{vitals.length}</Text></View>
+          </View>
+
+          {vitals.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Activity size={48} color="#E2E8F0" />
+              <Text style={styles.emptyTitle}>No History Yet</Text>
+              <Text style={styles.emptyDesc}>Your biometric timeline will appear here once you log your first measurement.</Text>
+            </View>
+          ) : (
+            <View style={styles.timeline}>
+              {vitals.map((v, i) => {
+                const isAbnormal = !v.isNormal;
+                const typeInfo = VITAL_TYPES.find(t => t.key === v.readingType);
+                return (
+                  <View key={i} style={styles.timelineItem}>
+                    <View style={styles.timelineLeft}>
+                      <View style={[styles.timelineDot, { backgroundColor: typeInfo?.color || '#CBD5E1' }]} />
+                      {i !== vitals.length - 1 && <View style={styles.timelineLine} />}
+                    </View>
+                    <View style={[styles.historyCard, isAbnormal && styles.historyCardAbnormal]}>
+                      <View style={styles.historyTopRow}>
+                        <Text style={styles.historyType}>{v.readingType}</Text>
+                        <View style={[styles.statusBadge, isAbnormal ? styles.statusBadgeError : styles.statusBadgeSuccess]}>
+                          <Text style={[styles.statusText, isAbnormal ? styles.statusTextError : styles.statusTextSuccess]}>
+                            {isAbnormal ? "High Alert" : "Normal"}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                          <TouchableOpacity onPress={() => handleEditInit(v)}>
+                            <Edit size={16} color="#64748B" />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleDelete(v.id)}>
+                            <Trash2 size={16} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      <View style={styles.historyValueRow}>
+                        <Text style={[styles.historyValue, isAbnormal && styles.historyValueAbnormal]}>
+                          {v.value}{v.value2 != null ? ` / ${v.value2}` : ""}
+                        </Text>
+                        <Text style={styles.historyUnit}>{v.unit}</Text>
+                      </View>
+                      {v.notes && (
+                        <View style={styles.historyNotesBox}>
+                          <Info size={12} color="#64748B" />
+                          <Text style={styles.historyNotes}>{v.notes}</Text>
+                        </View>
+                      )}
+                      <Text style={styles.historyDate}>{new Date(v.recordedAt).toLocaleString()}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      </Animated.ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F8FAFC" },
-  header: { backgroundColor: COLORS.primary, paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-  headerTitle: { fontSize: 22, fontWeight: "800", color: "#fff" },
-  headerSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
-  addBtn: { backgroundColor: COLORS.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 16, marginBottom: 16 },
-  addBtnTxt: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  formCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
-  formTitle: { fontSize: 16, fontWeight: "700", color: "#1E293B", marginBottom: 12 },
-  typeScroll: { flexDirection: "row", marginBottom: 12 },
-  typeChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: "#F1F5F9", marginRight: 8, borderWidth: 1, borderColor: "#E2E8F0" },
-  typeChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  typeChipTxt: { fontSize: 12, fontWeight: "600", color: "#64748B" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" },
+  magicHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, overflow: 'hidden' },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60, zIndex: 10 },
+  glassBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
+  heroContent: { paddingHorizontal: 25, marginTop: 30, zIndex: 10 },
+  heroTextRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  heroLabel: { fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+  heroMain: { fontSize: 28, fontWeight: "900", color: "#fff", marginTop: 4, letterSpacing: -0.5 },
+  premiumTag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  premiumText: { fontSize: 10, fontWeight: '800', color: '#fff', textTransform: 'uppercase' },
+  liquidBlob: { position: 'absolute', borderRadius: 150 },
+  
+  contentOverlap: { backgroundColor: '#F8FAFC', borderTopLeftRadius: 40, borderTopRightRadius: 40, minHeight: 600, paddingTop: 30 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, marginBottom: 20, marginTop: 10 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', letterSpacing: -0.5 },
+  addBtnSmall: { borderRadius: 15, overflow: 'hidden', elevation: 5 },
+  addBtnSmallGradient: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  addBtnSmallText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+
+  formCard: { backgroundColor: '#fff', borderRadius: 35, padding: 25, marginHorizontal: 20, marginBottom: 30, elevation: 15, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+  formIndicator: { width: 40, height: 5, backgroundColor: '#F1F5F9', borderRadius: 5, alignSelf: 'center', marginBottom: 20 },
+  formTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginBottom: 25 },
+  typeScroll: { marginBottom: 25 },
+  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 18, backgroundColor: '#F8FAFC', marginRight: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  typeChipActive: { backgroundColor: '#064E3B', borderColor: '#064E3B' },
+  typeChipTxt: { fontSize: 13, fontWeight: '700', color: '#64748B' },
   typeChipTxtActive: { color: "#fff" },
-  inputRow: { flexDirection: "row", gap: 12 },
-  inputWrap: { flex: 1, marginBottom: 12 },
-  inputLabel: { fontSize: 12, fontWeight: "600", color: "#64748B", marginBottom: 6 },
-  input: { backgroundColor: "#F8FAFC", borderRadius: 12, paddingHorizontal: 15, paddingVertical: 12, fontSize: 15, color: "#1E293B", borderWidth: 1, borderColor: "#E2E8F0" },
-  abnormalBanner: { backgroundColor: "#FFEBEE", borderRadius: 10, padding: 10, marginBottom: 12 },
-  abnormalText: { color: "#C62828", fontSize: 13, fontWeight: "700" },
-  saveBtn: { backgroundColor: COLORS.primary, paddingVertical: 14, borderRadius: 12, alignItems: "center" },
-  saveBtnTxt: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  sectionTitle: { fontSize: 18, fontWeight: "800", color: "#1E293B", marginBottom: 12, marginTop: 8 },
-  latestGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", marginBottom: 16 },
-  latestCard: { width: "48%", backgroundColor: "#fff", borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: "#F0F0F0", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
-  latestCardAbnormal: { borderColor: "#FFCDD2", backgroundColor: "#FFEBEE" },
-  latestType: { fontSize: 11, fontWeight: "700", color: "#64748B", marginBottom: 6, textTransform: "uppercase" },
-  latestValue: { fontSize: 20, fontWeight: "800", color: "#1E293B" },
-  latestValueAbnormal: { color: "#C62828" },
-  latestDate: { fontSize: 11, color: "#94A3B8", marginTop: 4 },
-  latestEmpty: { fontSize: 18, color: "#CBD5E1", fontWeight: "700" },
-  emptyCard: { backgroundColor: "#fff", borderRadius: 16, padding: 40, alignItems: "center", marginTop: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#1E293B", marginTop: 16 },
-  emptyDesc: { fontSize: 13, color: "#94A3B8", marginTop: 6, textAlign: "center" },
-  historyCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: "#F0F0F0", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 2 },
-  historyCardAbnormal: { borderColor: "#FFCDD2" },
-  historyHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  historyType: { fontSize: 14, fontWeight: "700", color: "#1E293B" },
-  historyBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  historyBadgeNormal: { backgroundColor: "#E0F2F1" },
-  historyBadgeAbnormal: { backgroundColor: "#FFEBEE" },
-  historyBadgeTxt: { fontSize: 11, fontWeight: "700" },
-  historyBadgeTxtNormal: { color: "#00695C" },
-  historyBadgeTxtAbnormal: { color: "#C62828" },
-  historyValue: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
-  historyValueAbnormal: { color: "#C62828" },
-  historyNotes: { fontSize: 12, color: "#64748B", marginTop: 4, fontStyle: "italic" },
-  historyDate: { fontSize: 11, color: "#94A3B8", marginTop: 6 },
+  inputRow: { flexDirection: "row", gap: 15 },
+  inputWrap: { flex: 1, marginBottom: 20 },
+  inputLabel: { fontSize: 13, fontWeight: "700", color: "#94A3B8", marginBottom: 10, marginLeft: 4 },
+  premiumInput: { backgroundColor: '#F8FAFC', borderRadius: 18, paddingHorizontal: 18, height: 55, fontSize: 15, color: '#1E293B', borderWidth: 1.5, borderColor: '#F1F5F9', fontWeight: '600' },
+  abnormalBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: "#FEF2F2", borderRadius: 15, padding: 12, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: "#EF4444" },
+  abnormalText: { color: "#991B1B", fontSize: 12, fontWeight: "800" },
+  saveBtn: { borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#059669', shadowOpacity: 0.3 },
+  saveBtnGradient: { height: 58, justifyContent: 'center', alignItems: 'center' },
+  saveBtnTxt: { color: "#fff", fontSize: 16, fontWeight: "800" },
+
+  liveIndicatorRow: { paddingHorizontal: 25, marginBottom: 15 },
+  liveIndicator: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F0FDF4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15, alignSelf: 'flex-start' },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' },
+  liveText: { fontSize: 10, fontWeight: '800', color: '#10B981', textTransform: 'uppercase' },
+
+  latestGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 20, gap: 12, marginBottom: 30 },
+  latestCardWrap: { width: '48%', marginBottom: 5 },
+  latestCard: { backgroundColor: '#fff', borderRadius: 28, padding: 18, borderWidth: 1, borderColor: '#F1F5F9', elevation: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15 },
+  latestCardAbnormal: { borderColor: "#FCA5A5", backgroundColor: "#FFF1F2" },
+  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  iconCircle: { width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  alertDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
+  latestType: { fontSize: 10, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  readingContent: { gap: 6 },
+  valueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  latestValue: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
+  latestValueAbnormal: { color: "#991B1B" },
+  latestUnit: { fontSize: 11, color: '#64748B', fontWeight: '700' },
+  readingMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  latestDate: { fontSize: 10, color: "#94A3B8", fontWeight: '600' },
+  addPlaceholder: { height: 45, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', paddingHorizontal: 12, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1' },
+  addPlaceholderText: { fontSize: 12, color: '#94A3B8', fontWeight: '700' },
+
+  historyBadgeCount: { backgroundColor: '#059669', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  historyBadgeCountText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  emptyCard: { backgroundColor: '#fff', borderRadius: 35, padding: 40, alignItems: 'center', marginHorizontal: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+  emptyTitle: { fontSize: 18, fontWeight: "900", color: "#1E293B", marginTop: 20 },
+  emptyDesc: { fontSize: 14, color: "#94A3B8", marginTop: 10, textAlign: "center", lineHeight: 22 },
+
+  timeline: { paddingHorizontal: 20, paddingBottom: 40 },
+  timelineItem: { flexDirection: 'row', gap: 15 },
+  timelineLeft: { alignItems: 'center', width: 20 },
+  timelineDot: { width: 12, height: 12, borderRadius: 6, zIndex: 10, marginTop: 25 },
+  timelineLine: { flex: 1, width: 2, backgroundColor: '#E2E8F0', marginTop: -10 },
+  historyCard: { flex: 1, backgroundColor: '#fff', borderRadius: 24, padding: 18, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9', elevation: 5, shadowColor: '#000', shadowOpacity: 0.04 },
+  historyCardAbnormal: { borderColor: "#FCA5A5" },
+  historyTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  historyType: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  statusBadgeSuccess: { backgroundColor: "#F0FDF4" },
+  statusBadgeError: { backgroundColor: "#FFF1F2" },
+  statusText: { fontSize: 10, fontWeight: "800", textTransform: 'uppercase' },
+  statusTextSuccess: { color: "#059669" },
+  statusTextError: { color: "#EF4444" },
+  historyValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  historyValue: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
+  historyValueAbnormal: { color: "#991B1B" },
+  historyUnit: { fontSize: 13, color: '#64748B', fontWeight: '700' },
+  historyNotesBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', padding: 10, borderRadius: 12, marginTop: 12 },
+  historyNotes: { fontSize: 12, color: "#64748B", fontWeight: '500' },
+  historyDate: { fontSize: 11, color: '#94A3B8', marginTop: 12, fontWeight: '600' },
+  sosContainer: { marginTop: -10, marginBottom: 10 },
 });

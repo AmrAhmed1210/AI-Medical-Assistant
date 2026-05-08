@@ -29,6 +29,14 @@ namespace MedicalAssistant.Presentation.Controllers
             return int.TryParse(claim, out var id) ? id : 0;
         }
 
+        private bool IsDoctorOrOwner(int patientId)
+        {
+            var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+            if (role.Equals("Doctor", StringComparison.OrdinalIgnoreCase)) return true;
+            var currentPatientId = GetPatientIdFromClaims();
+            return currentPatientId == patientId;
+        }
+
         // GET /api/patients/{id}/allergies
         [HttpGet("patients/{id:int}/allergies")]
         public async Task<IActionResult> GetForPatient(int id)
@@ -44,9 +52,10 @@ namespace MedicalAssistant.Presentation.Controllers
 
         // POST /api/patients/{id}/allergies
         [HttpPost("patients/{id:int}/allergies")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Patient")]
         public async Task<IActionResult> CreateForPatient(int id, [FromBody] CreateAllergyDto dto)
         {
+            if (!IsDoctorOrOwner(id)) return Forbid();
             if (dto == null) return BadRequest(new { message = "Invalid payload." });
 
             var allergy = new AllergyRecord
@@ -65,7 +74,7 @@ namespace MedicalAssistant.Presentation.Controllers
 
         // PATCH /api/allergies/{id}
         [HttpPatch("allergies/{allergyId:int}")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Patient")]
         public async Task<IActionResult> Update(int allergyId, [FromBody] UpdateAllergyDto dto)
         {
             var updates = new AllergyRecord

@@ -146,6 +146,37 @@ namespace MedicalAssistant.Services.Services
             patient.IsActive = updatePatientDto.IsActive;
 
             unitOfWork.Patients.Update(patient);
+
+            // Sync with MedicalProfile
+            var medicalProfile = (await unitOfWork.Repository<MedicalProfile>()
+                .FindAsync(mp => mp.PatientId == patient.Id)).FirstOrDefault();
+
+            if (medicalProfile != null)
+            {
+                medicalProfile.BloodType = updatePatientDto.BloodType;
+                medicalProfile.WeightKg = updatePatientDto.Weight;
+                medicalProfile.HeightCm = updatePatientDto.Height;
+                medicalProfile.IsSmoker = updatePatientDto.SmokingStatus != "Non-Smoker";
+                medicalProfile.SmokingDetails = updatePatientDto.SmokingStatus;
+                medicalProfile.UpdatedAt = DateTime.UtcNow;
+                unitOfWork.Repository<MedicalProfile>().Update(medicalProfile);
+            }
+            else
+            {
+                medicalProfile = new MedicalProfile
+                {
+                    PatientId = patient.Id,
+                    BloodType = updatePatientDto.BloodType,
+                    WeightKg = updatePatientDto.Weight,
+                    HeightCm = updatePatientDto.Height,
+                    IsSmoker = updatePatientDto.SmokingStatus != "Non-Smoker",
+                    SmokingDetails = updatePatientDto.SmokingStatus,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await unitOfWork.Repository<MedicalProfile>().AddAsync(medicalProfile);
+            }
+
             await unitOfWork.SaveChangesAsync();
 
             return MapToDto(patient);

@@ -1,11 +1,22 @@
-import { Tabs } from "expo-router";
-import { usePathname } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { COLORS } from "../../constants/colors";
-import { useEffect, useState } from "react";
+/**
+ * _layout.tsx  —  Patient tab navigator
+ *
+ * Responsibilities:
+ * 1. Bootstrap the SignalR connection once auth is ready
+ * 2. Register all real-time event handlers (appointments, schedules, messages)
+ * 3. Render the Tabs navigator using our premium CustomTabBar
+ *
+ * The actual visual tab bar lives in components/TabBar/TabBar.tsx to keep
+ * this layout file focused on routing and data concerns.
+ */
+
+import { Tabs, usePathname } from "expo-router";
+import { useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
-import { View, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { CustomTabBar } from "../../components/TabBar/TabBar";
 import {
   addNotification,
   createAppointmentUpdatedNotification,
@@ -22,36 +33,38 @@ import {
   startSignalRConnection,
   stopSignalRConnection,
 } from "../../services/signalr";
-import { checkIfFollowed, getAllNotificationDoctorIds, shouldReceiveDoctorNotifications } from "../../services/followService";
+import {
+  getAllNotificationDoctorIds,
+  shouldReceiveDoctorNotifications,
+} from "../../services/followService";
 import { useNotificationStore } from "../../store/notificationStore";
 
-type TabIconProps = {
-  color: string;
-  size: number;
-  focused: boolean;
-};
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-function TabIcon({ name, color, size, focused }: { name: any; color: string; size: number; focused: boolean }) {
-  return (
-    <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-      <Ionicons name={name} size={focused ? size + 1 : size} color={color} />
-    </View>
-  );
+/** Prevent duplicate schedule toasts within a short burst window */
+interface ScheduleDedupeState {
+  lastDoctorId: number | null;
+  lastTs: number;
 }
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function TabsLayout() {
   const pathname = usePathname();
-  const unreadMessages = useNotificationStore(state => state.unreadMessages);
-  const clearAllMessages = useNotificationStore(state => state.clearAllMessages);
-  const setLatestMessagePayload = useNotificationStore(state => state.setLatestMessagePayload);
-  const incrementSessionMessage = useNotificationStore(state => state.incrementSessionMessage);
+  const unreadMessages      = useNotificationStore((s) => s.unreadMessages);
+  const clearAllMessages    = useNotificationStore((s) => s.clearAllMessages);
+  const setLatestMsgPayload = useNotificationStore((s) => s.setLatestMessagePayload);
+  const incrementSession    = useNotificationStore((s) => s.incrementSessionMessage);
 
+  const insets = useSafeAreaInsets();
+
+  // ── SignalR bootstrap ──────────────────────────────────────────────────────
   useEffect(() => {
     let mounted = true;
 
     const tryConnect = async () => {
-      // Wait a bit for auth to settle
-      await new Promise(r => setTimeout(r, 1000));
+      // Small delay — lets the auth token settle after login navigation
+      await new Promise<void>((r) => setTimeout(r, 1000));
 
       const token = await AsyncStorage.getItem("token");
       if (!token || !mounted) return;
@@ -59,22 +72,26 @@ export default function TabsLayout() {
       const conn = await startSignalRConnection();
       if (!conn || !mounted) return;
 
+      // Restore all doctor schedule subscriptions from local storage
       try {
-        const list = await getAllNotificationDoctorIds();
+        const ids = await getAllNotificationDoctorIds();
         await Promise.all(
-          list.map((doctorId) => subscribeToDoctorSchedule(Number(doctorId)).catch(() => undefined))
+          ids.map((id) =>
+            subscribeToDoctorSchedule(Number(id)).catch(() => undefined)
+          )
         );
       } catch {
-        // ignore subscription restore issues
+        // Non-critical — subscriptions will be re-added on next follow
       }
 
-      let lastScheduleDoctorId: number | null = null;
-      let lastScheduleTs = 0;
-      const pushScheduleNotification = (doctorId: number, doctorName: string) => {
+      // ── Deduplication for schedule toasts ──
+      const dedup: ScheduleDedupeState = { lastDoctorId: null, lastTs: 0 };
+
+      const pushScheduleToast = (doctorId: number, doctorName: string) => {
         const now = Date.now();
-        if (lastScheduleDoctorId === doctorId && now - lastScheduleTs < 1500) return;
-        lastScheduleDoctorId = doctorId;
-        lastScheduleTs = now;
+        if (dedup.lastDoctorId === doctorId && now - dedup.lastTs < 1500) return;
+        dedup.lastDoctorId = doctorId;
+        dedup.lastTs = now;
         addNotification(createScheduleReadyNotification(doctorName));
         Toast.show({
           type: "success",
@@ -85,39 +102,34 @@ export default function TabsLayout() {
         });
       };
 
+      // ── Schedule event handler (reused for Ready + Updated) ──
       const handleScheduleEvent = async (data: any) => {
         if (!mounted) return;
-        const payload = data ?? {};
-        const doctorId = Number(payload?.doctorId ?? payload?.DoctorId);
-        const doctorName = String(payload?.doctorName ?? payload?.DoctorName ?? "Doctor");
+        const doctorId   = Number(data?.doctorId   ?? data?.DoctorId);
+        const doctorName = String(data?.doctorName  ?? data?.DoctorName  ?? "Doctor");
         if (!(await shouldReceiveDoctorNotifications(doctorId))) return;
-        pushScheduleNotification(doctorId, doctorName);
+        pushScheduleToast(doctorId, doctorName);
       };
 
+      // ── Appointment status updates ──
       onAppointmentUpdated((data) => {
         if (!mounted) return;
         const status = String(data?.status ?? "").toLowerCase();
         const message = data?.message || "Appointment updated";
-        const title = status === "confirmed"
-          ? "Appointment Confirmed"
-          : status === "cancelled"
-            ? "Appointment Cancelled"
-            : "Appointment Updated";
-        addNotification(
-          createAppointmentUpdatedNotification(
-            title,
-            message,
-            status === "confirmed"
-              ? "appointment_confirmed"
-              : status === "cancelled"
-                ? "appointment_cancelled"
-                : "appointment_updated"
-          )
-        );
+        const title =
+          status === "confirmed" ? "Appointment Confirmed"
+          : status === "cancelled" ? "Appointment Cancelled"
+          : "Appointment Updated";
+        const type =
+          status === "confirmed" ? "appointment_confirmed"
+          : status === "cancelled" ? "appointment_cancelled"
+          : "appointment_updated";
+
+        addNotification(createAppointmentUpdatedNotification(title, message, type));
         Toast.show({
           type: "info",
           text1: title,
-          text2: data.status ? `Status: ${data.status}` : undefined,
+          text2: data?.status ? `Status: ${data.status}` : undefined,
           position: "top",
           topOffset: 60,
         });
@@ -125,9 +137,11 @@ export default function TabsLayout() {
 
       onScheduleReady(handleScheduleEvent);
       onScheduleUpdated(handleScheduleEvent);
+
+      // ── Doctor profile update ──
       onDoctorUpdated(async (payload) => {
         if (!mounted) return;
-        const doctorId = Number(payload?.doctorId ?? payload?.DoctorId);
+        const doctorId   = Number(payload?.doctorId  ?? payload?.DoctorId);
         const doctorName = String(payload?.doctorName ?? payload?.DoctorName ?? "Doctor");
         if (!(await shouldReceiveDoctorNotifications(doctorId))) return;
 
@@ -150,23 +164,22 @@ export default function TabsLayout() {
           topOffset: 60,
         });
       });
+
+      // ── Incoming messages ──
       onNewMessage((payload) => {
         if (!mounted) return;
-        setLatestMessagePayload(payload);
-        
+        setLatestMsgPayload(payload);
+
         const sessionId = payload?.sessionId ?? payload?.SessionId;
+        // Only increment unread badge when the messages screen is NOT open
         if (pathname !== "/messages" && sessionId) {
-          incrementSessionMessage(sessionId);
+          incrementSession(sessionId);
         }
 
         const doctorName = String(payload?.doctorName ?? payload?.DoctorName ?? "Doctor");
-        const message = String(payload?.message ?? payload?.Message ?? "You received a new message.");
+        const message    = String(payload?.message    ?? payload?.Message    ?? "You received a new message.");
         addNotification(
-          createAppointmentUpdatedNotification(
-            "New Message",
-            `Dr. ${doctorName}: ${message}`,
-            "message"
-          )
+          createAppointmentUpdatedNotification("New Message", `Dr. ${doctorName}: ${message}`, "message")
         );
         Toast.show({
           type: "info",
@@ -176,54 +189,44 @@ export default function TabsLayout() {
           topOffset: 60,
         });
       });
+
+      // ── Generic notification hub events ──
       onNotificationReceived((payload) => {
         if (!mounted) return;
         const category = payload?.category ?? payload?.Category;
-        const data = payload?.data ?? payload?.Data ?? {};
+        const data     = payload?.data     ?? payload?.Data ?? {};
+
         if (category === "schedule_updated" || category === "schedule_ready") {
-          const doctorId = Number(data?.doctorId ?? data?.DoctorId);
+          const doctorId   = Number(data?.doctorId   ?? data?.DoctorId);
           const doctorName = String(data?.doctorName ?? data?.DoctorName ?? "Doctor");
           shouldReceiveDoctorNotifications(doctorId)
-            .then((allowed) => {
-              if (!allowed) return;
-              pushScheduleNotification(doctorId, doctorName);
-            })
+            .then((ok) => ok && pushScheduleToast(doctorId, doctorName))
             .catch(() => undefined);
           return;
         }
 
-        if (
-          category === "appointment_confirmed" ||
-          category === "appointment_reminder" ||
-          category === "missed_appointment" ||
-          category === "rebook_offer" ||
-          category === "rebook_confirmed"
-        ) {
-          const title = String(payload?.title ?? payload?.Title ?? "Appointment");
+        const APPOINTMENT_CATEGORIES = new Set([
+          "appointment_confirmed",
+          "appointment_reminder",
+          "missed_appointment",
+          "rebook_offer",
+          "rebook_confirmed",
+        ]);
+
+        if (APPOINTMENT_CATEGORIES.has(category)) {
+          const title   = String(payload?.title   ?? payload?.Title   ?? "Appointment");
           const message = String(payload?.message ?? payload?.Message ?? "You have a new appointment update.");
           addNotification(createAppointmentUpdatedNotification(title, message, category));
-          Toast.show({
-            type: "info",
-            text1: title,
-            text2: message,
-            position: "top",
-            topOffset: 60,
-          });
+          Toast.show({ type: "info", text1: title, text2: message, position: "top", topOffset: 60 });
           return;
         }
 
         if (category === "message") {
-          incrementSessionMessage(0); // bump unread count globally
-          const title = String(payload?.title ?? payload?.Title ?? "New Message");
+          incrementSession(0);
+          const title   = String(payload?.title   ?? payload?.Title   ?? "New Message");
           const message = String(payload?.message ?? payload?.Message ?? "You received a new message.");
           addNotification(createAppointmentUpdatedNotification(title, message, "message"));
-          Toast.show({
-            type: "info",
-            text1: title,
-            text2: message,
-            position: "top",
-            topOffset: 60,
-          });
+          Toast.show({ type: "info", text1: title, text2: message, position: "top", topOffset: 60 });
         }
       });
     };
@@ -234,122 +237,41 @@ export default function TabsLayout() {
       mounted = false;
       stopSignalRConnection();
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Clear message badge when user navigates to messages ──
   useEffect(() => {
     if (pathname?.includes("/messages")) {
       clearAllMessages();
     }
   }, [pathname, clearAllMessages]);
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: "#BBBBC0",
-        tabBarStyle: {
-          height: 70,
-          paddingBottom: 10,
-          paddingTop: 6,
-          backgroundColor: "#fff",
-          borderTopWidth: 0,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 12,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "600",
-          marginTop: 2,
-        },
-      }}
+      screenOptions={{ headerShown: false }}
+      tabBar={(props: any) => (
+        <CustomTabBar
+          {...props}
+          insets={insets}
+          unreadCount={unreadMessages}
+        />
+      )}
     >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <TabIcon name={focused ? "home" : "home-outline"} color={color} size={size} focused={focused} />
-          ),
-        }}
-      />
+      {/* ── Visible tabs ── */}
+      <Tabs.Screen name="home"     options={{ title: "Home" }} />
+      <Tabs.Screen name="doctors"  options={{ title: "Find" }} />
+      <Tabs.Screen name="messages" options={{ title: "Chat" }} />
+      <Tabs.Screen name="chatbot"  options={{ title: "AI Bot" }} />
+      <Tabs.Screen name="profile"  options={{ title: "Profile" }} />
 
-      <Tabs.Screen
-        name="doctors"
-        options={{
-          title: "Find",
-          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <TabIcon name={focused ? "search" : "search-outline"} color={color} size={size} focused={focused} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="messages"
-        options={{
-          title: "Messages",
-          tabBarBadge: unreadMessages > 0 ? unreadMessages : undefined,
-          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <TabIcon name={focused ? "chatbubbles" : "chatbubbles-outline"} color={color} size={size} focused={focused} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="chatbot"
-        options={{
-          title: "AI Bot",
-          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <TabIcon name={focused ? "medical" : "medical-outline"} color={color} size={size} focused={focused} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Profile",
-          tabBarIcon: ({ color, size, focused }: TabIconProps) => (
-            <TabIcon name={focused ? "person" : "person-outline"} color={color} size={size} focused={focused} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen name="vitals" options={{ href: null }} />
-      <Tabs.Screen name="medications" options={{ href: null }} />
-
-      <Tabs.Screen
-        name="doctor-details"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="followed-doctors"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="visit-summary"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="medical-records"
-        options={{ href: null }}
-      />
+      {/* ── Detail screens — hidden from tab bar ── */}
+      <Tabs.Screen name="vitals"          options={{ href: null }} />
+      <Tabs.Screen name="medications"     options={{ href: null }} />
+      <Tabs.Screen name="doctor-details"  options={{ href: null }} />
+      <Tabs.Screen name="followed-doctors" options={{ href: null }} />
+      <Tabs.Screen name="visit-summary"   options={{ href: null }} />
+      <Tabs.Screen name="medical-records" options={{ href: null }} />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  iconWrap: {
-    width: 36,
-    height: 30,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 10,
-  },
-  iconWrapActive: {
-    backgroundColor: COLORS.primary + "18",
-  },
-});
