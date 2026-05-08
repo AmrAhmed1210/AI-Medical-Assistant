@@ -4,6 +4,7 @@ using MedicalAssistant.Domain.Entities.PatientModule;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.PatientDTOs;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MedicalAssistant.Presentation.Controllers
@@ -83,7 +84,7 @@ namespace MedicalAssistant.Presentation.Controllers
                 DocumentType = documentType ?? "scan",
                 Title = title ?? file.FileName,
                 Description = description,
-                FileUrl = uploadResult.Url,
+                FileUrl = uploadResult,
                 FileType = file.ContentType,
                 DocumentDate = DateTime.UtcNow,
             };

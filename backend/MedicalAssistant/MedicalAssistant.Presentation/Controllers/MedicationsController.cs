@@ -119,7 +119,7 @@ namespace MedicalAssistant.Presentation.Controllers
                     if (doctorId.HasValue)
                     {
                         var doctor = await _doctorService.GetDoctorByIdAsync(doctorId.Value);
-                        if (doctor != null) doctorName = doctor.FullName;
+                        if (doctor != null) doctorName = doctor.Name;
                     }
                     await _notificationService.NotifyMedicationAdded(patient.Email, doctorName, created.MedicationName);
                 }
