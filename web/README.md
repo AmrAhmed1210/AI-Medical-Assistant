@@ -1,64 +1,62 @@
-# MedBook Web - منصة الاستشارات الطبية الذكية
+﻿# MedBook Web - AI-Powered Medical Consultation Platform
 
-<div dir="rtl">
+## Overview
 
-## 🏥 نظرة عامة
-MedBook هي منصة استشارات طبية مدعومة بالذكاء الاصطناعي تربط المرضى بالأطباء من خلال:
-- تحليل الأعراض بالذكاء الاصطناعي
-- حجز المواعيد الإلكترونية
-- قراءة الوصفات الطبية عبر OCR
-- محادثات فورية بين الأطباء والمرضى
+MedBook is an intelligent medical consultation platform that bridges the gap between patients and healthcare providers through AI-driven symptom analysis, electronic appointment scheduling, OCR-based prescription reading, and real-time doctor-patient communication.
 
-## ⚠️ سياسة إنشاء الحسابات
-> **مهم:** فقط مدير النظام (Admin) يمكنه إنشاء حسابات جديدة للمستخدمين. لا يوجد تسجيل مفتوح (self-registration) في هذا النظام. يتم إنشاء الحسابات من خلال لوحة تحكم الأدمن → إدارة المستخدمين → إضافة مستخدم.
+## Account Creation Policy
 
-## 🛠️ التقنيات المستخدمة
-| التقنية | الاستخدام |
-|---------|-----------|
-| React 18 + Vite | إطار العمل |
-| TypeScript | الكتابة الآمنة |
-| Zustand | إدارة الحالة |
-| Axios | HTTP client مع JWT interceptors |
-| Tailwind CSS | التصميم |
-| React Router DOM v6 | التنقل |
-| Recharts | الرسوم البيانية |
-| Framer Motion | الأنيميشن |
-| @microsoft/signalr | الدردشة الفورية |
-| date-fns | تنسيق التواريخ |
-| Font Tajawal | خط عربي |
+> **Important:** Only the system administrator (Admin) can create new user accounts. There is no open self-registration in this system. Accounts are created exclusively through the Admin Dashboard &rarr; User Management &rarr; Add User.
 
-## 🚀 تشغيل المشروع
+## Technology Stack
 
-### المتطلبات
+| Technology | Purpose |
+|------------|---------|
+| React 18 + Vite | Frontend framework |
+| TypeScript | Type safety |
+| Zustand | State management |
+| Axios | HTTP client with JWT interceptors |
+| Tailwind CSS | Styling |
+| React Router DOM v6 | Navigation |
+| Recharts | Data visualization |
+| Framer Motion | Animations |
+| @microsoft/signalr | Real-time chat |
+| date-fns | Date formatting |
+| Font Tajawal | Arabic typography |
+
+## Getting Started
+
+### Prerequisites
+
 - Node.js 18+
-- npm أو yarn
+- npm or yarn
 
-### خطوات التثبيت
+### Installation
 
 ```bash
-# 1. استنساخ المشروع
+# 1. Clone the repository
 git clone <repo-url>
 cd medbook-web
 
-# 2. تثبيت الحزم
+# 2. Install dependencies
 npm install
 
-# 3. إعداد المتغيرات البيئية
+# 3. Configure environment variables
 cp .env.example .env
-# عدّل VITE_API_BASE_URL ليشير إلى الـ backend
+# Update VITE_API_BASE_URL to point to your backend
 
-# 4. تشغيل بيئة التطوير
+# 4. Start the development server
 npm run dev
 
-# 5. البناء للإنتاج
+# 5. Build for production
 npm run build
 ```
 
-## 📁 هيكل المشروع
+## Project Structure
 
 ```
 src/
-├── api/              # API calls مع Axios
+├── api/              # API calls with Axios
 │   ├── axiosInstance.ts   # JWT interceptors
 │   ├── authApi.ts
 │   ├── doctorApi.ts
@@ -84,27 +82,27 @@ src/
 └── constants/        # config.ts
 ```
 
-## 👥 الأدوار والصلاحيات
+## Roles & Permissions
 
-### Admin (مدير النظام)
-- ✅ إضافة/تعطيل/حذف المستخدمين
-- ✅ عرض إحصائيات النظام
-- ✅ إدارة نماذج AI
-- ✅ إعادة تحميل النماذج ساخناً
+### Admin (System Administrator)
+- Add / disable / delete users
+- View system statistics
+- Manage AI models
+- Hot-reload model configurations
 
-### Doctor (طبيب)
-- ✅ عرض وتعديل الملف الشخصي
-- ✅ إدارة المواعيد (تأكيد/إلغاء/إكمال)
-- ✅ عرض المرضى وتاريخهم
-- ✅ قراءة تقارير AI
-- ✅ المحادثة مع المرضى
-- ✅ ضبط أوقات التوافر
+### Doctor
+- View and edit profile
+- Manage appointments (confirm / cancel / complete)
+- View patients and their medical history
+- Read AI-generated reports
+- Chat with patients
+- Set availability schedules
 
-### Patient (مريض)
-- يتم إنشاء حسابهم من قِبل الأدمن فقط
-- يصلون للمنصة عبر التطبيق المحمول
+### Patient
+- Accounts are created by the Admin only
+- Access the platform via the mobile application
 
-## 🔌 متغيرات البيئة
+## Environment Variables
 
 ```env
 VITE_API_BASE_URL=http://localhost:5000
@@ -112,21 +110,20 @@ VITE_SIGNALR_HUB_URL=http://localhost:5000/hubs/consult
 VITE_APP_NAME=MedBook
 ```
 
-## 🎨 نظام الألوان
+## Color System
 
-| اللون | الكود | الاستخدام |
-|-------|-------|-----------|
-| Primary | `#2563eb` | الأزرار والعناصر الرئيسية |
-| Success | `#22c55e` | النجاح والتأكيد |
-| Warning | `#f59e0b` | التحذيرات |
-| Danger | `#ef4444` | الأخطاء والإلغاء |
-| Emergency | `#7f1d1d` | الطوارئ مع pulse |
+| Color | Code | Usage |
+|-------|------|-------|
+| Primary | `#2563eb` | Buttons and primary elements |
+| Success | `#22c55e` | Success and confirmation states |
+| Warning | `#f59e0b` | Warnings |
+| Danger | `#ef4444` | Errors and cancellations |
+| Emergency | `#7f1d1d` | Emergency alerts with pulse animation |
 
-## 🔐 الأمان
-- JWT tokens محفوظة في localStorage
-- Axios interceptors تضيف التوكن تلقائياً
-- 401 responses تعيد توجيه لصفحة الدخول
-- Route guards تمنع الوصول غير المصرح
-- Role-based access control لكل صفحة
+## Security
 
-</div>
+- JWT tokens are stored in localStorage
+- Axios interceptors automatically append the token
+- 401 responses redirect to the login page
+- Route guards prevent unauthorized access
+- Role-based access control (RBAC) for every page

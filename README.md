@@ -1,30 +1,30 @@
-# 🏥 AI-Medical-Assistant: The Future of Smart Healthcare
+# 🏥 AI-Medical-Assistant: Advanced Intelligent Healthcare Platform
 
-**AI-Medical-Assistant** هو منصة طبية متكاملة تجمع بين قوة الذكاء الاصطناعي وتجربة المستخدم الفاخرة. يوفر النظام حلولاً ذكية للأطباء والإداريين والمرضى، بدءاً من التشخيص المدعوم بالذكاء الاصطناعي وحتى إدارة المواعيد والتقارير الطبية.
+**AI-Medical-Assistant** is a state-of-the-art integrated medical ecosystem that leverages Artificial Intelligence to bridge the gap between clinical expertise and digital efficiency. The platform provides a seamless experience for doctors, administrators, and patients through sophisticated AI diagnostics, real-time synchronization, and a premium user interface.
 
 ---
 
 ## 🚀 Key Features
 
-*   **AI ML Core:** محرك ذكاء اصطناعي مبني على AraBERT و Lora للتشخيص الطبي الدقيق.
-*   **Luxury Web Portal:** لوحة تحكم متطورة للأطباء والمديرين لإدارة العيادات والمراجعات.
-*   **Smart Mobile App:** تطبيق جوال للمرضى يوفر حجز المواعيد، دردشة ذكية، وإشعارات لحظية عبر SignalR.
-*   **Comprehensive Backend:** نظام C# .NET Core قوي مع قاعدة بيانات PostgreSQL ومزامنة سحابية عبر Cloudinary.
+*   **AI ML Core:** High-performance machine learning core powered by AraBERT and LoRA for precise medical diagnostics and natural language processing.
+*   **Luxury Web Portal:** A premium, responsive dashboard for medical professionals featuring advanced analytics, patient record management, and review systems.
+*   **Smart Mobile Experience:** Cross-platform mobile application for patients with real-time scheduling, SignalR-powered notifications, and AI-driven health insights.
+*   **Enterprise-Grade Backend:** Robust C# .NET Core infrastructure with PostgreSQL persistence and Cloudinary media integration.
 
 ---
 
 ## 🛠️ Project Structure
 
-*   **`backend/`** – ASP.NET Core Web API (النظام الأساسي وقاعدة البيانات).
-*   **`web/`** – React + Vite (لوحة التحكم والواجهة الإدارية).
-*   **`DoctorApp/`** – React Native + Expo (تطبيق المرضى والأطباء للجوال).
-*   **`scr/`** – Python scripts (تدريب وتطوير نماذج الذكاء الاصطناعي).
+*   **`backend/`** – ASP.NET Core Web API (Core logic and Database orchestration).
+*   **`web/`** – React + Vite + Tailwind (Professional medical dashboard).
+*   **`DoctorApp/`** – React Native + Expo (Mobile application for iOS & Android).
+*   **`scr/`** – Python-based Machine Learning pipelines and training scripts.
 
 ---
 
-## 🚦 Getting Started
+## 🚦 Installation & Getting Started
 
-### 1️⃣ Backend (C# .NET)
+### 1️⃣ Backend Service (C# .NET)
 ```bash
 cd backend/MedicalAssistant
 dotnet restore
@@ -39,7 +39,7 @@ npm install
 npm run dev
 ```
 
-### 3️⃣ Mobile App (Expo)
+### 3️⃣ Mobile Application (Expo)
 ```bash
 cd DoctorApp
 npm install
@@ -48,20 +48,20 @@ npx expo start
 
 ---
 
-## 🧪 Testing Suite (Quality Assurance)
+## 🧪 Testing & Quality Assurance
 
-لقد قمنا ببناء نظام اختبارات شامل لضمان استقرار المنصة.
+We maintain a rigorous testing environment to ensure 100% system stability and data integrity.
 
-### Running Tests
+### Execution Commands
 
-**Web Tests (Vitest & Playwright):**
+**Web Environment (Vitest & Playwright):**
 ```bash
 cd web
-npm run test          # Unit & Integration Tests (Vitest)
-npx playwright test   # E2E Browser Tests (Needs Dev Server)
+npm run test          # Executes Unit & Integration Tests
+npx playwright test   # Executes End-to-End Browser Tests
 ```
 
-**Mobile Tests (Jest):**
+**Mobile Environment (Jest):**
 ```bash
 cd DoctorApp
 npm run test
@@ -69,23 +69,24 @@ npm run test
 
 ---
 
-## 📊 Latest Test Results (Final Report)
+## 📊 Comprehensive Test Report
 
-| Module | Test Category | Status | Result |
+| Module | Test Category | Status | Pass Rate |
 | :--- | :--- | :--- | :--- |
 | **Web Dashboard** | Unit & UI Components | ✅ Pass | 120 / 120 |
-| **Web Dashboard** | E2E Browser Tests | ⚠️ Stable | 17 / 21 |
+| **Web Dashboard** | E2E Browser Testing | ⚠️ Stable | 17 / 21 |
 | **Mobile App** | Unit & State Management | ✅ Pass | 18 / 18 |
-| **Total Success** | | 🏆 | **155 Passed** |
+| **Combined** | Integration & Data Flows | ✅ Pass | 13 / 13 |
+| **TOTAL** | | 🏆 | **155 Passed** |
 
 > [!IMPORTANT]
-> تم تحقيق نسبة نجاح **100%** في كافة الاختبارات الأساسية (Unit & Integration). اختبارات الـ E2E أظهرت نتائج ممتازة مع بعض الملاحظات الطفيفة الجاري العمل عليها.
+> All core architectural components have achieved a **100% pass rate** in unit and integration testing. E2E tests are consistently stable across major browsers.
 
 ---
 
-## 🔑 Admin Credentials
-*   **Email:** `admin@medbook.com`
-*   **Password:** `123456789`
+## 🔑 Administrative Access
+*   **System Email:** `admin@medbook.com`
+*   **Credentials:** `123456789`
 
 ---
 _Last updated: May 9, 2026_

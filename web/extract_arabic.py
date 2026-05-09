@@ -1,12 +1,13 @@
-import os
+﻿import os
 import re
 import json
 
 directory = r"C:\Users\user\AI-Medical-Assistant\web\src"
+
 arabic_pattern = re.compile(r'[\u0600-\u06FF\s]+')
 # Actually we want strings that contain any arabic character, maybe mixed with punctuation
 # Match any string literal that contains arabic characters
-# e.g. 'مرحبا', "مرحبا بك", `مرحبا`
+# e.g. 'hello', "hello world", `hello`
 regex = re.compile(r'([\'"\`])(.*?(?:[\u0600-\u06FF]).*?)\1')
 jsx_text_regex = re.compile(r'>\s*([^<]*?[\u0600-\u06FF][^<]*?)\s*<')
 
