@@ -1,35 +1,56 @@
-# Python
+# === .NET Specific (The Missing Part) ===
+[Bb]in/
+[Oo]bj/
+*.user
+*.userosscache
+*.sln.docuser
+publish/
+.aspnet/
+Debug/
+Release/
+
+# === Python / AI ===
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 *.pt
+.venv/
+env/
+venv/
+ENV/
+*.log
 
-# IDE
-.vs/
-.idea/
-.vscode/
-
-# Node
-node_modules/
-
-# Env
-.env
-trocr_model/
-*.zip
-
-#cursor
-.cursor
-
-#dotnet
-.dotnet
-
-#expo
-.expo_home
-
-#android
-android
-
-# AI model files
-AI-Medical-Assistant/
+# === AI model files & Data ===
+# ملحوظة: لو عايز ترفع الملفات دي شيل الـ # من قدامهم
+# AI-Medical-Assistant/
 medical_knowledge_base.csv
 patient_service.py
 test_api.py
+trocr_model/
+*.zip
+
+# === IDEs & Editors ===
+.vs/
+.idea/
+.vscode/
+.cursor/
+*.suo
+*.user
+*.sln.view
+
+# === Node / Frontend (If exists) ===
+node_modules/
+npm-debug.log*
+
+# === Env & Secrets (CRITICAL) ===
+.env
+.env.local
+.env.*.local
+*.pfx
+*.certificate
+
+# === Other Tools ===
+.dotnet/
+.expo_home
+android/
