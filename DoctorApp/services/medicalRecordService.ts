@@ -216,3 +216,16 @@ export const uploadPatientDocument = async (
 
 export const deletePatientDocument = async (docId: number): Promise<void> =>
   apiFetch<any>(API.records.documentDelete(docId), { method: "DELETE" }, true);
+
+// ============================================
+// AI Diagnosis
+// ============================================
+export const updateAiDiagnosis = async (patientId: number, diagnosisSummary: string): Promise<any> =>
+  apiFetch<any>(
+    `${API.patients.profile(patientId).replace('/profile', '/ai-diagnosis')}`,
+    { 
+      method: "PATCH", 
+      body: JSON.stringify({ diagnosisSummary }) 
+    }, 
+    true
+  );

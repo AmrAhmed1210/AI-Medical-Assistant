@@ -12,6 +12,7 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
         Task<MedicalProfile?> GetMedicalProfileAsync(int patientId);
         Task<MedicalProfile> CreateMedicalProfileAsync(int patientId, MedicalProfile profile);
         Task<MedicalProfile?> UpdateMedicalProfileAsync(int patientId, MedicalProfile profileUpdates);
+        Task<MedicalProfile?> UpdateAiDiagnosisAsync(int patientId, string diagnosisSummary);
 
         // Surgeries
         Task<IEnumerable<SurgeryHistory>> GetSurgeriesAsync(int patientId);

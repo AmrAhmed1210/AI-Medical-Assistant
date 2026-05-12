@@ -21,6 +21,7 @@ import {
 import Toast from "react-native-toast-message";
 import { useLanguage } from "../../../context/LanguageContext";
 import * as ImagePicker from "expo-image-picker";
+import { summarizeSurgery, analyzeMedicalImage } from "../../../services/aiService";
 
 const PRIMARY_COLOR = COLORS.primary;
 const PRIMARY_LIGHT = "#E8F6F2";
@@ -78,6 +79,7 @@ export default function MedicalRecordsCategory() {
   const [docType, setDocType] = useState("Blood Test");
   const [docUri, setDocUri] = useState<string | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(folder || null);
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
 
   const DOCUMENT_FOLDERS = [
     { id: "Blood Test", label: "Blood Tests", icon: "water-outline", color: "#6366F1" },
@@ -143,6 +145,46 @@ export default function MedicalRecordsCategory() {
     setChronicName(""); setChronicType(""); setChronicSeverity("Moderate"); setChronicFreq("");
     setSurgeryName(""); setSurgeryHospital(""); setSurgeryDoctor(""); setSurgeryDate(""); setSurgeryComplications(""); setSurgeryNotes("");
     setDocTitle(""); setDocType("Blood Test"); setDocUri(null);
+  };
+
+  const handleAiSummarizeSurgery = async () => {
+    if (!surgeryNotes.trim()) {
+      Alert.alert("Input Needed", "Please enter some notes first.");
+      return;
+    }
+    try {
+      setIsAiProcessing(true);
+      const summary = await summarizeSurgery(surgeryNotes);
+      setSurgeryNotes(summary);
+      Toast.show({ type: "success", text1: "AI Summarization Complete" });
+    } catch (e) {
+      Alert.alert("AI Error", "Could not summarize notes at this time.");
+    } finally {
+      setIsAiProcessing(false);
+    }
+  };
+
+  const handleAiAnalyzeDocument = async () => {
+    if (!docUri) {
+      Alert.alert("Input Needed", "Please select an image first.");
+      return;
+    }
+    try {
+      setIsAiProcessing(true);
+      const type = docType === "Prescription" ? "prescription" : "lab";
+      const result = await analyzeMedicalImage(docUri, type);
+      
+      // If it's a lab/prescription, we might want to pre-fill notes or title
+      if (result.raw_text) {
+        setDocTitle(result.raw_text.substring(0, 50) + "...");
+        Toast.show({ type: "success", text1: "AI Analysis Complete" });
+        Alert.alert("AI Extraction", result.raw_text);
+      }
+    } catch (e) {
+      Alert.alert("AI Error", "Could not analyze image at this time.");
+    } finally {
+      setIsAiProcessing(false);
+    }
   };
 
   const handleSave = async () => {
@@ -352,7 +394,13 @@ export default function MedicalRecordsCategory() {
                   <TextInput style={styles.input} placeholder={tr("doctor_name" as any)} value={surgeryDoctor} onChangeText={setSurgeryDoctor} />
                   <TextInput style={styles.input} placeholder={tr("date" as any)} value={surgeryDate} onChangeText={setSurgeryDate} />
                   <TextInput style={styles.input} placeholder={tr("complications" as any)} value={surgeryComplications} onChangeText={setSurgeryComplications} multiline />
-                  <TextInput style={styles.input} placeholder={tr("notes" as any)} value={surgeryNotes} onChangeText={setSurgeryNotes} multiline />
+                  <View style={styles.inputWithAi}>
+                    <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder={tr("notes" as any)} value={surgeryNotes} onChangeText={setSurgeryNotes} multiline />
+                    <TouchableOpacity style={styles.aiButtonSmall} onPress={handleAiSummarizeSurgery} disabled={isAiProcessing}>
+                      {isAiProcessing ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="sparkles" size={18} color="#fff" />}
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.aiHint}>Use AI to summarize long notes</Text>
                 </>
               )}
               {category === "documents" && (
@@ -375,6 +423,16 @@ export default function MedicalRecordsCategory() {
                     <Ionicons name="camera-outline" size={24} color={color} />
                     <Text style={[styles.imageBtnTxt, { color }]}>{docUri ? tr("change_image" as any) : tr("select_image" as any)}</Text>
                   </TouchableOpacity>
+                  {docUri && (
+                    <TouchableOpacity style={[styles.aiButtonLarge, { backgroundColor: color }]} onPress={handleAiAnalyzeDocument} disabled={isAiProcessing}>
+                      {isAiProcessing ? <ActivityIndicator color="#fff" /> : (
+                        <>
+                          <Ionicons name="sparkles" size={20} color="#fff" />
+                          <Text style={styles.aiButtonLargeTxt}>Analyze with Gemini AI</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
                   {docUri && <Text style={styles.imageUri} numberOfLines={1}>{docUri}</Text>}
                 </>
               )}
@@ -525,4 +583,9 @@ const styles = StyleSheet.create({
   folderOption: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', backgroundColor: '#F8FAFC', flexDirection: 'row', alignItems: 'center', gap: 8 },
   folderOptionTxt: { fontSize: 11, fontWeight: '700', color: '#64748B' },
   inputLabelSmall: { fontSize: 13, fontWeight: '800', color: '#64748B', marginBottom: 8, marginLeft: 5 },
+  inputWithAi: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 5 },
+  aiButtonSmall: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#8B5CF6', justifyContent: 'center', alignItems: 'center', elevation: 4 },
+  aiHint: { fontSize: 11, color: '#8B5CF6', fontWeight: '700', marginLeft: 5, marginBottom: 15 },
+  aiButtonLarge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12, borderRadius: 18, marginBottom: 15, elevation: 6 },
+  aiButtonLargeTxt: { color: '#fff', fontSize: 14, fontWeight: '800' },
 });

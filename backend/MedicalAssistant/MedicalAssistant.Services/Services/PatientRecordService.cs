@@ -58,6 +58,21 @@ namespace MedicalAssistant.Services.Services
             return existing;
         }
 
+        public async Task<MedicalProfile?> UpdateAiDiagnosisAsync(int patientId, string diagnosisSummary)
+        {
+            var existing = (await _unitOfWork.Repository<MedicalProfile>().FindAsync(p => p.PatientId == patientId)).FirstOrDefault();
+            if (existing == null) return null;
+
+            existing.AiDiagnosisSummary = diagnosisSummary;
+            existing.LastAiAnalysisAt = DateTime.UtcNow;
+            existing.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.Repository<MedicalProfile>().Update(existing);
+            await _unitOfWork.SaveChangesAsync();
+
+            return existing;
+        }
+
         // Surgeries
         public async Task<IEnumerable<SurgeryHistory>> GetSurgeriesAsync(int patientId)
         {

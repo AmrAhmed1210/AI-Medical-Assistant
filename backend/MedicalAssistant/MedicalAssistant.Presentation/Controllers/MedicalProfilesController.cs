@@ -103,5 +103,29 @@ namespace MedicalAssistant.Presentation.Controllers
             if (updated == null) return NotFound(new { message = "Medical profile not found." });
             return Ok(updated);
         }
+
+        // PATCH /api/patients/{id}/ai-diagnosis
+        [HttpPatch("{id:int}/ai-diagnosis")]
+        public async Task<IActionResult> UpdateAiDiagnosis(int id, [FromBody] AiDiagnosisDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(dto.DiagnosisSummary)) 
+                return BadRequest(new { message = "Diagnosis summary is required." });
+
+            var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+            var currentPatientId = GetPatientIdFromClaims();
+            
+            // Allow doctor or the patient themselves (if they are triggered by client-side AI)
+            if (!role.Equals("Doctor", StringComparison.OrdinalIgnoreCase) && currentPatientId != id)
+                return Forbid();
+
+            var updated = await _patientRecordService.UpdateAiDiagnosisAsync(id, dto.DiagnosisSummary);
+            if (updated == null) return NotFound(new { message = "Medical profile not found." });
+            return Ok(updated);
+        }
+    }
+
+    public class AiDiagnosisDto
+    {
+        public string DiagnosisSummary { get; set; } = string.Empty;
     }
 }

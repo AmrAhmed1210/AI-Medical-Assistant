@@ -52,6 +52,8 @@ export interface Profile {
   weight?: number;
   height?: number;
   smokingStatus?: string;
+  aiDiagnosisSummary?: string;
+  lastAiAnalysisAt?: string;
 }
 
 // ============================================

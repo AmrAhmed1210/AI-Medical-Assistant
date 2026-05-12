@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,6 +21,9 @@ namespace MedicalAssistant.Domain.Entities.PatientModule
         public string? EmergencyContactName { get; set; }
         public string? EmergencyContactPhone { get; set; }
         public string? EmergencyContactRelation { get; set; }
+
+        public string? AiDiagnosisSummary { get; set; }
+        public DateTime? LastAiAnalysisAt { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

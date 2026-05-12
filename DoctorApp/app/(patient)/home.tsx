@@ -27,6 +27,8 @@ import DoctorCard from "../../components/DoctorCard";
 import { addNotification } from "../../services/notificationService";
 import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpdated, onNewConsultation, onNewMedication } from "../../services/signalr";
 import { scheduleAppointmentReminders } from "../../services/appointmentReminders";
+import { analyzePatientHistory } from "../../services/aiService";
+import { updateAiDiagnosis, getVitals, getSurgeries, getMedications, getAllergies, getChronicDiseases } from "../../services/medicalRecordService";
 // Service loaded successfully
 
 const { width } = Dimensions.get("window");
@@ -53,6 +55,7 @@ export default function HomeScreen() {
   const [lastSugar, setLastSugar] = useState<VitalReading | null>(null);
   const [loadingHealth, setLoadingHealth] = useState(true);
   const [showVitalReminder, setShowVitalReminder] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const CATEGORIES = [
@@ -200,6 +203,40 @@ export default function HomeScreen() {
     }
   };
 
+  const runAiAnalysis = async () => {
+    try {
+      setIsAnalyzing(true);
+      const pid = await getMyPatientId();
+      if (!pid) return;
+
+      const [vitals, surgeries, meds, allergies, chronic] = await Promise.all([
+        getVitals(pid),
+        getSurgeries(pid),
+        getMedications(pid),
+        getAllergies(pid),
+        getChronicDiseases(pid),
+      ]);
+
+      const analysis = await analyzePatientHistory({
+        vitals,
+        surgeries,
+        medications: meds,
+        allergies,
+        chronic_diseases: chronic,
+      });
+
+      await updateAiDiagnosis(pid, analysis);
+      await fetchProfile(); // Refresh profile to get the new diagnosis
+      
+      Alert.alert("AI Analysis Complete", "Your health insights have been updated.");
+    } catch (error) {
+      console.error("AI Analysis error:", error);
+      Alert.alert("Analysis Failed", "Could not complete AI analysis at this time.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -309,6 +346,43 @@ export default function HomeScreen() {
             <TouchableOpacity style={styles.tipArrow}>
               <ChevronRight size={18} color="#D97706" />
             </TouchableOpacity>
+          </LinearGradient>
+        </View>
+
+        {/* AI HEALTH INSIGHTS CARD */}
+        <View style={styles.aiInsightContainer}>
+          <LinearGradient colors={["#F5F3FF", "#EDE9FE"]} style={styles.aiInsightCard}>
+            <View style={styles.aiInsightHeader}>
+              <View style={styles.aiIconBox}>
+                <Sparkles size={20} color="#7C3AED" />
+              </View>
+              <Text style={styles.aiInsightTitle}>AI Health Insights</Text>
+              {isAnalyzing ? (
+                <ActivityIndicator size="small" color="#7C3AED" />
+              ) : (
+                <TouchableOpacity onPress={runAiAnalysis}>
+                  <Text style={styles.refreshAiText}>Refresh</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {profile?.aiDiagnosisSummary ? (
+              <View style={styles.aiDiagnosisContent}>
+                <Text style={styles.aiDiagnosisText} numberOfLines={4}>
+                  {profile.aiDiagnosisSummary}
+                </Text>
+                <TouchableOpacity 
+                  style={styles.readMoreBtn}
+                  onPress={() => Alert.alert("AI Health Analysis", profile.aiDiagnosisSummary)}
+                >
+                  <Text style={styles.readMoreText}>Read Full Analysis</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.aiEmptyState}>
+                <Text style={styles.aiEmptyText}>No AI analysis yet. Tap refresh to analyze your medical history.</Text>
+              </View>
+            )}
           </LinearGradient>
         </View>
 
@@ -604,4 +678,17 @@ const styles = StyleSheet.create({
   reminderBtn: { borderRadius: 16, overflow: 'hidden', alignSelf: 'flex-start' },
   reminderBtnGradient: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingVertical: 12 },
   reminderBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  aiInsightContainer: { paddingHorizontal: 20, marginTop: 15 },
+  aiInsightCard: { borderRadius: 24, padding: 18, elevation: 6, shadowColor: '#7C3AED', shadowOpacity: 0.1, shadowRadius: 15, borderWidth: 1, borderColor: '#DDD6FE' },
+  aiInsightHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  aiIconBox: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 2 },
+  aiInsightTitle: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: '800', color: '#5B21B6' },
+  refreshAiText: { fontSize: 13, fontWeight: '700', color: '#7C3AED' },
+  aiDiagnosisContent: { },
+  aiDiagnosisText: { fontSize: 13, color: '#4C1D95', lineHeight: 20, fontWeight: '500' },
+  readMoreBtn: { marginTop: 10, alignSelf: 'flex-start' },
+  readMoreText: { fontSize: 12, fontWeight: '700', color: '#7C3AED', textDecorationLine: 'underline' },
+  aiEmptyState: { paddingVertical: 10 },
+  aiEmptyText: { fontSize: 12, color: '#6D28D9', fontStyle: 'italic', textAlign: 'center' },
 });

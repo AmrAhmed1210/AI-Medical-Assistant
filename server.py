@@ -1,22 +1,27 @@
-"""
-MedBook – TrOCR FastAPI Server
-Run: uvicorn server:app --host 0.0.0.0 --port 8000 --reload
-"""
-
 import os
-from fastapi import FastAPI, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from transformers import TrOCRProcessor, VisionEncoderDecoderModel
-from PIL import Image
-import torch
 import io
+import json
 import re
+import google.generativeai as genai
+from fastapi import FastAPI, File, UploadFile, HTTPException, Body
+from fastapi.middleware.cors import CORSMiddleware
+from PIL import Image
+from pydantic import BaseModel
+from typing import List, Optional
+from dotenv import load_dotenv
 
-# ── Model path ──────────────────────────────────────────────
-MODEL_PATH = os.environ.get("TROCR_MODEL_PATH", "E:/AI_project/trocr_model")
-# ────────────────────────────────────────────────────────────
+# Load environment variables from .env file
+load_dotenv()
 
-app = FastAPI(title="MedBook OCR API")
+# --- Configuration ---
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+else:
+    print("WARNING: GOOGLE_API_KEY not found in environment variables.")
+
+app = FastAPI(title="Luxury Medical AI API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -25,67 +30,90 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-print("⏳ Loading TrOCR model...")
-processor = TrOCRProcessor.from_pretrained(MODEL_PATH, local_files_only=True)
-model     = VisionEncoderDecoderModel.from_pretrained(MODEL_PATH, local_files_only=True)
-model.eval()
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model.to(device)
-print(f"✅ Model loaded on {device}")
+class SurgeryInput(BaseModel):
+    description: str
 
-# ── Drug list ────────────────────────────────────────────────
-DRUG_NAMES = [
-    "paracetamol","amoxicillin","ibuprofen","omeprazole","metformin",
-    "aspirin","cetirizine","atorvastatin","metronidazole","doxycycline",
-    "vitamin d","calcium","iron","folic acid","zinc","pantoprazole",
-    "clarithromycin","levothyroxine","amlodipine","omega-3",
-]
-
-def parse_prescription(text: str):
-    lower = text.lower()
-    name  = next((d.title() for d in DRUG_NAMES if d in lower), "Unknown")
-
-    dose_m = re.search(r"(\d+\.?\d*)\s*(mg|mcg|ml|g|iu|%)", text, re.I)
-    dose   = dose_m.group(0) if dose_m else "N/A"
-
-    freq_map = [
-        (r"once\s+daily|1\s*x\s*daily|\bod\b",   "Once daily"),
-        (r"twice\s+daily|2\s*x\s*daily|\bbd\b",   "Twice daily"),
-        (r"3\s+times|tds|tid|3x",                  "3 times daily"),
-        (r"every\s+8\s+hours|q8h",                 "Every 8 hours"),
-        (r"every\s+12\s+hours|q12h",               "Every 12 hours"),
-        (r"at\s+night|before\s+sleep|bedtime",      "At night"),
-        (r"when\s+needed|as\s+needed|prn",          "When needed"),
-    ]
-    freq = next((label for pattern, label in freq_map if re.search(pattern, text, re.I)), "N/A")
-
-    dur_m = re.search(r"(\d+)\s*(day|days|week|weeks|month|months)", text, re.I)
-    dur   = dur_m.group(0) if dur_m else "N/A"
-
-    return {"name": name, "dose": dose, "frequency": freq, "duration": dur}
-
+class PatientHistoryInput(BaseModel):
+    vitals: List[dict]
+    surgeries: List[dict]
+    medications: List[dict]
+    allergies: List[dict]
+    chronic_diseases: List[dict]
 
 @app.get("/")
 def root():
-    return {"status": "ok", "message": "MedBook OCR API is running 🚀"}
+    return {"status": "ok", "message": "Luxury Medical AI API is active 🤖"}
 
+@app.post("/summarize-surgery")
+async def summarize_surgery(data: SurgeryInput):
+    if not GOOGLE_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured")
+    
+    prompt = f"Summarize the following surgery details into a concise, professional medical note (max 2 sentences):\n{data.description}"
+    
+    try:
+        response = model.generate_content(prompt)
+        return {"summary": response.text.strip()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/scan")
-async def scan_prescription(file: UploadFile = File(...)):
-    # Read image
+@app.post("/analyze-history")
+async def analyze_history(data: PatientHistoryInput):
+    if not GOOGLE_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured")
+    
+    context = f"""
+    Analyze the following patient medical history and provide a professional diagnosis summary and health insights.
+    
+    Vitals: {json.dumps(data.vitals)}
+    Surgeries: {json.dumps(data.surgeries)}
+    Medications: {json.dumps(data.medications)}
+    Allergies: {json.dumps(data.allergies)}
+    Chronic Diseases: {json.dumps(data.chronic_diseases)}
+    
+    Provide the response in a structured format with:
+    1. Overall Health Status
+    2. Key Concerns
+    3. Recommendations
+    
+    Keep it concise and professional.
+    """
+    
+    try:
+        response = model.generate_content(context)
+        return {"analysis": response.text.strip()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze-image")
+async def analyze_image(file: UploadFile = File(...), type: str = "prescription"):
+    if not GOOGLE_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured")
+    
     contents = await file.read()
-    image    = Image.open(io.BytesIO(contents)).convert("RGB")
+    img = Image.open(io.BytesIO(contents))
+    
+    if type == "prescription":
+        prompt = "Extract medication names, dosages, frequencies, and durations from this prescription image. Return it as a JSON list of objects with keys: name, dose, frequency, duration."
+    else:
+        prompt = "Extract lab test results (test name, value, unit, reference range) from this image. Return it as a JSON list of objects."
+    
+    try:
+        # For multimodal, we pass the image and the prompt
+        response = model.generate_content([prompt, img])
+        
+        # Extract JSON from response (Gemini sometimes wraps it in markdown)
+        text = response.text
+        json_match = re.search(r'\[.*\]|\{.*\}', text, re.DOTALL)
+        if json_match:
+            extracted_data = json.loads(json_match.group())
+            return {"data": extracted_data, "raw_text": text}
+        else:
+            return {"data": [], "raw_text": text}
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-    # Run TrOCR
-    pixel_values = processor(images=image, return_tensors="pt").pixel_values.to(device)
-    with torch.no_grad():
-        generated_ids = model.generate(pixel_values)
-    text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-
-    # Parse
-    medicine = parse_prescription(text)
-
-    return {
-        "text":      text,
-        "medicines": [medicine],
-    }
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
