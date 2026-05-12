@@ -1,13 +1,31 @@
+using System.Text.Json.Serialization;
+
 namespace MedicalAssistant.Shared.DTOs.AIChatBotDTOs;
 
 public record MatchResult(
+    [property: JsonPropertyName("symptom")]
     string Symptom,
+
+    [property: JsonPropertyName("reply")]
     string Reply,
+
+    [property: JsonPropertyName("category")]
     string Category,
-    double Confidence);
+
+    [property: JsonPropertyName("confidence")]
+    double Confidence
+);
 
 public record AIResponseDTO(
+    [property: JsonPropertyName("query")]
     string Query,
+
+    [property: JsonPropertyName("gemini_reply")]
     string GeminiReply,
+
+    [property: JsonPropertyName("matches")]
     List<MatchResult> Matches,
-    bool LowConfidence);
+
+    [property: JsonPropertyName("low_confidence")]
+    bool LowConfidence
+);
