@@ -113,13 +113,14 @@ namespace MedicalAssistant.Shared.DTOs.PatientVisits
     );
 
     public record PatientHistoryDto(
-        string BloodType,
-        List<AllergySummaryDto> Allergies,
-        List<ChronicDiseaseSummaryDto> ChronicDiseases,
-        List<MedicationSummaryDto> Medications,
-        Dictionary<string, string> LatestVitals,
-        List<LastVisitSummaryDto> LastVisits
-    );
+    string BloodType,
+    List<AllergySummaryDto> Allergies,
+    List<ChronicDiseaseSummaryDto> ChronicDiseases,
+    List<MedicationSummaryDto> Medications,
+    Dictionary<string, string> LatestVitals,
+    List<LastVisitSummaryDto> LastVisits,
+    string? AiDiagnosisSummary
+);
 
     public record ChronicDiseaseSummaryDto(
         string Id,
