@@ -47,7 +47,7 @@ const TAB_BG: Record<string, string> = {
 export default function MedicalRecordsCategory() {
   const router = useRouter();
   const { category, folder } = useLocalSearchParams<{ category: string, folder?: string }>();
-  const { tr } = useLanguage();
+  const { tr, isRTL } = useLanguage();
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
@@ -158,7 +158,8 @@ export default function MedicalRecordsCategory() {
       setIsAiProcessing(true);
       const { summarizeMedicalItem } = await import("../../../services/aiService");
       const refined = await summarizeMedicalItem(type, currentVal);
-      setter(refined);
+      const combinedText = `${refined.summary_en}\n---\n${refined.summary_ar}`;
+      setter(combinedText);
       Toast.show({ type: "success", text1: "Refined by AI" });
     } catch (e) {
       Alert.alert("AI Error", "Could not refine text.");
@@ -179,10 +180,10 @@ export default function MedicalRecordsCategory() {
       
       // If it's a lab/prescription, we might want to pre-fill notes or title
       if (result.raw_text) {
-        setDocTitle(result.summary?.substring(0, 40) || "Medical Document");
+        setDocTitle(`${result.summary_en} / ${result.summary_ar}`);
         setDocDescription(result.raw_text);
         Toast.show({ type: "success", text1: "AI Analysis Complete" });
-        Alert.alert("AI Extraction", result.summary || "Document processed successfully.");
+        Alert.alert("AI Extraction", `${result.summary_en}\n---\n${result.summary_ar}`);
       }
     } catch (e) {
       Alert.alert("AI Error", "Could not analyze image at this time.");
@@ -251,9 +252,8 @@ export default function MedicalRecordsCategory() {
 
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.7, // Lower quality for faster upload
+        allowsEditing: false, // Don't crop, keep full image
+        quality: 0.9, // Higher quality for better AI readability
       };
 
       const result = useCamera

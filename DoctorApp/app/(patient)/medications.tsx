@@ -3,9 +3,9 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, ActivityIndicator, Modal, TextInput, Alert, Dimensions, Animated, Platform, LayoutAnimation
 } from "react-native";
-import { 
-  Pill, Timer, Calendar, Activity, ChevronRight, 
-  Plus, CheckCircle2, AlertTriangle, Trash2, Edit3, 
+import {
+  Pill, Timer, Calendar, Activity, ChevronRight,
+  Plus, CheckCircle2, AlertTriangle, Trash2, Edit3,
   User, Search, Bell, X, ShieldCheck, Sparkles, Clock, ArrowRight, Info, ChevronDown, ChevronUp
 } from "lucide-react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -44,8 +44,9 @@ export default function MedicationsScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [takingId, setTakingId] = useState<number | null>(null);
   const [expandedMedId, setExpandedMedId] = useState<number | null>(null);
-  const [safetyReport, setSafetyReport] = useState<string | null>(null);
+  const [safetyReport, setSafetyReport] = useState<any>(null);
   const [isCheckingSafety, setIsCheckingSafety] = useState(false);
+  const [reportLang, setReportLang] = useState<"en" | "ar">(isRTL ? "ar" : "en");
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -66,10 +67,10 @@ export default function MedicationsScreen() {
   const [pills, setPills] = useState("");
   const [instructions, setInstructions] = useState("");
 
-  useEffect(() => { 
-    loadData(); 
-    requestNotificationPermissions(); 
-    
+  useEffect(() => {
+    loadData();
+    requestNotificationPermissions();
+
     const unsubMed = onNewMedication(() => {
       loadData();
     });
@@ -184,7 +185,7 @@ export default function MedicationsScreen() {
       Toast.show({ type: "error", text1: e.message || "Failed to save medication" });
     } finally { setSaving(false); }
   };
-  
+
   const handleAiSafetyCheck = async () => {
     if (!medName.trim()) {
       Alert.alert("Input Needed", "Please enter medication name first.");
@@ -195,13 +196,13 @@ export default function MedicationsScreen() {
       const { checkMedicationSafety } = await import("../../services/aiService");
       const { getPatientVitals } = await import("../../services/vitalService");
       const { getPatientMedications } = await import("../../services/medicationService");
-      
+
       // Gather simplified history for AI
       const history = {
         allergies: sosData?.allergies?.map(a => a.allergenName) || [],
         chronic_diseases: medications.map(m => m.medicationName) || [],
       };
-      
+
       const report = await checkMedicationSafety(medName, history);
       setSafetyReport(report);
     } catch (e) {
@@ -379,8 +380,8 @@ export default function MedicationsScreen() {
                 <View style={styles.liveBadge}><Text style={styles.liveBadgeText}>LIVE</Text></View>
               </View>
             </View>
-            <TouchableOpacity 
-              style={styles.premiumAddBtn} 
+            <TouchableOpacity
+              style={styles.premiumAddBtn}
               onPress={() => { setShowAddModal(true); }}
               activeOpacity={0.7}
             >
@@ -400,15 +401,15 @@ export default function MedicationsScreen() {
 
       <Animated.View style={[styles.pillTabsContainer, { transform: [{ translateY: tabsTranslateY }] }]}>
         <View style={styles.pillTabsBackground}>
-          <TouchableOpacity 
-            style={[styles.pillTab, activeTab === "schedule" && styles.pillTabActive]} 
+          <TouchableOpacity
+            style={[styles.pillTab, activeTab === "schedule" && styles.pillTabActive]}
             onPress={() => setActiveTab("schedule")}
           >
             <Clock size={16} color={activeTab === "schedule" ? "#059669" : "#94A3B8"} />
             <Text style={[styles.pillTabText, activeTab === "schedule" && styles.pillTabTextActive]}>{tr("todays_doses")}</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.pillTab, activeTab === "active" && styles.pillTabActive]} 
+          <TouchableOpacity
+            style={[styles.pillTab, activeTab === "active" && styles.pillTabActive]}
             onPress={() => setActiveTab("active")}
           >
             <Pill size={16} color={activeTab === "active" ? "#059669" : "#94A3B8"} />
@@ -417,14 +418,14 @@ export default function MedicationsScreen() {
         </View>
       </Animated.View>
 
-      <Animated.ScrollView 
+      <Animated.ScrollView
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false }
         )}
         scrollEventThrottle={16}
-        style={styles.scroll} 
-        contentContainerStyle={{ paddingTop: 280, paddingBottom: 120 }} 
+        style={styles.scroll}
+        contentContainerStyle={{ paddingTop: 280, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.contentOverlap}>
@@ -450,29 +451,29 @@ export default function MedicationsScreen() {
                       const scheduledTime = new Date(item.scheduledAt);
                       const isPast = new Date() > scheduledTime;
                       let status = item.status?.toLowerCase() || "pending";
-                      
+
                       if (status === "pending" && isPast) {
                         // Check if there's a later dose for the same medication that is also in the past
-                        const laterPastDose = arr.find(other => 
-                          other.medicationTrackerId === item.medicationTrackerId && 
-                          new Date(other.scheduledAt) > scheduledTime && 
+                        const laterPastDose = arr.find(other =>
+                          other.medicationTrackerId === item.medicationTrackerId &&
+                          new Date(other.scheduledAt) > scheduledTime &&
                           new Date(other.scheduledAt) <= new Date()
                         );
-                        
+
                         if (laterPastDose) {
                           status = "accumulated";
                         } else {
                           status = "missed";
                         }
                       }
-                      
+
                       return { ...item, effectiveStatus: status, scheduledTime };
                     });
 
                     const total = todayItems.length;
                     const taken = todayItems.filter(i => i.effectiveStatus === "taken").length;
                     const progress = total > 0 ? taken / total : 0;
-                    
+
                     const pendingItems = todayItems.filter(i => i.effectiveStatus !== "taken");
                     const takenItems = todayItems.filter(i => i.effectiveStatus === "taken");
 
@@ -491,7 +492,7 @@ export default function MedicationsScreen() {
                             <View style={{ flex: 1 }}>
                               <Text style={styles.targetTitleText}>{tr("daily_target")}</Text>
                               <Text style={styles.targetDescText}>
-                                {taken === total && total > 0 
+                                {taken === total && total > 0
                                   ? tr("all_done_today")
                                   : `${tr("taken_of")} ${taken}/${total} ${tr("doses")}`}
                               </Text>
@@ -501,7 +502,7 @@ export default function MedicationsScreen() {
                             </View>
                           </LinearGradient>
                         </View>
-                        
+
                         <View style={styles.progressBarContainer}>
                           <View style={[styles.progressBarValue, { width: `${progress * 100}%` }]} />
                         </View>
@@ -539,11 +540,11 @@ export default function MedicationsScreen() {
                                       <Text style={[styles.timelineStatusText, { color: status.text }]}>{status.label}</Text>
                                     </View>
                                   </View>
-                                  
+
                                   <View style={styles.timelineCardFooter}>
                                     <View style={styles.scheduleInfoRow}>
-                                       <Clock size={12} color="#64748B" />
-                                       <Text style={styles.scheduleInfoText}>{time}</Text>
+                                      <Clock size={12} color="#64748B" />
+                                      <Text style={styles.scheduleInfoText}>{time}</Text>
                                     </View>
                                     {(isPending || isMissed) && (
                                       <TouchableOpacity
@@ -566,7 +567,7 @@ export default function MedicationsScreen() {
                             )
                           })}
                         </View>
-                        
+
                         {takenItems.length > 0 && (
                           <View style={styles.takenSection}>
                             <View style={styles.sectionHeaderRow}>
@@ -574,15 +575,15 @@ export default function MedicationsScreen() {
                               <View style={styles.countBadge}><Text style={styles.countBadgeText}>{takenItems.length}</Text></View>
                             </View>
                             {takenItems.map((item, i) => (
-                               <View key={`taken-${i}`} style={styles.takenCard}>
-                                  <View style={styles.takenCheckIcon}>
-                                    <CheckCircle2 size={20} color="#059669" />
-                                  </View>
-                                  <View style={{ flex: 1, marginLeft: 12 }}>
-                                    <Text style={styles.takenMedName}>{item.medicationName}</Text>
-                                    <Text style={styles.takenMedTime}>{item.dosage} • {item.scheduledTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text>
-                                  </View>
-                               </View>
+                              <View key={`taken-${i}`} style={styles.takenCard}>
+                                <View style={styles.takenCheckIcon}>
+                                  <CheckCircle2 size={20} color="#059669" />
+                                </View>
+                                <View style={{ flex: 1, marginLeft: 12 }}>
+                                  <Text style={styles.takenMedName}>{item.medicationName}</Text>
+                                  <Text style={styles.takenMedTime}>{item.dosage} • {item.scheduledTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text>
+                                </View>
+                              </View>
                             ))}
                           </View>
                         )}
@@ -615,25 +616,25 @@ export default function MedicationsScreen() {
                     const isLow = (med.pillsRemaining || 0) <= med.refillThreshold;
                     const isExpanded = expandedMedId === med.id;
                     return (
-                      <TouchableOpacity 
-                        key={med.id} 
+                      <TouchableOpacity
+                        key={med.id}
                         style={[styles.medCard, isExpanded && styles.medCardExpanded]}
                         onPress={() => toggleExpand(med.id)}
                         activeOpacity={0.9}
                       >
                         <View style={styles.medHeaderMain}>
                           <View style={styles.medIconBox}>
-                             <Pill size={22} color="#059669" />
+                            <Pill size={22} color="#059669" />
                           </View>
                           <View style={{ flex: 1, marginLeft: 12 }}>
                             <Text style={styles.medName}>{med.medicationName}</Text>
                             <Text style={styles.medCompactSub}>{med.dosage} • {med.frequency}</Text>
                           </View>
                           <View style={styles.headerRightInfo}>
-                             <View style={[styles.stockBadgeCompact, { backgroundColor: stock.bg }]}>
-                               <Text style={[styles.stockBadgeText, { color: stock.text }]}>{med.pillsRemaining ?? 0} Left</Text>
-                             </View>
-                             {isExpanded ? <ChevronUp size={20} color="#94A3B8" /> : <ChevronDown size={20} color="#94A3B8" />}
+                            <View style={[styles.stockBadgeCompact, { backgroundColor: stock.bg }]}>
+                              <Text style={[styles.stockBadgeText, { color: stock.text }]}>{med.pillsRemaining ?? 0} Left</Text>
+                            </View>
+                            {isExpanded ? <ChevronUp size={20} color="#94A3B8" /> : <ChevronDown size={20} color="#94A3B8" />}
                           </View>
                         </View>
 
@@ -641,18 +642,18 @@ export default function MedicationsScreen() {
                           <View style={styles.expandedContent}>
                             <View style={styles.divider} />
                             <View style={styles.medBodyGrid}>
-                               <View style={styles.gridItem}>
-                                  <Text style={styles.gridLabel}>FORM</Text>
-                                  <Text style={styles.gridValue}>{med.form}</Text>
-                               </View>
-                               <View style={styles.gridItem}>
-                                  <Text style={styles.gridLabel}>TYPE</Text>
-                                  <Text style={styles.gridValue}>{med.isChronic ? "Chronic" : "Regular"}</Text>
-                               </View>
-                               <View style={styles.gridItem}>
-                                  <Text style={styles.gridLabel}>REFILL AT</Text>
-                                  <Text style={styles.gridValue}>{med.refillThreshold}</Text>
-                                </View>
+                              <View style={styles.gridItem}>
+                                <Text style={styles.gridLabel}>FORM</Text>
+                                <Text style={styles.gridValue}>{med.form}</Text>
+                              </View>
+                              <View style={styles.gridItem}>
+                                <Text style={styles.gridLabel}>TYPE</Text>
+                                <Text style={styles.gridValue}>{med.isChronic ? "Chronic" : "Regular"}</Text>
+                              </View>
+                              <View style={styles.gridItem}>
+                                <Text style={styles.gridLabel}>REFILL AT</Text>
+                                <Text style={styles.gridValue}>{med.refillThreshold}</Text>
+                              </View>
                             </View>
 
                             {med.doseTimes && (
@@ -716,8 +717,8 @@ export default function MedicationsScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Medication Name *</Text>
                 <TextInput style={styles.textInput} value={medName} onChangeText={setMedName} placeholder="e.g. Panadol" placeholderTextColor="#CBD5E1" />
-                <TouchableOpacity 
-                  style={[styles.aiSafetyBtn, isCheckingSafety && { opacity: 0.7 }]} 
+                <TouchableOpacity
+                  style={[styles.aiSafetyBtn, isCheckingSafety && { opacity: 0.7 }]}
                   onPress={handleAiSafetyCheck}
                   disabled={isCheckingSafety}
                 >
@@ -731,9 +732,21 @@ export default function MedicationsScreen() {
               </View>
 
               {safetyReport && (
-                <View style={[styles.safetyReportBox, safetyReport.toLowerCase().includes("risk") && styles.safetyReportRisk]}>
-                  <Info size={18} color={safetyReport.toLowerCase().includes("risk") ? "#EF4444" : "#059669"} />
-                  <Text style={[styles.safetyReportText, safetyReport.toLowerCase().includes("risk") && { color: "#991B1B" }]}>{safetyReport}</Text>
+                <View style={[styles.safetyReportBox, (safetyReport?.safety_en || "").toLowerCase().includes("risk") && styles.safetyReportRisk]}>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Info size={18} color={(safetyReport?.safety_en || "").toLowerCase().includes("risk") ? "#EF4444" : "#059669"} />
+                    <View style={styles.cardLangToggle}>
+                      <TouchableOpacity onPress={() => setReportLang("en")} style={[styles.cardLangBtn, reportLang === "en" && styles.cardLangBtnActive]}>
+                        <Text style={[styles.cardLangText, reportLang === "en" && styles.cardLangTextActive]}>EN</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setReportLang("ar")} style={[styles.cardLangBtn, reportLang === "ar" && styles.cardLangBtnActive]}>
+                        <Text style={[styles.cardLangText, reportLang === "ar" && styles.cardLangTextActive]}>عربي</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  <Text style={[styles.safetyReportText, safetyReport?.safety_en?.toLowerCase().includes("risk") && { color: "#991B1B" }, reportLang === 'ar' && { textAlign: 'right' }]}>
+                    {reportLang === 'ar' ? safetyReport.safety_ar : safetyReport.safety_en}
+                  </Text>
                 </View>
               )}
 
@@ -846,11 +859,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" },
   magicHeader: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden' },
-  aiSafetyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#8B5CF6', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12, marginTop: 10, alignSelf: 'flex-start', elevation: 4 },
+  aiSafetyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#0EA5E9', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12, marginTop: 10, alignSelf: 'flex-start', elevation: 4 },
   aiSafetyBtnTxt: { color: '#fff', fontSize: 12, fontWeight: '800' },
-  safetyReportBox: { backgroundColor: '#F0FDF4', borderRadius: 16, padding: 15, marginBottom: 20, flexDirection: 'row', gap: 12, borderWidth: 1, borderColor: '#DCFCE7' },
-  safetyReportRisk: { backgroundColor: '#FEF2F2', borderColor: '#FEE2E2' },
-  safetyReportText: { fontSize: 13, color: '#065F46', flex: 1, lineHeight: 20, fontWeight: '600' },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, paddingTop: 60, zIndex: 10 },
   headerGreet: { fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
@@ -933,28 +943,28 @@ const styles = StyleSheet.create({
   headerRightInfo: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   stockBadgeCompact: { minWidth: 50, height: 24, borderRadius: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 },
   stockBadgeText: { fontSize: 10, fontWeight: '900' },
-  
+
   expandedContent: { marginTop: 15 },
   divider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 15 },
   medBodyGrid: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#F8FAFC', padding: 12, borderRadius: 18, marginBottom: 15 },
   gridItem: { flex: 1, alignItems: 'center' },
   gridLabel: { fontSize: 8, fontWeight: '900', color: '#94A3B8', marginBottom: 4, letterSpacing: 0.5 },
   gridValue: { fontSize: 12, fontWeight: '800', color: '#1E293B' },
-  
+
   scheduleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 15, paddingLeft: 5 },
   scheduleText: { fontSize: 13, color: '#1E293B', fontWeight: '800' },
   dayChip: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: '#F1F5F9' },
   dayChipActive: { backgroundColor: '#F0FDF4', borderColor: '#10B981' },
   dayChipTxt: { fontSize: 9, fontWeight: "800", color: "#94A3B8" },
   dayChipTxtActive: { color: "#059669" },
-  
+
   noteBox: { flexDirection: 'row', gap: 10, marginTop: 15, backgroundColor: '#F8FAFC', padding: 12, borderRadius: 18, borderLeftWidth: 3, borderLeftColor: '#CBD5E1' },
   noteText: { fontSize: 12, color: "#475569", fontWeight: '600', fontStyle: 'italic', flex: 1 },
-  
+
   cardActionsRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   actionBtnOutline: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 44, borderRadius: 12, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E2E8F0' },
   actionBtnText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
-  
+
   alertBar: { flexDirection: "row", alignItems: "center", gap: 10, padding: 10, borderRadius: 12 },
   alertText: { fontSize: 11, fontWeight: '800' },
 
@@ -986,4 +996,12 @@ const styles = StyleSheet.create({
   saveBtn: { borderRadius: 22, overflow: 'hidden', marginTop: 15, elevation: 8, shadowColor: '#059669', shadowOpacity: 0.3 },
   saveBtnGradient: { paddingVertical: 18, justifyContent: 'center', alignItems: 'center' },
   saveBtnTxt: { color: "#fff", fontSize: 16, fontWeight: "900" },
+  safetyReportBox: { padding: 15, backgroundColor: "#fff", borderRadius: 18, marginBottom: 20, borderWidth: 2, borderColor: "#BAE6FD" },
+  safetyReportRisk: { backgroundColor: "#FEF2F2", borderColor: "#EF4444" },
+  safetyReportText: { fontSize: 13, color: "#1E293B", lineHeight: 20, fontWeight: "600", marginTop: 8 },
+  cardLangToggle: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 10, padding: 2 },
+  cardLangBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  cardLangBtnActive: { backgroundColor: '#fff', elevation: 2 },
+  cardLangText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
+  cardLangTextActive: { color: '#0EA5E9' },
 });

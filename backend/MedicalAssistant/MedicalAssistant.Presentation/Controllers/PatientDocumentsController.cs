@@ -76,7 +76,7 @@ namespace MedicalAssistant.Presentation.Controllers
             if (!IsDoctorOrOwner(id)) return Forbid();
             if (file == null || file.Length == 0) return BadRequest(new { message = "No file provided." });
 
-            var uploadResult = await _photoService.UploadPhotoAsync(file);
+            var uploadResult = await _photoService.UploadDocumentAsync(file);
             if (uploadResult == null) return StatusCode(500, new { message = "File upload failed." });
 
             var document = new PatientDocument

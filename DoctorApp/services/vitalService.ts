@@ -101,11 +101,11 @@ export const addVitalReading = async (patientId: number, payload: CreateVitalPay
 // Normal Ranges for Live Validation
 // ============================================
 export const NORMAL_RANGES: Record<string, { min: number; max: number; unit: string }> = {
-  "Blood Pressure Systolic": { min: 90, max: 120, unit: "mmHg" },
-  "Blood Pressure Diastolic": { min: 60, max: 80, unit: "mmHg" },
-  "Blood Sugar": { min: 70, max: 100, unit: "mg/dL" },
+  "Blood Pressure Systolic": { min: 90, max: 140, unit: "mmHg" },
+  "Blood Pressure Diastolic": { min: 60, max: 90, unit: "mmHg" },
+  "Blood Sugar": { min: 70, max: 140, unit: "mg/dL" },
   "Heart Rate": { min: 60, max: 100, unit: "bpm" },
-  "Temperature": { min: 36.1, max: 37.2, unit: "°C" },
+  "Temperature": { min: 36.1, max: 37.5, unit: "°C" },
   "SpO2": { min: 95, max: 100, unit: "%" },
   "Respiratory Rate": { min: 12, max: 20, unit: "breaths/min" },
 };
@@ -136,16 +136,23 @@ export const deleteVitalReading = async (vitalId: number): Promise<void> => {
 };
 
 export function checkVitalNormal(type: string, value: number, value2?: number): boolean {
+  if (type === "Blood Pressure") {
+    const sysRange = NORMAL_RANGES["Blood Pressure Systolic"];
+    const diaRange = NORMAL_RANGES["Blood Pressure Diastolic"];
+    if (value < sysRange.min || value > sysRange.max) return false;
+    if (value2 != null && (value2 < diaRange.min || value2 > diaRange.max)) return false;
+    return true;
+  }
   const range = NORMAL_RANGES[type];
   if (!range) return true;
-  if (value < range.min || value > range.max) return false;
-  if (value2 != null) {
-    if (value2 < range.min || value2 > range.max) return false;
-  }
-  return true;
+  return value >= range.min && value <= range.max;
 }
 
 export function getVitalRangeText(type: string): string {
+  if (type === "Blood Pressure") {
+    return "90-140 / 60-90 mmHg";
+  }
   const r = NORMAL_RANGES[type];
   return r ? `${r.min}–${r.max} ${r.unit}` : "";
 }
+

@@ -18,8 +18,8 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 if GOOGLE_API_KEY:
     print(f"DEBUG: API Key found (starts with: {GOOGLE_API_KEY[:5]}...)")
     genai.configure(api_key=GOOGLE_API_KEY)
-    # Using gemini-1.5-flash which is more stable for free tier quotas
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Using gemini-flash-latest for stable and higher quota limits
+    model = genai.GenerativeModel('gemini-flash-latest')
 else:
     print("WARNING: GOOGLE_API_KEY not found in environment variables.")
 
@@ -31,6 +31,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def strip_markdown(text: str) -> str:
+    """Remove markdown formatting characters from AI responses."""
+    text = re.sub(r'#{1,6}\s*', '', text)  # Remove # headings
+    text = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', text)  # Remove *bold* and **bold**
+    text = re.sub(r'`{1,3}(.*?)`{1,3}', r'\1', text, flags=re.DOTALL)  # Remove `code`
+    text = re.sub(r'---+', '', text)  # Remove horizontal rules
+    text = re.sub(r'\n{3,}', '\n\n', text)  # Collapse multiple blank lines
+    return text.strip()
+
 
 class SurgeryInput(BaseModel):
     description: str
@@ -51,14 +61,29 @@ async def summarize_surgery(data: SurgeryInput):
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
     
-    prompt = f"Summarize the following surgery details into a concise, professional medical note (max 2 sentences):\n{data.description}"
+    prompt = f"""
+    Summarize this surgery: '{data.description}'.
+    RETURN ONLY A VALID JSON OBJECT:
+    {{
+      "summary_en": "Concise English summary",
+      "summary_ar": "ملخص مختصر بالعربية"
+    }}
+    """
     
     try:
         response = model.generate_content(prompt)
-        return {"summary": response.text.strip()}
+        content = response.text.strip()
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            return {
+                "summary_en": strip_markdown(result.get("summary_en", "Surgery recorded.")),
+                "summary_ar": strip_markdown(result.get("summary_ar", "تم تسجيل العملية."))
+            }
+        return {"summary_en": strip_markdown(response.text), "summary_ar": strip_markdown(response.text)}
     except Exception as e:
         print(f"DEBUG: Error in summarize_surgery: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"summary_en": "Surgery recorded.", "summary_ar": "تم تسجيل العملية."}
 
 @app.post("/analyze-history")
 async def analyze_history(data: PatientHistoryInput):
@@ -66,7 +91,7 @@ async def analyze_history(data: PatientHistoryInput):
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
     
-    context = f"""
+    prompt = f"""
     Analyze the following patient medical history and provide a professional diagnosis summary and health insights.
     
     Vitals: {json.dumps(data.vitals)}
@@ -75,23 +100,69 @@ async def analyze_history(data: PatientHistoryInput):
     Allergies: {json.dumps(data.allergies)}
     Chronic Diseases: {json.dumps(data.chronic_diseases)}
     
-    Provide the response in both English and Arabic in a structured format with:
-    1. Overall Health Status / الحالة الصحية العامة
-    2. Key Concerns / الملاحظات الرئيسية
-    3. Recommendations / التوصيات
+    RETURN ONLY A JSON OBJECT with these keys:
+    {{
+      "en": "Detailed analysis in English (plain text, no markdown)",
+      "ar": "تحليل مفصل باللغة العربية (نص عادي، بدون مارك داون)"
+    }}
     
-    Keep it concise and professional.
+    IMPORTANT: Do NOT use markdown (#, *, etc). Use plain text with line breaks.
+    """
+    
+    prompt = f"""
+    Analyze the following patient medical history:
+    Vitals: {json.dumps(data.vitals)}
+    Surgeries: {json.dumps(data.surgeries)}
+    Medications: {json.dumps(data.medications)}
+    Allergies: {json.dumps(data.allergies)}
+    Chronic Diseases: {json.dumps(data.chronic_diseases)}
+    
+    You MUST provide two separate reports.
+    
+    REPORT 1: English ONLY. Professional medical tone. Plain text.
+    REPORT 2: Arabic ONLY. Professional medical tone. Plain text.
+    
+    RETURN YOUR RESPONSE AS A VALID JSON OBJECT ONLY:
+    {{
+      "en": "FULL_ENGLISH_REPORT_HERE",
+      "ar": "FULL_ARABIC_REPORT_HERE"
+    }}
+    
+    CRITICAL: 
+    - The 'en' field must NOT contain any Arabic characters.
+    - The 'ar' field must NOT contain any English sentences (except medical terms if necessary).
+    - Do NOT use markdown symbols like # or *.
     """
     
     try:
-        response = model.generate_content(context)
-        return {"analysis": response.text.strip()}
+        response = model.generate_content(prompt)
+        # Robust JSON extraction
+        content = response.text.strip()
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+            
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            return {
+                "analysis_en": strip_markdown(result.get("en", "No English report generated.")),
+                "analysis_ar": strip_markdown(result.get("ar", "لم يتم إنشاء تقرير بالعربية."))
+            }
+        
+        # Fallback split logic if AI fails JSON but returns both
+        text = strip_markdown(response.text)
+        return {"analysis_en": text, "analysis_ar": text}
+        
     except Exception as e:
         print(f"DEBUG: Error in analyze_history: {str(e)}")
-        # Fallback response for quota or API issues
         return {
-            "analysis": "Based on your records, your health profile is being monitored. Please continue your prescribed medications and keep tracking your vitals. Consult your doctor for a detailed clinical evaluation. / بناءً على سجلاتك، يتم مراقبة حالتك الصحية. يرجى الاستمرار في تناول الأدوية الموصوفة ومتابعة قياساتك الحيوية. استشر طبيبك لإجراء تقييم سريري مفصل."
+            "analysis_en": "Your health profile is being monitored. Please consult your doctor.",
+            "analysis_ar": "يتم مراقبة حالتك الصحية. يرجى استشارة طبيبك."
         }
+
+
 
 @app.post("/analyze-image")
 async def analyze_image(file: UploadFile = File(...), type: str = "prescription"):
@@ -102,9 +173,9 @@ async def analyze_image(file: UploadFile = File(...), type: str = "prescription"
     img = Image.open(io.BytesIO(contents))
     
     if type == "prescription":
-        prompt = "Extract medication names, dosages, frequencies, and durations from this prescription image. Return it as a JSON list of objects with keys: name, dose, frequency, duration."
+        prompt = "Carefully extract every detail from this medical prescription. I need medication names, dosages (e.g. 500mg), frequencies (e.g. twice daily), and durations. Provide a professional bilingual summary (English/Arabic) and the raw data in JSON format."
     else:
-        prompt = "Extract lab test results (test name, value, unit, reference range) from this image. Return it as a JSON list of objects."
+        prompt = "Analyze this lab result or medical scan. Extract all test names, values, units, and reference ranges. Provide a clear bilingual interpretation (English/Arabic) explaining if the results are within normal range."
     
     try:
         # For multimodal, we pass the image and the prompt
@@ -120,9 +191,21 @@ async def analyze_image(file: UploadFile = File(...), type: str = "prescription"
 
         if json_match:
             extracted_data = json.loads(json_match.group())
-            return {"data": extracted_data, "raw_text": text, "summary": summary}
+            # Split summary if it contains '/'
+            s_en, s_ar = "Document", "مستند"
+            if " / " in summary:
+                parts = summary.split(" / ")
+                s_en = parts[0].strip()
+                s_ar = parts[1].strip()
+            
+            return {
+                "data": extracted_data, 
+                "raw_text": strip_markdown(text), 
+                "summary_en": strip_markdown(s_en),
+                "summary_ar": strip_markdown(s_ar)
+            }
         else:
-            return {"data": [], "raw_text": text, "summary": summary}
+            return {"data": [], "raw_text": strip_markdown(text), "summary_en": "Document", "summary_ar": "مستند"}
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -133,14 +216,29 @@ async def summarize_item(data: dict):
     item_type = data.get("type", "medical item")
     description = data.get("description", "")
     
-    prompt = f"As a medical assistant, refine this description of a {item_type}: '{description}'. Make it professional, concise, and correctly spelled in medical terms. Provide the refined text in both English and Arabic. Return only the refined text."
+    prompt = f"""
+    Refine this {item_type}: '{description}'.
+    RETURN ONLY A VALID JSON OBJECT:
+    {{
+      "summary_en": "Professional English version",
+      "summary_ar": "نسخة احترافية بالعربية"
+    }}
+    """
     
     try:
         response = model.generate_content(prompt)
-        return {"refined_text": response.text.strip()}
+        content = response.text.strip()
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            return {
+                "summary_en": strip_markdown(result.get("summary_en", description)),
+                "summary_ar": strip_markdown(result.get("summary_ar", description))
+            }
+        return {"summary_en": description, "summary_ar": description}
     except Exception as e:
         print(f"DEBUG: Error in summarize_item: {e}")
-        return {"refined_text": f"{description} / {description}"} # Fallback
+        return {"summary_en": description, "summary_ar": description}
 
 @app.post("/analyze-vitals")
 async def analyze_vitals(data: dict):
@@ -149,20 +247,37 @@ async def analyze_vitals(data: dict):
     patient_info = data.get("patient_info", {}) # age, weight, etc.
     
     prompt = f"""
-    Analyze these vitals: {vitals}. 
-    Patient Info: {patient_info}.
-    Provide a very short (1-2 sentences) medical advice or observation. 
-    If values are dangerous, emphasize the need to see a doctor.
-    Provide the advice in both English and Arabic.
-    Be encouraging but professional.
+    Analyze these vitals: {vitals}. Patient Info: {patient_info}.
+    (BP rules: 12/8 is 120/80. Normal 120/80. High > 140/90. Emergency > 180/110).
+    
+    You MUST provide two separate advice reports.
+    
+    REPORT 1: English ONLY.
+    REPORT 2: Arabic ONLY.
+    
+    RETURN ONLY A VALID JSON OBJECT:
+    {{
+      "en": "English advice here",
+      "ar": "النصيحة بالعربية هنا"
+    }}
+    
+    CRITICAL: No language mixing. No markdown symbols (#, *).
     """
     
     try:
         response = model.generate_content(prompt)
-        return {"advice": response.text.strip()}
+        content = response.text.strip()
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            return {
+                "advice_en": strip_markdown(result.get("en", "Stay safe.")),
+                "advice_ar": strip_markdown(result.get("ar", "حافظ على صحتك."))
+            }
+        return {"advice_en": strip_markdown(response.text), "advice_ar": strip_markdown(response.text)}
     except Exception as e:
         print(f"DEBUG: Error in analyze_vitals: {e}")
-        return {"advice": "Keep monitoring your vitals and consult your doctor if you feel unwell. / استمر في مراقبة علاماتك الحيوية واستشر طبيبك إذا شعرت بوعكة صحية."}
+        return {"advice_en": "Keep monitoring.", "advice_ar": "استمر في المتابعة."}
 
 @app.post("/check-medication-safety")
 async def check_medication(data: dict):
@@ -171,18 +286,34 @@ async def check_medication(data: dict):
     history = data.get("history", {})
     
     prompt = f"""
-    Check if the medication '{new_med}' has any known major risks or contraindications with this patient history: {history}.
-    If there's a risk, explain it briefly. If safe, say 'No major immediate risks found with your history'.
-    Provide the safety report in both English and Arabic.
-    Always end with 'Always consult your doctor before starting new medication / يجب دائمًا استشارة طبيبك قبل البدء في أي دواء جديد'.
+    Check if '{new_med}' is safe for this history: {history}.
+    
+    REPORT 1: English ONLY.
+    REPORT 2: Arabic ONLY.
+    
+    RETURN ONLY A VALID JSON OBJECT:
+    {{
+      "en": "English safety report",
+      "ar": "تقرير السلامة بالعربية"
+    }}
+    
+    CRITICAL: No language mixing. No markdown symbols (#, *).
     """
     
     try:
         response = model.generate_content(prompt)
-        return {"safety_report": response.text.strip()}
+        content = response.text.strip()
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            return {
+                "safety_en": strip_markdown(result.get("en", "Check with doctor.")),
+                "safety_ar": strip_markdown(result.get("ar", "استشر الطبيب."))
+            }
+        return {"safety_en": strip_markdown(response.text), "safety_ar": strip_markdown(response.text)}
     except Exception as e:
         print(f"DEBUG: Error in check_medication: {e}")
-        return {"safety_report": "Please consult your doctor to ensure this medication is safe for you. / يرجى استشارة طبيبك للتأكد من أن هذا الدواء آمن لك."}
+        return {"safety_en": "Consult doctor.", "safety_ar": "استشر الطبيب."}
 
 if __name__ == "__main__":
     import uvicorn

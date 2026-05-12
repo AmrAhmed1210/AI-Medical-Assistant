@@ -219,6 +219,40 @@ export default function DoctorDetailsScreen() {
     refreshFollowState();
   }, [doctorId]);
 
+  useEffect(() => {
+    if (!doctorId) return;
+
+    let cleanupReady: (() => void) | undefined;
+    let cleanupUpdated: (() => void) | undefined;
+    let cancelled = false;
+
+    const connectToScheduleUpdates = async () => {
+      await startSignalRConnection();
+      if (cancelled) return;
+      await subscribeToDoctorSchedule(Number(doctorId));
+      if (cancelled) return;
+
+      const refreshThisDoctor = (payload: any) => {
+        const updatedDoctorId = Number(payload?.doctorId ?? payload?.DoctorId ?? doctorId);
+        if (updatedDoctorId === Number(doctorId)) {
+          fetchAvailability();
+          setSelectedTime(null);
+        }
+      };
+
+      cleanupReady = onScheduleReady(refreshThisDoctor);
+      cleanupUpdated = onScheduleUpdated(refreshThisDoctor);
+    };
+
+    connectToScheduleUpdates().catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+      cleanupReady?.();
+      cleanupUpdated?.();
+    };
+  }, [doctorId]);
+
   const fetchAll = async () => {
     try {
       setLoading(true);
@@ -292,13 +326,23 @@ export default function DoctorDetailsScreen() {
     setBooking(true);
     try {
       const day = days[selectedDay];
+      if (!day || !selectedTime) {
+        setModalStep(null);
+        Alert.alert("Slot Unavailable", "Please choose another available time slot.");
+        return;
+      }
+      const time = selectedTime;
       await bookAppointment({
         doctorId: Number(doctorId),
         date: day.isoDate,
-        time: selectedTime!,
+        time,
         paymentMethod: method,
       });
+      setBookedSlots(prev => [...prev, { date: day.isoDate, time }]);
+      setSelectedTime(null);
+      setModalStep(null);
       setShowSuccess(true);
+      fetchAvailability();
     } catch (e: any) {
       Alert.alert("Booking Failed", e.message);
     } finally {

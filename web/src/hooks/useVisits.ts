@@ -10,6 +10,7 @@ export interface PatientHistoryDto {
   medications?: { id: string; medicationName: string; dosage: string; frequency: string }[]
   latestVitals?: Record<string, string>
   lastVisits?: { id: string; visitDate: string; chiefComplaint: string }[]
+  aiDiagnosisSummary?: string
 }
 
 export function useTodayVisits() {

@@ -24,6 +24,21 @@ namespace MedicalAssistant.Services.Services
 
         public async Task<AppointmentDto> CreateAppointmentAsync(CreateAppointmentDto dto)
         {
+            var requestedDate = NormalizeDateKey(dto.Date);
+            var requestedTime = NormalizeTimeKey(dto.Time);
+            var activeAppointments = await _unitOfWork.Repository<Appointment>()
+                .FindAsync(a => a.DoctorId == dto.DoctorId &&
+                                (a.Status == "Pending" || a.Status == "Confirmed"));
+
+            var slotAlreadyBooked = activeAppointments.Any(a =>
+                NormalizeDateKey(a.Date) == requestedDate &&
+                NormalizeTimeKey(a.Time) == requestedTime);
+
+            if (slotAlreadyBooked)
+            {
+                throw new InvalidOperationException("This appointment slot is already booked.");
+            }
+
             var appointment = new Appointment
             {
                 PatientId = dto.PatientId,
@@ -68,6 +83,11 @@ namespace MedicalAssistant.Services.Services
                     BuildScheduledAt(saved),
                     saved.DoctorId);
             }
+
+            await _notificationService.NotifyScheduleUpdated(
+                saved.DoctorId,
+                saved.Doctor?.Name ?? "Doctor",
+                saved.Doctor?.IsAvailable ?? true);
 
             return MapToDto(saved);
         }
@@ -139,6 +159,11 @@ namespace MedicalAssistant.Services.Services
                     appointment.DoctorId);
             }
 
+            await _notificationService.NotifyScheduleUpdated(
+                appointment.DoctorId,
+                appointment.Doctor?.Name ?? "Doctor",
+                appointment.Doctor?.IsAvailable ?? true);
+
             return MapToDto(appointment);
         }
 
@@ -147,8 +172,17 @@ namespace MedicalAssistant.Services.Services
             var appointment = await _unitOfWork.Appointments.GetByIdWithDoctorAsync(id);
             if (appointment == null) return false;
 
+            var doctorId = appointment.DoctorId;
+            var doctorName = appointment.Doctor?.Name ?? "Doctor";
+            var isDoctorAvailable = appointment.Doctor?.IsAvailable ?? true;
+
             _unitOfWork.Appointments.Delete(appointment);
             await _unitOfWork.SaveChangesAsync();
+
+            await _notificationService.NotifyScheduleUpdated(
+                doctorId,
+                doctorName,
+                isDoctorAvailable);
 
             return true;
         }
@@ -349,6 +383,41 @@ namespace MedicalAssistant.Services.Services
         {
             return ParseAppointmentDateTime(appointment.Date, appointment.Time)?.ToString("O")
                 ?? $"{appointment.Date} {appointment.Time}";
+        }
+
+        private static string NormalizeDateKey(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+
+            if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsed))
+            {
+                return parsed.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            }
+
+            return value.Trim().ToUpperInvariant();
+        }
+
+        private static string NormalizeTimeKey(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+
+            var formats = new[] { "h:mm tt", "hh:mm tt", "H:mm", "HH:mm", "H:mm:ss", "HH:mm:ss" };
+            if (DateTime.TryParseExact(value.Trim(), formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var exact))
+            {
+                return exact.ToString("HH:mm", CultureInfo.InvariantCulture);
+            }
+
+            if (TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out var span))
+            {
+                return span.ToString(@"hh\:mm", CultureInfo.InvariantCulture);
+            }
+
+            if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.NoCurrentDateDefault, out var parsed))
+            {
+                return parsed.ToString("HH:mm", CultureInfo.InvariantCulture);
+            }
+
+            return value.Trim().ToUpperInvariant();
         }
 
         private static bool HasMarker(string? notes, string marker)

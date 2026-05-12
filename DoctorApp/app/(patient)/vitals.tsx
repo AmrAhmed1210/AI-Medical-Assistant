@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import { useLanguage } from "../../context/LanguageContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { 
+import {
   Activity, Droplets, Heart as HeartIcon, Thermometer, Wind, Beaker, Plus, Info, Timer, Sparkles, AlertCircle, Trash2, Edit
 } from "lucide-react-native";
 import { COLORS } from "../../constants/colors";
@@ -25,12 +25,12 @@ import Toast from "react-native-toast-message";
 const { width } = Dimensions.get("window");
 
 const VITAL_TYPES = [
-  { key: "Blood Pressure", unit: "mmHg", hasValue2: true, icon: Activity, color: "#6366F1", bg: "#EEF2FF" },
+  { key: "Blood Pressure", unit: "mmHg", hasValue2: true, icon: Activity, color: "#0EA5E9", bg: "#F0F9FF" },
   { key: "Blood Sugar", unit: "mg/dL", hasValue2: false, icon: Droplets, color: "#F59E0B", bg: "#FFFBEB" },
   { key: "Heart Rate", unit: "bpm", hasValue2: false, icon: HeartIcon, color: "#EF4444", bg: "#FEF2F2" },
-  { key: "Temperature", unit: "C", hasValue2: false, icon: Thermometer, color: "#0EA5E9", bg: "#F0F9FF" },
+  { key: "Temperature", unit: "C", hasValue2: false, icon: Thermometer, color: "#0284C7", bg: "#E0F2FE" },
   { key: "SpO2", unit: "%", hasValue2: false, icon: Wind, color: "#10B981", bg: "#ECFDF5" },
-  { key: "Respiratory Rate", unit: "breaths/min", hasValue2: false, icon: Beaker, color: "#8B5CF6", bg: "#F5F3FF" },
+  { key: "Respiratory Rate", unit: "breaths/min", hasValue2: false, icon: Beaker, color: "#0D9488", bg: "#F0FDFA" },
 ];
 
 export default function VitalsScreen() {
@@ -52,8 +52,9 @@ export default function VitalsScreen() {
   const [notes, setNotes] = useState("");
   const [isNormal, setIsNormal] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [aiAdvice, setAiAdvice] = useState<any>(null);
   const [isAnalyzingAdvice, setIsAnalyzingAdvice] = useState(false);
+  const [adviceLang, setAdviceLang] = useState<"en" | "ar">(isRTL ? "ar" : "en");
 
   useEffect(() => {
     loadData();
@@ -91,6 +92,10 @@ export default function VitalsScreen() {
       const latestMap: Record<string, VitalReading | null> = {};
       latestResults.forEach((r) => { latestMap[r.type] = r.reading; });
       setLatestVitals(latestMap);
+      // Trigger AI Advice for latest context if available
+      if (allVitals.length > 0) {
+        triggerAiAdvice(allVitals[0]);
+      }
     } catch (e: any) {
       Toast.show({ type: "error", text1: e.message || "Failed to load vitals" });
     } finally {
@@ -140,7 +145,7 @@ export default function VitalsScreen() {
       } else {
         await addVitalReading(patientId!, payload);
         Toast.show({ type: "success", text1: "Vital recorded successfully" });
-        
+
         // Trigger AI Advice after save
         triggerAiAdvice(payload);
       }
@@ -181,9 +186,9 @@ export default function VitalsScreen() {
       "Are you sure you want to delete this record?",
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive", 
+        {
+          text: "Delete",
+          style: "destructive",
           onPress: async () => {
             try {
               await deleteVitalReading(id);
@@ -192,7 +197,7 @@ export default function VitalsScreen() {
             } catch (e: any) {
               Toast.show({ type: "error", text1: "Failed to delete" });
             }
-          } 
+          }
         }
       ]
     );
@@ -234,7 +239,7 @@ export default function VitalsScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
+
       {/* ANIMATED LUXURY HEADER */}
       <Animated.View style={[styles.magicHeader, { height: headerHeight, opacity: headerOpacity }]}>
         <LinearGradient colors={["#064E3B", "#059669"]} style={StyleSheet.absoluteFill}>
@@ -247,7 +252,7 @@ export default function VitalsScreen() {
               <Ionicons name="refresh" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.heroContent}>
             <View style={styles.heroTextRow}>
               <View>
@@ -279,18 +284,30 @@ export default function VitalsScreen() {
         contentContainerStyle={{ paddingTop: 260, paddingBottom: 100 }}
       >
         <View style={styles.contentOverlap}>
-          
+
           {/* AI ADVICE CARD */}
           {(aiAdvice || isAnalyzingAdvice) && (
             <View style={styles.aiAdviceWrapper}>
               <LinearGradient colors={["#F5F3FF", "#EDE9FE"]} style={styles.aiAdviceCard}>
                 <View style={styles.aiAdviceHeader}>
-                  <Sparkles size={18} color="#7C3AED" />
-                  <Text style={styles.aiAdviceTitle}>AI Health Advice</Text>
+                  <View style={styles.aiSparkleBg}>
+                    <Sparkles size={18} color="#7C3AED" />
+                  </View>
+                  <Text style={styles.aiAdviceTitle}>{isRTL ? "نصيحة ذكية من AI" : "Smart AI Insights"}</Text>
+                  <View style={styles.cardLangToggle}>
+                    <TouchableOpacity onPress={() => setAdviceLang("en")} style={[styles.cardLangBtn, adviceLang === "en" && styles.cardLangBtnActive]}>
+                      <Text style={[styles.cardLangText, adviceLang === "en" && styles.cardLangTextActive]}>EN</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setAdviceLang("ar")} style={[styles.cardLangBtn, adviceLang === "ar" && styles.cardLangBtnActive]}>
+                      <Text style={[styles.cardLangText, adviceLang === "ar" && styles.cardLangTextActive]}>عربي</Text>
+                    </TouchableOpacity>
+                  </View>
                   {isAnalyzingAdvice && <ActivityIndicator size="small" color="#7C3AED" />}
                 </View>
                 {aiAdvice && (
-                  <Text style={styles.aiAdviceText}>{aiAdvice}</Text>
+                  <Text style={[styles.aiAdviceText, adviceLang === 'ar' && { textAlign: 'right' }]}>
+                    {adviceLang === 'ar' ? aiAdvice.advice_ar : aiAdvice.advice_en}
+                  </Text>
                 )}
               </LinearGradient>
             </View>
@@ -371,8 +388,8 @@ export default function VitalsScreen() {
                 </LinearGradient>
               </TouchableOpacity>
               {editingId && (
-                <TouchableOpacity 
-                  style={{ marginTop: 12, alignItems: 'center' }} 
+                <TouchableOpacity
+                  style={{ marginTop: 12, alignItems: 'center' }}
                   onPress={() => { setEditingId(null); setValue(""); setValue2(""); setNotes(""); setShowAddForm(false); }}
                 >
                   <Text style={{ color: '#64748B', fontWeight: '600' }}>Cancel Edit</Text>
@@ -401,9 +418,9 @@ export default function VitalsScreen() {
                       </View>
                       {isAbnormal && <View style={styles.alertDot} />}
                     </View>
-                    
+
                     <Text style={styles.latestType}>{t.key}</Text>
-                    
+
                     {reading ? (
                       <View style={styles.readingContent}>
                         <View style={styles.valueRow}>
@@ -508,7 +525,7 @@ const styles = StyleSheet.create({
   premiumTag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   premiumText: { fontSize: 10, fontWeight: '800', color: '#fff', textTransform: 'uppercase' },
   liquidBlob: { position: 'absolute', borderRadius: 150 },
-  
+
   contentOverlap: { backgroundColor: '#F8FAFC', borderTopLeftRadius: 40, borderTopRightRadius: 40, minHeight: 600, paddingTop: 30 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, marginBottom: 20, marginTop: 10 },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B', letterSpacing: -0.5 },
@@ -516,12 +533,12 @@ const styles = StyleSheet.create({
   addBtnSmallGradient: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
   addBtnSmallText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 
-  formCard: { backgroundColor: '#fff', borderRadius: 35, padding: 25, marginHorizontal: 20, marginBottom: 30, elevation: 15, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+  formCard: { backgroundColor: '#fff', borderRadius: 32, padding: 25, marginHorizontal: 20, marginBottom: 30, elevation: 12, shadowColor: '#0EA5E9', shadowOpacity: 0.1, shadowRadius: 20, borderWidth: 2, borderColor: '#BAE6FD' },
   formIndicator: { width: 40, height: 5, backgroundColor: '#F1F5F9', borderRadius: 5, alignSelf: 'center', marginBottom: 20 },
   formTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginBottom: 25 },
   typeScroll: { marginBottom: 25 },
   typeChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 18, backgroundColor: '#F8FAFC', marginRight: 12, borderWidth: 1, borderColor: '#F1F5F9' },
-  typeChipActive: { backgroundColor: '#064E3B', borderColor: '#064E3B' },
+  typeChipActive: { backgroundColor: '#0EA5E9', borderColor: '#0EA5E9' },
   typeChipTxt: { fontSize: 13, fontWeight: '700', color: '#64748B' },
   typeChipTxtActive: { color: "#fff" },
   inputRow: { flexDirection: "row", gap: 15 },
@@ -530,7 +547,7 @@ const styles = StyleSheet.create({
   premiumInput: { backgroundColor: '#F8FAFC', borderRadius: 18, paddingHorizontal: 18, height: 55, fontSize: 15, color: '#1E293B', borderWidth: 1.5, borderColor: '#F1F5F9', fontWeight: '600' },
   abnormalBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: "#FEF2F2", borderRadius: 15, padding: 12, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: "#EF4444" },
   abnormalText: { color: "#991B1B", fontSize: 12, fontWeight: "800" },
-  saveBtn: { borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#059669', shadowOpacity: 0.3 },
+  saveBtn: { borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#0EA5E9', shadowOpacity: 0.3 },
   saveBtnGradient: { height: 58, justifyContent: 'center', alignItems: 'center' },
   saveBtnTxt: { color: "#fff", fontSize: 16, fontWeight: "800" },
 
@@ -541,7 +558,7 @@ const styles = StyleSheet.create({
 
   latestGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 20, gap: 12, marginBottom: 30 },
   latestCardWrap: { width: '48%', marginBottom: 5 },
-  latestCard: { backgroundColor: '#fff', borderRadius: 28, padding: 18, borderWidth: 1, borderColor: '#F1F5F9', elevation: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15 },
+  latestCard: { backgroundColor: '#fff', borderRadius: 28, padding: 18, borderWidth: 2, borderColor: '#BAE6FD', elevation: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15 },
   latestCardAbnormal: { borderColor: "#FCA5A5", backgroundColor: "#FFF1F2" },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   iconCircle: { width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
@@ -559,7 +576,7 @@ const styles = StyleSheet.create({
 
   historyBadgeCount: { backgroundColor: '#059669', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   historyBadgeCountText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  emptyCard: { backgroundColor: '#fff', borderRadius: 35, padding: 40, alignItems: 'center', marginHorizontal: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+  emptyCard: { backgroundColor: '#fff', borderRadius: 35, padding: 40, alignItems: 'center', marginHorizontal: 20, borderWidth: 2, borderColor: '#BAE6FD' },
   emptyTitle: { fontSize: 18, fontWeight: "900", color: "#1E293B", marginTop: 20 },
   emptyDesc: { fontSize: 14, color: "#94A3B8", marginTop: 10, textAlign: "center", lineHeight: 22 },
 
@@ -568,7 +585,7 @@ const styles = StyleSheet.create({
   timelineLeft: { alignItems: 'center', width: 20 },
   timelineDot: { width: 12, height: 12, borderRadius: 6, zIndex: 10, marginTop: 25 },
   timelineLine: { flex: 1, width: 2, backgroundColor: '#E2E8F0', marginTop: -10 },
-  historyCard: { flex: 1, backgroundColor: '#fff', borderRadius: 24, padding: 18, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9', elevation: 5, shadowColor: '#000', shadowOpacity: 0.04 },
+  historyCard: { flex: 1, backgroundColor: '#fff', borderRadius: 24, padding: 18, marginBottom: 20, borderWidth: 2, borderColor: '#BAE6FD', elevation: 5, shadowColor: '#000', shadowOpacity: 0.04 },
   historyCardAbnormal: { borderColor: "#FCA5A5" },
   historyTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   historyType: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
@@ -587,8 +604,14 @@ const styles = StyleSheet.create({
   historyDate: { fontSize: 11, color: '#94A3B8', marginTop: 12, fontWeight: '600' },
   sosContainer: { marginTop: -10, marginBottom: 10 },
   aiAdviceWrapper: { paddingHorizontal: 25, marginBottom: 20 },
-  aiAdviceCard: { borderRadius: 24, padding: 18, borderWidth: 1, borderColor: '#DDD6FE', elevation: 4, shadowOpacity: 0.05 },
-  aiAdviceHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-  aiAdviceTitle: { fontSize: 14, fontWeight: '800', color: '#5B21B6', flex: 1 },
-  aiAdviceText: { fontSize: 13, color: '#4C1D95', lineHeight: 19, fontWeight: '500' },
+  aiAdviceCard: { borderRadius: 24, padding: 18, borderWidth: 2, borderColor: '#BAE6FD', elevation: 4, shadowOpacity: 0.05, backgroundColor: '#fff' },
+  aiAdviceHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  aiSparkleBg: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 2 },
+  aiAdviceTitle: { fontSize: 15, fontWeight: '900', color: '#1E293B', flex: 1, letterSpacing: -0.3 },
+  aiAdviceText: { fontSize: 13, color: '#475569', lineHeight: 20, fontWeight: '600' },
+  cardLangToggle: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 10, padding: 2, marginRight: 10 },
+  cardLangBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  cardLangBtnActive: { backgroundColor: '#fff', elevation: 2 },
+  cardLangText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
+  cardLangTextActive: { color: '#0EA5E9' },
 });

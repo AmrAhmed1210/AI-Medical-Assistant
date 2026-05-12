@@ -32,8 +32,6 @@ public class PhotoService : IPhotoService
     {
         if (file.Length > 0)
         {
-            // Read the entire file into a MemoryStream first to avoid I/O abort
-            // when the HTTP request stream is disposed before Cloudinary finishes
             var memoryStream = new MemoryStream();
             await file.CopyToAsync(memoryStream);
             memoryStream.Position = 0;
@@ -45,25 +43,31 @@ public class PhotoService : IPhotoService
                 Folder = "medbook-photos"
             };
 
-            try 
-            {
-                var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-
-                if (uploadResult.Error != null)
-                {
-                    _logger.LogError("Cloudinary Upload Error: {Message}", uploadResult.Error.Message);
-                    throw new Exception($"Cloudinary Error: {uploadResult.Error.Message}");
-                }
-
-                return uploadResult.SecureUrl.ToString();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Exception during Cloudinary photo upload");
-                throw;
-            }
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+            if (uploadResult.Error != null) throw new Exception(uploadResult.Error.Message);
+            return uploadResult.SecureUrl.ToString();
         }
+        return string.Empty;
+    }
 
+    public async Task<string> UploadDocumentAsync(IFormFile file)
+    {
+        if (file.Length > 0)
+        {
+            var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(file.FileName, memoryStream),
+                Folder = "medbook-docs"
+            };
+
+            var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+            if (uploadResult.Error != null) throw new Exception(uploadResult.Error.Message);
+            return uploadResult.SecureUrl.ToString();
+        }
         return string.Empty;
     }
 

@@ -236,6 +236,38 @@ export default function DoctorWorkspace() {
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel — Patient History (40%) */}
         <div className="w-2/5 border-l overflow-y-auto bg-gray-50 p-4 space-y-4">
+          {/* AI Health Report */}
+          {patientHistory?.aiDiagnosisSummary && (
+            <Card className="border-purple-200 bg-purple-50/50">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-purple-900 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  تقرير الذكاء الاصطناعي
+                </h3>
+                <div className="flex bg-white rounded-lg p-1 border border-purple-100">
+                  <button 
+                    onClick={() => setAiLang('ar')}
+                    className={`px-2 py-0.5 text-[10px] rounded-md transition-all ${aiLang === 'ar' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 hover:bg-purple-50'}`}
+                  >عربي</button>
+                  <button 
+                    onClick={() => setAiLang('en')}
+                    className={`px-2 py-0.5 text-[10px] rounded-md transition-all ${aiLang === 'en' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 hover:bg-purple-50'}`}
+                  >EN</button>
+                </div>
+              </div>
+              <div className="text-sm text-purple-900 leading-relaxed max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                {(() => {
+                  try {
+                    const parsed = JSON.parse(patientHistory.aiDiagnosisSummary);
+                    return aiLang === 'ar' ? parsed.analysis_ar : parsed.analysis_en;
+                  } catch {
+                    return patientHistory.aiDiagnosisSummary;
+                  }
+                })()}
+              </div>
+            </Card>
+          )}
+
           {/* SOS Bar */}
           <Card className="bg-red-50 border-red-200">
             <div className="flex items-center gap-2 text-red-700 font-bold mb-2">

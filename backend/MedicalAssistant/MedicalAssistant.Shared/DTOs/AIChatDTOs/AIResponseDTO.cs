@@ -23,9 +23,15 @@ public record AIResponseDTO(
     [property: JsonPropertyName("gemini_reply")]
     string GeminiReply,
 
+    [property: JsonPropertyName("model_used")]
+    string ModelUsed,
+
     [property: JsonPropertyName("matches")]
     List<MatchResult> Matches,
 
     [property: JsonPropertyName("low_confidence")]
-    bool LowConfidence
+    bool LowConfidence,
+
+    [property: JsonPropertyName("is_medical")]
+    bool IsMedical
 );
