@@ -50,6 +50,9 @@ npm-debug.log*
 *.pfx
 *.certificate
 
+
+
+
 # === Other Tools ===
 .dotnet/
 .expo_home
