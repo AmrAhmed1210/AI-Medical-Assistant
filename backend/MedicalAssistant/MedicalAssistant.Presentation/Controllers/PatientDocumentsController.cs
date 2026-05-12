@@ -71,7 +71,7 @@ namespace MedicalAssistant.Presentation.Controllers
         // POST /api/patients/{id}/documents/upload
         [HttpPost("patients/{id:int}/documents/upload")]
         [Authorize(Roles = "Doctor,Patient")]
-        public async Task<IActionResult> UploadForPatient(int id, IFormFile file, [FromForm] string documentType, [FromForm] string title, [FromForm] string? description = null)
+        public async Task<IActionResult> UploadForPatient(int id, [FromForm] IFormFile file, [FromForm] string documentType, [FromForm] string title, [FromForm] string? description = null)
         {
             if (!IsDoctorOrOwner(id)) return Forbid();
             if (file == null || file.Length == 0) return BadRequest(new { message = "No file provided." });

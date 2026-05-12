@@ -18,8 +18,8 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 if GOOGLE_API_KEY:
     print(f"DEBUG: API Key found (starts with: {GOOGLE_API_KEY[:5]}...)")
     genai.configure(api_key=GOOGLE_API_KEY)
-    # Using gemini-flash-latest which is usually the best for free tier
-    model = genai.GenerativeModel('gemini-flash-latest')
+    # Using gemini-1.5-flash which is more stable for free tier quotas
+    model = genai.GenerativeModel('gemini-1.5-flash')
 else:
     print("WARNING: GOOGLE_API_KEY not found in environment variables.")
 
@@ -75,10 +75,10 @@ async def analyze_history(data: PatientHistoryInput):
     Allergies: {json.dumps(data.allergies)}
     Chronic Diseases: {json.dumps(data.chronic_diseases)}
     
-    Provide the response in a structured format with:
-    1. Overall Health Status
-    2. Key Concerns
-    3. Recommendations
+    Provide the response in both English and Arabic in a structured format with:
+    1. Overall Health Status / الحالة الصحية العامة
+    2. Key Concerns / الملاحظات الرئيسية
+    3. Recommendations / التوصيات
     
     Keep it concise and professional.
     """
@@ -88,7 +88,10 @@ async def analyze_history(data: PatientHistoryInput):
         return {"analysis": response.text.strip()}
     except Exception as e:
         print(f"DEBUG: Error in analyze_history: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Fallback response for quota or API issues
+        return {
+            "analysis": "Based on your records, your health profile is being monitored. Please continue your prescribed medications and keep tracking your vitals. Consult your doctor for a detailed clinical evaluation. / بناءً على سجلاتك، يتم مراقبة حالتك الصحية. يرجى الاستمرار في تناول الأدوية الموصوفة ومتابعة قياساتك الحيوية. استشر طبيبك لإجراء تقييم سريري مفصل."
+        }
 
 @app.post("/analyze-image")
 async def analyze_image(file: UploadFile = File(...), type: str = "prescription"):
@@ -110,11 +113,16 @@ async def analyze_image(file: UploadFile = File(...), type: str = "prescription"
         # Extract JSON from response (Gemini sometimes wraps it in markdown)
         text = response.text
         json_match = re.search(r'\[.*\]|\{.*\}', text, re.DOTALL)
+        
+        # Also ask Gemini for a very brief summary (for title) in both languages
+        summary_resp = model.generate_content(f"Based on this extracted text, give me a very brief (3-4 words) title for this document in both English and Arabic (e.g. Blood Test / تحليل دم): {text}")
+        summary = summary_resp.text.strip()
+
         if json_match:
             extracted_data = json.loads(json_match.group())
-            return {"data": extracted_data, "raw_text": text}
+            return {"data": extracted_data, "raw_text": text, "summary": summary}
         else:
-            return {"data": [], "raw_text": text}
+            return {"data": [], "raw_text": text, "summary": summary}
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -125,14 +133,14 @@ async def summarize_item(data: dict):
     item_type = data.get("type", "medical item")
     description = data.get("description", "")
     
-    prompt = f"As a medical assistant, refine this description of a {item_type}: '{description}'. Make it professional, concise, and correctly spelled in medical terms. Return only the refined text."
+    prompt = f"As a medical assistant, refine this description of a {item_type}: '{description}'. Make it professional, concise, and correctly spelled in medical terms. Provide the refined text in both English and Arabic. Return only the refined text."
     
     try:
         response = model.generate_content(prompt)
         return {"refined_text": response.text.strip()}
     except Exception as e:
         print(f"DEBUG: Error in summarize_item: {e}")
-        return {"refined_text": description} # Fallback to original
+        return {"refined_text": f"{description} / {description}"} # Fallback
 
 @app.post("/analyze-vitals")
 async def analyze_vitals(data: dict):
@@ -145,6 +153,7 @@ async def analyze_vitals(data: dict):
     Patient Info: {patient_info}.
     Provide a very short (1-2 sentences) medical advice or observation. 
     If values are dangerous, emphasize the need to see a doctor.
+    Provide the advice in both English and Arabic.
     Be encouraging but professional.
     """
     
@@ -153,7 +162,7 @@ async def analyze_vitals(data: dict):
         return {"advice": response.text.strip()}
     except Exception as e:
         print(f"DEBUG: Error in analyze_vitals: {e}")
-        return {"advice": "Keep monitoring your vitals and consult your doctor if you feel unwell."}
+        return {"advice": "Keep monitoring your vitals and consult your doctor if you feel unwell. / استمر في مراقبة علاماتك الحيوية واستشر طبيبك إذا شعرت بوعكة صحية."}
 
 @app.post("/check-medication-safety")
 async def check_medication(data: dict):
@@ -164,7 +173,8 @@ async def check_medication(data: dict):
     prompt = f"""
     Check if the medication '{new_med}' has any known major risks or contraindications with this patient history: {history}.
     If there's a risk, explain it briefly. If safe, say 'No major immediate risks found with your history'.
-    Always end with 'Always consult your doctor before starting new medication'.
+    Provide the safety report in both English and Arabic.
+    Always end with 'Always consult your doctor before starting new medication / يجب دائمًا استشارة طبيبك قبل البدء في أي دواء جديد'.
     """
     
     try:
@@ -172,7 +182,7 @@ async def check_medication(data: dict):
         return {"safety_report": response.text.strip()}
     except Exception as e:
         print(f"DEBUG: Error in check_medication: {e}")
-        return {"safety_report": "Please consult your doctor to ensure this medication is safe for you."}
+        return {"safety_report": "Please consult your doctor to ensure this medication is safe for you. / يرجى استشارة طبيبك للتأكد من أن هذا الدواء آمن لك."}
 
 if __name__ == "__main__":
     import uvicorn

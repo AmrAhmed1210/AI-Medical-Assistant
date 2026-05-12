@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { API } from "../constants/api";
 import { apiFetch } from "./http";
 
@@ -202,14 +203,20 @@ export const uploadPatientDocument = async (
 ): Promise<PatientDocument> => {
   const formData = new FormData();
 
+  const cleanUri = Platform.OS === 'android' ? uri : uri.replace('file://', '');
   const filename = uri.split("/").pop() || "document.jpg";
-  const match = /\.(\w+)$/.exec(filename);
-  const type = match ? `image/${match[1]}` : "image/jpeg";
+  const type = "image/jpeg"; // Most common, or extract from extension
 
-  formData.append("file", { uri, name: filename, type } as any);
+  formData.append("file", { 
+    uri: uri, 
+    name: filename, 
+    type: type 
+  } as any);
   formData.append("documentType", documentType);
   formData.append("title", title);
   if (description) formData.append("description", description);
+
+  console.log("[DocumentUpload] Uploading:", { filename, documentType, title });
 
   return apiFetch<any>(API.records.documentUpload(patientId), { method: "POST", body: formData }, true);
 };
