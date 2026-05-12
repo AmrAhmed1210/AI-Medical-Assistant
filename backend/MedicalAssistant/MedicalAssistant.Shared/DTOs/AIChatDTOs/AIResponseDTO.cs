@@ -33,5 +33,11 @@ public record AIResponseDTO(
     bool LowConfidence,
 
     [property: JsonPropertyName("is_medical")]
-    bool IsMedical
+    bool IsMedical,
+
+    [property: JsonPropertyName("disclaimer")]
+    string Disclaimer,
+
+    [property: JsonPropertyName("language")]
+    string Language
 );
