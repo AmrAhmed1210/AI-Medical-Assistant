@@ -9,6 +9,7 @@ using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.Settings;
 using MedicalAssistant.Web.Filters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -22,15 +23,9 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // =========================
-        // Controllers
-        // =========================
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
 
-        // =========================
-        // Swagger + JWT Support
-        // =========================
         builder.Services.AddSwaggerGen(c =>
         {
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -61,16 +56,11 @@ public class Program
             c.OperationFilter<SwaggerFileUploadFilter>();
         });
 
-        // =========================
-        // Database (choose provider by connection string)
-        // =========================
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("DefaultConnection is missing");
 
         builder.Services.AddDbContext<MedicalAssistantDbContext>(options =>
         {
-            // If the connection string looks like Postgres (Host= or Username/User Id), use Npgsql.
-            // Otherwise assume SQL Server for local development (Server=...)
             if (connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
                 || connectionString.Contains("Username=", StringComparison.OrdinalIgnoreCase)
                 || connectionString.Contains("User Id=", StringComparison.OrdinalIgnoreCase)
@@ -84,9 +74,6 @@ public class Program
             }
         });
 
-        // =========================
-        // JWT Authentication
-        // =========================
         var jwtKey = builder.Configuration["Jwt:Key"]
             ?? throw new InvalidOperationException("JWT Key is missing");
 
@@ -101,10 +88,10 @@ public class Program
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = builder.Configuration["Jwt:Issuer"],
                     ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtKey))
                 };
 
-                // SignalR token support
                 options.Events = new JwtBearerEvents
                 {
                     OnMessageReceived = context =>
@@ -125,24 +112,15 @@ public class Program
 
         builder.Services.AddAuthorization();
 
-        // =========================
-        // SignalR
-        // =========================
         builder.Services.AddSignalR();
-        builder.Services.AddSingleton<Microsoft.AspNetCore.SignalR.IUserIdProvider, CustomUserIdProvider>();
+        builder.Services.AddSingleton<IUserIdProvider, CustomUserIdProvider>();
 
-        // =========================
-        // Repositories
-        // =========================
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
         builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         builder.Services.AddScoped<IDoctorRepository, DoctorRepository>();
         builder.Services.AddScoped<IPatientRepository, PatientRepository>();
         builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 
-        // =========================
-        // Services
-        // =========================
         builder.Services.AddScoped<IPatientService, PatientService>();
         builder.Services.AddScoped<IAppointmentService, AppointmentService>();
         builder.Services.AddScoped<IDoctorService, DoctorService>();
@@ -157,27 +135,34 @@ public class Program
         builder.Services.AddScoped<IPatientVisitService, PatientVisitService>();
         builder.Services.AddScoped<ISecretaryService, SecretaryService>();
 
-        // =========================
-        // Cloudinary
-        // =========================
+        var pythonServiceUrl =
+            builder.Configuration["AIService:Url"]
+            ?? builder.Configuration["MEDICAL_AI_URL"]
+            ?? "https://medicalassistantai-production.up.railway.app";
+
+        builder.Services.AddHttpClient<IMedicalAiService, MedicalAiService>(client =>
+        {
+            client.BaseAddress = new Uri(pythonServiceUrl);
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
+
         builder.Services.Configure<CloudinarySettings>(
             builder.Configuration.GetSection("CloudinarySettings"));
 
-        // =========================
-        // AutoMapper  Fixed for v16.x
-        // =========================
         builder.Services.AddAutoMapper(cfg => { }, typeof(DoctorProfile));
 
-        // =========================
-        // CORS
-        // =========================
-        var corsOrigins = builder.Configuration.GetSection("CorsOrigins").Get<string[]>()
-            ?? new[] { "http://localhost:3000", "http://localhost:5173" };
+        var corsOrigins =
+            builder.Configuration.GetSection("CorsOrigins").Get<string[]>()
+            ?? new[]
+            {
+                "http://localhost:3000",
+                "http://localhost:5173"
+            };
 
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowAll", policy =>
-                policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "https://ai-medical-assistant-production-38a3.up.railway.app")
+                policy.WithOrigins(corsOrigins)
                       .AllowAnyMethod()
                       .AllowAnyHeader()
                       .AllowCredentials());
@@ -185,38 +170,43 @@ public class Program
 
         var app = builder.Build();
 
-        // =========================
-        // Middleware
-        // =========================
-        
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        
+        app.UseSwagger();
+        app.UseSwaggerUI();
 
         app.UseCors("AllowAll");
+
         app.UseAuthentication();
         app.UseAuthorization();
+
         app.MapControllers();
         app.MapHub<NotificationHub>("/hubs/notifications");
 
-        // =========================
-        // Apply Migrations (Auto-Migration)
-        // =========================
         using (var scope = app.Services.CreateScope())
         {
             var services = scope.ServiceProvider;
             var logger = services.GetRequiredService<ILogger<Program>>();
+
             try
             {
                 logger.LogInformation("Starting database migration...");
-                var context = services.GetRequiredService<MedicalAssistantDbContext>();
-                
-                var pendingMigrations = context.Database.GetPendingMigrations().ToList();
+
+                var context =
+                    services.GetRequiredService<MedicalAssistantDbContext>();
+
+                var pendingMigrations =
+                    context.Database.GetPendingMigrations().ToList();
+
                 if (pendingMigrations.Any())
                 {
-                    logger.LogInformation("Found {Count} pending migrations: {Migrations}", pendingMigrations.Count, string.Join(", ", pendingMigrations));
+                    logger.LogInformation(
+                        "Found {Count} pending migrations: {Migrations}",
+                        pendingMigrations.Count,
+                        string.Join(", ", pendingMigrations));
+
                     context.Database.Migrate();
-                    logger.LogInformation("Database migration completed successfully.");
+
+                    logger.LogInformation(
+                        "Database migration completed successfully.");
                 }
                 else
                 {
@@ -225,8 +215,9 @@ public class Program
             }
             catch (Exception ex)
             {
-                logger.LogCritical(ex, "FATAL ERROR: Database migration failed!");
-                // Optional: throw; // Uncomment this if you want the app to fail-fast if migration fails
+                logger.LogCritical(
+                    ex,
+                    "FATAL ERROR: Database migration failed!");
             }
         }
 
