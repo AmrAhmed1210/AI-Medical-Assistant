@@ -30,7 +30,7 @@ const TAB_COLORS: Record<string, string> = {
   medications: "#F59E0B",
   vitals: "#0EA5E9",
   surgeries: "#8B5CF6",
-  documents: "#EC4899",
+  documents: "#6366F1",
 };
 
 const TAB_BG: Record<string, string> = {
@@ -39,7 +39,7 @@ const TAB_BG: Record<string, string> = {
   medications: "#FFF7ED",
   vitals: "#F0F9FF",
   surgeries: "#F5F3FF",
-  documents: "#FDF2F8",
+  documents: "#EEF2FF",
 };
 
 export default function MedicalRecordsCategory() {
@@ -80,7 +80,7 @@ export default function MedicalRecordsCategory() {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(folder || null);
 
   const DOCUMENT_FOLDERS = [
-    { id: "Blood Test", label: "Blood Tests", icon: "water-outline", color: "#EF4444" },
+    { id: "Blood Test", label: "Blood Tests", icon: "water-outline", color: "#6366F1" },
     { id: "X-Ray", label: "X-Rays / Scans", icon: "scan-outline", color: "#6366F1" },
     { id: "MRI", label: "MRI / CT", icon: "layers-outline", color: "#8B5CF6" },
     { id: "Prescription", label: "Prescriptions", icon: "receipt-outline", color: "#10B981" },

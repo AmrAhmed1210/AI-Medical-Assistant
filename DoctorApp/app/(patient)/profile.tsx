@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, TextInput, Modal, Alert, ActivityIndicator, Image,
@@ -23,9 +23,11 @@ import { useLanguage } from "../../context/LanguageContext";
 
 // Import services
 import { getMyProfile, updateMyProfile, Profile, uploadProfilePhoto } from "../../services/profileService";
-import { getMyAppointments, Appointment, cancelAppointment } from "../../services/appointmentService";
+import { getMyAppointments, Appointment, cancelAppointment, deleteAppointment } from "../../services/appointmentService";
 import { scheduleAppointmentReminders } from "../../services/appointmentReminders";
 import { getMyVisits, PatientVisit } from "../../services/visitService";
+import { getDoctorById, DoctorDetails } from "../../services/doctorService";
+import { getFollowedDoctorIds } from "../../services/followService";
 import { logout, getMyPatientId } from "../../services/authService";
 import { addNotification } from "../../services/notificationService";
 import { startSupportSession } from "../../services/sessionService";
@@ -33,14 +35,39 @@ import { getChronicDiseases, getSurgeries, getAllergies, AllergyRecord, ChronicD
 
 const { width, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
+const normalizeStatus = (status?: string) => (status || "").trim().toLowerCase();
+
+const getAppointmentDateTime = (appt: Appointment) => {
+  const raw = `${appt.date || ""} ${appt.time || ""}`.trim();
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const isActiveBooking = (appt: Appointment) => {
+  const status = normalizeStatus(appt.status);
+  return (status === "pending" || status === "confirmed") && !(appt as any).isAutoCancelled;
+};
+
+const isPastBooking = (appt: Appointment) => {
+  const status = normalizeStatus(appt.status);
+  return status === "cancelled" || status === "completed" || status === "noshow" || !!(appt as any).isAutoCancelled;
+};
+
+const formatBookingDate = (appt: Appointment) => {
+  const date = getAppointmentDateTime(appt);
+  if (!date) return appt.date || "No date";
+  return date.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+};
+
 export default function ProfileScreen() {
   const router = useRouter();
-  const { tr, isRTL, lang, setLang } = useLanguage() as any;
+  const { tr, isRTL, lang, switchLanguage } = useLanguage();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [visits, setVisits] = useState<PatientVisit[]>([]);
+  const [followedDoctors, setFollowedDoctors] = useState<DoctorDetails[]>([]);
 
   const [chronicDiseases, setChronicDiseases] = useState<ChronicDisease[]>([]);
   const [surgeries, setSurgeries] = useState<SurgeryRecord[]>([]);
@@ -70,7 +97,7 @@ export default function ProfileScreen() {
   const DOCUMENT_FOLDERS = [
     { id: "Blood Test", label: "Blood", icon: "water", color: "#EF4444", bg: "#FEF2F2" },
     { id: "X-Ray", label: "Scans", icon: "scan", color: "#6366F1", bg: "#EEF2FF" },
-    { id: "MRI", label: "MRI/CT", icon: "layers", color: "#8B5CF6", bg: "#F5F3FF" },
+    { id: "MRI", label: "MRI/CT", icon: "layers", color: "#0EA5E9", bg: "#EFF6FF" },
     { id: "Prescription", label: "Scripts", icon: "receipt", color: "#10B981", bg: "#ECFDF5" },
     { id: "Other", label: "Other", icon: "document-text", color: "#64748B", bg: "#F1F5F9" },
   ];
@@ -79,10 +106,14 @@ export default function ProfileScreen() {
     try {
       setLoading(true);
       const pid = await getMyPatientId();
-      const [p, appts, v] = await Promise.all([
+      const [p, appts, v, followed] = await Promise.all([
         getMyProfile().catch(() => null),
         getMyAppointments().catch(() => []),
         getMyVisits().catch(() => []),
+        getFollowedDoctorIds()
+          .then((ids) => Promise.all(ids.map((id) => getDoctorById(id).catch(() => null))))
+          .then((items) => items.filter((item): item is DoctorDetails => item !== null))
+          .catch(() => []),
       ]);
 
       if (p) {
@@ -99,7 +130,6 @@ export default function ProfileScreen() {
         });
       }
       
-      // Auto-cancel past pending appointments with robust parsing
       const now = new Date();
       const processedAppts = (appts || []).map(a => {
         const status = a.status?.toLowerCase() || "";
@@ -125,8 +155,8 @@ export default function ProfileScreen() {
 
       setAppointments(processedAppts);
       setVisits(v || []);
+      setFollowedDoctors(followed || []);
 
-      // Schedule reminders for the upcoming bookings
       const futureOnly = processedAppts.filter(a => 
         (a.status?.toLowerCase() === "pending" || a.status?.toLowerCase() === "confirmed") && 
         !((a as any).isAutoCancelled)
@@ -134,8 +164,6 @@ export default function ProfileScreen() {
       scheduleAppointmentReminders(futureOnly.slice(0, 5));
 
       const anyAutoCancelled = processedAppts.some((a: any) => a.isAutoCancelled);
-      
-      // Only notify if something was newly auto-cancelled in this session
       const lastNotifiedKey = "@last_auto_cancel_notif";
       const lastNotified = await AsyncStorage.getItem(lastNotifiedKey);
       const currentCancelIds = processedAppts.filter((a: any) => a.isAutoCancelled).map(a => a.id).join(',');
@@ -175,6 +203,20 @@ export default function ProfileScreen() {
     fetchAll();
   }, []);
 
+  const activeBookings = useMemo(
+    () => appointments
+      .filter(isActiveBooking)
+      .sort((a, b) => (getAppointmentDateTime(a)?.getTime() || 0) - (getAppointmentDateTime(b)?.getTime() || 0)),
+    [appointments]
+  );
+
+  const pastBookings = useMemo(
+    () => appointments
+      .filter(isPastBooking)
+      .sort((a, b) => (getAppointmentDateTime(b)?.getTime() || 0) - (getAppointmentDateTime(a)?.getTime() || 0)),
+    [appointments]
+  );
+
   const handleUpdateProfile = async () => {
     try {
       if (!profile) return;
@@ -191,10 +233,10 @@ export default function ProfileScreen() {
         editData.smokingStatus
       );
       setEditModalVisible(false);
-      Toast.show({ type: "success", text1: tr("success"), text2: "Profile updated successfully" });
+      Toast.show({ type: "success", text1: "Success", text2: "Profile updated successfully" });
       fetchAll();
     } catch (err: any) {
-      Alert.alert(tr("error"), err.message || "Failed to update profile.");
+      Alert.alert("Error", err.message || "Failed to update profile.");
     } finally {
       setUpdating(false);
     }
@@ -214,7 +256,6 @@ export default function ProfileScreen() {
 
   const pickImage = async (useCamera: boolean) => {
     try {
-      // Permission check
       if (useCamera) {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
@@ -222,18 +263,15 @@ export default function ProfileScreen() {
           return;
         }
       }
-
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.7,
       };
-
       const result = useCamera 
         ? await ImagePicker.launchCameraAsync(options)
         : await ImagePicker.launchImageLibraryAsync(options);
-
       if (!result.canceled && result.assets && result.assets[0].uri) {
         setPhotoUploading(true);
         await uploadProfilePhoto(result.assets[0].uri);
@@ -270,12 +308,23 @@ export default function ProfileScreen() {
 
   const removeBookingLocally = async (id: number) => {
     try {
-      await cancelAppointment(id); // REAL DELETE FROM SERVER
+      await deleteAppointment(id);
       setAppointments(prev => prev.filter(a => a.id !== id));
-      Toast.show({ type: "success", text1: "Booking Removed", text2: "History has been updated" });
+      Toast.show({ type: "success", text1: "Booking Deleted", text2: "Removed from the server" });
     } catch (error) {
       console.error("Failed to delete booking", error);
       Toast.show({ type: "error", text1: "Delete Failed", text2: "Could not remove from server" });
+    }
+  };
+
+  const cancelBookingLocally = async (id: number) => {
+    try {
+      const updated = await cancelAppointment(id);
+      setAppointments(prev => prev.map(a => a.id === id ? { ...a, ...updated, status: updated.status || "Cancelled" } : a));
+      Toast.show({ type: "info", text1: "Booking Cancelled", text2: "Moved to past bookings" });
+    } catch (error) {
+      console.error("Failed to cancel booking", error);
+      Toast.show({ type: "error", text1: "Cancel Failed", text2: "Could not cancel booking" });
     }
   };
 
@@ -283,7 +332,6 @@ export default function ProfileScreen() {
     return <View style={styles.center}><ActivityIndicator size="large" color="#059669" /></View>;
   }
 
-  // Header Parallax Interpolations
   const headerTranslateY = scrollY.interpolate({
     inputRange: [0, 200],
     outputRange: [0, -80],
@@ -330,7 +378,7 @@ export default function ProfileScreen() {
           <TouchableOpacity onPress={() => router.push("/(patient)/vitals" as any)} style={styles.headerActionBtn}>
             <Activity size={18} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setLang(lang === 'ar' ? 'en' : 'ar')} style={styles.headerActionBtn}>
+          <TouchableOpacity onPress={() => switchLanguage(lang === 'ar' ? 'en' : 'ar')} style={styles.headerActionBtn}>
             <Globe size={18} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -362,7 +410,6 @@ export default function ProfileScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#059669" />}
       >
         <View style={styles.contentOverlap}>
-          {/* PROFILE CARD - NOW STABLE */}
           <View style={styles.profileCardWrap}>
             <Animated.View style={[styles.glassProfileCard, { transform: [{ scale: avatarScale }, { translateY: avatarTranslateY }] }]}>
               <LinearGradient colors={["rgba(255,255,255,1)", "rgba(252,255,254,0.98)"]} style={styles.cardGlassOverlay} />
@@ -397,7 +444,6 @@ export default function ProfileScreen() {
             </Animated.View>
           </View>
 
-          {/* TABS */}
           <View style={styles.tabsContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
               <TabItem label={tr("info")} active={activeTab === "info"} onPress={() => setActiveTab("info")} icon={User} />
@@ -407,7 +453,6 @@ export default function ProfileScreen() {
             </ScrollView>
           </View>
 
-          {/* SECTIONS */}
           <View style={styles.contentArea}>
             {activeTab === "info" && (
               <View style={styles.section}>
@@ -438,33 +483,44 @@ export default function ProfileScreen() {
 
             {activeTab === "activity" && (
               <View style={styles.section}>
-                {/* Upcoming Bookings Section */}
                 <View style={styles.activitySubHeader}>
                   <Calendar size={18} color="#059669" />
                   <Text style={styles.activitySubTitle}>Upcoming Appointments</Text>
                 </View>
-                
-                {appointments.filter(a => (a.status === "Pending" || a.status === "Confirmed") && !((a as any).isAutoCancelled)).length === 0 ? 
+                {activeBookings.length === 0 ? 
                   <EmptyState icon={Calendar} text={tr("no_active_bookings")} /> :
-                  appointments.filter(a => (a.status === "Pending" || a.status === "Confirmed") && !((a as any).isAutoCancelled))
-                    .map(appt => <BookingCard key={appt.id} appt={appt} tr={tr} onDelete={removeBookingLocally} />)}
+                  activeBookings.map(appt => (
+                    <BookingCard
+                      key={appt.id}
+                      appt={appt}
+                      tr={tr}
+                      variant="active"
+                      onCancel={cancelBookingLocally}
+                      onDelete={removeBookingLocally}
+                    />
+                  ))}
 
-                {/* Past Bookings Section */}
                 <View style={[styles.activitySubHeader, { marginTop: 20 }]}>
                   <History size={18} color="#94A3B8" />
                   <Text style={[styles.activitySubTitle, { color: '#64748B' }]}>Past & Expired Bookings</Text>
                 </View>
-
-                {appointments.filter(a => a.status === "Cancelled" || a.status === "Completed" || (a as any).isAutoCancelled).length === 0 ?
+                {pastBookings.length === 0 ?
                   <Text style={styles.emptyHistoryTxt}>No past booking activity</Text> :
-                  appointments.filter(a => a.status === "Cancelled" || a.status === "Completed" || (a as any).isAutoCancelled)
-                    .map(appt => <BookingCard key={appt.id} appt={appt} tr={tr} onDelete={removeBookingLocally} />)}
+                  pastBookings.map(appt => (
+                    <BookingCard
+                      key={appt.id}
+                      appt={appt}
+                      tr={tr}
+                      variant="past"
+                      onCancel={cancelBookingLocally}
+                      onDelete={removeBookingLocally}
+                    />
+                  ))}
               </View>
             )}
 
             {activeTab === "history" && (
               <View style={styles.section}>
-                {/* Folders Section */}
                 <View style={styles.activitySubHeader}>
                   <FolderOpen size={18} color="#059669" />
                   <Text style={styles.activitySubTitle}>Medical Records & Files</Text>
@@ -489,31 +545,24 @@ export default function ProfileScreen() {
                   <Text style={styles.activitySubTitle}>General Health History</Text>
                 </View>
                 <HistoryCard icon={HeartPulse} color="#EF4444" title={tr("chronic_diseases")} items={chronicDiseases.map(d => d.diseaseName)} onAdd={() => router.push({ pathname: "/(patient)/medical-records/[category]", params: { category: "chronic" } } as any)} />
-                <HistoryCard icon={ClipboardList} color="#6366F1" title={tr("surgeries")} items={surgeries.map(s => s.surgeryName)} onAdd={() => router.push({ pathname: "/(patient)/medical-records/[category]", params: { category: "surgeries" } } as any)} />
+                <HistoryCard icon={ClipboardList} color="#0EA5E9" title={tr("surgeries")} items={surgeries.map(s => s.surgeryName)} onAdd={() => router.push({ pathname: "/(patient)/medical-records/[category]", params: { category: "surgeries" } } as any)} />
                 <HistoryCard icon={AlertCircle} color="#F59E0B" title={tr("allergies")} items={allergies.map(a => a.allergenName)} onAdd={() => router.push({ pathname: "/(patient)/medical-records/[category]", params: { category: "allergies" } } as any)} />
               </View>
             )}
 
             {activeTab === "visits" && (
               <View style={styles.section}>
-                {visits.length === 0 ? <EmptyState icon={FileText} text={tr("no_visits")} /> :
-                  visits.map(v => (
-                    <View key={v.id} style={styles.luxuryCard}>
-                      <View style={styles.cardHeader}>
-                        <View style={[styles.cardIcon, { backgroundColor: '#EEF2FF' }]}>
-                          <FileText size={18} color="#6366F1" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.cardName}>{(v as any).doctor || (v as any).doctorName || "Doctor"}</Text>
-                          <Text style={styles.cardSub}>{(v as any).doctorSpecialty || (v as any).specialty || "Specialist"}</Text>
-                        </View>
-                        <Text style={styles.visitDate}>{v.visitDate ? new Date(v.visitDate).toLocaleDateString() : ""}</Text>
-                      </View>
-                      <Text style={styles.visitDiagnosis} numberOfLines={2}>
-                        {v.chiefComplaint || "No diagnosis recorded"}
-                      </Text>
-                    </View>
-                  ))}
+                <View style={styles.activitySubHeader}>
+                  <HeartPulse size={18} color="#059669" />
+                  <Text style={styles.activitySubTitle}>Followed Doctors</Text>
+                </View>
+                {followedDoctors.length === 0 ? (
+                  <EmptyState icon={FileText} text="No followed doctors yet" />
+                ) : (
+                  followedDoctors.map((doctor) => (
+                    <FollowedDoctorCard key={doctor.id} doctor={doctor} />
+                  ))
+                )}
               </View>
             )}
 
@@ -612,14 +661,43 @@ function InputBox({ label, value, onChange, icon: Icon }: { label: string, value
   );
 }
 
-function BookingCard({ appt, tr, onDelete }: any) {
+function FollowedDoctorCard({ doctor }: { doctor: DoctorDetails }) {
+  const router = useRouter();
+  const photoUrl = doctor.imageUrl || (doctor as any).photoUrl || "https://cdn-icons-png.flaticon.com/512/3774/3774299.png";
+  const rating = Number(doctor.rating || 0).toFixed(1);
+
+  return (
+    <TouchableOpacity
+      style={styles.followedDoctorCard}
+      activeOpacity={0.82}
+      onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { id: doctor.id } } as any)}
+    >
+      <Image source={{ uri: photoUrl }} style={styles.followedDoctorAvatar} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.followedDoctorName} numberOfLines={1}>Dr. {doctor.name}</Text>
+        <Text style={styles.followedDoctorMeta} numberOfLines={1}>{doctor.specialty || "Specialist"}</Text>
+        <View style={styles.followedDoctorStats}>
+          <Star size={12} color="#F59E0B" fill="#F59E0B" />
+          <Text style={styles.followedDoctorStatText}>{rating}</Text>
+          <Text style={styles.followedDoctorDot}>•</Text>
+          <Text style={styles.followedDoctorStatText}>{doctor.yearsExperience || doctor.experience || 0} yrs</Text>
+        </View>
+      </View>
+      <View style={styles.followedDoctorChevron}>
+        <ChevronRight size={18} color="#059669" />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function BookingCard({ appt, variant, onCancel, onDelete }: any) {
   const router = useRouter();
   const isConfirmed = appt.status?.toLowerCase() === "confirmed";
   const isPending = appt.status?.toLowerCase() === "pending";
   const isCancelled = appt.status?.toLowerCase() === "cancelled" || (appt as any).isAutoCancelled;
   const isCompleted = appt.status?.toLowerCase() === "completed";
+  const isActive = variant === "active";
 
-  // Define colors based on status
   let cardBg = ["#F8FAFC", "#fff"];
   let iconBg = "#F1F5F9";
   let iconColor = "#64748B";
@@ -627,7 +705,7 @@ function BookingCard({ appt, tr, onDelete }: any) {
   let statusText = "#64748B";
 
   if (isConfirmed) {
-    cardBg = ["#F0FDF4", "#fff"];
+    cardBg = ["#ECFDF5", "#fff"];
     iconBg = "#DCFCE7";
     iconColor = "#059669";
     statusBg = "#059669";
@@ -647,7 +725,7 @@ function BookingCard({ appt, tr, onDelete }: any) {
   }
 
   return (
-    <View style={styles.bookingCardModern}>
+    <View style={[styles.bookingCardModern, isActive && styles.bookingCardActive]}>
       <LinearGradient colors={cardBg as any} style={styles.bookingCardGradient}>
         <View style={styles.cardHeader}>
           <View style={[styles.cardIconBox, { backgroundColor: iconBg }]}>
@@ -665,16 +743,21 @@ function BookingCard({ appt, tr, onDelete }: any) {
         <View style={styles.bookingInfoRow}>
           <View style={styles.infoPill}>
             <Ionicons name="calendar" size={14} color="#64748B" />
-            <Text style={styles.infoPillText}>{appt.date}</Text>
+            <Text style={styles.infoPillText}>{formatBookingDate(appt)}</Text>
           </View>
           <View style={styles.infoPill}>
             <Ionicons name="time" size={14} color="#64748B" />
             <Text style={styles.infoPillText}>{appt.time}</Text>
           </View>
+          {appt.paymentMethod ? (
+            <View style={styles.infoPill}>
+              <CreditCard size={14} color="#64748B" />
+              <Text style={styles.infoPillText}>{appt.paymentMethod}</Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.bookingActionRowModern}>
-          {/* Cancel button only for future active bookings */}
           {!isCancelled && !isCompleted && (isPending || isConfirmed) ? (
             <TouchableOpacity 
               style={styles.cancelBookingActionBtn}
@@ -682,8 +765,7 @@ function BookingCard({ appt, tr, onDelete }: any) {
                 Alert.alert("Cancel Booking", "Are you sure you want to cancel this appointment?", [
                   { text: "No", style: "cancel" },
                   { text: "Yes, Cancel", style: "destructive", onPress: () => {
-                    onDelete(appt.id);
-                    Toast.show({ type: "info", text1: "Booking Cancelled" });
+                    onCancel(appt.id);
                   }}
                 ]);
               }}
@@ -705,8 +787,8 @@ function BookingCard({ appt, tr, onDelete }: any) {
             style={styles.deleteBookingBtn} 
             onPress={() => {
               Alert.alert(
-                "Remove from History",
-                "Are you sure you want to remove this record?",
+                "Delete Booking",
+                "This will permanently delete this booking from the server.",
                 [
                   { text: "Cancel", style: "cancel" },
                   { text: "Delete", style: "destructive", onPress: () => onDelete(appt.id) }
@@ -790,80 +872,75 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: 12, fontWeight: '700', color: '#1E293B', marginTop: 1 },
   supportBtn: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#FFFBEB', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#FEF3C7' },
   supportIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 3 },
-  supportText: { flex: 1, fontSize: 13, fontWeight: '900', color: '#92400E' },
-  luxuryBtn: { marginTop: 5 },
-  btnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, height: 58, borderRadius: 24, elevation: 8, shadowColor: '#059669', shadowOpacity: 0.3 },
-  btnText: { color: '#fff', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
-  historyCard: { backgroundColor: '#fff', borderRadius: 28, padding: 20, elevation: 8, shadowOpacity: 0.05, borderWidth: 1, borderColor: '#F8FAFC' },
-  historyHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 15 },
-  historyIconCircle: { width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  historyTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', flex: 1 },
-  miniAddBtn: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center' },
-  historyItemsList: { paddingLeft: 8 },
-  historyItemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 10 },
-  luxuryBullet: { width: 6, height: 6, borderRadius: 3 },
-  historyTextContent: { fontSize: 14, color: '#475569', fontWeight: '500' },
-  historyEmpty: { fontSize: 13, color: '#94A3B8', fontStyle: 'italic', paddingLeft: 16 },
-  bookingCardModern: { backgroundColor: '#fff', borderRadius: 28, marginBottom: 18, elevation: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15, overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
-  bookingCardGradient: { padding: 20 },
+  supportText: { fontSize: 13, fontWeight: '700', color: '#92400E', flex: 1 },
+  luxuryBtn: { marginTop: 10, borderRadius: 24, overflow: 'hidden', elevation: 8, shadowColor: '#059669', shadowOpacity: 0.2, shadowRadius: 15 },
+  btnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
+  btnText: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
+  activitySubHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 5 },
+  activitySubTitle: { fontSize: 13, fontWeight: '800', color: '#064E3B', letterSpacing: -0.2 },
+  emptyBox: { alignItems: 'center', paddingVertical: 40, gap: 10 },
+  emptyText: { color: '#94A3B8', fontSize: 13, fontWeight: '600' },
+  emptyHistoryTxt: { color: '#94A3B8', fontSize: 12, textAlign: 'center', paddingVertical: 20, fontStyle: 'italic' },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 30, paddingVertical: 15, borderRadius: 20, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FEE2E2' },
+  logoutText: { color: '#EF4444', fontSize: 14, fontWeight: '800' },
+  fabContainer: { position: 'absolute', bottom: 30, right: 25, alignItems: 'flex-end', gap: 15, zIndex: 9999 },
+  quickAddMenu: { backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 24, padding: 8, gap: 4, elevation: 20, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+  quickOption: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, paddingRight: 4 },
+  quickOptionLabel: { fontSize: 12, fontWeight: '700', color: '#1E293B' },
+  quickOptionIcon: { width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  shinyFab: { width: 64, height: 64, borderRadius: 32, elevation: 15, shadowColor: '#064E3B', shadowOpacity: 0.3, shadowRadius: 20, overflow: 'hidden' },
+  fabGradient: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
+  fabShine: { position: 'absolute', top: -30, left: -30, width: 60, height: 120, backgroundColor: 'rgba(255,255,255,0.2)', transform: [{ rotate: '45deg' }] },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(6, 78, 59, 0.4)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, height: '85%', padding: 25 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#064E3B' },
+  modalBody: { flex: 1 },
+  inputBox: { marginBottom: 18 },
+  inputLabel: { fontSize: 11, fontWeight: '800', color: '#64748B', marginBottom: 8, textTransform: 'uppercase', marginLeft: 4 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F8FAFC', borderRadius: 18, paddingHorizontal: 16, height: 56, borderWidth: 1, borderColor: '#F1F5F9' },
+  input: { flex: 1, color: '#1E293B', fontSize: 14, fontWeight: '600' },
+  saveBtn: { marginTop: 25, borderRadius: 24, overflow: 'hidden', elevation: 8 },
+  saveBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, height: 64 },
+  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  followedDoctorCard: { flexDirection: 'row', alignItems: 'center', gap: 15, backgroundColor: '#fff', padding: 12, borderRadius: 24, marginBottom: 12, elevation: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15, borderWidth: 1, borderColor: '#F8FAFC' },
+  followedDoctorAvatar: { width: 60, height: 60, borderRadius: 20, backgroundColor: '#F1F5F9' },
+  followedDoctorName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  followedDoctorMeta: { fontSize: 12, color: '#64748B', fontWeight: '600', marginTop: 2 },
+  followedDoctorStats: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+  followedDoctorStatText: { fontSize: 11, color: '#059669', fontWeight: '700' },
+  followedDoctorDot: { fontSize: 11, color: '#CBD5E1' },
+  followedDoctorChevron: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center' },
+  bookingCardModern: { marginBottom: 16, borderRadius: 28, overflow: 'hidden', elevation: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15, borderWidth: 1, borderColor: '#F1F5F9' },
+  bookingCardActive: { elevation: 12, shadowOpacity: 0.1, borderColor: 'rgba(5, 150, 105, 0.2)' },
+  bookingCardGradient: { padding: 18 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 15, marginBottom: 15 },
   cardIconBox: { width: 48, height: 48, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   cardDoctorName: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
   cardSpecialtyText: { fontSize: 12, color: '#64748B', fontWeight: '600', marginTop: 2 },
-  statusTagModern: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
-  statusTagText: { fontSize: 9, fontWeight: '900', color: '#fff' },
-  bookingInfoRow: { flexDirection: 'row', gap: 10, marginTop: 18, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  infoPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' },
-  infoPillText: { fontSize: 11, fontWeight: '700', color: '#475569' },
-  manageBookingBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  bookingActionRowModern: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 },
-  deleteBookingBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-  cancelBookingActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF2F2', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FEE2E2' },
-  cancelBtnText: { fontSize: 11, fontWeight: '800', color: '#EF4444' },
-  manageBtnText: { fontSize: 12, fontWeight: '800', color: '#059669' },
-
-  luxuryCard: { backgroundColor: '#fff', borderRadius: 28, padding: 18, elevation: 6, shadowOpacity: 0.04, borderWidth: 1, borderColor: '#F8FAFC' },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  cardIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center' },
-  cardName: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
-  cardSub: { fontSize: 11, color: '#64748B', fontWeight: '500' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  statusText: { fontSize: 10, fontWeight: '800' },
-  cardFooter: { flexDirection: 'row', gap: 14, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  footerItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  footerText: { fontSize: 11, color: '#64748B', fontWeight: '600' },
-  visitDate: { fontSize: 12, color: '#94A3B8', fontWeight: '700' },
-  visitDiagnosis: { fontSize: 12, color: '#475569', marginTop: 12, lineHeight: 18, fontWeight: '500' },
-  emptyBox: { alignItems: 'center', padding: 40, backgroundColor: '#fff', borderRadius: 28, borderWidth: 1, borderColor: '#F1F5F9', borderStyle: 'dashed' },
-  emptyText: { fontSize: 14, color: '#94A3B8', fontWeight: '700', marginTop: 12 },
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 40, paddingVertical: 18, backgroundColor: '#FEF2F2', borderRadius: 24, borderWidth: 1, borderColor: '#FEE2E2' },
-  logoutText: { color: '#EF4444', fontSize: 15, fontWeight: '700' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(6, 78, 59, 0.4)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 24, maxHeight: '85%', elevation: 20 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: '#064E3B' },
-  modalBody: { gap: 18 },
-  inputBox: { gap: 10 },
-  inputLabel: { fontSize: 14, fontWeight: '800', color: '#64748B', marginLeft: 6 },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#F8FAFC', paddingHorizontal: 18, height: 60, borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9' },
-  input: { flex: 1, fontSize: 14, fontWeight: '700', color: '#1E293B' },
-  saveBtn: { marginTop: 15 },
-  saveBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, height: 60, borderRadius: 20, elevation: 10, shadowColor: '#059669', shadowOpacity: 0.4 },
-  saveBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  fabContainer: { position: 'absolute', bottom: 30, right: 25, alignItems: 'flex-end', zIndex: 1000 },
-  shinyFab: { width: 64, height: 64, borderRadius: 32, elevation: 15, shadowColor: '#059669', shadowOpacity: 0.4, shadowRadius: 15 },
-  fabGradient: { width: '100%', height: '100%', borderRadius: 32, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)' },
-  fabShine: { position: 'absolute', top: -30, left: -30, width: 60, height: 120, transform: [{ rotate: '45deg' }], backgroundColor: 'rgba(255,255,255,0.2)' },
-  quickAddMenu: { marginBottom: 15, gap: 12, alignItems: 'flex-end' },
-  quickOption: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 15, borderRadius: 20, elevation: 8, shadowOpacity: 0.1, borderWidth: 1, borderColor: '#F1F5F9' },
-  quickOptionLabel: { fontSize: 12, fontWeight: '800', color: '#1E293B' },
-  quickOptionIcon: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center', elevation: 5 },
-  activitySubHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15, paddingLeft: 5 },
-  activitySubTitle: { fontSize: 15, fontWeight: '800', color: '#064E3B' },
-  emptyHistoryTxt: { fontSize: 13, color: '#94A3B8', fontStyle: 'italic', textAlign: 'center', marginVertical: 20 },
-
-  // Profile Folders
-  foldersHorizontalScroll: { paddingRight: 20, marginBottom: 15, gap: 12 },
-  profileFolderCard: { width: 90, height: 100 },
-  profileFolderGradient: { flex: 1, borderRadius: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', elevation: 4, shadowOpacity: 0.05 },
-  profileFolderLabel: { fontSize: 10, fontWeight: '800', marginTop: 8 },
+  statusTagModern: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  statusTagText: { fontSize: 10, fontWeight: '800', color: '#fff' },
+  bookingInfoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 15 },
+  infoPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F1F5F9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  infoPillText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
+  bookingActionRowModern: { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 15 },
+  cancelBookingActionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 44, borderRadius: 14, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FEE2E2' },
+  cancelBtnText: { color: '#EF4444', fontSize: 12, fontWeight: '800' },
+  manageBookingBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 44, borderRadius: 14, backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#DCFCE7' },
+  manageBtnText: { color: '#059669', fontSize: 12, fontWeight: '800' },
+  deleteBookingBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  historyCard: { backgroundColor: '#fff', borderRadius: 28, padding: 18, marginBottom: 16, elevation: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15, borderWidth: 1, borderColor: '#F1F5F9' },
+  historyHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 15 },
+  historyIconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  historyTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B', flex: 1 },
+  miniAddBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center', elevation: 3 },
+  historyItemsList: { gap: 8 },
+  historyItemRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  luxuryBullet: { width: 6, height: 6, borderRadius: 3 },
+  historyTextContent: { fontSize: 12, color: '#475569', fontWeight: '600' },
+  historyEmpty: { fontSize: 12, color: '#94A3B8', fontStyle: 'italic', marginLeft: 4 },
+  foldersHorizontalScroll: { paddingVertical: 5 },
+  profileFolderCard: { width: 110, height: 110, marginRight: 15, borderRadius: 24, overflow: 'hidden', elevation: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, borderWidth: 1, borderColor: '#F1F5F9' },
+  profileFolderGradient: { flex: 1, padding: 15, justifyContent: 'center', alignItems: 'center', gap: 10 },
+  profileFolderLabel: { fontSize: 12, fontWeight: '800' },
 });

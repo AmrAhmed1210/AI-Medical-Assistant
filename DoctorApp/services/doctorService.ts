@@ -23,6 +23,26 @@ export interface Doctor {
 export interface DoctorDetails extends Doctor {
   experience?: number;
   bio?: string;
+  schedule?: {
+    doctorId: number;
+    doctorName: string;
+    isMobileEnabled: boolean;
+    isProfileComplete: boolean;
+    hasSchedule: boolean;
+    days: Array<{
+      dayOfWeek: number;
+      dayName: string;
+      startTime: string;
+      endTime: string;
+      isAvailable: boolean;
+      slotDurationMinutes: number;
+      timeSlots: string[];
+    }>;
+    bookedSlots: Array<{
+      date: string;
+      time: string;
+    }>;
+  };
 }
 
 export interface Review {
@@ -65,6 +85,14 @@ export const getReviewsByDoctor = async (doctorId: number | string): Promise<Rev
     date: item.date ?? item.createdAt ?? "",
     isMine: !!item.isMine,
   }));
+};
+
+// ============================================
+// Check if Review Exists
+// ============================================
+export const checkReviewExists = async (doctorId: number | string): Promise<Review | null> => {
+  const reviews = await getReviewsByDoctor(doctorId);
+  return reviews.find(r => r.isMine) || null;
 };
 
 // ============================================
@@ -136,6 +164,9 @@ export const updateMyReview = async (
     date: data?.date ?? data?.createdAt ?? "",
   };
 };
+
+export const submitDoctorReview = addReview;
+export const updateDoctorReview = updateMyReview;
 
 export const deleteMyReview = async (
   doctorId: number,
@@ -212,6 +243,30 @@ export const updateDoctorProfile = async (data: Partial<DoctorProfileDto>): Prom
     })
   }, true);
 };
+
+// ============================================
+// Appointments & Schedule
+// ============================================
+export const getDoctorSchedule = async (doctorId: string | number): Promise<any[]> => {
+  return apiFetch<any[]>(`${API.doctors.availability}/${doctorId}`, { method: "GET" }, false);
+};
+
+export const bookAppointment = async (
+  doctorId: string | number,
+  date: string,
+  time: string,
+  paymentMethod: "visa" | "cash"
+): Promise<any> => {
+  return apiFetch<any>(API.appointments.book, {
+    method: "POST",
+    body: JSON.stringify({
+      doctorId,
+      scheduledAt: date,
+      time,
+      paymentMethod
+    })
+  }, true);
+};
 export const uploadDoctorPhoto = async (uri: string): Promise<string> => {
   const formData = new FormData();
   const filename = uri.split("/").pop() || "photo.jpg";
@@ -224,6 +279,6 @@ export const uploadDoctorPhoto = async (uri: string): Promise<string> => {
     method: "POST",
     body: formData,
   }, true);
-  
+
   return res.photoUrl || res.imageUrl;
 };

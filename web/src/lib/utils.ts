@@ -119,7 +119,7 @@ export function getInitials(name: string) {
 }
 
 export function generateId() {
-  return Math.random().toString(36).substring(2, 9)
+  return crypto.randomUUID().slice(0, 7)
 }
 
 export function debounce<T extends (...args: unknown[]) => unknown>(fn: T, delay: number) {

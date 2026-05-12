@@ -11,6 +11,7 @@ import {
 import { COLORS } from "../../constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter, useFocusEffect } from "expo-router";
+import { BASE_URL } from "../../constants/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../../context/LanguageContext";
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -29,6 +30,15 @@ import { scheduleAppointmentReminders } from "../../services/appointmentReminder
 // Service loaded successfully
 
 const { width } = Dimensions.get("window");
+
+const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+
+function resolvePhotoUrl(url?: string | null): string {
+  if (!url || !url.trim()) return DEFAULT_AVATAR;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const separator = url.startsWith('/') ? '' : '/';
+  return `${BASE_URL}${separator}${url}`;
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -251,11 +261,11 @@ export default function HomeScreen() {
                 </TouchableOpacity>
                 <NotificationBell light />
                 <TouchableOpacity style={styles.avatarWrap} onPress={() => router.push("/(patient)/profile")}>
-                  {profile?.photoUrl ? (
-                    <Image source={{ uri: profile.photoUrl }} style={styles.avatarImg} />
-                  ) : (
-                    <View style={styles.avatarFallback}><User size={18} color="#fff" /></View>
-                  )}
+                  <Image 
+                    source={{ uri: resolvePhotoUrl(profile?.photoUrl) }} 
+                    style={styles.avatarImg} 
+                    defaultSource={{ uri: DEFAULT_AVATAR }}
+                  />
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -387,7 +397,7 @@ export default function HomeScreen() {
               style={{ width: '48%' }}
               onPress={() => router.push("/(patient)/vitals" as any)}
             >
-              <SmallMetric icon={HeartPulse} color="#EC4899" bg="#FDF2F8" label="Record Vitals" val={lastBP ? `${lastBP.value}/${lastBP.value2}` : "No readings"} />
+              <SmallMetric icon={HeartPulse} color="#6366F1" bg="#EEF2FF" label="Record Vitals" val={lastBP ? `${lastBP.value}/${lastBP.value2}` : "No readings"} />
             </TouchableOpacity>
           </View>
         </View>

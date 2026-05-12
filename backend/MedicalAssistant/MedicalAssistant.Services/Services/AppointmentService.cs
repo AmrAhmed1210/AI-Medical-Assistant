@@ -147,36 +147,8 @@ namespace MedicalAssistant.Services.Services
             var appointment = await _unitOfWork.Appointments.GetByIdWithDoctorAsync(id);
             if (appointment == null) return false;
 
-            appointment.Status = "Cancelled";
-            _unitOfWork.Appointments.Update(appointment);
+            _unitOfWork.Appointments.Delete(appointment);
             await _unitOfWork.SaveChangesAsync();
-
-            if (!string.IsNullOrWhiteSpace(appointment.Patient?.Email))
-            {
-                await _notificationService.NotifyAppointmentChanged(
-                    appointment.Id,
-                    appointment.Status,
-                    appointment.Patient.Email);
-            }
-
-            if (!string.IsNullOrWhiteSpace(appointment.Doctor?.User?.Email))
-            {
-                await _notificationService.NotifyDoctorAppointmentChanged(
-                    appointment.Id,
-                    appointment.Doctor.User!.Email,
-                    appointment.Status,
-                    appointment.Patient?.FullName ?? "a patient",
-                    appointment.DoctorId);
-
-                if (string.Equals(appointment.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
-                {
-                    await _notificationService.NotifyDoctorCancellation(
-                        appointment.Doctor.User!.Email,
-                        appointment.Patient?.FullName ?? "a patient",
-                        BuildScheduledAt(appointment),
-                        appointment.DoctorId);
-                }
-            }
 
             return true;
         }

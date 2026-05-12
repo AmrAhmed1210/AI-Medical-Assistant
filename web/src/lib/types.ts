@@ -2,10 +2,8 @@
 // 🔐 Auth & Users
 // ============================================================================
 
-// ── أدوار المستخدمين ──────────────────────────────────────────────────
 export type UserRole = 'Admin' | 'Doctor' | 'Patient' | 'Secretary'
 
-// ── مستخدم (يتطابق مع رد الـ API من Swagger) ─────────────────────────
 export type UserDto = {
   id: number
   name: string
@@ -16,7 +14,6 @@ export type UserDto = {
   createdAt?: string
 }
 
-// ── مستخدم (تنسيق داخلي للتطبيق - للراحة في المكونات) ─────────────────
 export type MappedUserDto = {
   id: number
   name: string
@@ -27,7 +24,6 @@ export type MappedUserDto = {
   createdAt?: string
 }
 
-// ── دالة تحويل من تنسيق الـ API للتنسيق الداخلي ───────────────────────
 export const mapUserDto = (user: UserDto): MappedUserDto => ({
   id: user.id,
   name: user.name,
@@ -38,7 +34,6 @@ export const mapUserDto = (user: UserDto): MappedUserDto => ({
   createdAt: user.createdAt,
 })
 
-// ── دالة تحويل عكسي (من الداخلي للـ API) ──────────────────────────────
 export const unmapUserDto = (user: MappedUserDto): Omit<UserDto, 'createdAt'> => ({
   id: user.id as number,
   name: user.name,
@@ -47,7 +42,6 @@ export const unmapUserDto = (user: MappedUserDto): Omit<UserDto, 'createdAt'> =>
   isActive: user.isActive,
 })
 
-// ── طلب إنشاء مستخدم ─────────────────────────────────────────────────
 export type CreateUserRequest = {
   fullName: string
   email: string
@@ -61,7 +55,6 @@ export type CreateUserRequest = {
   bio?: string
 }
 
-// ── إحصائيات النظام ──────────────────────────────────────────────────
 export type SystemStatsDto = {
   totalUsers: number
   totalDoctors: number
@@ -78,7 +71,6 @@ export type SystemStatsDto = {
   userGrowth: Array<{ date: string; count: number }>
 }
 
-// ── استجابة مصفوفة ────────────────────────────────────────────────────
 export type PagedResponse<T> = {
   items: T[]
   total: number

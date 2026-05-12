@@ -216,8 +216,7 @@ namespace MedicalAssistant.Presentation.Controllers
             if (!deleted)
                 return NotFound(new { message = "Appointment not found." });
 
-            // Frontend expects a message not 204
-            return Ok(new { message = "Appointment cancelled successfully" });
+            return Ok(new { message = "Appointment deleted successfully" });
         }
 
         // POST /appointments/{id}/rebook

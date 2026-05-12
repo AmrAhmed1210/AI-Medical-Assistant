@@ -32,6 +32,13 @@ export default function DoctorsScreen() {
   const [highlightedDoctorId, setHighlightedDoctorId] = useState<string | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const docsPerPage = 10;
+  
+  // Nearby sorting
+  const [isNearby, setIsNearby] = useState(false);
 
   useEffect(() => {
     if (params.specialty) {
@@ -164,8 +171,22 @@ export default function DoctorsScreen() {
       const q = search.toLowerCase();
       res = res.filter((d) => d.name?.toLowerCase().includes(q) || d.specialty?.toLowerCase().includes(q));
     }
+    
+    // Nearby sorting (mock distance)
+    if (isNearby) {
+      res = [...res].sort((a, b) => {
+        const distA = (Number(a.id) * 7) % 50; // mock distance
+        const distB = (Number(b.id) * 7) % 50;
+        return distA - distB;
+      });
+    }
+    
     setFiltered(res);
-  }, [search, activeSpec, doctors]);
+    setCurrentPage(1); // Reset page on filter change
+  }, [search, activeSpec, doctors, isNearby]);
+
+  const displayedDocs = filtered.slice(0, currentPage * docsPerPage);
+  const hasMore = displayedDocs.length < filtered.length;
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
   if (error) return (
@@ -207,9 +228,17 @@ export default function DoctorsScreen() {
                 <Text style={styles.statBadgeText}>{filtered.length} {tr("stats_doctors")}</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.headerActionBtn} onPress={() => fetchDoctors()}>
-              <Ionicons name="refresh" size={20} color="#fff" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity 
+                style={[styles.headerActionBtn, isNearby && { backgroundColor: 'rgba(255,255,255,0.4)' }]} 
+                onPress={() => setIsNearby(!isNearby)}
+              >
+                <Ionicons name="location" size={20} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.headerActionBtn} onPress={() => fetchDoctors()}>
+                <Ionicons name="refresh" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </Animated.View>
 
           {/* SEARCH BAR GLASS */}
@@ -266,7 +295,7 @@ export default function DoctorsScreen() {
       </View>
 
       <Animated.FlatList
-        data={filtered}
+        data={displayedDocs}
         keyExtractor={(item) => String(item.id)}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -276,12 +305,17 @@ export default function DoctorsScreen() {
         renderItem={({ item }) => {
           const years = (item as any).yearsExperience ?? (item as any).experience ?? 0;
           const hasSchedule = ((item as any).hasSchedule ?? true) && ((item as any).isScheduleVisible ?? true);
+          
+          // Calculate mock distance if nearby mode is on
+          const distance = isNearby ? `${((Number(item.id) * 7) % 50 / 10).toFixed(1)} km away` : item.location;
+          
           return (
             <DoctorCard
               doctor={{
                 ...item,
                 id: String(item.id),
                 experience: `${years} yrs`,
+                location: distance,
                 hasSchedule,
               }}
               compact={true}
@@ -298,6 +332,21 @@ export default function DoctorsScreen() {
             colors={[COLORS.primary]}
           />
         }
+        ListFooterComponent={() => (
+          hasMore ? (
+            <TouchableOpacity 
+              style={styles.nextBtn} 
+              onPress={() => setCurrentPage(p => p + 1)}
+            >
+              <Text style={styles.nextBtnText}>Show Next Doctors</Text>
+              <Ionicons name="chevron-down" size={18} color="#fff" />
+            </TouchableOpacity>
+          ) : filtered.length > 0 ? (
+            <View style={styles.endList}>
+              <Text style={styles.endListText}>You've reached the end of the list</Text>
+            </View>
+          ) : null
+        )}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="search-outline" size={48} color="#DDD" />
@@ -336,4 +385,20 @@ const styles = StyleSheet.create({
   errorTxt: { color: '#EF4444', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 },
   retryBtn: { backgroundColor: '#059669', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20, marginTop: 15 },
   retryTxt: { color: '#fff', fontWeight: '900', fontSize: 14 },
+  nextBtn: { 
+    backgroundColor: '#059669', 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 14, 
+    borderRadius: 16, 
+    marginHorizontal: 16, 
+    marginTop: 10, 
+    marginBottom: 40,
+    gap: 8,
+    elevation: 4
+  },
+  nextBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  endList: { alignItems: 'center', paddingVertical: 30, opacity: 0.5 },
+  endListText: { color: '#64748B', fontSize: 13, fontWeight: '600' },
 });

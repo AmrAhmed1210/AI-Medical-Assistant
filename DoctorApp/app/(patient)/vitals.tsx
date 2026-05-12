@@ -26,9 +26,9 @@ const { width } = Dimensions.get("window");
 
 const VITAL_TYPES = [
   { key: "Blood Pressure", unit: "mmHg", hasValue2: true, icon: Activity, color: "#6366F1", bg: "#EEF2FF" },
-  { key: "Blood Sugar", unit: "mg/dL", hasValue2: false, icon: Droplets, color: "#EC4899", bg: "#FDF2F8" },
-  { key: "Heart Rate", unit: "bpm", hasValue2: false, icon: HeartIcon, color: "#F43F5E", bg: "#FFF1F2" },
-  { key: "Temperature", unit: "C", hasValue2: false, icon: Thermometer, color: "#F59E0B", bg: "#FFFBEB" },
+  { key: "Blood Sugar", unit: "mg/dL", hasValue2: false, icon: Droplets, color: "#F59E0B", bg: "#FFFBEB" },
+  { key: "Heart Rate", unit: "bpm", hasValue2: false, icon: HeartIcon, color: "#EF4444", bg: "#FEF2F2" },
+  { key: "Temperature", unit: "C", hasValue2: false, icon: Thermometer, color: "#0EA5E9", bg: "#F0F9FF" },
   { key: "SpO2", unit: "%", hasValue2: false, icon: Wind, color: "#10B981", bg: "#ECFDF5" },
   { key: "Respiratory Rate", unit: "breaths/min", hasValue2: false, icon: Beaker, color: "#8B5CF6", bg: "#F5F3FF" },
 ];

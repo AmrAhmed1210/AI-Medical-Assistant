@@ -178,10 +178,10 @@ export function useUsers(
   }, [fetchUsers])
 
 
-  /* ✅ FIX مهم */
+  /* ✅ Fix */
   useEffect(() => {
     fetchUsers(1, search, roleFilter)
-  }, []) // أول تحميل
+  }, []) // initial load
 
   /* SignalR: Listen for new user registrations */
   useEffect(() => {
@@ -265,7 +265,7 @@ export function useUsers(
         bio: data.bio
       })
 
-      // تحديث الليستة (أفضل UX)
+      // Update list
       setUsers(prev => [newUser, ...prev])
       setTotal(prev => prev + 1)
 

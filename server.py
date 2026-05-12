@@ -3,6 +3,7 @@ MedBook – TrOCR FastAPI Server
 Run: uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 """
 
+import os
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
@@ -12,7 +13,7 @@ import io
 import re
 
 # ── Model path ──────────────────────────────────────────────
-MODEL_PATH = "E:/AI_project/trocr_model"
+MODEL_PATH = os.environ.get("TROCR_MODEL_PATH", "E:/AI_project/trocr_model")
 # ────────────────────────────────────────────────────────────
 
 app = FastAPI(title="MedBook OCR API")

@@ -248,6 +248,8 @@ export default function MedicationsScreen() {
             try {
               await deleteMedication(medId);
               await cancelMedicationReminders(medId);
+              // Optimistically update schedule to remove items for the deleted medication
+              setSchedule(prev => prev.filter(s => s.medicationTrackerId !== medId));
               Toast.show({ type: "success", text1: "Medication deleted" });
               await loadData();
             } catch (e: any) {
@@ -277,10 +279,11 @@ export default function MedicationsScreen() {
 
   const getStatusStyle = (status: string) => {
     const s = status?.toLowerCase() || "";
-    if (s === "taken") return { bg: "#ECFDF5", text: "#059669", label: "Taken", icon: "checkmark-circle" as const, dot: "#10B981" };
-    if (s === "missed") return { bg: "#FEF2F2", text: "#DC2626", label: "Missed", icon: "close-circle" as const, dot: "#EF4444" };
-    if (s === "skipped") return { bg: "#FFFBEB", text: "#D97706", label: "Skipped", icon: "remove-circle" as const, dot: "#F59E0B" };
-    return { bg: "#EFF6FF", text: "#2563EB", label: "Pending", icon: "time" as const, dot: "#3B82F6" };
+    if (s === "taken") return { bg: "#ECFDF5", text: "#059669", label: tr("taken"), icon: "checkmark-circle" as const, dot: "#10B981" };
+    if (s === "missed") return { bg: "#FEF2F2", text: "#DC2626", label: tr("missed"), icon: "close-circle" as const, dot: "#EF4444" };
+    if (s === "accumulated") return { bg: "#FFF7ED", text: "#EA580C", label: tr("accumulated"), icon: "alert-circle" as const, dot: "#F97316" };
+    if (s === "skipped") return { bg: "#FFFBEB", text: "#D97706", label: tr("skipped"), icon: "remove-circle" as const, dot: "#F59E0B" };
+    return { bg: "#EFF6FF", text: "#2563EB", label: tr("pending"), icon: "time" as const, dot: "#3B82F6" };
   };
 
   const getStockStyle = (pills: number, threshold: number) => {
@@ -414,10 +417,26 @@ export default function MedicationsScreen() {
               ) : (
                 <View>
                   {(() => {
-                    const todayItems = schedule.map(item => {
+                    const todayItems = schedule.map((item, idx, arr) => {
                       const scheduledTime = new Date(item.scheduledAt);
                       const isPast = new Date() > scheduledTime;
-                      const status = item.status?.toLowerCase() === "pending" && isPast ? "missed" : item.status?.toLowerCase() || "pending";
+                      let status = item.status?.toLowerCase() || "pending";
+                      
+                      if (status === "pending" && isPast) {
+                        // Check if there's a later dose for the same medication that is also in the past
+                        const laterPastDose = arr.find(other => 
+                          other.medicationTrackerId === item.medicationTrackerId && 
+                          new Date(other.scheduledAt) > scheduledTime && 
+                          new Date(other.scheduledAt) <= new Date()
+                        );
+                        
+                        if (laterPastDose) {
+                          status = "accumulated";
+                        } else {
+                          status = "missed";
+                        }
+                      }
+                      
                       return { ...item, effectiveStatus: status, scheduledTime };
                     });
 

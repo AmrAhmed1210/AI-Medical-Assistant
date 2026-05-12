@@ -51,6 +51,14 @@ export const getMyAppointments = async (): Promise<Appointment[]> => {
 // ============================================
 // Cancel Appointment
 // ============================================
-export const cancelAppointment = async (id: number): Promise<void> => {
+export const deleteAppointment = async (id: number): Promise<void> => {
   await apiFetch<unknown>(API.appointments.cancel(id), { method: "DELETE" }, true);
+};
+
+export const cancelAppointment = async (id: number): Promise<Appointment> => {
+  return apiFetch<Appointment>(
+    `${API.appointments.cancel(id)}/cancel`,
+    { method: "PUT", body: JSON.stringify({ reason: "Cancelled by patient" }) },
+    true
+  );
 };
