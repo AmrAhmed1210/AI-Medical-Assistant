@@ -1,8 +1,8 @@
 import axios from "axios";
 
 // This is the address of your Python AI server
-// Using local IP 192.168.1.3 to allow real devices on the same WiFi to connect
-const AI_SERVER_URL = "http://192.168.1.3:8000"; 
+// Using local IP 192.168.43.216 to allow real devices on the same WiFi to connect
+const AI_SERVER_URL = "http://192.168.43.216:8000"; 
 
 export const analyzePatientHistory = async (history: any) => {
     try {

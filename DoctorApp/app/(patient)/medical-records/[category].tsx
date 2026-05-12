@@ -212,7 +212,7 @@ export default function MedicalRecordsCategory() {
       } else if (category === "documents") {
         if (!docTitle.trim()) { Toast.show({ type: "error", text1: tr("please_enter_title" as any) }); return; }
         if (!docUri) { Toast.show({ type: "error", text1: tr("please_select_image" as any) }); return; }
-        const res = await uploadPatientDocument(pid, docUri, docType, docTitle, docDescription);
+        const res = await uploadPatientDocument(pid, docUri, docType.toLowerCase(), docTitle, docDescription);
         setItems(prev => [res, ...prev]);
       }
 
@@ -220,6 +220,7 @@ export default function MedicalRecordsCategory() {
       setShowModal(false);
       resetForms();
     } catch (e: any) {
+      console.log("Upload error details:", e);
       Toast.show({ type: "error", text1: e.message || tr("error") });
     } finally {
       setSaving(false);
@@ -252,7 +253,7 @@ export default function MedicalRecordsCategory() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
-        quality: 0.8,
+        quality: 0.7, // Lower quality for faster upload
       };
 
       const result = useCamera

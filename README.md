@@ -4,12 +4,24 @@
 
 ---
 
-## 🚀 Key Features
+## 🤖 AI Medical Assistant Features (New!)
 
-*   **AI ML Core:** High-performance machine learning core powered by AraBERT and LoRA for precise medical diagnostics and natural language processing.
-*   **Luxury Web Portal:** A premium, responsive dashboard for medical professionals featuring advanced analytics, patient record management, and review systems.
-*   **Smart Mobile Experience:** Cross-platform mobile application for patients with real-time scheduling, SignalR-powered notifications, and AI-driven health insights.
-*   **Enterprise-Grade Backend:** Robust C# .NET Core infrastructure with PostgreSQL persistence and Cloudinary media integration.
+We have integrated a comprehensive **Bilingual (Arabic/English) AI Assistant** into the patient experience:
+
+*   **Smart Document Analysis:** Automatically extracts medical insights, test results, and titles from uploaded scans, lab results, and prescriptions.
+*   **Real-time Vitals Advice:** Provides immediate, encouraging medical feedback and warnings based on logged vital signs (Blood Pressure, Heart Rate, etc.).
+*   **Medication Safety Check:** Evaluates new medications against the patient's existing history (allergies, chronic diseases) to flag potential contraindications.
+*   **AI Health Summary:** Generates a professional medical analysis and diagnosis summary directly on the patient's home dashboard.
+*   **Intelligent Text Refinement:** Helps patients professionalize their medical history entries (surgeries, allergies) using medical terminology.
+
+---
+
+## 🚀 Core Technologies
+
+*   **AI ML Core:** High-performance machine learning core powered by **Gemini 1.5 Flash** for precise medical diagnostics and natural language processing.
+*   **Luxury Web Portal:** A premium, responsive dashboard for medical professionals featuring advanced analytics and patient management.
+*   **Smart Mobile Experience:** Cross-platform mobile application (React Native + Expo) for patients with real-time AI insights.
+*   **Enterprise-Grade Backend:** Robust C# .NET Core infrastructure with PostgreSQL persistence and SignalR synchronization.
 
 ---
 
@@ -17,26 +29,25 @@
 
 *   **`backend/`** – ASP.NET Core Web API (Core logic and Database orchestration).
 *   **`web/`** – React + Vite + Tailwind (Professional medical dashboard).
-*   **`DoctorApp/`** – React Native + Expo (Mobile application for iOS & Android).
-*   **`scr/`** – Python-based Machine Learning pipelines and training scripts.
+*   **`DoctorApp/`** – React Native + Expo (Mobile application for patients).
+*   **`server.py`** – Python FastAPI server handling the AI/Gemini integration.
 
 ---
 
 ## 🚦 Installation & Getting Started
 
-### 1️⃣ Backend Service (C# .NET)
+### 1️⃣ AI Server (Python)
+```bash
+# Set GOOGLE_API_KEY in .env
+python server.py
+```
+
+### 2️⃣ Backend Service (C# .NET)
 ```bash
 cd backend/MedicalAssistant
 dotnet restore
 dotnet ef database update --project MedicalAssistant.Persistance --startup-project MedicalAssistant.Web
 dotnet run --project MedicalAssistant.Web
-```
-
-### 2️⃣ Web Dashboard (React)
-```bash
-cd web
-npm install
-npm run dev
 ```
 
 ### 3️⃣ Mobile Application (Expo)
@@ -61,27 +72,6 @@ npm run test          # Executes Unit & Integration Tests
 npx playwright test   # Executes End-to-End Browser Tests
 ```
 
-**Mobile Environment (Jest):**
-```bash
-cd DoctorApp
-npm run test
-```
-
----
-
-## 📊 Comprehensive Test Report
-
-| Module | Test Category | Status | Pass Rate |
-| :--- | :--- | :--- | :--- |
-| **Web Dashboard** | Unit & UI Components | ✅ Pass | 120 / 120 |
-| **Web Dashboard** | E2E Browser Testing | ⚠️ Stable | 17 / 21 |
-| **Mobile App** | Unit & State Management | ✅ Pass | 18 / 18 |
-| **Combined** | Integration & Data Flows | ✅ Pass | 13 / 13 |
-| **TOTAL** | | 🏆 | **155 Passed** |
-
-> [!IMPORTANT]
-> All core architectural components have achieved a **100% pass rate** in unit and integration testing. E2E tests are consistently stable across major browsers.
-
 ---
 
 ## 🔑 Administrative Access
@@ -89,4 +79,4 @@ npm run test
 *   **Credentials:** `123456789`
 
 ---
-_Last updated: May 9, 2026_
+_Last updated: May 12, 2026 - Integrated Bilingual AI Assistant_
