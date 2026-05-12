@@ -142,9 +142,13 @@ public class Program
 
         builder.Services.AddHttpClient<IMedicalAiService, MedicalAiService>(client =>
         {
-            client.BaseAddress = new Uri(pythonServiceUrl);
+            var url = builder.Configuration["AIService:Url"]
+                      ?? "https://medicalassistantai-production.up.railway.app";
+
+            client.BaseAddress = new Uri(url);
             client.Timeout = TimeSpan.FromSeconds(60);
         });
+
 
         builder.Services.Configure<CloudinarySettings>(
             builder.Configuration.GetSection("CloudinarySettings"));

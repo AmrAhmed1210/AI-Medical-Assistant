@@ -2,10 +2,13 @@ using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Shared.DTOs.AIChatBotDTOs;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 
 namespace MedicalAssistant.Services.Services;
 
-file record AskRequest(string Text);
+file record AskRequest(
+    [property: JsonPropertyName("text")] string Text
+);
 
 public class MedicalAiService : IMedicalAiService
 {
