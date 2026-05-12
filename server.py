@@ -16,8 +16,10 @@ load_dotenv()
 # --- Configuration ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 if GOOGLE_API_KEY:
+    print(f"DEBUG: API Key found (starts with: {GOOGLE_API_KEY[:5]}...)")
     genai.configure(api_key=GOOGLE_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Using gemini-flash-latest which is usually the best for free tier
+    model = genai.GenerativeModel('gemini-flash-latest')
 else:
     print("WARNING: GOOGLE_API_KEY not found in environment variables.")
 
@@ -34,11 +36,11 @@ class SurgeryInput(BaseModel):
     description: str
 
 class PatientHistoryInput(BaseModel):
-    vitals: List[dict]
-    surgeries: List[dict]
-    medications: List[dict]
-    allergies: List[dict]
-    chronic_diseases: List[dict]
+    vitals: Optional[List[dict]] = []
+    surgeries: Optional[List[dict]] = []
+    medications: Optional[List[dict]] = []
+    allergies: Optional[List[dict]] = []
+    chronic_diseases: Optional[List[dict]] = []
 
 @app.get("/")
 def root():
@@ -55,10 +57,12 @@ async def summarize_surgery(data: SurgeryInput):
         response = model.generate_content(prompt)
         return {"summary": response.text.strip()}
     except Exception as e:
+        print(f"DEBUG: Error in summarize_surgery: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze-history")
 async def analyze_history(data: PatientHistoryInput):
+    print(f"DEBUG: Received history data for analysis")
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
     
@@ -83,6 +87,7 @@ async def analyze_history(data: PatientHistoryInput):
         response = model.generate_content(context)
         return {"analysis": response.text.strip()}
     except Exception as e:
+        print(f"DEBUG: Error in analyze_history: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze-image")
@@ -113,6 +118,61 @@ async def analyze_image(file: UploadFile = File(...), type: str = "prescription"
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/summarize-medical-item")
+async def summarize_item(data: dict):
+    """Refines medical descriptions for surgeries, diseases, or allergies."""
+    item_type = data.get("type", "medical item")
+    description = data.get("description", "")
+    
+    prompt = f"As a medical assistant, refine this description of a {item_type}: '{description}'. Make it professional, concise, and correctly spelled in medical terms. Return only the refined text."
+    
+    try:
+        response = model.generate_content(prompt)
+        return {"refined_text": response.text.strip()}
+    except Exception as e:
+        print(f"DEBUG: Error in summarize_item: {e}")
+        return {"refined_text": description} # Fallback to original
+
+@app.post("/analyze-vitals")
+async def analyze_vitals(data: dict):
+    """Analyzes vital signs and gives immediate advice."""
+    vitals = data.get("vitals", [])
+    patient_info = data.get("patient_info", {}) # age, weight, etc.
+    
+    prompt = f"""
+    Analyze these vitals: {vitals}. 
+    Patient Info: {patient_info}.
+    Provide a very short (1-2 sentences) medical advice or observation. 
+    If values are dangerous, emphasize the need to see a doctor.
+    Be encouraging but professional.
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        return {"advice": response.text.strip()}
+    except Exception as e:
+        print(f"DEBUG: Error in analyze_vitals: {e}")
+        return {"advice": "Keep monitoring your vitals and consult your doctor if you feel unwell."}
+
+@app.post("/check-medication-safety")
+async def check_medication(data: dict):
+    """Checks for risks between a new medication and existing history."""
+    new_med = data.get("medication", "")
+    history = data.get("history", {})
+    
+    prompt = f"""
+    Check if the medication '{new_med}' has any known major risks or contraindications with this patient history: {history}.
+    If there's a risk, explain it briefly. If safe, say 'No major immediate risks found with your history'.
+    Always end with 'Always consult your doctor before starting new medication'.
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        return {"safety_report": response.text.strip()}
+    except Exception as e:
+        print(f"DEBUG: Error in check_medication: {e}")
+        return {"safety_report": "Please consult your doctor to ensure this medication is safe for you."}
 
 if __name__ == "__main__":
     import uvicorn

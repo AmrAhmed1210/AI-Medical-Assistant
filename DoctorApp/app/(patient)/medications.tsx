@@ -44,6 +44,8 @@ export default function MedicationsScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [takingId, setTakingId] = useState<number | null>(null);
   const [expandedMedId, setExpandedMedId] = useState<number | null>(null);
+  const [safetyReport, setSafetyReport] = useState<string | null>(null);
+  const [isCheckingSafety, setIsCheckingSafety] = useState(false);
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -182,6 +184,32 @@ export default function MedicationsScreen() {
       Toast.show({ type: "error", text1: e.message || "Failed to save medication" });
     } finally { setSaving(false); }
   };
+  
+  const handleAiSafetyCheck = async () => {
+    if (!medName.trim()) {
+      Alert.alert("Input Needed", "Please enter medication name first.");
+      return;
+    }
+    try {
+      setIsCheckingSafety(true);
+      const { checkMedicationSafety } = await import("../../services/aiService");
+      const { getPatientVitals } = await import("../../services/vitalService");
+      const { getPatientMedications } = await import("../../services/medicationService");
+      
+      // Gather simplified history for AI
+      const history = {
+        allergies: sosData?.allergies?.map(a => a.allergenName) || [],
+        chronic_diseases: medications.map(m => m.medicationName) || [],
+      };
+      
+      const report = await checkMedicationSafety(medName, history);
+      setSafetyReport(report);
+    } catch (e) {
+      Alert.alert("AI Error", "Could not perform safety check.");
+    } finally {
+      setIsCheckingSafety(false);
+    }
+  };
 
   const resetForm = () => {
     setMedName(""); setDosage(""); setForm("Pill"); setSelectedDays([...DAYS]); setDayPreset("daily");
@@ -189,6 +217,7 @@ export default function MedicationsScreen() {
     setStartDate(new Date().toISOString().split("T")[0]);
     setDurationMode("days"); setDurationDays("7"); setEndDate("");
     setPills(""); setInstructions(""); setEditingId(null);
+    setSafetyReport(null);
   };
 
   const handleEdit = (med: MedicationTracker) => {
@@ -687,7 +716,26 @@ export default function MedicationsScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Medication Name *</Text>
                 <TextInput style={styles.textInput} value={medName} onChangeText={setMedName} placeholder="e.g. Panadol" placeholderTextColor="#CBD5E1" />
+                <TouchableOpacity 
+                  style={[styles.aiSafetyBtn, isCheckingSafety && { opacity: 0.7 }]} 
+                  onPress={handleAiSafetyCheck}
+                  disabled={isCheckingSafety}
+                >
+                  {isCheckingSafety ? <ActivityIndicator size="small" color="#fff" /> : (
+                    <>
+                      <Sparkles size={16} color="#fff" />
+                      <Text style={styles.aiSafetyBtnTxt}>AI Safety Check</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
+
+              {safetyReport && (
+                <View style={[styles.safetyReportBox, safetyReport.toLowerCase().includes("risk") && styles.safetyReportRisk]}>
+                  <Info size={18} color={safetyReport.toLowerCase().includes("risk") ? "#EF4444" : "#059669"} />
+                  <Text style={[styles.safetyReportText, safetyReport.toLowerCase().includes("risk") && { color: "#991B1B" }]}>{safetyReport}</Text>
+                </View>
+              )}
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Dosage *</Text>
@@ -798,6 +846,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" },
   magicHeader: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden' },
+  aiSafetyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#8B5CF6', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12, marginTop: 10, alignSelf: 'flex-start', elevation: 4 },
+  aiSafetyBtnTxt: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  safetyReportBox: { backgroundColor: '#F0FDF4', borderRadius: 16, padding: 15, marginBottom: 20, flexDirection: 'row', gap: 12, borderWidth: 1, borderColor: '#DCFCE7' },
+  safetyReportRisk: { backgroundColor: '#FEF2F2', borderColor: '#FEE2E2' },
+  safetyReportText: { fontSize: 13, color: '#065F46', flex: 1, lineHeight: 20, fontWeight: '600' },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, paddingTop: 60, zIndex: 10 },
   headerGreet: { fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },

@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { Sparkles } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../../constants/colors";
 import { getMyPatientId } from "../../../services/authService";
@@ -78,6 +79,7 @@ export default function MedicalRecordsCategory() {
   const [docTitle, setDocTitle] = useState("");
   const [docType, setDocType] = useState("Blood Test");
   const [docUri, setDocUri] = useState<string | null>(null);
+  const [docDescription, setDocDescription] = useState("");
   const [selectedFolder, setSelectedFolder] = useState<string | null>(folder || null);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
 
@@ -144,21 +146,22 @@ export default function MedicalRecordsCategory() {
     setAllergyName(""); setAllergySeverity("Mild"); setAllergyNotes("");
     setChronicName(""); setChronicType(""); setChronicSeverity("Moderate"); setChronicFreq("");
     setSurgeryName(""); setSurgeryHospital(""); setSurgeryDoctor(""); setSurgeryDate(""); setSurgeryComplications(""); setSurgeryNotes("");
-    setDocTitle(""); setDocType("Blood Test"); setDocUri(null);
+    setDocTitle(""); setDocType("Blood Test"); setDocUri(null); setDocDescription("");
   };
 
-  const handleAiSummarizeSurgery = async () => {
-    if (!surgeryNotes.trim()) {
-      Alert.alert("Input Needed", "Please enter some notes first.");
+  const handleAiRefineItem = async (type: string, currentVal: string, setter: (v: string) => void) => {
+    if (!currentVal.trim()) {
+      Alert.alert("Input Needed", "Please enter some text first.");
       return;
     }
     try {
       setIsAiProcessing(true);
-      const summary = await summarizeSurgery(surgeryNotes);
-      setSurgeryNotes(summary);
-      Toast.show({ type: "success", text1: "AI Summarization Complete" });
+      const { summarizeMedicalItem } = await import("../../../services/aiService");
+      const refined = await summarizeMedicalItem(type, currentVal);
+      setter(refined);
+      Toast.show({ type: "success", text1: "Refined by AI" });
     } catch (e) {
-      Alert.alert("AI Error", "Could not summarize notes at this time.");
+      Alert.alert("AI Error", "Could not refine text.");
     } finally {
       setIsAiProcessing(false);
     }
@@ -176,9 +179,10 @@ export default function MedicalRecordsCategory() {
       
       // If it's a lab/prescription, we might want to pre-fill notes or title
       if (result.raw_text) {
-        setDocTitle(result.raw_text.substring(0, 50) + "...");
+        setDocTitle(result.summary?.substring(0, 40) || "Medical Document");
+        setDocDescription(result.raw_text);
         Toast.show({ type: "success", text1: "AI Analysis Complete" });
-        Alert.alert("AI Extraction", result.raw_text);
+        Alert.alert("AI Extraction", result.summary || "Document processed successfully.");
       }
     } catch (e) {
       Alert.alert("AI Error", "Could not analyze image at this time.");
@@ -208,7 +212,7 @@ export default function MedicalRecordsCategory() {
       } else if (category === "documents") {
         if (!docTitle.trim()) { Toast.show({ type: "error", text1: tr("please_enter_title" as any) }); return; }
         if (!docUri) { Toast.show({ type: "error", text1: tr("please_select_image" as any) }); return; }
-        const res = await uploadPatientDocument(pid, docUri, docType, docTitle);
+        const res = await uploadPatientDocument(pid, docUri, docType, docTitle, docDescription);
         setItems(prev => [res, ...prev]);
       }
 
@@ -354,6 +358,12 @@ export default function MedicalRecordsCategory() {
                 <Text style={[styles.linkTxt, { color: itemColor }]}>View Document</Text>
               </TouchableOpacity>
             )}
+            {item.description && (
+              <View style={styles.aiDescBox}>
+                <Sparkles size={14} color="#7C3AED" />
+                <Text style={styles.aiDescTxt}>{item.description}</Text>
+              </View>
+            )}
           </View>
         );
       default: return null;
@@ -374,7 +384,12 @@ export default function MedicalRecordsCategory() {
             <ScrollView showsVerticalScrollIndicator={false}>
               {category === "allergies" && (
                 <>
-                  <TextInput style={styles.input} placeholder={tr("allergen_name" as any)} value={allergyName} onChangeText={setAllergyName} />
+                  <View style={styles.inputWithAi}>
+                    <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder={tr("allergen_name" as any)} value={allergyName} onChangeText={setAllergyName} />
+                    <TouchableOpacity style={[styles.aiButtonSmall, { backgroundColor: TAB_COLORS.allergies }]} onPress={() => handleAiRefineItem("allergy", allergyName, setAllergyName)}>
+                      <Ionicons name="sparkles" size={18} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
                   <TextInput style={styles.input} placeholder={tr("severity" as any)} value={allergySeverity} onChangeText={setAllergySeverity} />
                   <TextInput style={styles.input} placeholder={tr("notes" as any)} value={allergyNotes} onChangeText={setAllergyNotes} multiline />
                 </>
@@ -396,16 +411,24 @@ export default function MedicalRecordsCategory() {
                   <TextInput style={styles.input} placeholder={tr("complications" as any)} value={surgeryComplications} onChangeText={setSurgeryComplications} multiline />
                   <View style={styles.inputWithAi}>
                     <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder={tr("notes" as any)} value={surgeryNotes} onChangeText={setSurgeryNotes} multiline />
-                    <TouchableOpacity style={styles.aiButtonSmall} onPress={handleAiSummarizeSurgery} disabled={isAiProcessing}>
+                    <TouchableOpacity style={styles.aiButtonSmall} onPress={() => handleAiRefineItem("surgery description", surgeryNotes, setSurgeryNotes)} disabled={isAiProcessing}>
                       {isAiProcessing ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="sparkles" size={18} color="#fff" />}
                     </TouchableOpacity>
                   </View>
-                  <Text style={styles.aiHint}>Use AI to summarize long notes</Text>
+                  <Text style={styles.aiHint}>Use AI to refine and summarize notes</Text>
                 </>
               )}
               {category === "documents" && (
                 <>
-                  <TextInput style={styles.input} placeholder={tr("title" as any)} value={docTitle} onChangeText={setDocTitle} />
+                  <View style={styles.inputWithAi}>
+                    <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder={tr("title" as any)} value={docTitle} onChangeText={setDocTitle} />
+                    {docUri && (
+                      <TouchableOpacity style={[styles.aiButtonSmall, { backgroundColor: color }]} onPress={handleAiAnalyzeDocument} disabled={isAiProcessing}>
+                        {isAiProcessing ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="sparkles" size={18} color="#fff" />}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  {docUri && <Text style={styles.aiHint}>AI can analyze image to extract title & description</Text>}
                   <Text style={styles.inputLabelSmall}>Select Folder</Text>
                   <View style={styles.folderPickerRow}>
                     {DOCUMENT_FOLDERS.map(f => (
@@ -424,14 +447,13 @@ export default function MedicalRecordsCategory() {
                     <Text style={[styles.imageBtnTxt, { color }]}>{docUri ? tr("change_image" as any) : tr("select_image" as any)}</Text>
                   </TouchableOpacity>
                   {docUri && (
-                    <TouchableOpacity style={[styles.aiButtonLarge, { backgroundColor: color }]} onPress={handleAiAnalyzeDocument} disabled={isAiProcessing}>
-                      {isAiProcessing ? <ActivityIndicator color="#fff" /> : (
-                        <>
-                          <Ionicons name="sparkles" size={20} color="#fff" />
-                          <Text style={styles.aiButtonLargeTxt}>Analyze with Gemini AI</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
+                    <TextInput 
+                      style={[styles.input, { height: 100, textAlignVertical: 'top' }]} 
+                      placeholder="Document Description / AI Analysis" 
+                      value={docDescription} 
+                      onChangeText={setDocDescription} 
+                      multiline 
+                    />
                   )}
                   {docUri && <Text style={styles.imageUri} numberOfLines={1}>{docUri}</Text>}
                 </>
@@ -588,4 +610,6 @@ const styles = StyleSheet.create({
   aiHint: { fontSize: 11, color: '#8B5CF6', fontWeight: '700', marginLeft: 5, marginBottom: 15 },
   aiButtonLarge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12, borderRadius: 18, marginBottom: 15, elevation: 6 },
   aiButtonLargeTxt: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  aiDescBox: { marginTop: 12, padding: 12, backgroundColor: '#F5F3FF', borderRadius: 16, flexDirection: 'row', gap: 10, borderWidth: 1, borderColor: '#EDE9FE' },
+  aiDescTxt: { fontSize: 11, color: '#5B21B6', flex: 1, lineHeight: 16, fontWeight: '600' },
 });
