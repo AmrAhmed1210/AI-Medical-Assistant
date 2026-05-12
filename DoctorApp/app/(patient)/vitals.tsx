@@ -52,6 +52,8 @@ export default function VitalsScreen() {
   const [notes, setNotes] = useState("");
   const [isNormal, setIsNormal] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [isAnalyzingAdvice, setIsAnalyzingAdvice] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -138,6 +140,9 @@ export default function VitalsScreen() {
       } else {
         await addVitalReading(patientId!, payload);
         Toast.show({ type: "success", text1: "Vital recorded successfully" });
+        
+        // Trigger AI Advice after save
+        triggerAiAdvice(payload);
       }
       setValue("");
       setValue2("");
@@ -154,6 +159,19 @@ export default function VitalsScreen() {
       }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const triggerAiAdvice = async (reading: any) => {
+    try {
+      setIsAnalyzingAdvice(true);
+      const { analyzeVitalsAdvice } = await import("../../services/aiService");
+      const advice = await analyzeVitalsAdvice([reading], { id: patientId });
+      setAiAdvice(advice);
+    } catch (e) {
+      console.log("AI Advice failed", e);
+    } finally {
+      setIsAnalyzingAdvice(false);
     }
   };
 
@@ -261,6 +279,22 @@ export default function VitalsScreen() {
         contentContainerStyle={{ paddingTop: 260, paddingBottom: 100 }}
       >
         <View style={styles.contentOverlap}>
+          
+          {/* AI ADVICE CARD */}
+          {(aiAdvice || isAnalyzingAdvice) && (
+            <View style={styles.aiAdviceWrapper}>
+              <LinearGradient colors={["#F5F3FF", "#EDE9FE"]} style={styles.aiAdviceCard}>
+                <View style={styles.aiAdviceHeader}>
+                  <Sparkles size={18} color="#7C3AED" />
+                  <Text style={styles.aiAdviceTitle}>AI Health Advice</Text>
+                  {isAnalyzingAdvice && <ActivityIndicator size="small" color="#7C3AED" />}
+                </View>
+                {aiAdvice && (
+                  <Text style={styles.aiAdviceText}>{aiAdvice}</Text>
+                )}
+              </LinearGradient>
+            </View>
+          )}
 
           {/* Quick Add Toggle */}
           <View style={styles.sectionHeaderRow}>
@@ -552,4 +586,9 @@ const styles = StyleSheet.create({
   historyNotes: { fontSize: 12, color: "#64748B", fontWeight: '500' },
   historyDate: { fontSize: 11, color: '#94A3B8', marginTop: 12, fontWeight: '600' },
   sosContainer: { marginTop: -10, marginBottom: 10 },
+  aiAdviceWrapper: { paddingHorizontal: 25, marginBottom: 20 },
+  aiAdviceCard: { borderRadius: 24, padding: 18, borderWidth: 1, borderColor: '#DDD6FE', elevation: 4, shadowOpacity: 0.05 },
+  aiAdviceHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  aiAdviceTitle: { fontSize: 14, fontWeight: '800', color: '#5B21B6', flex: 1 },
+  aiAdviceText: { fontSize: 13, color: '#4C1D95', lineHeight: 19, fontWeight: '500' },
 });

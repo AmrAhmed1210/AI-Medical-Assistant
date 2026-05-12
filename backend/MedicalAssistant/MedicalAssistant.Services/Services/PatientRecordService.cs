@@ -61,15 +61,29 @@ namespace MedicalAssistant.Services.Services
         public async Task<MedicalProfile?> UpdateAiDiagnosisAsync(int patientId, string diagnosisSummary)
         {
             var existing = (await _unitOfWork.Repository<MedicalProfile>().FindAsync(p => p.PatientId == patientId)).FirstOrDefault();
-            if (existing == null) return null;
+            
+            if (existing == null)
+            {
+                // Create a new profile if it doesn't exist
+                existing = new MedicalProfile
+                {
+                    PatientId = patientId,
+                    AiDiagnosisSummary = diagnosisSummary,
+                    LastAiAnalysisAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Repository<MedicalProfile>().AddAsync(existing);
+            }
+            else
+            {
+                existing.AiDiagnosisSummary = diagnosisSummary;
+                existing.LastAiAnalysisAt = DateTime.UtcNow;
+                existing.UpdatedAt = DateTime.UtcNow;
+                _unitOfWork.Repository<MedicalProfile>().Update(existing);
+            }
 
-            existing.AiDiagnosisSummary = diagnosisSummary;
-            existing.LastAiAnalysisAt = DateTime.UtcNow;
-            existing.UpdatedAt = DateTime.UtcNow;
-
-            _unitOfWork.Repository<MedicalProfile>().Update(existing);
             await _unitOfWork.SaveChangesAsync();
-
             return existing;
         }
 

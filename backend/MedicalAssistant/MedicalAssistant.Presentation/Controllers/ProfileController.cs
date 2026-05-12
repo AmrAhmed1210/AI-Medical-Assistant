@@ -97,7 +97,9 @@ namespace MedicalAssistant.Presentation.Controllers
                 bloodType = patient.BloodType,
                 weight = profile?.WeightKg,
                 height = profile?.HeightCm,
-                smokingStatus = profile?.SmokingDetails
+                smokingStatus = profile?.SmokingDetails,
+                aiDiagnosisSummary = profile?.AiDiagnosisSummary,
+                lastAiAnalysisAt = profile?.LastAiAnalysisAt
             });
         }
 
