@@ -1,12 +1,12 @@
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image, Dimensions
+  TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image, Dimensions, Modal
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Heart, Droplets, Calendar, Pill, Search,
   ChevronRight, Star, Bell, LayoutGrid, Stethoscope,
-  ArrowRight, HeartPulse, Thermometer, Activity, User, Sparkles, Clock
+  ArrowRight, HeartPulse, Thermometer, Activity, User, Sparkles, Clock, CheckCircle2
 } from "lucide-react-native";
 import { COLORS } from "../../constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,7 +15,18 @@ import { BASE_URL } from "../../constants/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../../context/LanguageContext";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Animated, Platform } from "react-native";
+import { Animated as RNAnimated, Platform } from "react-native";
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  FadeInDown,
+  FadeInRight,
+  useAnimatedStyle,
+  withSpring,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withDelay
+} from 'react-native-reanimated';
 import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor } from "../../services/doctorService";
 import { getMyProfile, Profile } from "../../services/profileService";
 import { getMyAppointments, Appointment } from "../../services/appointmentService";
@@ -29,7 +40,6 @@ import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpd
 import { scheduleAppointmentReminders } from "../../services/appointmentReminders";
 import { analyzePatientHistory } from "../../services/aiService";
 import { updateAiDiagnosis, getVitals, getSurgeries, getMedications, getAllergies, getChronicDiseases } from "../../services/medicalRecordService";
-// Service loaded successfully
 
 const { width } = Dimensions.get("window");
 
@@ -56,7 +66,27 @@ export default function HomeScreen() {
   const [loadingHealth, setLoadingHealth] = useState(true);
   const [showVitalReminder, setShowVitalReminder] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const [reportLang, setReportLang] = useState<'en' | 'ar'>(isRTL ? 'ar' : 'en');
+  const [showAiModal, setShowAiModal] = useState(false);
+  const scrollY = useRef(new RNAnimated.Value(0)).current;
+
+  // Animation values
+  const pulseScale = useSharedValue(1);
+
+  useEffect(() => {
+    pulseScale.value = withRepeat(
+      withSequence(
+        withSpring(1.1, { damping: 2 }),
+        withSpring(1, { damping: 2 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const triggerHaptic = (type: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) => {
+    Haptics.impactAsync(type);
+  };
 
   const CATEGORIES = [
     { icon: Heart, label: tr("spec_cardiology"), specialty: "Cardiology" },
@@ -179,7 +209,7 @@ export default function HomeScreen() {
           let [h, m] = (a.time || "0:0").split(':').map(val => parseInt(val, 10));
           if (a.time?.toLowerCase().includes("pm") && h < 12) h += 12;
           if (a.time?.toLowerCase().includes("am") && h === 12) h = 0;
-          
+
           if (!isNaN(apptDate.getTime())) {
             apptDate.setHours(h, isNaN(m) ? 0 : m, 0, 0);
             const isFuture = apptDate > now;
@@ -218,17 +248,17 @@ export default function HomeScreen() {
       ]);
 
       const analysis = await analyzePatientHistory({
-        vitals,
-        surgeries,
-        medications: meds,
-        allergies,
-        chronic_diseases: chronic,
+        vitals: vitals.map(v => ({ type: v.readingType, value: v.value, recordedAt: v.recordedAt })),
+        surgeries: surgeries.map(s => s.surgeryName),
+        medications: meds.map(m => m.medicationName),
+        allergies: allergies.map(a => a.allergenName),
+        chronic_diseases: chronic.map(c => ({ diseaseName: c.diseaseName })),
       });
 
-      await updateAiDiagnosis(pid, analysis);
+      await updateAiDiagnosis(pid, JSON.stringify(analysis));
       await fetchProfile(); // Refresh profile to get the new diagnosis
-      
-      Alert.alert("AI Analysis Complete", "Your health insights have been updated.");
+
+      Alert.alert(isRTL ? "تم التحديث" : "Updated", isRTL ? "تم تحليل حالتك الصحية بنجاح" : "Your health analysis has been updated.");
     } catch (error) {
       console.error("AI Analysis error:", error);
       Alert.alert("Analysis Failed", "Could not complete AI analysis at this time.");
@@ -271,10 +301,10 @@ export default function HomeScreen() {
   return (
     <View style={styles.main}>
       <StatusBar barStyle="light-content" />
-      <Animated.ScrollView
+      <RNAnimated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
-        onScroll={Animated.event(
+        onScroll={RNAnimated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false }
         )}
@@ -282,9 +312,9 @@ export default function HomeScreen() {
         decelerationRate="fast"
         bounces={true}
       >
-        <Animated.View style={[styles.magicHeaderContainer, { transform: [{ translateY: headerTranslateY }] }]}>
+        <RNAnimated.View style={[styles.magicHeaderContainer, { transform: [{ translateY: headerTranslateY }] }]}>
           <LinearGradient colors={["#064E3B", "#059669"]} style={styles.magicHeader}>
-            <Animated.View style={[styles.headerTop, { opacity: headerOpacity }]}>
+            <RNAnimated.View style={[styles.headerTop, { opacity: headerOpacity }]}>
               <View>
                 <Text style={styles.greetText}>{getGreeting()}</Text>
                 <View style={styles.nameRow}>
@@ -298,16 +328,16 @@ export default function HomeScreen() {
                 </TouchableOpacity>
                 <NotificationBell light />
                 <TouchableOpacity style={styles.avatarWrap} onPress={() => router.push("/(patient)/profile")}>
-                  <Image 
-                    source={{ uri: resolvePhotoUrl(profile?.photoUrl) }} 
-                    style={styles.avatarImg} 
+                  <Image
+                    source={{ uri: resolvePhotoUrl(profile?.photoUrl) }}
+                    style={styles.avatarImg}
                     defaultSource={{ uri: DEFAULT_AVATAR }}
                   />
                 </TouchableOpacity>
               </View>
-            </Animated.View>
+            </RNAnimated.View>
 
-            <Animated.View style={{ transform: [{ scale: searchScale }] }}>
+            <RNAnimated.View style={{ transform: [{ scale: searchScale }] }}>
               <TouchableOpacity
                 style={styles.findDoctorBtn}
                 activeOpacity={0.8}
@@ -321,12 +351,12 @@ export default function HomeScreen() {
                   <ArrowRight size={18} color="#059669" />
                 </View>
               </TouchableOpacity>
-            </Animated.View>
+            </RNAnimated.View>
 
-            <Animated.View style={[styles.headerDecor1, { transform: [{ translateY: blob1Move }] }]} />
-            <Animated.View style={[styles.headerDecor2, { transform: [{ translateY: Animated.multiply(blob1Move, 1.5) }] }]} />
+            <RNAnimated.View style={[styles.headerDecor1, { transform: [{ translateY: blob1Move }] }]} />
+            <RNAnimated.View style={[styles.headerDecor2, { transform: [{ translateY: RNAnimated.multiply(blob1Move, 1.5) }] }]} />
           </LinearGradient>
-        </Animated.View>
+        </RNAnimated.View>
 
         {/* FLOATING GLASS TIP CARD */}
         <View style={styles.tipWrapper}>
@@ -349,41 +379,57 @@ export default function HomeScreen() {
           </LinearGradient>
         </View>
 
-        {/* AI HEALTH INSIGHTS CARD */}
+        {/* AI HEALTH INSIGHTS CARD - REFINED BILINGUAL */}
         <View style={styles.aiInsightContainer}>
-          <LinearGradient colors={["#F5F3FF", "#EDE9FE"]} style={styles.aiInsightCard}>
-            <View style={styles.aiInsightHeader}>
-              <View style={styles.aiIconBox}>
-                <Sparkles size={20} color="#7C3AED" />
+          <View style={styles.aiWhiteCardRefined}>
+            <View style={styles.aiHeaderRefined}>
+              <View style={styles.aiIconBoxRefined}>
+                <Sparkles size={20} color="#0EA5E9" />
               </View>
-              <Text style={styles.aiInsightTitle}>AI Health Insights</Text>
+              <Text style={styles.aiTitleRefined}>{isRTL ? "تحليل الذكاء الاصطناعي" : "AI Health Insights"}</Text>
+
+              <View style={styles.miniToggleBox}>
+                <TouchableOpacity onPress={() => setReportLang('en')} style={[styles.miniToggleBtn, reportLang === 'en' && styles.miniToggleBtnActive]}>
+                  <Text style={[styles.miniToggleText, reportLang === 'en' && styles.miniToggleTextActive]}>EN</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setReportLang('ar')} style={[styles.miniToggleBtn, reportLang === 'ar' && styles.miniToggleBtnActive]}>
+                  <Text style={[styles.miniToggleText, reportLang === 'ar' && styles.miniToggleTextActive]}>AR</Text>
+                </TouchableOpacity>
+              </View>
+
               {isAnalyzing ? (
-                <ActivityIndicator size="small" color="#7C3AED" />
+                <ActivityIndicator size="small" color="#0EA5E9" style={{ marginLeft: 10 }} />
               ) : (
-                <TouchableOpacity onPress={runAiAnalysis}>
-                  <Text style={styles.refreshAiText}>Refresh</Text>
+                <TouchableOpacity onPress={runAiAnalysis} style={{ marginLeft: 10 }}>
+                  <Clock size={18} color="#0EA5E9" />
                 </TouchableOpacity>
               )}
             </View>
-            
+
             {profile?.aiDiagnosisSummary ? (
-              <View style={styles.aiDiagnosisContent}>
-                <Text style={styles.aiDiagnosisText} numberOfLines={4}>
-                  {profile.aiDiagnosisSummary}
+              <View style={styles.aiContentRefined}>
+                <Text style={[styles.aiTextRefined, reportLang === 'ar' && { textAlign: 'right' }]} numberOfLines={3}>
+                  {(() => {
+                    try {
+                      const parsed = JSON.parse(profile.aiDiagnosisSummary);
+                      return reportLang === 'ar' ? parsed.analysis_ar : parsed.analysis_en;
+                    } catch { return profile.aiDiagnosisSummary; }
+                  })()}
                 </Text>
-                <TouchableOpacity 
-                  style={styles.readMoreBtn}
-                  onPress={() => Alert.alert("AI Health Analysis", profile.aiDiagnosisSummary)}
+                <TouchableOpacity
+                  style={styles.fullReportBtnRefined}
+                  onPress={() => setShowAiModal(true)}
                 >
-                  <Text style={styles.readMoreText}>Read Full Analysis</Text>
+                  <Text style={styles.fullReportBtnText}>{isRTL ? "عرض التقرير الكامل" : "Read Full Analysis"}</Text>
+                  <ArrowRight size={14} color="#0EA5E9" />
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.aiEmptyState}>
-                <Text style={styles.aiEmptyText}>No AI analysis yet. Tap refresh to analyze your medical history.</Text>
+              <View style={styles.aiEmptyStateRefined}>
+                <Text style={styles.aiEmptyTextRefined}>{isRTL ? "لا يوجد تحليل حالياً. اضغط تحديث." : "No AI analysis yet. Tap refresh."}</Text>
               </View>
             )}
-          </LinearGradient>
+          </View>
         </View>
 
         {nextBooking && (
@@ -414,27 +460,84 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* DAILY VITAL REMINDER CARD - Refined as a Health Task */}
-        {showVitalReminder && (
-          <View style={styles.vitalTaskContainer}>
-            <LinearGradient colors={["#F0F9FF", "#E0F2FE"]} style={styles.vitalTaskCard}>
-              <View style={styles.vitalTaskIconBox}>
+        {/* DAILY HEALTH TRACKER DASHBOARD */}
+        <Animated.View
+          entering={FadeInDown.delay(200).duration(800)}
+          style={styles.healthDashboardContainer}
+        >
+          <LinearGradient
+            colors={["#FFFFFF", "#F0F9FF"]}
+            style={styles.healthDashboardCard}
+          >
+            <View style={styles.dashboardHeader}>
+              <View>
+                <Text style={styles.dashboardTitle}>{isRTL ? "متابعة صحتك اليوم" : "Today's Health Tracker"}</Text>
+                <Text style={styles.dashboardSubTitle}>{isRTL ? "سجل قياساتك للحصول على تحليل دقيق" : "Track your vitals & medications"}</Text>
+              </View>
+              <View style={styles.healthScoreCircle}>
                 <Activity size={20} color="#0EA5E9" />
               </View>
-              <View style={{ flex: 1, marginLeft: 15 }}>
-                <Text style={styles.vitalTaskTitle}>Daily Vitals Record</Text>
-                <Text style={styles.vitalTaskDesc}>Track your heart rate & BP today</Text>
-              </View>
-              <TouchableOpacity 
-                style={styles.vitalTaskBtn}
-                onPress={() => router.push("/(patient)/vitals")}
+            </View>
+
+            <View style={styles.dashboardDivider} />
+
+            <View style={styles.healthTasksRow}>
+              <TouchableOpacity
+                style={styles.healthTaskItem}
+                onPress={() => {
+                  triggerHaptic();
+                  router.push("/(patient)/vitals");
+                }}
               >
-                <Text style={styles.vitalTaskBtnText}>Record</Text>
-                <ChevronRight size={14} color="#fff" />
+                <View style={styles.taskIconCircle}>
+                  <Activity size={20} color="#0EA5E9" />
+                </View>
+                <Text style={styles.taskLabel}>{isRTL ? "القياسات" : "Vitals"}</Text>
               </TouchableOpacity>
-            </LinearGradient>
-          </View>
-        )}
+
+              <TouchableOpacity
+                style={styles.healthTaskItem}
+                onPress={() => {
+                  triggerHaptic();
+                  router.push("/(patient)/medications");
+                }}
+              >
+                <View style={styles.taskIconCircle}>
+                  <Pill size={20} color="#6366F1" />
+                </View>
+                <Text style={styles.taskLabel}>{isRTL ? "الأدوية" : "Meds"}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.healthTaskItem}
+                onPress={() => {
+                  triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
+                  setShowAiModal(true);
+                }}
+              >
+                <View style={styles.taskIconCircle}>
+                  <Sparkles size={20} color="#0EA5E9" />
+                </View>
+                <Text style={styles.taskLabel}>{isRTL ? "التقرير" : "Report"}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showVitalReminder && (
+              <TouchableOpacity
+                style={styles.recordNowBtn}
+                onPress={() => {
+                  triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
+                  router.push("/(patient)/vitals");
+                }}
+              >
+                <LinearGradient colors={["#0EA5E9", "#0284C7"]} style={styles.recordNowGradient}>
+                  <Text style={styles.recordNowText}>{isRTL ? "سجل قياساتك الآن" : "Record Vitals Now"}</Text>
+                  <ArrowRight size={16} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+          </LinearGradient>
+        </Animated.View>
 
         {/* MEDICATION DUE REMINDER CARD */}
         {nextDose && (
@@ -447,7 +550,7 @@ export default function HomeScreen() {
                 <Text style={styles.medTaskTitle}>Medication Due</Text>
                 <Text style={styles.medTaskName}>{nextDose.medicationName} • {nextDose.dosage}</Text>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.medTaskBtn}
                 onPress={() => router.push("/(patient)/medications")}
               >
@@ -480,8 +583,8 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Medical History & Records</Text>
         </View>
         <View style={styles.quickAccessRow}>
-          <TouchableOpacity 
-            style={styles.fullHistoryBtn} 
+          <TouchableOpacity
+            style={styles.fullHistoryBtn}
             onPress={() => router.push("/(patient)/profile?tab=history")}
             activeOpacity={0.8}
           >
@@ -543,7 +646,30 @@ export default function HomeScreen() {
             ))
           )}
         </View>
-      </Animated.ScrollView>
+      </RNAnimated.ScrollView>
+
+      {/* AI FULL REPORT MODAL */}
+      <Modal visible={showAiModal} animationType="fade" transparent>
+        <View style={styles.modalOverlayRefined}>
+          <View style={styles.modalContentRefined}>
+            <View style={styles.modalHeaderRefined}>
+              <Sparkles size={22} color="#0EA5E9" />
+              <Text style={styles.modalTitleRefined}>{isRTL ? "تقرير الصحة الذكي" : "Smart AI Report"}</Text>
+              <TouchableOpacity onPress={() => setShowAiModal(false)}><Ionicons name="close" size={26} color="#64748B" /></TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalBodyRefined}>
+              <Text style={[styles.modalTextRefined, reportLang === 'ar' && { textAlign: 'right' }]}>
+                {(() => {
+                  try {
+                    const parsed = JSON.parse(profile?.aiDiagnosisSummary || "{}");
+                    return reportLang === 'ar' ? parsed.analysis_ar : parsed.analysis_en;
+                  } catch { return profile?.aiDiagnosisSummary; }
+                })()}
+              </Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* ULTRA-LUXURY FLOATING SEARCH */}
       <TouchableOpacity
@@ -644,11 +770,11 @@ const styles = StyleSheet.create({
   cardCircle: { position: 'absolute', bottom: -30, right: -30, width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,255,255,0.08)' },
 
   vitalTaskContainer: { paddingHorizontal: 20, marginTop: 15 },
-  vitalTaskCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#BAE6FD' },
+  vitalTaskCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#FED7AA', backgroundColor: '#FFF7ED' },
   vitalTaskIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
-  vitalTaskTitle: { fontSize: 11, fontWeight: '700', color: '#0EA5E9', textTransform: 'uppercase', letterSpacing: 0.5 },
-  vitalTaskDesc: { fontSize: 15, fontWeight: '700', color: '#0C4A6E', marginTop: 1 },
-  vitalTaskBtn: { backgroundColor: '#0EA5E9', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
+  vitalTaskTitle: { fontSize: 11, fontWeight: '700', color: '#C2410C', textTransform: 'uppercase', letterSpacing: 0.5 },
+  vitalTaskDesc: { fontSize: 15, fontWeight: '700', color: '#9A3412', marginTop: 1 },
+  vitalTaskBtn: { backgroundColor: '#EA580C', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
   vitalTaskBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 
   medTaskContainer: { paddingHorizontal: 20, marginTop: 15 },
@@ -658,7 +784,7 @@ const styles = StyleSheet.create({
   medTaskName: { fontSize: 15, fontWeight: '700', color: '#1E1B4B', marginTop: 1 },
   medTaskBtn: { backgroundColor: '#4F46E5', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
   medTaskBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-  
+
   reminderCardCalm: { borderRadius: 24, padding: 16, elevation: 8, shadowColor: '#059669', shadowOpacity: 0.1, shadowRadius: 15, overflow: 'hidden', borderWidth: 1, borderColor: '#DCFCE7' },
   reminderIconBoxCalm: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
   reminderTitleCalm: { fontSize: 11, fontWeight: '700', color: '#059669', textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -679,16 +805,47 @@ const styles = StyleSheet.create({
   reminderBtnGradient: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingVertical: 12 },
   reminderBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
+  healthDashboardContainer: { paddingHorizontal: 20, marginTop: 15 },
+  healthDashboardCard: { borderRadius: 32, padding: 20, elevation: 12, shadowColor: '#0EA5E9', shadowOpacity: 0.12, shadowRadius: 20, borderWidth: 2, borderColor: '#BAE6FD' },
+  dashboardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dashboardTitle: { fontSize: 16, fontWeight: '900', color: '#1E293B' },
+  dashboardSubTitle: { fontSize: 11, fontWeight: '600', color: '#64748B', marginTop: 2 },
+  healthScoreCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#F0F9FF', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#BAE6FD' },
+  healthScoreText: { fontSize: 12, fontWeight: '900', color: '#0EA5E9' },
+  dashboardDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 15 },
+  healthTasksRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
+  healthTaskItem: { flex: 1, backgroundColor: '#fff', padding: 12, borderRadius: 20, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', elevation: 2 },
+  healthTaskDone: { borderColor: '#BAE6FD', backgroundColor: '#F0FDF4' },
+  taskIconCircle: { width: 40, height: 40, borderRadius: 14, backgroundColor: '#F0F9FF', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  taskIconDone: { backgroundColor: '#059669' },
+  taskLabel: { fontSize: 11, fontWeight: '800', color: '#475569' },
+  pendingBadge: { position: 'absolute', top: 5, right: 5, width: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
+  pendingText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  recordNowBtn: { marginTop: 15, borderRadius: 16, overflow: 'hidden' },
+  recordNowGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12 },
+  recordNowText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+
   aiInsightContainer: { paddingHorizontal: 20, marginTop: 15 },
-  aiInsightCard: { borderRadius: 24, padding: 18, elevation: 6, shadowColor: '#7C3AED', shadowOpacity: 0.1, shadowRadius: 15, borderWidth: 1, borderColor: '#DDD6FE' },
-  aiInsightHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  aiIconBox: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 2 },
-  aiInsightTitle: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: '800', color: '#5B21B6' },
-  refreshAiText: { fontSize: 13, fontWeight: '700', color: '#7C3AED' },
-  aiDiagnosisContent: { },
-  aiDiagnosisText: { fontSize: 13, color: '#4C1D95', lineHeight: 20, fontWeight: '500' },
-  readMoreBtn: { marginTop: 10, alignSelf: 'flex-start' },
-  readMoreText: { fontSize: 12, fontWeight: '700', color: '#7C3AED', textDecorationLine: 'underline' },
-  aiEmptyState: { paddingVertical: 10 },
-  aiEmptyText: { fontSize: 12, color: '#6D28D9', fontStyle: 'italic', textAlign: 'center' },
+  aiWhiteCardRefined: { backgroundColor: '#fff', borderRadius: 24, padding: 18, elevation: 6, shadowColor: '#0EA5E9', shadowOpacity: 0.1, shadowRadius: 15, borderWidth: 2, borderColor: '#BAE6FD' },
+  aiHeaderRefined: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  aiIconBoxRefined: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#F0F9FF', justifyContent: 'center', alignItems: 'center' },
+  aiTitleRefined: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  miniToggleBox: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 8, padding: 2 },
+  miniToggleBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  miniToggleBtnActive: { backgroundColor: '#fff', elevation: 2 },
+  miniToggleText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
+  miniToggleTextActive: { color: '#0EA5E9' },
+  aiContentRefined: {},
+  aiTextRefined: { fontSize: 13, color: '#475569', lineHeight: 20, fontWeight: '500' },
+  fullReportBtnRefined: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 12 },
+  fullReportBtnText: { fontSize: 12, fontWeight: '800', color: '#0EA5E9' },
+  aiEmptyStateRefined: { paddingVertical: 10 },
+  aiEmptyTextRefined: { fontSize: 12, color: '#94A3B8', fontStyle: 'italic', textAlign: 'center' },
+
+  modalOverlayRefined: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', padding: 20 },
+  modalContentRefined: { backgroundColor: '#fff', borderRadius: 32, padding: 25, maxHeight: '80%', elevation: 20 },
+  modalHeaderRefined: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  modalTitleRefined: { flex: 1, marginLeft: 12, fontSize: 18, fontWeight: '900', color: '#1E293B' },
+  modalBodyRefined: {},
+  modalTextRefined: { fontSize: 15, color: '#475569', lineHeight: 26, fontWeight: '500' },
 });

@@ -232,7 +232,7 @@ export const updateAiDiagnosis = async (patientId: number, diagnosisSummary: str
     `${API.patients.profile(patientId).replace('/profile', '/ai-diagnosis')}`,
     { 
       method: "PATCH", 
-      body: JSON.stringify({ diagnosisSummary }) 
+      body: JSON.stringify({ DiagnosisSummary: diagnosisSummary }) 
     }, 
     true
   );

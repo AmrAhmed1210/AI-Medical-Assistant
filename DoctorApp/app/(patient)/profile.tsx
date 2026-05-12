@@ -78,9 +78,9 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [isEditModalVisible, setEditModalVisible] = useState(false);
-  const [editData, setEditData] = useState({ 
-    name: "", phone: "", dateOfBirth: "", 
-    gender: "", bloodType: "", weight: "", height: "", smokingStatus: "" 
+  const [editData, setEditData] = useState({
+    name: "", phone: "", dateOfBirth: "",
+    gender: "", bloodType: "", weight: "", height: "", smokingStatus: ""
   });
   const [updating, setUpdating] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -118,9 +118,9 @@ export default function ProfileScreen() {
 
       if (p) {
         setProfile(p);
-        setEditData({ 
-          name: p.name || "", 
-          phone: p.phone || "", 
+        setEditData({
+          name: p.name || "",
+          phone: p.phone || "",
           dateOfBirth: p.dateOfBirth || "",
           gender: p.gender || "Male",
           bloodType: p.bloodType || "O+",
@@ -129,7 +129,7 @@ export default function ProfileScreen() {
           smokingStatus: p.smokingStatus || "Non-Smoker"
         });
       }
-      
+
       const now = new Date();
       const processedAppts = (appts || []).map(a => {
         const status = a.status?.toLowerCase() || "";
@@ -139,7 +139,7 @@ export default function ProfileScreen() {
             let [h, m] = (a.time || "0:0").split(':').map(val => parseInt(val, 10));
             if (a.time?.toLowerCase().includes("pm") && h < 12) h += 12;
             if (a.time?.toLowerCase().includes("am") && h === 12) h = 0;
-            
+
             if (!isNaN(apptDate.getTime())) {
               apptDate.setHours(h, isNaN(m) ? 0 : m, 0, 0);
               if (apptDate < now) {
@@ -157,8 +157,8 @@ export default function ProfileScreen() {
       setVisits(v || []);
       setFollowedDoctors(followed || []);
 
-      const futureOnly = processedAppts.filter(a => 
-        (a.status?.toLowerCase() === "pending" || a.status?.toLowerCase() === "confirmed") && 
+      const futureOnly = processedAppts.filter(a =>
+        (a.status?.toLowerCase() === "pending" || a.status?.toLowerCase() === "confirmed") &&
         !((a as any).isAutoCancelled)
       );
       scheduleAppointmentReminders(futureOnly.slice(0, 5));
@@ -222,9 +222,9 @@ export default function ProfileScreen() {
       if (!profile) return;
       setUpdating(true);
       await updateMyProfile(
-        editData.name, 
-        profile.email, 
-        editData.phone, 
+        editData.name,
+        profile.email,
+        editData.phone,
         editData.dateOfBirth,
         editData.gender,
         editData.bloodType,
@@ -269,7 +269,7 @@ export default function ProfileScreen() {
         aspect: [1, 1],
         quality: 0.7,
       };
-      const result = useCamera 
+      const result = useCamera
         ? await ImagePicker.launchCameraAsync(options)
         : await ImagePicker.launchImageLibraryAsync(options);
       if (!result.canceled && result.assets && result.assets[0].uri) {
@@ -487,7 +487,7 @@ export default function ProfileScreen() {
                   <Calendar size={18} color="#059669" />
                   <Text style={styles.activitySubTitle}>Upcoming Appointments</Text>
                 </View>
-                {activeBookings.length === 0 ? 
+                {activeBookings.length === 0 ?
                   <EmptyState icon={Calendar} text={tr("no_active_bookings")} /> :
                   activeBookings.map(appt => (
                     <BookingCard
@@ -527,9 +527,9 @@ export default function ProfileScreen() {
                 </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.foldersHorizontalScroll}>
                   {DOCUMENT_FOLDERS.map(f => (
-                    <TouchableOpacity 
-                      key={f.id} 
-                      style={styles.profileFolderCard} 
+                    <TouchableOpacity
+                      key={f.id}
+                      style={styles.profileFolderCard}
                       onPress={() => router.push({ pathname: "/(patient)/medical-records/documents", params: { folder: f.id } } as any)}
                     >
                       <LinearGradient colors={[f.bg, '#fff']} style={styles.profileFolderGradient}>
@@ -593,7 +593,7 @@ export default function ProfileScreen() {
               <InputBox label={tr("full_name")} value={editData.name} onChange={(t) => setEditData({ ...editData, name: t })} icon={User} />
               <InputBox label={tr("phone")} value={editData.phone} onChange={(t) => setEditData({ ...editData, phone: t })} icon={Phone} />
               <InputBox label={tr("date_of_birth")} value={editData.dateOfBirth} onChange={(t) => setEditData({ ...editData, dateOfBirth: t })} icon={Calendar} />
-              
+
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={{ flex: 1 }}><InputBox label="Weight (kg)" value={editData.weight} onChange={(t) => setEditData({ ...editData, weight: t })} icon={Scale} /></View>
                 <View style={{ flex: 1 }}><InputBox label="Height (cm)" value={editData.height} onChange={(t) => setEditData({ ...editData, height: t })} icon={Ruler} /></View>
@@ -641,7 +641,7 @@ function HistoryCard({ icon: Icon, color, title, items, onAdd }: any) {
         </TouchableOpacity>
       </View>
       <View style={styles.historyItemsList}>
-        {items.length === 0 ? 
+        {items.length === 0 ?
           <Text style={styles.historyEmpty}>No records found</Text> :
           items.map((it: any, i: number) => (
             <View key={i} style={styles.historyItemRow}>
@@ -759,14 +759,16 @@ function BookingCard({ appt, variant, onCancel, onDelete }: any) {
 
         <View style={styles.bookingActionRowModern}>
           {!isCancelled && !isCompleted && (isPending || isConfirmed) ? (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.cancelBookingActionBtn}
               onPress={() => {
                 Alert.alert("Cancel Booking", "Are you sure you want to cancel this appointment?", [
                   { text: "No", style: "cancel" },
-                  { text: "Yes, Cancel", style: "destructive", onPress: () => {
-                    onCancel(appt.id);
-                  }}
+                  {
+                    text: "Yes, Cancel", style: "destructive", onPress: () => {
+                      onCancel(appt.id);
+                    }
+                  }
                 ]);
               }}
             >
@@ -774,7 +776,7 @@ function BookingCard({ appt, variant, onCancel, onDelete }: any) {
               <Text style={styles.cancelBtnText}>Cancel Booking</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.manageBookingBtn}
               onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { id: appt.doctorId } } as any)}
             >
@@ -782,9 +784,9 @@ function BookingCard({ appt, variant, onCancel, onDelete }: any) {
               <ChevronRight size={14} color="#059669" />
             </TouchableOpacity>
           )}
-          
-          <TouchableOpacity 
-            style={styles.deleteBookingBtn} 
+
+          <TouchableOpacity
+            style={styles.deleteBookingBtn}
             onPress={() => {
               Alert.alert(
                 "Delete Booking",

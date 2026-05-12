@@ -605,7 +605,8 @@ namespace MedicalAssistant.Services.Services
                 chronicDiseases,
                 medications,
                 latestVitals,
-                lastVisits
+                lastVisits,
+                patient.MedicalProfile?.AiDiagnosisSummary
             );
         }
 

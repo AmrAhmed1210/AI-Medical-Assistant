@@ -60,8 +60,15 @@ namespace MedicalAssistant.Presentation.Controllers
                 }
             }
 
-            var appointment = await _appointmentService.CreateAppointmentAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = appointment.Id }, appointment);
+            try
+            {
+                var appointment = await _appointmentService.CreateAppointmentAsync(dto);
+                return CreatedAtAction(nameof(GetById), new { id = appointment.Id }, appointment);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { message = ex.Message });
+            }
         }
 
         // GET /appointments/my
