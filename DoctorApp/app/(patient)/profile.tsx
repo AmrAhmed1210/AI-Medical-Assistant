@@ -775,14 +775,36 @@ function BookingCard({ appt, variant, onCancel, onDelete }: any) {
               <XCircle size={14} color="#EF4444" />
               <Text style={styles.cancelBtnText}>Cancel Booking</Text>
             </TouchableOpacity>
-          ) : (
+          ) : null}
+
+          {isActive && !isCancelled && !isCompleted && (isPending || isConfirmed) ? (
             <TouchableOpacity
-              style={styles.manageBookingBtn}
-              onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { id: appt.doctorId } } as any)}
+              style={[styles.cancelBookingActionBtn, { borderColor: '#6366F1' }]}
+              onPress={() => {
+                router.push({ 
+                  pathname: "/(patient)/doctor-details", 
+                  params: { 
+                    id: appt.doctorId, 
+                    editAppointmentId: appt.id,
+                    initialDate: appt.date,
+                    initialTime: appt.time
+                  } 
+                } as any);
+              }}
             >
-              <Text style={styles.manageBtnText}>View Doctor</Text>
-              <ChevronRight size={14} color="#059669" />
+              <Edit3 size={14} color="#6366F1" />
+              <Text style={[styles.cancelBtnText, { color: '#6366F1' }]}>Edit Booking</Text>
             </TouchableOpacity>
+          ) : (
+            !isActive && (
+              <TouchableOpacity
+                style={styles.manageBookingBtn}
+                onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { id: appt.doctorId } } as any)}
+              >
+                <Text style={styles.manageBtnText}>View Doctor</Text>
+                <ChevronRight size={14} color="#059669" />
+              </TouchableOpacity>
+            )
           )}
 
           <TouchableOpacity

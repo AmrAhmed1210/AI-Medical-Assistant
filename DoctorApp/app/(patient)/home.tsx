@@ -108,8 +108,13 @@ export default function HomeScreen() {
       fetchHealthData();
     });
 
+    const unsubDoctor = onDoctorUpdated(() => {
+      fetchPopularDoctors();
+    });
+
     return () => {
       unsubMed();
+      unsubDoctor();
     };
   }, []);
 
@@ -117,6 +122,7 @@ export default function HomeScreen() {
     useCallback(() => {
       fetchHealthData();
       fetchNextBooking();
+      fetchPopularDoctors(); // Added to refresh doctor cards on focus
       checkDailyReminder();
     }, [])
   );

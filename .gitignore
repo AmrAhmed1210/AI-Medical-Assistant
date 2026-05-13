@@ -23,7 +23,7 @@ ENV/
 
 # === AI model files & Data ===
 # ملحوظة: لو عايز ترفع الملفات دي شيل الـ # من قدامهم
-# AI-Medical-Assistant/
+AI-Medical-Assistant/
 medical_knowledge_base.csv
 patient_service.py
 test_api.py

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Domain.Entities.PatientModule;
 using MedicalAssistant.Services_Abstraction.Contracts;
+using MedicalAssistant.Services_Abstraction.DTOs;
 using MedicalAssistant.Shared.DTOs.PatientRecords;
 
 namespace MedicalAssistant.Services.Services
@@ -494,6 +495,21 @@ namespace MedicalAssistant.Services.Services
             _unitOfWork.Repository<PatientDocument>().Delete(existing);
             await _unitOfWork.SaveChangesAsync();
             return true;
+        }
+        public async Task<PatientCompleteHistoryDTO> GetPatientCompleteHistoryAsync(int patientId)
+        {
+            var chronicTask = GetChronicDiseasesAsync(patientId);
+            var allergiesTask = GetAllergiesAsync(patientId);
+            var medsTask = GetMedicationsAsync(patientId, activeOnly: true);
+
+            await Task.WhenAll(chronicTask, allergiesTask, medsTask);
+
+            return new PatientCompleteHistoryDTO
+            {
+                ChronicDiseases = await chronicTask,
+                Allergies = await allergiesTask,
+                Medications = await medsTask
+            };
         }
     }
 }

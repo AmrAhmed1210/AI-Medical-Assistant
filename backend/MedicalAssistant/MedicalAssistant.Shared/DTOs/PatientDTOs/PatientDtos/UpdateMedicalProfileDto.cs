@@ -14,5 +14,6 @@ namespace MedicalAssistant.Shared.DTOs.PatientDTOs
         public string? EmergencyContactName { get; set; }
         public string? EmergencyContactPhone { get; set; }
         public string? EmergencyContactRelation { get; set; }
+        public string? AiDiagnosisSummary { get; set; }
     }
 }

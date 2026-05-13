@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, Plus, X, Trash2, User, Shield, Activity, Pill, Heart, FileText, Scissors, Loader2 } from 'lucide-react'
+import { ChevronLeft, Plus, X, Trash2, User, Shield, Activity, Pill, Heart, FileText, Scissors, Loader2, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -33,6 +33,7 @@ export default function DoctorPatientRecords() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
 
   const [allergies, setAllergies] = useState<AllergyRecord[]>([])
   const [chronic, setChronic] = useState<ChronicDiseaseRecord[]>([])
@@ -60,6 +61,40 @@ export default function DoctorPatientRecords() {
   }
 
   useEffect(() => { fetchAll() }, [pid])
+
+  const runAiAnalysis = async () => {
+    setAnalyzing(true)
+    try {
+      const payload = {
+        vitals: vitals.map(v => ({ type: v.readingType, value: v.value, recordedAt: v.recordedAt })),
+        surgeries: surgeries.map(s => s.surgeryName),
+        medications: medications.map(m => m.medicationName),
+        allergies: allergies.map(a => a.allergenName),
+        chronic_diseases: chronic.map(c => ({ diseaseName: c.diseaseName })),
+      }
+
+      const response = await fetch(`http://192.168.1.3:8000/analyze-history`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) throw new Error('AI Analysis failed')
+      const analysis = await response.json()
+
+      await patientRecordsApi.updateMedicalProfile(pid, {
+        aiDiagnosisSummary: JSON.stringify(analysis)
+      })
+
+      toast.success('AI Health Analysis Updated')
+      fetchAll()
+    } catch (e) {
+      toast.error('AI Analysis failed. Check if AI server is running.')
+      console.error(e)
+    } finally {
+      setAnalyzing(false)
+    }
+  }
 
   const age = patient?.dateOfBirth
     ? Math.floor((Date.now() - new Date(patient.dateOfBirth).getTime()) / (365.25*24*60*60*1000))
@@ -329,23 +364,85 @@ export default function DoctorPatientRecords() {
       <Card className="relative min-h-[400px]">
         <div className="p-6">
           {activeTab === 'profile' && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {[
-                { l: 'Full Name', v: patient?.fullName },
-                { l: 'Email', v: patient?.email },
-                { l: 'Phone', v: patient?.phoneNumber },
-                { l: 'Blood Type', v: medProfile?.bloodType },
-                { l: 'Weight', v: medProfile?.weight ? `${medProfile.weight} kg` : null },
-                { l: 'Height', v: medProfile?.height ? `${medProfile.height} cm` : null },
-                { l: 'Smoking', v: medProfile?.smokingStatus },
-                { l: 'Emergency Contact', v: medProfile?.emergencyContactName },
-                { l: 'Emergency Phone', v: medProfile?.emergencyContactPhone },
-              ].map((item, i) => (
-                <div key={i} className="p-4 bg-gray-50 rounded-xl">
-                  <p className="text-xs text-gray-400 font-semibold mb-1">{item.l}</p>
-                  <p className="text-sm font-semibold text-gray-800">{item.v || '—'}</p>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[
+                  { l: 'Full Name', v: patient?.fullName },
+                  { l: 'Email', v: patient?.email },
+                  { l: 'Phone', v: patient?.phoneNumber },
+                  { l: 'Blood Type', v: medProfile?.bloodType },
+                  { l: 'Weight', v: medProfile?.weightKg ? `${medProfile.weightKg} kg` : null },
+                  { l: 'Height', v: medProfile?.heightCm ? `${medProfile.heightCm} cm` : null },
+                  { l: 'Smoking', v: medProfile?.isSmoker ? `Yes (${medProfile.smokingDetails || 'Daily'})` : 'No' },
+                  { l: 'Emergency Contact', v: medProfile?.emergencyContactName },
+                  { l: 'Emergency Phone', v: medProfile?.emergencyContactPhone },
+                ].map((item, i) => (
+                  <div key={i} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-400 font-semibold mb-1 uppercase tracking-wider">{item.l}</p>
+                    <p className="text-sm font-semibold text-gray-800">{item.v || '—'}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* AI REPORT SECTION */}
+              {/* AI REPORT SECTION */}
+              <div className="mt-8 border-t border-gray-100 pt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">AI Health Insights</h3>
+                      <p className="text-xs text-gray-500">Automated analysis of patient history</p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={runAiAnalysis} 
+                    disabled={analyzing}
+                    className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
+                  >
+                    {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {analyzing ? 'Analyzing...' : (medProfile?.aiDiagnosisSummary ? 'Refresh Analysis' : 'Generate Analysis')}
+                  </Button>
                 </div>
-              ))}
+                
+                {medProfile?.aiDiagnosisSummary ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {(() => {
+                      try {
+                        const report = JSON.parse(medProfile.aiDiagnosisSummary);
+                        return (
+                          <>
+                            <div className="p-5 bg-purple-50/50 rounded-2xl border border-purple-100">
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="text-[10px] font-bold text-purple-600 uppercase tracking-widest bg-white px-2 py-0.5 rounded-full border border-purple-100">English Report</span>
+                              </div>
+                              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{report.analysis_en}</p>
+                            </div>
+                            <div className="p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-right" dir="rtl">
+                              <div className="flex items-center justify-between mb-3 flex-row-reverse">
+                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest bg-white px-2 py-0.5 rounded-full border border-emerald-100">التقرير بالعربية</span>
+                              </div>
+                              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-tajawal">{report.analysis_ar}</p>
+                            </div>
+                          </>
+                        );
+                      } catch (e) {
+                        return <p className="text-sm text-gray-500 italic">Report data is currently being processed or unavailable.</p>;
+                      }
+                    })()}
+                  </div>
+                ) : (
+                  <div className="p-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-center">
+                    <Sparkles className="w-8 h-8 text-purple-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">No health analysis has been generated for this patient yet.</p>
+                    <p className="text-xs text-gray-400 mt-1">Click the button above to analyze the medical history.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

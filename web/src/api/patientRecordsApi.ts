@@ -79,12 +79,17 @@ export interface MedicationRecord {
 export interface MedicalProfile {
   id: number
   bloodType?: string
-  weight?: number
-  height?: number
-  smokingStatus?: string
-  alcoholStatus?: string
+  weightKg?: number
+  heightCm?: number
+  isSmoker: boolean
+  smokingDetails?: string
+  drinksAlcohol: boolean
+  exerciseHabits?: string
   emergencyContactName?: string
   emergencyContactPhone?: string
+  emergencyContactRelation?: string
+  aiDiagnosisSummary?: string
+  lastAiAnalysisAt?: string
 }
 
 export const patientRecordsApi = {
@@ -151,5 +156,8 @@ export const patientRecordsApi = {
     axiosInstance.delete(`/api/patient-documents/${id}`).then((r) => r.data),
 
   getMedicalProfile: (patientId: string | number) =>
-    axiosInstance.get<MedicalProfile>(`/api/patients/${patientId}/medical-profile`).then((r) => r.data),
+    axiosInstance.get<MedicalProfile>(`/api/patients/${patientId}/profile`).then((r) => r.data),
+
+  updateMedicalProfile: (patientId: string | number, data: Partial<MedicalProfile>) =>
+    axiosInstance.patch(`/api/patients/${patientId}/profile`, data).then((r) => r.data),
 }

@@ -30,18 +30,18 @@ namespace MedicalAssistant.Presentation.Controllers
             _doctorService = doctorService;
         }
 
-        private int? GetPatientIdFromToken()
+        private int GetPatientIdFromClaims()
         {
-            var pid = User.FindFirst("PatientId")?.Value;
-            return int.TryParse(pid, out var id) ? id : null;
+            var claim = User.FindFirst("PatientId")?.Value;
+            return int.TryParse(claim, out var id) ? id : 0;
         }
 
         private bool IsDoctor() => User.IsInRole("Doctor");
 
         private bool IsOwnPatient(int patientId)
         {
-            var tokenPid = GetPatientIdFromToken();
-            return tokenPid.HasValue && tokenPid.Value == patientId;
+            var currentPatientId = GetPatientIdFromClaims();
+            return currentPatientId > 0 && currentPatientId == patientId;
         }
 
         // GET /api/patients/{id}/medications  (Doctor,Patient(own))

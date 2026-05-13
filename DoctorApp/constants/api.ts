@@ -119,6 +119,14 @@ export const API = {
     surgeryDelete:   (surgeryId: number | string) => `${BASE_URL}/api/surgeries/${surgeryId}`,
     chronicUpdate:   (chronicId: number | string) => `${BASE_URL}/api/chronic-diseases/${chronicId}`,
     chronicDelete:   (chronicId: number | string) => `${BASE_URL}/api/chronic-diseases/${chronicId}`,
+    vitalUpdate:     (vitalId: number | string) => `${BASE_URL}/api/vitals/${vitalId}`,
     vitalDelete:     (vitalId: number | string) => `${BASE_URL}/api/vitals/${vitalId}`,
+  },
+
+  // AI Chat
+  chat: {
+    sessions: `${BASE_URL}/api/chat/sessions`,
+    messages: (sessionId: number | string) => `${BASE_URL}/api/chat/sessions/${sessionId}/messages`,
+    ask:      `${BASE_URL}/api/chat/ask`,
   },
 };

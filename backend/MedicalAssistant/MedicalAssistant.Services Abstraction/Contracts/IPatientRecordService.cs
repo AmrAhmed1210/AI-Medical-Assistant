@@ -1,4 +1,5 @@
 using MedicalAssistant.Domain.Entities.PatientModule;
+using MedicalAssistant.Services_Abstraction.DTOs;
 using MedicalAssistant.Shared.DTOs.PatientRecords;
 using System;
 using System.Collections.Generic;
@@ -55,5 +56,6 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
         Task<PatientDocument> AddPatientDocumentAsync(int patientId, PatientDocument document);
         Task<PatientDocument?> UpdatePatientDocumentAsync(int documentId, PatientDocument updates);
         Task<bool> DeletePatientDocumentAsync(int documentId);
+        Task<PatientCompleteHistoryDTO> GetPatientCompleteHistoryAsync(int patientId);
     }
 }

@@ -27,10 +27,7 @@ public class PatientDocumentsController : ControllerBase
 
     private int GetPatientIdFromClaims()
     {
-        var claim = User.FindFirst("PatientId")?.Value
-                    ?? User.FindFirst("UserId")?.Value
-                    ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
+        var claim = User.FindFirst("PatientId")?.Value;
         return int.TryParse(claim, out var id) ? id : 0;
     }
 
