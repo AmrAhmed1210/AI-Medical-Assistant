@@ -56,6 +56,7 @@ namespace MedicalAssistant.Presentation.Controllers
                 EmergencyContactName = dto.EmergencyContactName,
                 EmergencyContactPhone = dto.EmergencyContactPhone,
                 EmergencyContactRelation = dto.EmergencyContactRelation,
+                AiDiagnosisSummary = dto.AiDiagnosisSummary,
             };
 
             var created = await _patientRecordService.CreateMedicalProfileAsync(id, profile);
@@ -95,6 +96,7 @@ namespace MedicalAssistant.Presentation.Controllers
                 EmergencyContactName = dto.EmergencyContactName,
                 EmergencyContactPhone = dto.EmergencyContactPhone,
                 EmergencyContactRelation = dto.EmergencyContactRelation,
+                AiDiagnosisSummary = dto.AiDiagnosisSummary,
             };
 
             var updated = await _patientRecordService.UpdateMedicalProfileAsync(id, updates);

@@ -156,8 +156,8 @@ export const patientRecordsApi = {
     axiosInstance.delete(`/api/patient-documents/${id}`).then((r) => r.data),
 
   getMedicalProfile: (patientId: string | number) =>
-    axiosInstance.get<MedicalProfile>(`/api/patients/${patientId}/medical-profile`).then((r) => r.data),
+    axiosInstance.get<MedicalProfile>(`/api/patients/${patientId}/profile`).then((r) => r.data),
 
   updateMedicalProfile: (patientId: string | number, data: Partial<MedicalProfile>) =>
-    axiosInstance.put(`/api/patients/${patientId}/medical-profile`, data).then((r) => r.data),
+    axiosInstance.patch(`/api/patients/${patientId}/profile`, data).then((r) => r.data),
 }
