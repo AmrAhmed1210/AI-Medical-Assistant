@@ -10,13 +10,13 @@ import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../../constants/colors";
 import { getMyPatientId } from "../../../services/authService";
 import {
-  getAllergies, createAllergy, deleteAllergy,
-  getChronicDiseases, deleteChronicDisease,
-  getMedications, deleteMedication,
-  getVitals, deleteVital,
-  getSurgeries, createSurgery, deleteSurgery,
   getPatientDocuments, uploadPatientDocument, deletePatientDocument,
-  createChronicDisease,
+  getAllergies, getChronicDiseases, getMedications, getVitals, getSurgeries,
+  createAllergy, updateAllergy, deleteAllergy,
+  createChronicDisease, updateChronicDisease, deleteChronicDisease,
+  createSurgery, updateSurgery, deleteSurgery,
+  createMedication, updateMedication, deleteMedication,
+  createVital, updateVital, deleteVital,
   AllergyRecord, ChronicDisease, Medication, VitalReading, SurgeryRecord, PatientDocument,
 } from "../../../services/medicalRecordService";
 import Toast from "react-native-toast-message";
@@ -55,6 +55,7 @@ export default function MedicalRecordsCategory() {
   // Add modal state
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any | null>(null);
 
   // Allergy form
   const [allergyName, setAllergyName] = useState("");
@@ -75,11 +76,22 @@ export default function MedicalRecordsCategory() {
   const [chronicSeverity, setChronicSeverity] = useState("Moderate");
   const [chronicFreq, setChronicFreq] = useState("");
 
+  // Vital form
+  const [vitalType, setVitalType] = useState("Blood Pressure");
+  const [vitalValue, setVitalValue] = useState("");
+  const [vitalUnit, setVitalUnit] = useState("mmHg");
+
+  // Medication form
+  const [medName, setMedName] = useState("");
+  const [medDosage, setMedDosage] = useState("");
+  const [medFreq, setMedFreq] = useState("");
+
   // Document form
   const [docTitle, setDocTitle] = useState("");
   const [docType, setDocType] = useState("Blood Test");
   const [docUri, setDocUri] = useState<string | null>(null);
   const [docDescription, setDocDescription] = useState("");
+
   const [selectedFolder, setSelectedFolder] = useState<string | null>(folder || null);
   const [isAiProcessing, setIsAiProcessing] = useState(false);
 
@@ -91,7 +103,7 @@ export default function MedicalRecordsCategory() {
     { id: "Other", label: "Other", icon: "document-text-outline", color: "#64748B" },
   ];
 
-  const canAdd = category !== "medications" && category !== "vitals";
+  const canAdd = true; // Patients should be able to add all record types
   const color = TAB_COLORS[category as string] || COLORS.primary;
 
   const fetchData = useCallback(async () => {
@@ -118,6 +130,40 @@ export default function MedicalRecordsCategory() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const handleEdit = (item: any) => {
+    setSelectedItem(item);
+    if (category === "allergies") {
+      setAllergyName(item.allergenName);
+      setAllergySeverity(item.severity);
+      setAllergyNotes(item.notes || "");
+    } else if (category === "chronic") {
+      setChronicName(item.diseaseName);
+      setChronicType(item.diseaseType);
+      setChronicSeverity(item.severity);
+      setChronicFreq(item.monitoringFrequency);
+    } else if (category === "surgeries") {
+      setSurgeryName(item.surgeryName);
+      setSurgeryHospital(item.hospitalName);
+      setSurgeryDoctor(item.doctorName);
+      setSurgeryDate(item.surgeryDate);
+      setSurgeryComplications(item.complications || "");
+      setSurgeryNotes(item.notes || "");
+    } else if (category === "vitals") {
+      setVitalType(item.readingType);
+      setVitalValue(String(item.value));
+      setVitalUnit(item.unit);
+    } else if (category === "medications") {
+      setMedName(item.medicationName);
+      setMedDosage(item.dosage);
+      setMedFreq(item.frequency);
+    } else if (category === "documents") {
+      setDocTitle(item.title);
+      setDocType(item.documentType);
+      setDocDescription(item.description || "");
+    }
+    setShowModal(true);
+  };
+
   const handleDelete = async (id: number) => {
     Alert.alert(tr("delete" as any), tr("delete_confirm" as any), [
       { text: tr("cancel"), style: "cancel" },
@@ -143,9 +189,11 @@ export default function MedicalRecordsCategory() {
   };
 
   const resetForms = () => {
+    setSelectedItem(null);
     setAllergyName(""); setAllergySeverity("Mild"); setAllergyNotes("");
     setChronicName(""); setChronicType(""); setChronicSeverity("Moderate"); setChronicFreq("");
     setSurgeryName(""); setSurgeryHospital(""); setSurgeryDoctor(""); setSurgeryDate(""); setSurgeryComplications(""); setSurgeryNotes("");
+    setVitalValue(""); setMedName(""); setMedDosage(""); setMedFreq("");
     setDocTitle(""); setDocType("Blood Test"); setDocUri(null); setDocDescription("");
   };
 
@@ -196,37 +244,85 @@ export default function MedicalRecordsCategory() {
     try {
       setSaving(true);
       const pid = await getMyPatientId();
-      if (pid <= 0) return;
-
-      if (category === "allergies") {
-        if (!allergyName.trim()) { Toast.show({ type: "error", text1: tr("please_enter_allergen" as any) }); return; }
-        const res = await createAllergy(pid, { allergenName: allergyName, severity: allergySeverity, allergyType: "Unknown", isActive: true });
-        setItems(prev => [res, ...prev]);
-      } else if (category === "chronic") {
-        if (!chronicName.trim()) { Toast.show({ type: "error", text1: tr("please_enter_disease" as any) }); return; }
-        const res = await createChronicDisease(pid, { diseaseName: chronicName, diseaseType: chronicType, severity: chronicSeverity, monitoringFrequency: chronicFreq, isActive: true });
-        setItems(prev => [res, ...prev]);
-      } else if (category === "surgeries") {
-        if (!surgeryName.trim()) { Toast.show({ type: "error", text1: tr("please_enter_surgery" as any) }); return; }
-        const res = await createSurgery(pid, { surgeryName: surgeryName, hospitalName: surgeryHospital, doctorName: surgeryDoctor, surgeryDate: surgeryDate, complications: surgeryComplications, notes: surgeryNotes });
-        setItems(prev => [res, ...prev]);
-      } else if (category === "documents") {
-        if (!docTitle.trim()) { Toast.show({ type: "error", text1: tr("please_enter_title" as any) }); return; }
-        if (!docUri) { Toast.show({ type: "error", text1: tr("please_select_image" as any) }); return; }
-        const res = await uploadPatientDocument(pid, docUri, docType.toLowerCase(), docTitle, docDescription);
-        setItems(prev => [res, ...prev]);
+      console.log('📝 Saving record for patient:', pid, 'category:', category);
+      
+      if (pid <= 0) {
+        Alert.alert("Error", "Could not identify patient session. Please login again.");
+        return;
       }
 
-      Toast.show({ type: "success", text1: tr("saved" as any) });
+      let res;
+      if (category === "allergies") {
+        if (!allergyName.trim()) { Toast.show({ type: "error", text1: tr("please_enter_allergen" as any) }); return; }
+        const payload = { allergenName: allergyName, severity: allergySeverity, allergyType: "Unknown", isActive: true, notes: allergyNotes };
+        console.log('📤 Sending Allergy:', payload);
+        if (selectedItem) {
+          res = await updateAllergy(selectedItem.id, payload);
+        } else {
+          res = await createAllergy(pid, payload);
+        }
+      } else if (category === "chronic") {
+        if (!chronicName.trim()) { Toast.show({ type: "error", text1: tr("please_enter_disease" as any) }); return; }
+        const payload = { diseaseName: chronicName, diseaseType: chronicType || "Chronic", severity: chronicSeverity, monitoringFrequency: chronicFreq || "Regularly", isActive: true };
+        console.log('📤 Sending Chronic:', payload);
+        if (selectedItem) {
+          res = await updateChronicDisease(selectedItem.id, payload);
+        } else {
+          res = await createChronicDisease(pid, payload);
+        }
+      } else if (category === "surgeries") {
+        if (!surgeryName.trim()) { Toast.show({ type: "error", text1: tr("please_enter_surgery" as any) }); return; }
+        const payload = { surgeryName: surgeryName, hospitalName: surgeryHospital, doctorName: surgeryDoctor, surgeryDate: surgeryDate, complications: surgeryComplications, notes: surgeryNotes };
+        console.log('📤 Sending Surgery:', payload);
+        if (selectedItem) {
+          res = await updateSurgery(selectedItem.id, payload);
+        } else {
+          res = await createSurgery(pid, payload);
+        }
+      } else if (category === "vitals") {
+        if (!vitalValue.trim()) { Toast.show({ type: "error", text1: "Please enter value" }); return; }
+        const payload = { readingType: vitalType, value: parseFloat(vitalValue), unit: vitalUnit, recordedBy: "Patient" };
+        console.log('📤 Sending Vital:', payload);
+        if (selectedItem) {
+          res = await updateVital(selectedItem.id, payload);
+        } else {
+          res = await createVital(pid, payload);
+        }
+      } else if (category === "medications") {
+        if (!medName.trim()) { Toast.show({ type: "error", text1: "Please enter name" }); return; }
+        const payload = { medicationName: medName, dosage: medDosage, frequency: medFreq, form: "Pill", startDate: new Date().toISOString().split('T')[0], isActive: true, isChronic: false };
+        console.log('📤 Sending Medication:', payload);
+        if (selectedItem) {
+          res = await updateMedication(selectedItem.id, payload);
+        } else {
+          res = await createMedication(pid, payload);
+        }
+      } else if (category === "documents") {
+        if (!selectedItem && !docUri) { Toast.show({ type: "error", text1: tr("please_select_image" as any) }); return; }
+        if (!docTitle.trim()) { Toast.show({ type: "error", text1: tr("please_enter_title" as any) }); return; }
+        
+        if (selectedItem) {
+           Toast.show({ type: "info", text1: "Document update coming soon" });
+           setShowModal(false);
+           return;
+        } else {
+          console.log('📤 Uploading Document:', docTitle);
+          res = await uploadPatientDocument(pid, docUri!, docType, docTitle, docDescription);
+        }
+      }
+
+      console.log('✅ Save result:', res);
+      Toast.show({ type: "success", text1: selectedItem ? "Record updated" : "Record added" });
       setShowModal(false);
-      resetForms();
-    } catch (e: any) {
-      console.log("Upload error details:", e);
-      Toast.show({ type: "error", text1: e.message || tr("error") });
+      fetchData();
+    } catch (err: any) {
+      console.error("❌ Failed to save record:", err);
+      Alert.alert("Error", err.message || "Could not save record.");
     } finally {
       setSaving(false);
     }
   };
+
 
   const pickImage = async () => {
     Alert.alert(
@@ -280,9 +376,14 @@ export default function MedicalRecordsCategory() {
                 <View style={[styles.badge, { backgroundColor: itemColor + '20' }]}>
                   <Text style={[styles.badgeTxt, { color: itemColor }]}>{item.severity}</Text>
                 </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity onPress={() => handleEdit(item)}>
+                  <Ionicons name="create-outline" size={18} color={itemColor} />
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDelete(item.id)}>
                   <Ionicons name="trash-outline" size={18} color="#EF4444" />
                 </TouchableOpacity>
+              </View>
               </View>
             </View>
             {item.notes && <Text style={styles.cardMeta}>{item.notes}</Text>}
@@ -293,8 +394,13 @@ export default function MedicalRecordsCategory() {
           <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor }]}>
             <View style={styles.cardRow}>
               <Text style={styles.cardTitle}>{item.diseaseName}</Text>
-              <View style={[styles.badge, { backgroundColor: item.isActive ? itemColor + '20' : "#F1F5F9" }]}>
-                <Text style={[styles.badgeTxt, { color: item.isActive ? itemColor : "#64748B" }]}>{item.isActive ? "Active" : "Inactive"}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity onPress={() => handleEdit(item)}>
+                  <Ionicons name="create-outline" size={18} color={itemColor} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                </TouchableOpacity>
               </View>
             </View>
             {item.diagnosedDate && <Text style={styles.cardMeta}>{tr("date")}: {item.diagnosedDate}</Text>}
@@ -305,8 +411,14 @@ export default function MedicalRecordsCategory() {
           <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor }]}>
             <View style={styles.cardRow}>
               <Text style={styles.cardTitle}>{item.medicationName}</Text>
-              <View style={[styles.badge, { backgroundColor: item.isActive ? itemColor + '20' : "#F1F5F9" }]}>
-                <Text style={[styles.badgeTxt, { color: item.isActive ? itemColor : "#64748B" }]}>{item.isActive ? "Active" : "Inactive"}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                {/* Medications are often read-only or complex to edit, but we enable deletion */}
+                <TouchableOpacity onPress={() => handleEdit(item)}>
+                  <Ionicons name="create-outline" size={18} color={itemColor} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                </TouchableOpacity>
               </View>
             </View>
             <Text style={styles.cardText}>{item.dosage} • {item.frequency}</Text>
@@ -318,9 +430,14 @@ export default function MedicalRecordsCategory() {
           <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor }]}>
             <View style={styles.cardRow}>
               <Text style={styles.cardTitle}>{item.readingType}</Text>
-              <Text style={[styles.vitalValue, !item.isNormal && { color: "#C2410C" }]}>
-                {item.value}{item.value2 ? `/${item.value2}` : ""} {item.unit}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity onPress={() => handleEdit(item)}>
+                  <Ionicons name="create-outline" size={18} color={itemColor} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
             </View>
             {item.notes && <Text style={styles.cardMeta}>{item.notes}</Text>}
             {item.recordedAt && <Text style={styles.cardMeta}>{new Date(item.recordedAt).toLocaleDateString()}</Text>}
@@ -331,9 +448,14 @@ export default function MedicalRecordsCategory() {
           <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor }]}>
             <View style={styles.cardRow}>
               <Text style={styles.cardTitle}>{item.surgeryName}</Text>
-              <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                <Ionicons name="trash-outline" size={18} color="#EF4444" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <TouchableOpacity onPress={() => handleEdit(item)}>
+                  <Ionicons name="create-outline" size={18} color={itemColor} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
             </View>
             {item.hospitalName && <Text style={styles.cardText}>{tr("hospital" as any)}: {item.hospitalName}</Text>}
             {item.doctorName && <Text style={styles.cardText}>{tr("doctor")}: {item.doctorName}</Text>}
@@ -345,10 +467,13 @@ export default function MedicalRecordsCategory() {
           <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor }]}>
             <View style={styles.cardRow}>
               <Text style={styles.cardTitle}>{item.title}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={[styles.badge, { backgroundColor: itemColor + '20' }]}>
                   <Text style={[styles.badgeTxt, { color: itemColor }]}>{item.documentType}</Text>
                 </View>
+                <TouchableOpacity onPress={() => handleEdit(item)}>
+                  <Ionicons name="create-outline" size={18} color={itemColor} />
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDelete(item.id)}>
                   <Ionicons name="trash-outline" size={18} color="#EF4444" />
                 </TouchableOpacity>
@@ -378,9 +503,13 @@ export default function MedicalRecordsCategory() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {category === "allergies" ? tr("add_allergy" as any) : 
-               category === "chronic" ? tr("add_chronic" as any) :
-               category === "surgeries" ? tr("add_surgery" as any) : tr("add_document" as any)}
+              {selectedItem ? (tr("edit" as any) + " " + tr(category as any)) : (
+                category === "allergies" ? tr("add_allergy" as any) : 
+                category === "chronic" ? tr("add_chronic" as any) :
+                category === "surgeries" ? tr("add_surgery" as any) : 
+                category === "vitals" ? "Add Vital Reading" :
+                category === "medications" ? "Add Medication" : tr("add_document" as any)
+              )}
             </Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               {category === "allergies" && (
@@ -417,6 +546,20 @@ export default function MedicalRecordsCategory() {
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.aiHint}>Use AI to refine and summarize notes</Text>
+                </>
+              )}
+              {category === "vitals" && (
+                <>
+                  <TextInput style={styles.input} placeholder="Reading Type (e.g. BP, Sugar)" value={vitalType} onChangeText={setVitalType} />
+                  <TextInput style={styles.input} placeholder="Value" value={vitalValue} onChangeText={setVitalValue} keyboardType="numeric" />
+                  <TextInput style={styles.input} placeholder="Unit (e.g. mmHg, mg/dL)" value={vitalUnit} onChangeText={setVitalUnit} />
+                </>
+              )}
+              {category === "medications" && (
+                <>
+                  <TextInput style={styles.input} placeholder="Medication Name" value={medName} onChangeText={setMedName} />
+                  <TextInput style={styles.input} placeholder="Dosage (e.g. 500mg)" value={medDosage} onChangeText={setMedDosage} />
+                  <TextInput style={styles.input} placeholder="Frequency (e.g. Once daily)" value={medFreq} onChangeText={setMedFreq} />
                 </>
               )}
               {category === "documents" && (

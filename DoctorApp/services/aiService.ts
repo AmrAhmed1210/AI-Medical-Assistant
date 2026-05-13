@@ -2,7 +2,7 @@ import axios from "axios";
 
 // For real devices: use your computer's IP (e.g. 192.168.1.5)
 // For Android Emulator: use 10.0.2.2
-const AI_IP = "192.168.1.5"; // Change this if your computer IP changes
+const AI_IP = "192.168.1.3"; // Change this if your computer IP changes
 const AI_SERVER_URL = `http://${AI_IP}:8000`; 
 
 export const analyzePatientHistory = async (history: any) => {

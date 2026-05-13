@@ -19,6 +19,9 @@ import {
   Pill,
   CheckCircle2,
   AlertCircle,
+  Sparkles,
+  Wand2,
+  Loader2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { visitApi, type VitalSignDto, type SymptomDto, type PrescriptionDto } from '@/api/visitApi'
@@ -89,6 +92,54 @@ export default function DoctorWorkspace() {
   const { history: patientHistory } = usePatientHistory(visit?.patientId ?? 0)
 
   const [isSaving, setIsSaving] = useState(false)
+  const [aiLang, setAiLang] = useState<'ar' | 'en'>('ar')
+  const [isAssisting, setIsAssisting] = useState(false)
+
+  const handleAiAssist = async () => {
+    if (!form.chiefComplaint) {
+      toast.error('يرجى إدخال الشكوى الرئيسية أولاً')
+      return
+    }
+
+    setIsAssisting(true)
+    try {
+      // Use machine IP for better connectivity across the network
+      const response = await fetch('http://192.168.1.3:8000/doctor-ai-assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chief_complaint: form.chiefComplaint,
+          history_of_illness: form.historyOfIllness,
+          vitals: {
+            bp_systolic: form.bpSystolic,
+            bp_diastolic: form.bpDiastolic,
+            heart_rate: form.heartRate,
+            sugar: form.bloodSugar
+          },
+          // Send patient background for better AI context
+          background: {
+            allergies: patientHistory?.allergies?.map(a => a.allergenName).join(', '),
+            chronic_diseases: patientHistory?.chronicDiseases?.map(d => d.diseaseName).join(', '),
+            bloodType: patientHistory?.bloodType,
+          }
+        })
+      })
+      const data = await response.json()
+      if (data.error) throw new Error(data.error)
+
+      setForm(f => ({
+        ...f,
+        assessment: f.assessment ? f.assessment + '\n' + data.assessment_ar : data.assessment_ar,
+        plan: f.plan ? f.plan + '\n' + data.plan_ar : data.plan_ar
+      }))
+      toast.success('تم إنشاء اقتراحات الذكاء الاصطناعي')
+    } catch (err) {
+      console.error(err)
+      toast.error('فشل في الحصول على مساعدة الذكاء الاصطناعي')
+    } finally {
+      setIsAssisting(false)
+    }
+  }
 
   const handleSaveDraft = async () => {
     setIsSaving(true)
@@ -517,7 +568,19 @@ export default function DoctorWorkspace() {
 
           {/* Assessment */}
           <Card>
-            <label className="block font-bold text-gray-900 mb-2">التشخيص</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block font-bold text-gray-900">التشخيص</label>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="text-purple-600 border-purple-200 bg-purple-50 hover:bg-purple-100"
+                onClick={handleAiAssist}
+                disabled={isAssisting}
+              >
+                {isAssisting ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <Wand2 className="w-3 h-3 ml-1" />}
+                مساعدة الذكاء الاصطناعي
+              </Button>
+            </div>
             <textarea
               className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
               rows={2}

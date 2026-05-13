@@ -23,9 +23,7 @@ namespace MedicalAssistant.Presentation.Controllers
 
         private int GetPatientIdFromClaims()
         {
-            var claim = User.FindFirst("PatientId")?.Value
-                        ?? User.FindFirst("UserId")?.Value
-                        ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var claim = User.FindFirst("PatientId")?.Value;
             return int.TryParse(claim, out var id) ? id : 0;
         }
 

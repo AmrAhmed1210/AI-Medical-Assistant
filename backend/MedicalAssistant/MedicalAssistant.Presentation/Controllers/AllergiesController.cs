@@ -23,9 +23,7 @@ namespace MedicalAssistant.Presentation.Controllers
 
         private int GetPatientIdFromClaims()
         {
-            var claim = User.FindFirst("PatientId")?.Value
-                        ?? User.FindFirst("UserId")?.Value
-                        ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var claim = User.FindFirst("PatientId")?.Value;
             return int.TryParse(claim, out var id) ? id : 0;
         }
 
@@ -94,7 +92,7 @@ namespace MedicalAssistant.Presentation.Controllers
 
         // DELETE /api/allergies/{id}
         [HttpDelete("allergies/{allergyId:int}")]
-        [Authorize(Roles = "Doctor,Admin")]
+        [Authorize(Roles = "Doctor,Patient,Admin")]
         public async Task<IActionResult> Delete(int allergyId)
         {
             var deleted = await _patientRecordService.DeleteAllergyAsync(allergyId);

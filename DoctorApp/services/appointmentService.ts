@@ -62,3 +62,11 @@ export const cancelAppointment = async (id: number): Promise<Appointment> => {
     true
   );
 };
+
+export const updateAppointment = async (id: number, payload: Partial<BookAppointmentPayload>): Promise<Appointment> => {
+  return apiFetch<Appointment>(
+    API.appointments.cancel(id),
+    { method: "PUT", body: JSON.stringify(payload) },
+    true
+  );
+};

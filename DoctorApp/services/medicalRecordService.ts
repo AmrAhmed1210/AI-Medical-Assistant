@@ -135,6 +135,12 @@ export const getVitals = async (patientId: number): Promise<VitalReading[]> => {
 export const deleteMedication = async (medId: number): Promise<void> =>
   apiFetch<any>(API.records.medicationDelete(medId), { method: "DELETE" }, true);
 
+export const updateMedication = async (medId: number, payload: Partial<Medication>): Promise<Medication> =>
+  apiFetch<any>(API.records.medicationUpdate(medId), { method: "PATCH", body: JSON.stringify(payload) }, true);
+
+export const createMedication = async (patientId: number, payload: Omit<Medication, "id">): Promise<Medication> =>
+  apiFetch<any>(API.records.medications(patientId), { method: "POST", body: JSON.stringify(payload) }, true);
+
 // ============================================
 // Allergy CRUD
 // ============================================
@@ -184,6 +190,9 @@ export const createVital = async (patientId: number, payload: any): Promise<any>
 
 export const deleteVital = async (vitalId: number): Promise<void> =>
   apiFetch<any>(API.records.vitalDelete(vitalId), { method: "DELETE" }, true);
+
+export const updateVital = async (vitalId: number, payload: any): Promise<any> =>
+  apiFetch<any>(API.records.vitalUpdate(vitalId), { method: "PATCH", body: JSON.stringify(payload) }, true);
 
 // ============================================
 // Patient Documents (Scans / Labs)

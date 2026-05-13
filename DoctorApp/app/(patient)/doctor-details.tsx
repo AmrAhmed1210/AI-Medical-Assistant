@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../constants/colors";
 import { getDoctorById, getReviewsByDoctor, addReview, updateMyReview, deleteMyReview, DoctorDetails, Review } from "../../services/doctorService";
-import { bookAppointment } from "../../services/appointmentService";
+import { bookAppointment, updateAppointment } from "../../services/appointmentService";
 import { apiFetch } from "../../services/http";
 import { BASE_URL } from "../../constants/api";
 import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpdated, subscribeToDoctorSchedule } from "../../services/signalr";
@@ -165,7 +165,13 @@ const StarRow = ({ value, size = 16 }: { value: number, size?: number }) => (
 );
 
 export default function DoctorDetailsScreen() {
-  const { id, doctorId: doctorIdParam } = useLocalSearchParams<{ id: string, doctorId: string }>();
+  const { id, doctorId: doctorIdParam, editAppointmentId, initialDate, initialTime } = useLocalSearchParams<{ 
+    id: string, 
+    doctorId: string,
+    editAppointmentId?: string,
+    initialDate?: string,
+    initialTime?: string
+  }>();
   const doctorId = (id || doctorIdParam) as string;
   const router = useRouter();
 
@@ -174,8 +180,14 @@ export default function DoctorDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [selectedDay, setSelectedDay] = useState(0);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState(() => {
+    if (initialDate) {
+      // Try to find the day index for initialDate
+      return 0; // Defaulting to 0 for now as 'days' is memoized and might not be ready
+    }
+    return 0;
+  });
+  const [selectedTime, setSelectedTime] = useState<string | null>(initialTime || null);
   const [booking, setBooking] = useState(false);
   const [modalStep, setModalStep] = useState<"payment" | "visa_form" | null>(null);
   const [payMethod, setPayMethod] = useState<"visa" | "cash" | null>(null);
@@ -224,6 +236,7 @@ export default function DoctorDetailsScreen() {
 
     let cleanupReady: (() => void) | undefined;
     let cleanupUpdated: (() => void) | undefined;
+    let cleanupDoctor: (() => void) | undefined;
     let cancelled = false;
 
     const connectToScheduleUpdates = async () => {
@@ -235,13 +248,14 @@ export default function DoctorDetailsScreen() {
       const refreshThisDoctor = (payload: any) => {
         const updatedDoctorId = Number(payload?.doctorId ?? payload?.DoctorId ?? doctorId);
         if (updatedDoctorId === Number(doctorId)) {
-          fetchAvailability();
+          fetchAll(); // Refresh EVERYTHING (Profile + Availability)
           setSelectedTime(null);
         }
       };
 
       cleanupReady = onScheduleReady(refreshThisDoctor);
       cleanupUpdated = onScheduleUpdated(refreshThisDoctor);
+      cleanupDoctor = onDoctorUpdated(refreshThisDoctor); // Refresh on profile update too
     };
 
     connectToScheduleUpdates().catch(() => undefined);
@@ -250,6 +264,7 @@ export default function DoctorDetailsScreen() {
       cancelled = true;
       cleanupReady?.();
       cleanupUpdated?.();
+      cleanupDoctor?.();
     };
   }, [doctorId]);
 
@@ -332,12 +347,21 @@ export default function DoctorDetailsScreen() {
         return;
       }
       const time = selectedTime;
-      await bookAppointment({
+      const payload = {
         doctorId: Number(doctorId),
         date: day.isoDate,
         time,
         paymentMethod: method,
-      });
+      };
+
+      if (editAppointmentId) {
+        await updateAppointment(Number(editAppointmentId), payload);
+        Toast.show({ type: "success", text1: "Appointment Updated", text2: "Your booking has been rescheduled." });
+      } else {
+        await bookAppointment(payload);
+        Toast.show({ type: "success", text1: "Booking Successful", text2: "Your appointment has been confirmed." });
+      }
+
       setBookedSlots(prev => [...prev, { date: day.isoDate, time }]);
       setSelectedTime(null);
       setModalStep(null);
@@ -532,7 +556,9 @@ export default function DoctorDetailsScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={[styles.bookBtn, !selectedTime && { opacity: 0.6 }]} disabled={!selectedTime || booking} onPress={handleProceed}>
           <LinearGradient colors={["#059669", "#047857"]} style={styles.bookGradient}>
-            <Text style={styles.bookBtnText}>{booking ? "Booking..." : "Confirm Appointment"}</Text>
+            <Text style={styles.payBtnText}>
+              {booking ? "Processing..." : editAppointmentId ? "Update Appointment" : "Confirm Appointment"}
+            </Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>

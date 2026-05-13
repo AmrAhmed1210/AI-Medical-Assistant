@@ -7,7 +7,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Any
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -45,12 +45,13 @@ def strip_markdown(text: str) -> str:
 class SurgeryInput(BaseModel):
     description: str
 
+
 class PatientHistoryInput(BaseModel):
-    vitals: Optional[List[dict]] = []
-    surgeries: Optional[List[dict]] = []
-    medications: Optional[List[dict]] = []
-    allergies: Optional[List[dict]] = []
-    chronic_diseases: Optional[List[dict]] = []
+    vitals: Optional[List[Any]] = []
+    surgeries: Optional[List[Any]] = []
+    medications: Optional[List[Any]] = []
+    allergies: Optional[List[Any]] = []
+    chronic_diseases: Optional[List[Any]] = []
 
 @app.get("/")
 def root():
@@ -314,6 +315,59 @@ async def check_medication(data: dict):
     except Exception as e:
         print(f"DEBUG: Error in check_medication: {e}")
         return {"safety_en": "Consult doctor.", "safety_ar": "استشر الطبيب."}
+
+@app.post("/doctor-ai-assist")
+async def doctor_ai_assist(data: dict):
+    """Provides AI help for doctors while filling visit records."""
+    chief_complaint = data.get("chief_complaint", "")
+    history = data.get("history_of_illness", "")
+    vitals = data.get("vitals", {})
+    background = data.get("background", {})
+    
+    print(f"DEBUG: Doctor AI Assist request for: {chief_complaint[:20]}...")
+
+    prompt = f"""
+    You are a professional medical assistant helping a doctor. 
+    
+    Patient Context:
+    - Chief Complaint: {chief_complaint}
+    - History of Present Illness: {history}
+    - Vitals: {json.dumps(vitals)}
+    - Medical Background: {json.dumps(background)}
+    
+    Based on this complete profile, suggest:
+    1. A list of possible differential diagnoses (Assessment).
+    2. A suggested treatment plan (Plan).
+    
+    CRITICAL: Take the Medical Background (allergies, chronic diseases) into account for the treatment plan!
+    
+    RETURN ONLY A VALID JSON OBJECT:
+    {{
+      "assessment_en": "...",
+      "assessment_ar": "...",
+      "plan_en": "...",
+      "plan_ar": "..."
+    }}
+    
+    Keep it professional, evidence-based, and concise. Use plain text only.
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        content = response.text.strip()
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            return {
+                "assessment_en": strip_markdown(result.get("assessment_en", "")),
+                "assessment_ar": strip_markdown(result.get("assessment_ar", "")),
+                "plan_en": strip_markdown(result.get("plan_en", "")),
+                "plan_ar": strip_markdown(result.get("plan_ar", ""))
+            }
+        return {"error": "Could not parse AI response"}
+    except Exception as e:
+        print(f"DEBUG: Error in doctor_ai_assist: {e}")
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
