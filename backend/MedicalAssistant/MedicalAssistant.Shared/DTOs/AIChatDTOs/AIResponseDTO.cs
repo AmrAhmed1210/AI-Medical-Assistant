@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace MedicalAssistant.Shared.DTOs.AIChatBotDTOs;
+namespace MedicalAssistant.Shared.DTOs.AIChatDTOs;
 
 public record MatchResult(
     [property: JsonPropertyName("symptom")]

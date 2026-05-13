@@ -1,11 +1,10 @@
 using MedicalAssistant.Domain.Contracts;
-using MedicalAssistant.Shared.DTOs.AIChatBotDTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
-using MedicalAssistant.Shared.DTOs.SessionDTOs;
+using MedicalAssistant.Shared.DTOs.AIChatDTOs;
+using MessageDto = MedicalAssistant.Shared.DTOs.AIChatDTOs.MessageDto;
 
 namespace MedicalAssistant.Services.Services;
 
@@ -27,7 +26,9 @@ public sealed class MedicalAiService : IMedicalAiService
     private readonly HttpClient _http;
     private readonly ILogger<MedicalAiService> _log;
 
-    public MedicalAiService(HttpClient http, ILogger<MedicalAiService> log)
+    public MedicalAiService(
+        HttpClient http,
+        ILogger<MedicalAiService> log)
     {
         _http = http;
         _log = log;
@@ -39,7 +40,9 @@ public sealed class MedicalAiService : IMedicalAiService
         CancellationToken ct)
     {
         var result = await AskDetailedAsync(question, history, ct);
-        return result?.GeminiReply ?? ServiceUnavailableMessage;
+
+        return result?.GeminiReply
+               ?? ServiceUnavailableMessage;
     }
 
     public async Task<AIResponseDTO?> AskDetailedAsync(
@@ -51,7 +54,9 @@ public sealed class MedicalAiService : IMedicalAiService
         {
             var geminiHistory = history?
                 .Select(m => new AskHistoryItem(
-                    m.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase) ? "model" : "user",
+                    m.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase)
+                        ? "model"
+                        : "user",
                     new List<string>
                     {
                         m.Role.Equals("system", StringComparison.OrdinalIgnoreCase)
@@ -68,19 +73,24 @@ public sealed class MedicalAiService : IMedicalAiService
 
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content
-                    .ReadFromJsonAsync<AIResponseDTO>(cancellationToken: ct);
+                return await response.Content.ReadFromJsonAsync<AIResponseDTO>(
+                    cancellationToken: ct);
             }
 
             _log.LogWarning(
                 "AI service returned {StatusCode} for question: {Question}",
-                response.StatusCode, question);
+                response.StatusCode,
+                question);
 
             return null;
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "AI service failure. Question: {Question}", question);
+            _log.LogError(
+                ex,
+                "AI service failure. Question: {Question}",
+                question);
+
             return null;
         }
     }
@@ -92,7 +102,9 @@ public sealed class MedicalAiService : IMedicalAiService
         try
         {
             using var content = new MultipartFormDataContent();
+
             using var fileStream = file.OpenReadStream();
+
             using var fileContent = new StreamContent(fileStream);
 
             fileContent.Headers.ContentType =
@@ -100,23 +112,32 @@ public sealed class MedicalAiService : IMedicalAiService
 
             content.Add(fileContent, "file", file.FileName);
 
-            var response = await _http.PostAsync("/analyze-image", content, ct);
+            var response = await _http.PostAsync(
+                "/analyze-image",
+                content,
+                ct);
 
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content
-                    .ReadFromJsonAsync<MedicalAnalysisResponseDTO>(cancellationToken: ct);
+                    .ReadFromJsonAsync<MedicalAnalysisResponseDTO>(
+                        cancellationToken: ct);
             }
 
             _log.LogWarning(
                 "Image analysis failed with {StatusCode} for {FileName}",
-                response.StatusCode, file.FileName);
+                response.StatusCode,
+                file.FileName);
 
             return null;
         }
         catch (Exception ex)
         {
-            _log.LogError(ex, "Image analysis error for {FileName}", file.FileName);
+            _log.LogError(
+                ex,
+                "Image analysis error for {FileName}",
+                file.FileName);
+
             return null;
         }
     }

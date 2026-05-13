@@ -1,9 +1,10 @@
 using MedicalAssistant.Domain.Contracts;
-using MedicalAssistant.Shared.DTOs.AIChatBotDTOs;
+using MedicalAssistant.Shared.DTOs.AIChatDTOs;
 using MedicalAssistant.Shared.DTOs.SessionDTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
+using MessageDto = MedicalAssistant.Shared.DTOs.AIChatDTOs.MessageDto;
 
 namespace MedicalAssistant.Presentation.Controllers;
 
