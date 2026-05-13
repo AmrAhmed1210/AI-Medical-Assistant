@@ -36,4 +36,24 @@ export const chatService = {
       true
     );
   },
+
+  analyzeImage: async (imageUri: string, sessionId?: number) => {
+    const formData = new FormData();
+    const filename = imageUri.split("/").pop() || "image.jpg";
+    const match = /\.(\w+)$/.exec(filename);
+    const mimeType = match ? `image/${match[1]}` : "image/jpeg";
+
+    formData.append("Image", { uri: imageUri, name: filename, type: mimeType } as any);
+    if (sessionId) formData.append("SessionId", sessionId.toString());
+
+    return apiFetch<any>(
+      `${API.chat.ask.replace("/ask", "/analyze-image")}`,
+      {
+        method: "POST",
+        body: formData,
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+      true
+    );
+  },
 };

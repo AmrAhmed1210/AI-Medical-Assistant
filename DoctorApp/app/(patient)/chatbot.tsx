@@ -18,6 +18,7 @@ import { COLORS } from "../../constants/colors";
 import { chatService, ChatMessage } from "../../services/chatService";
 import Toast from "react-native-toast-message";
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function ChatBotScreen() {
   const router = useRouter();
@@ -35,7 +36,6 @@ export default function ChatBotScreen() {
     try {
       const sessions = await chatService.getSessions();
       if (sessions && sessions.length > 0) {
-        // Load the most recent session
         const latest = sessions[0];
         setCurrentSessionId(latest.id);
         loadMessages(latest.id);
@@ -63,7 +63,6 @@ export default function ChatBotScreen() {
     Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // Optimistic update
     const tempUserMsg: ChatMessage = {
       id: Date.now(),
       sessionId: currentSessionId || 0,
@@ -96,8 +95,64 @@ export default function ChatBotScreen() {
       Toast.show({
         type: "error",
         text1: "Error",
-        text2: "Failed to get AI response. Please try again."
+        text2: "Failed to get AI response."
       });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleImagePick = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0].uri) {
+        uploadImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      Toast.show({ type: "error", text1: "Error selecting image" });
+    }
+  };
+
+  const uploadImage = async (uri: string) => {
+    setIsLoading(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Optimistic image message
+    const tempMsg: ChatMessage = {
+      id: Date.now(),
+      sessionId: currentSessionId || 0,
+      role: "user",
+      content: "[Analyzing image...]",
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, tempMsg]);
+
+    try {
+      const result = await chatService.analyzeImage(uri, currentSessionId);
+      
+      const analysisText = `${result.raw_text}\n\nSummary: ${result.summary_en} / ${result.summary_ar}`;
+      
+      const assistantMsg: ChatMessage = {
+        id: Date.now() + 1,
+        sessionId: currentSessionId || 0,
+        role: "assistant",
+        content: analysisText,
+        timestamp: new Date().toISOString()
+      };
+
+      setMessages(prev => [...prev.filter(m => m.id !== tempMsg.id), 
+        { ...tempMsg, content: "[Image sent]" },
+        assistantMsg
+      ]);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      Toast.show({ type: "error", text1: "Analysis failed" });
+      setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
     } finally {
       setIsLoading(false);
     }
@@ -184,6 +239,13 @@ export default function ChatBotScreen() {
       >
         <View style={styles.inputContainer}>
           <View style={styles.inputWrapper}>
+            <TouchableOpacity 
+              style={styles.attachButton}
+              onPress={handleImagePick}
+              disabled={isLoading}
+            >
+              <Ionicons name="attach" size={24} color="#64748B" />
+            </TouchableOpacity>
             <TextInput
               style={styles.input}
               placeholder="Type your message..."
@@ -262,6 +324,7 @@ const styles = StyleSheet.create({
 
   inputContainer: { padding: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingBottom: Platform.OS === 'ios' ? 30 : 12 },
   inputWrapper: { flexDirection: 'row', alignItems: 'flex-end', backgroundColor: '#F1F5F9', borderRadius: 24, paddingHorizontal: 12, paddingVertical: 8 },
+  attachButton: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginRight: 4, marginBottom: 2 },
   input: { flex: 1, minHeight: 40, maxHeight: 120, fontSize: 16, color: '#1E293B', paddingHorizontal: 8, paddingTop: 8 },
   sendButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginLeft: 8, marginBottom: 2 },
   sendButtonDisabled: { backgroundColor: '#CBD5E1' }

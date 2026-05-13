@@ -160,6 +160,19 @@ public class ChatController : ControllerBase
                 new ErrorResponse("Medical image analysis service is currently unavailable."));
         }
 
+        // If a SessionId is provided, save the analysis result as a message in the chat
+        if (request.SessionId.HasValue && request.SessionId.Value > 0)
+        {
+            var userId = GetUserIdFromClaims();
+            var analysisText = $"[Image Analysis Result]\n{result.RawText}\n\nSummary: {result.SummaryEn} / {result.SummaryAr}";
+            
+            // Save User's image message (placeholder for now as text)
+            await _messageService.SendMessageAsync(request.SessionId.Value, userId, "user", "[Sent an image for analysis]");
+            
+            // Save AI's analysis
+            await _messageService.SendMessageAsync(request.SessionId.Value, 0, "assistant", analysisText);
+        }
+
         return Ok(result);
     }
 }
@@ -168,6 +181,7 @@ public sealed class AnalyzeImageRequest
 {
     [Required]
     public IFormFile? Image { get; set; }
+    public int? SessionId { get; set; }
 }
 
 public record ChatRequest(
