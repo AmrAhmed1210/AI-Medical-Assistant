@@ -35,6 +35,9 @@ public record AIResponseDTO(
     [property: JsonPropertyName("is_medical")]
     bool IsMedical,
 
+    [property: JsonPropertyName("found_in_database")]
+    bool FoundInDatabase,
+
     [property: JsonPropertyName("disclaimer")]
     string Disclaimer,
 
