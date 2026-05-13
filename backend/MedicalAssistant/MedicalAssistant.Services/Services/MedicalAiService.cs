@@ -5,11 +5,18 @@ using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using MedicalAssistant.Shared.DTOs.SessionDTOs;
 
 namespace MedicalAssistant.Services.Services;
 
 file record AskRequest(
-    [property: JsonPropertyName("text")] string Text
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("history")] List<AskHistoryItem>? History = null
+);
+
+file record AskHistoryItem(
+    [property: JsonPropertyName("role")] string Role,
+    [property: JsonPropertyName("parts")] List<string> Parts
 );
 
 public sealed class MedicalAiService : IMedicalAiService
@@ -31,22 +38,31 @@ public sealed class MedicalAiService : IMedicalAiService
     /// <inheritdoc />
     public async Task<string> AskAsync(
         string question,
+        List<MessageDto>? history = null,
         CancellationToken ct = default)
     {
-        var result = await AskDetailedAsync(question, ct);
+        var result = await AskDetailedAsync(question, history, ct);
         return result?.GeminiReply ?? ServiceUnavailableMessage;
     }
 
     /// <inheritdoc />
     public async Task<AIResponseDTO?> AskDetailedAsync(
         string question,
+        List<MessageDto>? history = null,
         CancellationToken ct = default)
     {
         try
         {
+            var geminiHistory = history?
+                .Select(m => new AskHistoryItem(
+                    m.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase) ? "model" : "user",
+                    new List<string> { m.Content }
+                ))
+                .ToList();
+
             var response = await _http.PostAsJsonAsync(
                 "/ask",
-                new AskRequest(question),
+                new AskRequest(question, geminiHistory),
                 ct);
 
             if (response.IsSuccessStatusCode)

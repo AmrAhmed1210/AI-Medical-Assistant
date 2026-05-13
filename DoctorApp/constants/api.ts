@@ -122,4 +122,11 @@ export const API = {
     vitalUpdate:     (vitalId: number | string) => `${BASE_URL}/api/vitals/${vitalId}`,
     vitalDelete:     (vitalId: number | string) => `${BASE_URL}/api/vitals/${vitalId}`,
   },
+
+  // AI Chat
+  chat: {
+    sessions: `${BASE_URL}/api/chat/sessions`,
+    messages: (sessionId: number | string) => `${BASE_URL}/api/chat/sessions/${sessionId}/messages`,
+    ask:      `${BASE_URL}/api/chat/ask`,
+  },
 };

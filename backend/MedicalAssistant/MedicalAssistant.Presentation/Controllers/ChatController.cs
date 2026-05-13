@@ -1,5 +1,7 @@
 using MedicalAssistant.Domain.Contracts;
+using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.AIChatBotDTOs;
+using MedicalAssistant.Shared.DTOs.SessionDTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
@@ -13,15 +15,43 @@ namespace MedicalAssistant.Controllers;
 public class ChatController : ControllerBase
 {
     private readonly IMedicalAiService _medicalAiService;
+    private readonly ISessionService _sessionService;
+    private readonly IMessageService _messageService;
 
-    public ChatController(IMedicalAiService medicalAiService)
+    public ChatController(
+        IMedicalAiService medicalAiService,
+        ISessionService sessionService,
+        IMessageService messageService)
     {
         _medicalAiService = medicalAiService;
+        _sessionService = sessionService;
+        _messageService = messageService;
+    }
+
+    private int GetUserIdFromClaims()
+    {
+        var claim = User.FindFirst("UserId")?.Value;
+        return int.TryParse(claim, out var id) ? id : 0;
+    }
+
+    [HttpGet("sessions")]
+    public async Task<IActionResult> GetSessions()
+    {
+        var userId = GetUserIdFromClaims();
+        if (userId <= 0) return Unauthorized();
+        var sessions = await _sessionService.GetSessionsByUserIdAsync(userId);
+        return Ok(sessions.Where(s => s.Type == "AI"));
+    }
+
+    [HttpGet("sessions/{sessionId:int}/messages")]
+    public async Task<IActionResult> GetMessages(int sessionId)
+    {
+        var messages = await _messageService.GetMessagesForSessionAsync(sessionId);
+        return Ok(messages);
     }
 
     [HttpPost("ask")]
     [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Ask(
         [FromBody] ChatRequest request,
         CancellationToken ct)
@@ -29,15 +59,33 @@ public class ChatController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Question))
             return BadRequest(new ErrorResponse("Question cannot be empty."));
 
-        var reply = await _medicalAiService.AskAsync(request.Question, ct);
+        var userId = GetUserIdFromClaims();
+        if (userId <= 0) return Unauthorized();
 
-        return Ok(new ChatResponse(reply));
+        int sessionId = request.SessionId ?? 0;
+        if (sessionId == 0)
+        {
+            var session = await _sessionService.CreateSessionAsync(userId, request.Question.Length > 30 ? request.Question[..30] + "..." : request.Question, "AI");
+            sessionId = session.Id;
+        }
+
+        // 1. Get History
+        var history = await _messageService.GetMessagesForSessionAsync(sessionId);
+
+        // 2. Save User Message
+        await _messageService.SendMessageAsync(sessionId, userId, "user", request.Question);
+
+        // 3. Ask AI with History
+        var reply = await _medicalAiService.AskAsync(request.Question, history.ToList(), ct);
+
+        // 4. Save AI Reply
+        await _messageService.SendMessageAsync(sessionId, 0, "assistant", reply);
+
+        return Ok(new ChatResponse(reply, sessionId));
     }
 
     [HttpPost("ask-detailed")]
-    [ProducesResponseType(typeof(MedicalAnalysisResponseDTO), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(typeof(AIResponseDTO), StatusCodes.Status200OK)]
     public async Task<IActionResult> AskDetailed(
         [FromBody] ChatRequest request,
         CancellationToken ct)
@@ -45,7 +93,12 @@ public class ChatController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Question))
             return BadRequest(new ErrorResponse("Question cannot be empty."));
 
-        var result = await _medicalAiService.AskDetailedAsync(request.Question, ct);
+        var userId = GetUserIdFromClaims();
+        var history = request.SessionId.HasValue 
+            ? await _messageService.GetMessagesForSessionAsync(request.SessionId.Value) 
+            : new List<MessageDto>();
+
+        var result = await _medicalAiService.AskDetailedAsync(request.Question, history.ToList(), ct);
 
         if (result is null)
         {
@@ -59,9 +112,6 @@ public class ChatController : ControllerBase
 
     [HttpPost("analyze-image")]
     [Consumes("multipart/form-data")]
-    [ProducesResponseType(typeof(MedicalAnalysisResponseDTO), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> AnalyzeImage(
         [FromForm] AnalyzeImageRequest request,
         CancellationToken ct)
@@ -69,21 +119,6 @@ public class ChatController : ControllerBase
         if (request.Image is null || request.Image.Length == 0)
         {
             return BadRequest(new ErrorResponse("No image file provided."));
-        }
-
-        var allowedTypes = new[]
-        {
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "image/heic"
-        };
-
-        if (!allowedTypes.Contains(request.Image.ContentType))
-        {
-            return BadRequest(
-                new ErrorResponse(
-                    "Unsupported file type. Please upload a JPEG, PNG, WEBP, or HEIC image."));
         }
 
         var result = await _medicalAiService.AnalyzeMedicalImageAsync(request.Image, ct);
@@ -107,12 +142,16 @@ public sealed class AnalyzeImageRequest
 
 public record ChatRequest(
     [property: JsonPropertyName("question")]
-    string Question
+    string Question,
+    [property: JsonPropertyName("sessionId")]
+    int? SessionId = null
 );
 
 public record ChatResponse(
     [property: JsonPropertyName("reply")]
-    string Reply
+    string Reply,
+    [property: JsonPropertyName("sessionId")]
+    int SessionId
 );
 
 public record ErrorResponse(
