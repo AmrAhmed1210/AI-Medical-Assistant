@@ -6,12 +6,17 @@ namespace MedicalAssistant.Domain.Contracts;
 
 public interface IMedicalAiService
 {
-    Task<string> AskAsync(string question, List<MessageDto>? history = null, CancellationToken ct = default);
+    Task<string> AskAsync(
+        string question,
+        List<MessageDto>? history,
+        CancellationToken ct);
 
     Task<AIResponseDTO?> AskDetailedAsync(
         string question,
-        List<MessageDto>? history = null,
-        CancellationToken ct = default);
+        List<MessageDto>? history,
+        CancellationToken ct);
 
-    Task<MedicalAnalysisResponseDTO?> AnalyzeMedicalImageAsync(IFormFile file, CancellationToken ct = default);
+    Task<MedicalAnalysisResponseDTO?> AnalyzeMedicalImageAsync(
+        IFormFile file,
+        CancellationToken ct);
 }
