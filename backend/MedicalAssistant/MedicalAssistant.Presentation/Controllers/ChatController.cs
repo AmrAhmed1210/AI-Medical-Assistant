@@ -1,6 +1,5 @@
 using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Shared.DTOs.AIChatDTOs;
-using MedicalAssistant.Shared.DTOs.SessionDTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
@@ -73,6 +72,31 @@ public class ChatController : ControllerBase
             return StatusCode(
                 StatusCodes.Status503ServiceUnavailable,
                 new ErrorResponse("Medical AI service is currently unavailable."));
+        }
+
+        return Ok(result);
+    }
+
+    [HttpPost("analyze-image")]
+    [ProducesResponseType(typeof(MedicalAnalysisResponseDTO), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> AnalyzeImage(
+        IFormFile file,
+        CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new ErrorResponse("Image file is required."));
+        }
+
+        var result = await _medical.AnalyzeMedicalImageAsync(file, ct);
+
+        if (result is null)
+        {
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new ErrorResponse("Medical image service is currently unavailable."));
         }
 
         return Ok(result);

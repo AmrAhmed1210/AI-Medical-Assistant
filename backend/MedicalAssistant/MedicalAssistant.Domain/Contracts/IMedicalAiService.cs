@@ -1,9 +1,8 @@
 using MedicalAssistant.Shared.DTOs.AIChatDTOs;
 using Microsoft.AspNetCore.Http;
+using MessageDto = MedicalAssistant.Shared.DTOs.AIChatDTOs.MessageDto;
 
 namespace MedicalAssistant.Domain.Contracts;
-
-using MessageDto = MedicalAssistant.Shared.DTOs.AIChatDTOs.MessageDto;
 
 public interface IMedicalAiService
 {
