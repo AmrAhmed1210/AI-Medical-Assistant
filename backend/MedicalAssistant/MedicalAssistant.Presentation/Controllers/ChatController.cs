@@ -1,5 +1,6 @@
 using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Services_Abstraction.Contracts;
+using MedicalAssistant.Services_Abstraction.DTOs;
 using MedicalAssistant.Shared.DTOs.AIChatBotDTOs;
 using MedicalAssistant.Shared.DTOs.SessionDTOs;
 using Microsoft.AspNetCore.Http;
@@ -91,7 +92,7 @@ public class ChatController : ControllerBase
                 var medicalHistory = await _recordService.GetPatientCompleteHistoryAsync(patientId);
                 var contextPrompt = "SYSTEM CONTEXT: You are chatting with a patient. Here is their medical background: " +
                                    $"Chronic Diseases: {string.Join(", ", medicalHistory.ChronicDiseases.Select(d => d.DiseaseName))}; " +
-                                   $"Allergies: {string.Join(", ", medicalHistory.Allergies.Select(a => a.AllergyName))}; " +
+                                   $"Allergies: {string.Join(", ", medicalHistory.Allergies.Select(a => a.AllergenName))}; " +
                                    $"Current Medications: {string.Join(", ", medicalHistory.Medications.Select(m => m.MedicationName))}. " +
                                    "Use this information to provide personalized advice, but do not repeat the full list unless asked. Be professional and empathetic.";
                 
@@ -164,7 +165,7 @@ public class ChatController : ControllerBase
         if (request.SessionId.HasValue && request.SessionId.Value > 0)
         {
             var userId = GetUserIdFromClaims();
-            var analysisText = $"[Image Analysis Result]\n{result.RawText}\n\nSummary: {result.SummaryEn} / {result.SummaryAr}";
+            var analysisText = $"[تحليل الصورة الطبية]\n{result.Analysis}\n\n[Medical Details]\n{result.TechnicalDetails}";
             
             // Save User's image message (placeholder for now as text)
             await _messageService.SendMessageAsync(request.SessionId.Value, userId, "user", "[Sent an image for analysis]");
