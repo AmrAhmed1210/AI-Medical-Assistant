@@ -3,13 +3,8 @@ using MedicalAssistant.Shared.DTOs.AIChatBotDTOs;
 using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json.Serialization;
 
 namespace MedicalAssistant.Services.Services;
-
-file record AskRequest(
-    [property: JsonPropertyName("text")] string Text
-);
 
 public sealed class MedicalAiService : IMedicalAiService
 {
@@ -19,83 +14,51 @@ public sealed class MedicalAiService : IMedicalAiService
     private readonly HttpClient _http;
     private readonly ILogger<MedicalAiService> _log;
 
-    public MedicalAiService(
-        HttpClient http,
-        ILogger<MedicalAiService> log)
+    public MedicalAiService(HttpClient http, ILogger<MedicalAiService> log)
     {
         _http = http;
         _log = log;
     }
 
-    /// <inheritdoc />
-    public async Task<string> AskAsync(
-        string question,
-        CancellationToken ct = default)
+    public async Task<string> AskAsync(string question, CancellationToken ct = default)
     {
         var result = await AskDetailedAsync(question, ct);
-
         return result?.GeminiReply ?? ServiceUnavailableMessage;
     }
 
-    /// <inheritdoc />
-    public async Task<AIResponseDTO?> AskDetailedAsync(
-        string question,
-        CancellationToken ct = default)
+    public async Task<AIResponseDTO?> AskDetailedAsync(string question, CancellationToken ct = default)
     {
         try
         {
             var response = await _http.PostAsJsonAsync(
                 "/ask",
-                new AskRequest(question),
+                new { text = question },
                 ct);
 
             if (response.IsSuccessStatusCode)
             {
-                var dto = await response.Content
-                    .ReadFromJsonAsync<AIResponseDTO>(cancellationToken: ct);
-
-                if (dto is null)
-                {
-                    _log.LogWarning(
-                        "Python AI service returned an empty response body for question: {Question}",
-                        question);
-                }
-
-                return dto;
+                return await response.Content.ReadFromJsonAsync<AIResponseDTO>(cancellationToken: ct);
             }
 
             if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
             {
-                _log.LogWarning(
-                    "Validation error from Python AI service. StatusCode: {StatusCode} — Question: {Question}",
-                    response.StatusCode,
-                    question);
+                _log.LogWarning("Validation error from AI service. Question: {Question}", question);
             }
             else
             {
-                _log.LogWarning(
-                    "Python AI service returned an unexpected status. StatusCode: {StatusCode}",
-                    response.StatusCode);
+                _log.LogWarning("AI service returned status {StatusCode}", response.StatusCode);
             }
 
             return null;
         }
         catch (HttpRequestException ex)
         {
-            _log.LogError(
-                ex,
-                "Failed to reach Python Medical AI service. Question: {Question}",
-                question);
-
+            _log.LogError(ex, "AI service unreachable. Question: {Question}", question);
             return null;
         }
         catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
-            _log.LogWarning(
-                ex,
-                "Request to Python Medical AI service timed out. Question: {Question}",
-                question);
-
+            _log.LogWarning(ex, "AI service timeout. Question: {Question}", question);
             return null;
         }
     }
