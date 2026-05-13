@@ -9,7 +9,7 @@ using System.Text.Json.Serialization;
 namespace MedicalAssistant.Services.Services;
 
 file record AskRequest(
-    [property: JsonPropertyName("text")] string Text
+    [property: JsonPropertyName("question")] string Question
 );
 
 public sealed class MedicalAiService : IMedicalAiService
