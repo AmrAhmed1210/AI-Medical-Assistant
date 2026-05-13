@@ -385,30 +385,31 @@ export default function DoctorPatientRecords() {
               </div>
 
               {/* AI REPORT SECTION */}
-              {medProfile?.aiDiagnosisSummary && (
-                <div className="mt-8 border-t border-gray-100 pt-8">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                        <Shield className="w-5 h-5 text-purple-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-gray-900">AI Health Insights</h3>
-                        <p className="text-xs text-gray-500">Automated analysis of patient history</p>
-                      </div>
+              {/* AI REPORT SECTION */}
+              <div className="mt-8 border-t border-gray-100 pt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-purple-600" />
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={runAiAnalysis} 
-                      disabled={analyzing}
-                      className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
-                    >
-                      {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                      {analyzing ? 'Analyzing...' : 'Refresh AI Analysis'}
-                    </Button>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">AI Health Insights</h3>
+                      <p className="text-xs text-gray-500">Automated analysis of patient history</p>
+                    </div>
                   </div>
-                  
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={runAiAnalysis} 
+                    disabled={analyzing}
+                    className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
+                  >
+                    {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {analyzing ? 'Analyzing...' : (medProfile?.aiDiagnosisSummary ? 'Refresh Analysis' : 'Generate Analysis')}
+                  </Button>
+                </div>
+                
+                {medProfile?.aiDiagnosisSummary ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {(() => {
                       try {
@@ -434,8 +435,14 @@ export default function DoctorPatientRecords() {
                       }
                     })()}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="p-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-center">
+                    <Sparkles className="w-8 h-8 text-purple-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">No health analysis has been generated for this patient yet.</p>
+                    <p className="text-xs text-gray-400 mt-1">Click the button above to analyze the medical history.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
