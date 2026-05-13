@@ -56,7 +56,7 @@ public sealed class MedicalAiService : IMedicalAiService
             var geminiHistory = history?
                 .Select(m => new AskHistoryItem(
                     m.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase) ? "model" : "user",
-                    new List<string> { m.Content }
+                    new List<string> { m.Role.Equals("system", StringComparison.OrdinalIgnoreCase) ? $"[SYSTEM INSTRUCTION]: {m.Content}" : m.Content }
                 ))
                 .ToList();
 
