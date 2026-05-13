@@ -17,20 +17,29 @@ public class ChatController : ControllerBase
     private readonly IMedicalAiService _medicalAiService;
     private readonly ISessionService _sessionService;
     private readonly IMessageService _messageService;
+    private readonly IPatientRecordService _recordService;
 
     public ChatController(
         IMedicalAiService medicalAiService,
         ISessionService sessionService,
-        IMessageService messageService)
+        IMessageService messageService,
+        IPatientRecordService recordService)
     {
         _medicalAiService = medicalAiService;
         _sessionService = sessionService;
         _messageService = messageService;
+        _recordService = recordService;
     }
 
     private int GetUserIdFromClaims()
     {
         var claim = User.FindFirst("UserId")?.Value;
+        return int.TryParse(claim, out var id) ? id : 0;
+    }
+
+    private int GetPatientIdFromClaims()
+    {
+        var claim = User.FindFirst("PatientId")?.Value;
         return int.TryParse(claim, out var id) ? id : 0;
     }
 
@@ -51,7 +60,6 @@ public class ChatController : ControllerBase
     }
 
     [HttpPost("ask")]
-    [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Ask(
         [FromBody] ChatRequest request,
         CancellationToken ct)
@@ -60,27 +68,47 @@ public class ChatController : ControllerBase
             return BadRequest(new ErrorResponse("Question cannot be empty."));
 
         var userId = GetUserIdFromClaims();
+        var patientId = GetPatientIdFromClaims();
         if (userId <= 0) return Unauthorized();
 
         int sessionId = request.SessionId ?? 0;
-        if (sessionId == 0)
+        bool isNewSession = sessionId == 0;
+
+        if (isNewSession)
         {
             var session = await _sessionService.CreateSessionAsync(userId, request.Question.Length > 30 ? request.Question[..30] + "..." : request.Question, "AI");
             sessionId = session.Id;
         }
 
-        // 1. Get History (Limit to last 10 for performance)
+        // 1. Get History (Limit to last 10)
         var allHistory = await _messageService.GetMessagesForSessionAsync(sessionId);
         var history = allHistory.TakeLast(10).ToList();
 
-        // 2. Parallelize: Save User Message AND Ask AI
+        // 2. If new session, inject Patient Context
+        if (isNewSession && patientId > 0)
+        {
+            try {
+                var medicalHistory = await _recordService.GetPatientCompleteHistoryAsync(patientId);
+                var contextPrompt = "SYSTEM CONTEXT: You are chatting with a patient. Here is their medical background: " +
+                                   $"Chronic Diseases: {string.Join(", ", medicalHistory.ChronicDiseases.Select(d => d.DiseaseName))}; " +
+                                   $"Allergies: {string.Join(", ", medicalHistory.Allergies.Select(a => a.AllergyName))}; " +
+                                   $"Current Medications: {string.Join(", ", medicalHistory.Medications.Select(m => m.MedicationName))}. " +
+                                   "Use this information to provide personalized advice, but do not repeat the full list unless asked. Be professional and empathetic.";
+                
+                // Add as a hidden model instruction or a system message if supported. 
+                // For now, we prepend it to history if possible or just as a virtual message.
+                history.Insert(0, new MessageDto { Role = "system", Content = contextPrompt, Timestamp = DateTime.UtcNow });
+            } catch { /* proceed without context if fetch fails */ }
+        }
+
+        // 3. Parallelize: Save User Message AND Ask AI
         var saveUserTask = _messageService.SendMessageAsync(sessionId, userId, "user", request.Question);
         var aiTask = _medicalAiService.AskAsync(request.Question, history, ct);
 
         await Task.WhenAll(saveUserTask, aiTask);
         var reply = await aiTask;
 
-        // 3. Save AI Reply in background (don't block the response)
+        // 4. Save AI Reply in background
         _ = _messageService.SendMessageAsync(sessionId, 0, "assistant", reply);
 
         return Ok(new ChatResponse(reply, sessionId));
