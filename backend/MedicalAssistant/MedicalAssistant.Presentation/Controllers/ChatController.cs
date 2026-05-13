@@ -19,15 +19,15 @@ public class ChatController : ControllerBase
         _medical = medical;
     }
 
+    // ─────────────────────────────────────────────
+    // SIMPLE CHAT
+    // ─────────────────────────────────────────────
     [HttpPost("ask")]
-    [ProducesResponseType(typeof(ChatResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Ask(
         [FromBody] ChatRequest req,
         CancellationToken ct)
     {
-        if (req is null || string.IsNullOrWhiteSpace(req.Question))
+        if (string.IsNullOrWhiteSpace(req?.Question))
         {
             return BadRequest(new ErrorResponse("Question cannot be empty."));
         }
@@ -35,28 +35,25 @@ public class ChatController : ControllerBase
         var result = await _medical.AskDetailedAsync(
             req.Question.Trim(),
             req.History,
-            ct
-        );
+            ct);
 
         if (result is null)
         {
-            return StatusCode(
-                StatusCodes.Status503ServiceUnavailable,
-                new ErrorResponse("Medical AI service is currently unavailable."));
+            return StatusCode(503, new ErrorResponse("Service unavailable."));
         }
 
-        return Ok(new ChatResponse(result.GeminiReply));
+        return Ok(new ChatResponse(result.Reply));
     }
 
+    // ─────────────────────────────────────────────
+    // DETAILED CHAT (RAG OUTPUT)
+    // ─────────────────────────────────────────────
     [HttpPost("ask-detailed")]
-    [ProducesResponseType(typeof(AIResponseDTO), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> AskDetailed(
         [FromBody] ChatRequest req,
         CancellationToken ct)
     {
-        if (req is null || string.IsNullOrWhiteSpace(req.Question))
+        if (string.IsNullOrWhiteSpace(req?.Question))
         {
             return BadRequest(new ErrorResponse("Question cannot be empty."));
         }
@@ -64,23 +61,20 @@ public class ChatController : ControllerBase
         var result = await _medical.AskDetailedAsync(
             req.Question.Trim(),
             req.History,
-            ct
-        );
+            ct);
 
         if (result is null)
         {
-            return StatusCode(
-                StatusCodes.Status503ServiceUnavailable,
-                new ErrorResponse("Medical AI service is currently unavailable."));
+            return StatusCode(503, new ErrorResponse("Service unavailable."));
         }
 
         return Ok(result);
     }
 
+    // ─────────────────────────────────────────────
+    // IMAGE ANALYSIS
+    // ─────────────────────────────────────────────
     [HttpPost("analyze-image")]
-    [ProducesResponseType(typeof(MedicalAnalysisResponseDTO), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> AnalyzeImage(
         IFormFile file,
         CancellationToken ct)
@@ -94,27 +88,29 @@ public class ChatController : ControllerBase
 
         if (result is null)
         {
-            return StatusCode(
-                StatusCodes.Status503ServiceUnavailable,
-                new ErrorResponse("Medical image service is currently unavailable."));
+            return StatusCode(503, new ErrorResponse("Service unavailable."));
         }
 
         return Ok(result);
     }
 
+    // ─────────────────────────────────────────────
+    // HEALTH CHECK
+    // ─────────────────────────────────────────────
     [HttpGet("health")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult Health()
     {
         return Ok(new
         {
             status = "ok",
-            service = "Medical AI API",
-            uptime = DateTime.UtcNow
+            service = "Medical AI API"
         });
     }
 }
 
+// ─────────────────────────────────────────────
+// DTOs
+// ─────────────────────────────────────────────
 public sealed record ChatRequest(
     [property: JsonPropertyName("question")]
     string Question,

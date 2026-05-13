@@ -4,13 +4,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
-using MessageDto = MedicalAssistant.Shared.DTOs.AIChatDTOs.MessageDto;
 
 namespace MedicalAssistant.Services.Services;
 
 file record AskRequest(
-    [property: JsonPropertyName("question")] string Question,
-    [property: JsonPropertyName("history")] List<AskHistoryItem>? History
+    [property: JsonPropertyName("question")] string Question
 );
 
 file record AskHistoryItem(
@@ -34,16 +32,21 @@ public sealed class MedicalAiService : IMedicalAiService
         _log = log;
     }
 
+    // ─────────────────────────────────────────────
+    // SIMPLE ASK
+    // ─────────────────────────────────────────────
     public async Task<string> AskAsync(
         string question,
         List<MessageDto>? history,
         CancellationToken ct)
     {
         var result = await AskDetailedAsync(question, history, ct);
-
-        return result?.GeminiReply ?? ServiceUnavailableMessage;
+        return result?.Reply ?? ServiceUnavailableMessage;
     }
 
+    // ─────────────────────────────────────────────
+    // DETAILED ASK (RAG RESPONSE)
+    // ─────────────────────────────────────────────
     public async Task<AIResponseDTO?> AskDetailedAsync(
         string question,
         List<MessageDto>? history,
@@ -51,20 +54,12 @@ public sealed class MedicalAiService : IMedicalAiService
     {
         try
         {
-            var geminiHistory = history?
-                .Select(m => new AskHistoryItem(
-                    m.Role.Equals("assistant", StringComparison.OrdinalIgnoreCase)
-                        ? "model"
-                        : "user",
-                    new List<string>
-                    {
-                        m.Content
-                    }))
-                .ToList();
+            // NOTE: history is ignored for now (backend no longer supports it)
+            var request = new AskRequest(question);
 
             var response = await _http.PostAsJsonAsync(
                 "/ask",
-                new AskRequest(question, geminiHistory),
+                request,
                 ct);
 
             if (!response.IsSuccessStatusCode)
@@ -86,6 +81,9 @@ public sealed class MedicalAiService : IMedicalAiService
         }
     }
 
+    // ─────────────────────────────────────────────
+    // IMAGE ANALYSIS
+    // ─────────────────────────────────────────────
     public async Task<MedicalAnalysisResponseDTO?> AnalyzeMedicalImageAsync(
         IFormFile file,
         CancellationToken ct)

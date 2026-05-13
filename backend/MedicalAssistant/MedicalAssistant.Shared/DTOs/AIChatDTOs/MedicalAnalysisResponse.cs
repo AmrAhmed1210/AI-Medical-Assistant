@@ -1,21 +1,21 @@
 using System.Text.Json.Serialization;
 
-namespace MedicalAssistant.Shared.DTOs.AIChatDTOs
+namespace MedicalAssistant.Shared.DTOs.AIChatDTOs;
+
+public record MedicalAnalysisResponseDTO
 {
-    public record MedicalAnalysisResponseDTO(
-        [property: JsonPropertyName("status")]
-    string Status,
+    [JsonPropertyName("status")]
+    public string Status { get; init; } = string.Empty;
 
-        [property: JsonPropertyName("analysis_ar")]   // ← كان "analysis"
-    string? Analysis,
+    [JsonPropertyName("analysis_ar")]
+    public string? Analysis { get; init; }
 
-        [property: JsonPropertyName("technical_details")]  // ← field جديد
-    string? TechnicalDetails,
+    [JsonPropertyName("technical_details")]
+    public string? TechnicalDetails { get; init; }
 
-        [property: JsonPropertyName("model_used")]
-    string? ModelUsed,
+    [JsonPropertyName("model_used")]
+    public string? ModelUsed { get; init; }
 
-        [property: JsonPropertyName("disclaimer")]
-    string? Disclaimer
-    );
+    [JsonPropertyName("disclaimer")]
+    public string? Disclaimer { get; init; }
 }

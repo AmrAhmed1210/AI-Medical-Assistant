@@ -2,45 +2,47 @@ using System.Text.Json.Serialization;
 
 namespace MedicalAssistant.Shared.DTOs.AIChatDTOs;
 
-public record MatchResult(
-    [property: JsonPropertyName("symptom")]
-    string Symptom,
+public record MatchResult
+{
+    [JsonPropertyName("symptom")]
+    public string Symptom { get; init; } = string.Empty;
 
-    [property: JsonPropertyName("reply")]
-    string Reply,
+    [JsonPropertyName("reply")]
+    public string Reply { get; init; } = string.Empty;
 
-    [property: JsonPropertyName("category")]
-    string Category,
+    [JsonPropertyName("category")]
+    public string Category { get; init; } = string.Empty;
 
-    [property: JsonPropertyName("confidence")]
-    double Confidence
-);
+    [JsonPropertyName("confidence")]
+    public double Confidence { get; init; }
+}
 
-public record AIResponseDTO(
-    [property: JsonPropertyName("query")]
-    string Query,
+public record AIResponseDTO
+{
+    [JsonPropertyName("query")]
+    public string Query { get; init; } = string.Empty;
 
-    [property: JsonPropertyName("gemini_reply")]
-    string GeminiReply,
+    [JsonPropertyName("reply")]
+    public string Reply { get; init; } = string.Empty;
 
-    [property: JsonPropertyName("model_used")]
-    string ModelUsed,
+    [JsonPropertyName("model_used")]
+    public string? ModelUsed { get; init; }
 
-    [property: JsonPropertyName("matches")]
-    List<MatchResult> Matches,
+    [JsonPropertyName("matches")]
+    public List<MatchResult> Matches { get; init; } = new();
 
-    [property: JsonPropertyName("low_confidence")]
-    bool LowConfidence,
+    [JsonPropertyName("low_confidence")]
+    public bool LowConfidence { get; init; }
 
-    [property: JsonPropertyName("is_medical")]
-    bool IsMedical,
+    [JsonPropertyName("is_medical")]
+    public bool IsMedical { get; init; }
 
-    [property: JsonPropertyName("found_in_database")]
-    bool FoundInDatabase,
+    [JsonPropertyName("found_in_database")]
+    public bool FoundInDatabase { get; init; }
 
-    [property: JsonPropertyName("disclaimer")]
-    string Disclaimer,
+    [JsonPropertyName("disclaimer")]
+    public string? Disclaimer { get; init; }
 
-    [property: JsonPropertyName("language")]
-    string Language
-);
+    [JsonPropertyName("language")]
+    public string? Language { get; init; }
+}
