@@ -69,17 +69,19 @@ public class ChatController : ControllerBase
             sessionId = session.Id;
         }
 
-        // 1. Get History
-        var history = await _messageService.GetMessagesForSessionAsync(sessionId);
+        // 1. Get History (Limit to last 10 for performance)
+        var allHistory = await _messageService.GetMessagesForSessionAsync(sessionId);
+        var history = allHistory.TakeLast(10).ToList();
 
-        // 2. Save User Message
-        await _messageService.SendMessageAsync(sessionId, userId, "user", request.Question);
+        // 2. Parallelize: Save User Message AND Ask AI
+        var saveUserTask = _messageService.SendMessageAsync(sessionId, userId, "user", request.Question);
+        var aiTask = _medicalAiService.AskAsync(request.Question, history, ct);
 
-        // 3. Ask AI with History
-        var reply = await _medicalAiService.AskAsync(request.Question, history.ToList(), ct);
+        await Task.WhenAll(saveUserTask, aiTask);
+        var reply = await aiTask;
 
-        // 4. Save AI Reply
-        await _messageService.SendMessageAsync(sessionId, 0, "assistant", reply);
+        // 3. Save AI Reply in background (don't block the response)
+        _ = _messageService.SendMessageAsync(sessionId, 0, "assistant", reply);
 
         return Ok(new ChatResponse(reply, sessionId));
     }
