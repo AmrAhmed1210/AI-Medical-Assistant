@@ -1,17 +1,16 @@
+// MedicalAnalysisResponseDTO.cs
+
 using System.Text.Json.Serialization;
 
 namespace MedicalAssistant.Shared.DTOs.AIChatDTOs;
 
-public record MedicalAnalysisResponseDTO
+public sealed record MedicalAnalysisResponseDTO
 {
     [JsonPropertyName("status")]
     public string Status { get; init; } = string.Empty;
 
-    [JsonPropertyName("analysis_ar")]
+    [JsonPropertyName("analysis")]
     public string? Analysis { get; init; }
-
-    [JsonPropertyName("technical_details")]
-    public string? TechnicalDetails { get; init; }
 
     [JsonPropertyName("model_used")]
     public string? ModelUsed { get; init; }

@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿// MessageDto.cs
+
+using System.Text.Json.Serialization;
 
 namespace MedicalAssistant.Shared.DTOs.AIChatDTOs;
 
