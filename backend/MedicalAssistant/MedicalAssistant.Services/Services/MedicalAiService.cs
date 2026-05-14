@@ -2,7 +2,6 @@ using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Shared.DTOs.AIChatDTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -11,10 +10,12 @@ using System.Text.Json.Serialization;
 namespace MedicalAssistant.Services.Services;
 
 // ─────────────────────────────────────────────────────────────────
-// Internal request record — matches FastAPI /ask payload exactly
+// Internal request record — matches Python /ask payload exactly.
+// v13.0: history is now forwarded so Python receives full context.
 // ─────────────────────────────────────────────────────────────────
 file sealed record PythonAskRequest(
-    [property: JsonPropertyName("question")] string Question
+    [property: JsonPropertyName("question")] string Question,
+    [property: JsonPropertyName("history")] List<MessageDto>? History
 );
 
 // ─────────────────────────────────────────────────────────────────
@@ -22,14 +23,12 @@ file sealed record PythonAskRequest(
 // ─────────────────────────────────────────────────────────────────
 public sealed class MedicalAiService : IMedicalAiService
 {
-    // Shared across all call-sites — avoids repeated allocations
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    private const string ServiceUnavailableAr = "الخدمة غير متاحة مؤقتاً. يرجى المحاولة لاحقاً.";
     private const string ServiceUnavailableEn = "Service unavailable. Please try again later.";
 
     private readonly HttpClient _http;
@@ -69,7 +68,8 @@ public sealed class MedicalAiService : IMedicalAiService
 
         try
         {
-            var payload = new PythonAskRequest(question.Trim());
+            // v13.0: history now included in the payload sent to Python
+            var payload = new PythonAskRequest(question.Trim(), history);
             var response = await _http.PostAsJsonAsync("/ask", payload, JsonOptions, ct);
 
             if (!response.IsSuccessStatusCode)
@@ -92,11 +92,13 @@ public sealed class MedicalAiService : IMedicalAiService
             }
 
             _log.LogInformation(
-                "[MedicalAiService] /ask success — model={Model} lang={Lang} isMedical={IsMedical} foundInDb={FoundInDb}",
+                "[MedicalAiService] /ask success — model={Model} lang={Lang} " +
+                "isMedical={IsMedical} foundInDb={FoundInDb} historyTurns={Turns}",
                 dto.ModelUsed,
                 dto.Language,
                 dto.IsMedical,
-                dto.FoundInDatabase);
+                dto.FoundInDatabase,
+                history?.Count ?? 0);
 
             return dto;
         }
@@ -129,6 +131,7 @@ public sealed class MedicalAiService : IMedicalAiService
 
     // ─────────────────────────────────────────────────────────────
     // AnalyzeMedicalImageAsync — multipart image upload
+    // (unchanged from v12.0 — no contract change needed here)
     // ─────────────────────────────────────────────────────────────
     public async Task<MedicalAnalysisResponseDTO?> AnalyzeMedicalImageAsync(
         IFormFile file,
@@ -144,7 +147,6 @@ public sealed class MedicalAiService : IMedicalAiService
         {
             using var multipart = new MultipartFormDataContent();
 
-            // Copy stream to avoid upstream disposal issues
             using var ms = new MemoryStream((int)file.Length);
             await file.CopyToAsync(ms, ct);
             ms.Position = 0;
@@ -155,13 +157,10 @@ public sealed class MedicalAiService : IMedicalAiService
                 ? parsed
                 : new MediaTypeHeaderValue("application/octet-stream");
 
-            // FastAPI expects the field name "file"
             multipart.Add(fileContent, "file", file.FileName ?? "upload.jpg");
 
             var response = await _http.PostAsync("/analyze-image", multipart, ct);
 
-            // Both 200 and non-200 responses can carry a valid DTO
-            // (e.g. 400 "rejected", 413 "error") — always attempt deserialization
             var body = await response.Content.ReadAsStringAsync(ct);
 
             if (string.IsNullOrWhiteSpace(body))
