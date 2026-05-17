@@ -106,6 +106,7 @@ public sealed class MedicalAiService : IMedicalAiService
     /// <inheritdoc />
     public async Task<MedicalAnalysisResponseDTO?> AnalyzeMedicalImageAsync(
         IFormFile file,
+        string? patientContext = null,
         CancellationToken ct = default)
     {
         try
@@ -119,6 +120,11 @@ public sealed class MedicalAiService : IMedicalAiService
                 new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
 
             content.Add(fileContent, name: "file", fileName: file.FileName);
+
+            if (!string.IsNullOrWhiteSpace(patientContext))
+            {
+                content.Add(new StringContent(patientContext), "patient_context");
+            }
 
             // ── Send to Python /analyze-image ───────────────────────────
             var response = await _http.PostAsync("/analyze-image", content, ct);

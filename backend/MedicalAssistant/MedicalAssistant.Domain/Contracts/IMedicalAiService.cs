@@ -13,5 +13,5 @@ public interface IMedicalAiService
         List<MessageDto>? history = null,
         CancellationToken ct = default);
 
-    Task<MedicalAnalysisResponseDTO?> AnalyzeMedicalImageAsync(IFormFile file, CancellationToken ct = default);
+    Task<MedicalAnalysisResponseDTO?> AnalyzeMedicalImageAsync(IFormFile file, string? patientContext = null, CancellationToken ct = default);
 }

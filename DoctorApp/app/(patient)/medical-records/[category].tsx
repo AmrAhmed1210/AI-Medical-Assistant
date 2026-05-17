@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, ActivityIndicator, TextInput, Modal, Alert,
+  StatusBar, ActivityIndicator, TextInput, Modal, Alert, Linking,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -56,6 +56,7 @@ export default function MedicalRecordsCategory() {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [expandedDocs, setExpandedDocs] = useState<Record<number, boolean>>({});
 
   // Allergy form
   const [allergyName, setAllergyName] = useState("");
@@ -223,15 +224,31 @@ export default function MedicalRecordsCategory() {
     }
     try {
       setIsAiProcessing(true);
-      const type = docType === "Prescription" ? "prescription" : "lab";
-      const result = await analyzeMedicalImage(docUri, type);
+      const pid = await getMyPatientId();
       
-      // If it's a lab/prescription, we might want to pre-fill notes or title
-      if (result.raw_text) {
-        setDocTitle(`${result.summary_en} / ${result.summary_ar}`);
-        setDocDescription(result.raw_text);
+      // Fetch full patient context to pass to AI for safety checking
+      let patientContext = "";
+      try {
+        const [allergies, chronics, meds] = await Promise.all([
+            getAllergies(pid),
+            getChronicDiseases(pid),
+            getMedications(pid)
+        ]);
+        patientContext = `Allergies: ${allergies.map(a => a.allergenName).join(', ')}\n` +
+                         `Chronic Diseases: ${chronics.map(c => c.diseaseName).join(', ')}\n` +
+                         `Current Medications: ${meds.map(m => m.medicationName).join(', ')}`;
+      } catch (e) {
+        console.log("Could not fetch full context for AI");
+      }
+
+      const type = docType === "Prescription" ? "prescription" : "lab";
+      const result = await analyzeMedicalImage(docUri, type, patientContext);
+      
+      // Use the updated python fields
+      if (result.analysis_ar) {
+        setDocTitle(`${docType} Analysis`);
+        setDocDescription(result.analysis_ar);
         Toast.show({ type: "success", text1: "AI Analysis Complete" });
-        Alert.alert("AI Extraction", `${result.summary_en}\n---\n${result.summary_ar}`);
       }
     } catch (e) {
       Alert.alert("AI Error", "Could not analyze image at this time.");
@@ -480,14 +497,30 @@ export default function MedicalRecordsCategory() {
               </View>
             </View>
             {item.fileUrl && (
-              <TouchableOpacity onPress={() => { /* View doc */ }}>
-                <Text style={[styles.linkTxt, { color: itemColor }]}>View Document</Text>
+              <TouchableOpacity onPress={() => Linking.openURL(item.fileUrl).catch(() => Toast.show({ type: 'error', text1: 'Cannot open document' }))}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+                  <Ionicons name="document-attach-outline" size={16} color={itemColor} />
+                  <Text style={[styles.linkTxt, { color: itemColor, marginTop: 0 }]}>{tr("view_document" as any) || "View Document"}</Text>
+                </View>
               </TouchableOpacity>
             )}
             {item.description && (
               <View style={styles.aiDescBox}>
-                <Sparkles size={14} color="#7C3AED" />
-                <Text style={styles.aiDescTxt}>{item.description}</Text>
+                <TouchableOpacity 
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                  onPress={() => setExpandedDocs(prev => ({...prev, [item.id]: !prev[item.id]}))}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Sparkles size={16} color="#7C3AED" />
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#5B21B6' }}>AI Analysis Report</Text>
+                  </View>
+                  <Ionicons name={expandedDocs[item.id] ? "chevron-up" : "chevron-down"} size={20} color="#7C3AED" />
+                </TouchableOpacity>
+                {expandedDocs[item.id] && (
+                  <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#EDE9FE' }}>
+                    <Text style={styles.aiDescTxt}>{item.description}</Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -591,13 +624,16 @@ export default function MedicalRecordsCategory() {
                     <Text style={[styles.imageBtnTxt, { color }]}>{docUri ? tr("change_image" as any) : tr("select_image" as any)}</Text>
                   </TouchableOpacity>
                   {docUri && (
-                    <TextInput 
-                      style={[styles.input, { height: 100, textAlignVertical: 'top' }]} 
-                      placeholder="Document Description / AI Analysis" 
-                      value={docDescription} 
-                      onChangeText={setDocDescription} 
-                      multiline 
-                    />
+                    <View style={styles.aiResultBox}>
+                      <Text style={styles.inputLabelSmall}>Document Description & AI Analysis</Text>
+                      <TextInput 
+                        style={[styles.input, { height: 180, textAlignVertical: 'top', backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', fontSize: 14 }]} 
+                        placeholder="AI will place the analysis here..." 
+                        value={docDescription} 
+                        onChangeText={setDocDescription} 
+                        multiline 
+                      />
+                    </View>
                   )}
                   {docUri && <Text style={styles.imageUri} numberOfLines={1}>{docUri}</Text>}
                 </>
@@ -724,7 +760,7 @@ const styles = StyleSheet.create({
   fab: { position: "absolute", right: 25, bottom: 40, width: 64, height: 64, borderRadius: 32, elevation: 12, shadowOpacity: 0.3, shadowRadius: 15, overflow: 'hidden' },
   fabGradient: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
   modalOverlay: { flex: 1, backgroundColor: "rgba(6, 78, 59, 0.4)", justifyContent: "flex-end" },
-  modalContent: { backgroundColor: "#fff", borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 25, paddingBottom: 45, elevation: 25 },
+  modalContent: { backgroundColor: "#fff", borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 25, paddingBottom: 45, elevation: 25, maxHeight: '90%' },
   modalTitle: { fontSize: 19, fontWeight: "800", color: "#1E293B", marginBottom: 25, textAlign: 'center' },
   input: { backgroundColor: "#F8FAFC", borderRadius: 18, paddingHorizontal: 18, paddingVertical: 15, marginBottom: 15, fontSize: 15, color: "#1E293B", borderWidth: 1, borderColor: "#F1F5F9", fontWeight: '600' },
   imageBtn: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 15, borderRadius: 18, borderWidth: 1, borderStyle: "dashed", justifyContent: "center", marginBottom: 15, backgroundColor: '#F8FAFC' },
@@ -754,6 +790,7 @@ const styles = StyleSheet.create({
   aiHint: { fontSize: 11, color: '#8B5CF6', fontWeight: '700', marginLeft: 5, marginBottom: 15 },
   aiButtonLarge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12, borderRadius: 18, marginBottom: 15, elevation: 6 },
   aiButtonLargeTxt: { color: '#fff', fontSize: 14, fontWeight: '800' },
-  aiDescBox: { marginTop: 12, padding: 12, backgroundColor: '#F5F3FF', borderRadius: 16, flexDirection: 'row', gap: 10, borderWidth: 1, borderColor: '#EDE9FE' },
+  aiDescBox: { marginTop: 12, padding: 12, backgroundColor: '#F5F3FF', borderRadius: 16, flexDirection: 'column', gap: 10, borderWidth: 1, borderColor: '#EDE9FE' },
   aiDescTxt: { fontSize: 11, color: '#5B21B6', flex: 1, lineHeight: 16, fontWeight: '600' },
+  aiResultBox: { marginTop: 10, width: '100%' },
 });

@@ -2,7 +2,7 @@ import axios from "axios";
 
 // For real devices: use your computer's IP (e.g. 192.168.1.5)
 // For Android Emulator: use 10.0.2.2
-const AI_IP = "192.168.1.3"; // Change this if your computer IP changes
+const AI_IP = "192.168.1.4"; // Change this if your computer IP changes
 const AI_SERVER_URL = `http://${AI_IP}:8000`; 
 
 export const analyzePatientHistory = async (history: any) => {
@@ -55,7 +55,7 @@ export const checkMedicationSafety = async (medication: string, history: any) =>
     }
 };
 
-export const analyzeMedicalImage = async (uri: string, type: "prescription" | "lab" = "prescription") => {
+export const analyzeMedicalImage = async (uri: string, type: "prescription" | "lab" = "prescription", patientContext: string = "") => {
     try {
         const formData = new FormData();
         const filename = uri.split("/").pop() || "image.jpg";
@@ -63,8 +63,12 @@ export const analyzeMedicalImage = async (uri: string, type: "prescription" | "l
         const mimeType = match ? `image/${match[1]}` : "image/jpeg";
 
         formData.append("file", { uri, name: filename, type: mimeType } as any);
+        formData.append("type", type);
+        if (patientContext) {
+            formData.append("patient_context", patientContext);
+        }
         
-        const response = await axios.post(`${AI_SERVER_URL}/analyze-image?type=${type}`, formData, {
+        const response = await axios.post(`${AI_SERVER_URL}/analyze-image`, formData, {
             headers: {
                 "Content-Type": "multipart/form-data",
             },
