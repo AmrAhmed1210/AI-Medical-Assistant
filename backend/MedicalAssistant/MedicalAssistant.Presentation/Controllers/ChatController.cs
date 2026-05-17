@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization;
+using MedicalAssistant.Services_Abstraction.Contracts;
 
 namespace MedicalAssistant.Presentation.Controllers;
 
@@ -13,12 +14,20 @@ namespace MedicalAssistant.Presentation.Controllers;
 public sealed class ChatController : ControllerBase
 {
     private readonly IMedicalAiService _medical;
+    private readonly IPatientRecordService _recordService;
     private readonly ILogger<ChatController> _log;
 
-    public ChatController(IMedicalAiService medical, ILogger<ChatController> log)
+    public ChatController(IMedicalAiService medical, IPatientRecordService recordService, ILogger<ChatController> log)
     {
         _medical = medical;
+        _recordService = recordService;
         _log = log;
+    }
+
+    private int GetPatientIdFromClaims()
+    {
+        var claim = User.FindFirst("PatientId")?.Value;
+        return int.TryParse(claim, out var id) ? id : 0;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -116,8 +125,7 @@ public sealed class ChatController : ControllerBase
                 patientContext = $"Patient Medical Background:\n" +
                                  $"Chronic Diseases: {string.Join(", ", medicalHistory.ChronicDiseases.Select(d => d.DiseaseName))}\n" +
                                  $"Allergies: {string.Join(", ", medicalHistory.Allergies.Select(a => a.AllergenName))}\n" +
-                                 $"Current Medications: {string.Join(", ", medicalHistory.Medications.Select(m => m.MedicationName))}\n" +
-                                 $"Past Surgeries: {string.Join(", ", medicalHistory.Surgeries.Select(s => s.SurgeryName))}\n";
+                                 $"Current Medications: {string.Join(", ", medicalHistory.Medications.Select(m => m.MedicationName))}\n";
             } catch { /* proceed without context if fetch fails */ }
         }
 
