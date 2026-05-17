@@ -107,7 +107,21 @@ public sealed class ChatController : ControllerBase
             file.Length / 1024,
             file.ContentType);
 
-        var result = await _medical.AnalyzeMedicalImageAsync(file, ct);
+        string? patientContext = null;
+        var patientId = GetPatientIdFromClaims();
+        if (patientId > 0)
+        {
+            try {
+                var medicalHistory = await _recordService.GetPatientCompleteHistoryAsync(patientId);
+                patientContext = $"Patient Medical Background:\n" +
+                                 $"Chronic Diseases: {string.Join(", ", medicalHistory.ChronicDiseases.Select(d => d.DiseaseName))}\n" +
+                                 $"Allergies: {string.Join(", ", medicalHistory.Allergies.Select(a => a.AllergenName))}\n" +
+                                 $"Current Medications: {string.Join(", ", medicalHistory.Medications.Select(m => m.MedicationName))}\n" +
+                                 $"Past Surgeries: {string.Join(", ", medicalHistory.Surgeries.Select(s => s.SurgeryName))}\n";
+            } catch { /* proceed without context if fetch fails */ }
+        }
+
+        var result = await _medical.AnalyzeMedicalImageAsync(file, patientContext, ct);
 
         if (result is null)
         {

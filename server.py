@@ -3,7 +3,7 @@ import io
 import json
 import re
 import google.generativeai as genai
-from fastapi import FastAPI, File, UploadFile, HTTPException, Body
+from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from pydantic import BaseModel
@@ -52,6 +52,7 @@ class PatientHistoryInput(BaseModel):
     medications: Optional[List[Any]] = []
     allergies: Optional[List[Any]] = []
     chronic_diseases: Optional[List[Any]] = []
+    documents_analysis: Optional[List[Any]] = []
 
 @app.get("/")
 def root():
@@ -88,7 +89,7 @@ async def summarize_surgery(data: SurgeryInput):
 
 @app.post("/analyze-history")
 async def analyze_history(data: PatientHistoryInput):
-    print(f"DEBUG: Received history data for analysis")
+    print(f"DEBUG: Received history data for analysis. Documents analysis: {data.documents_analysis}")
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
     
@@ -100,14 +101,22 @@ async def analyze_history(data: PatientHistoryInput):
     Medications: {json.dumps(data.medications)}
     Allergies: {json.dumps(data.allergies)}
     Chronic Diseases: {json.dumps(data.chronic_diseases)}
+    AI Analyzed Documents: {json.dumps(data.documents_analysis)}
     
+    CRITICAL INSTRUCTION: You MUST read the 'AI Analyzed Documents' provided. If there are any lab results, prescriptions, or medical scans inside 'AI Analyzed Documents', you MUST explicitly mention them in your final report and incorporate any abnormalities, risks, or new medications into your overall diagnosis.
+    
+    ACTIONABLE ADVICE INSTRUCTION: If you detect any abnormal vitals or health issues, you MUST provide simple, safe, non-medical home remedies or quick first-aid tips (e.g., "If your blood pressure is low, try drinking some water or having a light salty snack"). Always follow these tips with the phrase: "However, please consult a doctor for professional medical advice" (or its Arabic equivalent).
+    
+    EXPANDED LIFESTYLE & WELLNESS ADVICE: You MUST provide 3 to 4 detailed, highly practical, and safe wellness and preventative lifestyle tips tailored to the patient's medical history (e.g. dietary recommendations, foods to avoid, exercise guidance, sleep, stress reduction, and hydration tips based on their chronic diseases or vitals). Make this advice extremely rich, rich in detail, and reassuring.
+    
+
     RETURN ONLY A JSON OBJECT with these keys:
     {{
-      "en": "Detailed analysis in English (plain text, no markdown)",
-      "ar": "تحليل مفصل باللغة العربية (نص عادي، بدون مارك داون)"
+      "en": "Detailed professional analysis in English, cleanly structured using these exact section headers (with emojis, plain text, no markdown, separate sections with newlines):\n🩺 General Summary:\n...\n⚠️ Health Risks & Warnings:\n...\n💊 Medications & Interactions:\n...\n💡 Home Remedies & Non-Medical Advice:\n...",
+      "ar": "تحليل طبي مفصل ومنظم للغاية باللغة العربية، مقسم إلى الأقسام التالية بشكل منسق وجذاب (بدون مارك داون، مع ترك أسطر فارغة بين الأقسام):\n🩺 الملخص الصحي العام:\n...\n⚠️ التحذيرات والمخاطر الطبية:\n...\n💊 الأدوية والتداخلات الدوائية:\n...\n💡 النصائح والإسعافات المنزلية السريعة (مثل تناول شيء مالح للضغط المنخفض، مع جملة الاستشارة الطبية):\n..."
     }}
     
-    IMPORTANT: Do NOT use markdown (#, *, etc). Use plain text with line breaks.
+    IMPORTANT: Do NOT use markdown (#, *, etc). Use plain text with emojis and line breaks to create a clean, elegant layout.
     """
     
     prompt = f"""
@@ -120,8 +129,10 @@ async def analyze_history(data: PatientHistoryInput):
     
     You MUST provide two separate reports.
     
-    REPORT 1: English ONLY. Professional medical tone. Plain text.
-    REPORT 2: Arabic ONLY. Professional medical tone. Plain text.
+    IMPORTANT INSTRUCTION: You must explicitly analyze this history for any HEALTH RISKS, DRUG INTERACTIONS, or DANGEROUS VITALS. If you detect any danger, allergy conflict, or high risk based on their vitals and chronic diseases, YOU MUST START THE REPORT WITH AN EXPLICIT WARNING (e.g. "WARNING: ...").
+    
+    REPORT 1: English ONLY. Professional medical tone. Plain text. Include risk analysis.
+    REPORT 2: Arabic ONLY. Professional medical tone. Plain text. Include risk analysis (تحذير: ...).
     
     RETURN YOUR RESPONSE AS A VALID JSON OBJECT ONLY:
     {{
@@ -166,47 +177,80 @@ async def analyze_history(data: PatientHistoryInput):
 
 
 @app.post("/analyze-image")
-async def analyze_image(file: UploadFile = File(...), type: str = "prescription"):
+async def analyze_image(
+    file: UploadFile = File(...), 
+    type: str = Form("prescription"),
+    patient_context: Optional[str] = Form(None)
+):
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
     
     contents = await file.read()
     img = Image.open(io.BytesIO(contents))
     
+    context_str = f"\n\nPATIENT MEDICAL HISTORY CONTEXT:\n{patient_context}\n" if patient_context else ""
+    
+    format_rules = "CRITICAL: DO NOT use markdown tables or markdown formatting (#, *, etc.) under any circumstances. Format the output strictly as clear, plain text using line breaks and beautiful section headers with emojis. Use clean spacing between sections to ensure a highly organized layout."
+    actionable_advice = """
+    ACTIONABLE ADVICE: If you detect any health issues, abnormal results, or dangers, provide simple, safe, non-medical home remedies or quick first-aid tips (e.g., 'If your blood sugar is low, try having something sugary'). Always follow these tips with the phrase 'However, please consult a doctor for professional medical advice' (or its Arabic equivalent).
+    
+    EXPANDED LIFESTYLE & WELLNESS ADVICE: Provide 3 to 4 extremely detailed, highly practical advice on patient wellness, recovery, and daily lifestyle adjustments related to these results (e.g. hydration, recommended foods, foods to avoid, physical activity precautions, and symptom monitoring tips). Keep this advice extremely rich, comprehensive, and actionable.
+    """
+    
     if type == "prescription":
-        prompt = "Carefully extract every detail from this medical prescription. I need medication names, dosages (e.g. 500mg), frequencies (e.g. twice daily), and durations. Provide a professional bilingual summary (English/Arabic) and the raw data in JSON format."
+        prompt = f"""
+        Carefully extract every detail from this medical prescription. I need medication names, dosages, frequencies, and durations.{context_str} 
+        IMPORTANT: You must also analyze the prescription for any potential risks, drug interactions, or critical warnings, ESPECIALLY in relation to the PATIENT MEDICAL HISTORY CONTEXT (if provided). Check for allergic reactions or conflicts with their current chronic diseases and medications. If there are any dangers, start your response with an explicit warning (e.g. تحذير هام:). {actionable_advice} 
+        
+        Provide a professional detailed Arabic summary, strictly organized into these sections:
+        🩺 الملخص العام للروشتة:
+        [اكتب هنا ملخص الأدوية المستخرجة بشكل مرتب]
+        
+        ⚠️ التحذيرات والتفاعلات الدوائية:
+        [اكتب هنا أي تعارضات مع حالته المرضية أو حساسيته إن وجدت]
+        
+        💡 الإرشادات والنصائح المنزلية:
+        [اكتب هنا نصائح إضافية للاستخدام الآمن للأدوية]
+        
+        {format_rules}
+        """
     else:
-        prompt = "Analyze this lab result or medical scan. Extract all test names, values, units, and reference ranges. Provide a clear bilingual interpretation (English/Arabic) explaining if the results are within normal range."
+        prompt = f"""
+        Analyze this lab result or medical scan. Extract all test names, values, units, and reference ranges.{context_str} 
+        IMPORTANT: You must analyze the results for any abnormalities, health risks, or dangerous levels, ESPECIALLY in relation to the PATIENT MEDICAL HISTORY CONTEXT (if provided). If there are any dangers, start your response with an explicit warning (e.g. تحذير هام:). {actionable_advice} 
+        
+        Provide a clear Arabic interpretation explaining if the results are within normal range or if there is any danger, strictly organized into these sections:
+        🩺 نتائج التحاليل المستخرجة:
+        [اكتب هنا قائمة التحاليل والقيم والنسب بشكل منظم]
+        
+        ⚠️ المخاطر والمؤشرات غير الطبيعية:
+        [اكتب هنا أي قراءة مرتفعة أو منخفضة تشكل خطورة وتفسيرها]
+        
+        💡 الإسعافات والنصائح المنزلية السريعة:
+        [اكتب هنا نصائح آمنة وبسيطة حتى يستشير الطبيب]
+        
+        {format_rules}
+        """
     
     try:
         # For multimodal, we pass the image and the prompt
         response = model.generate_content([prompt, img])
         
-        # Extract JSON from response (Gemini sometimes wraps it in markdown)
+        # Get the text from the response
         text = response.text
-        json_match = re.search(r'\[.*\]|\{.*\}', text, re.DOTALL)
         
-        # Also ask Gemini for a very brief summary (for title) in both languages
-        summary_resp = model.generate_content(f"Based on this extracted text, give me a very brief (3-4 words) title for this document in both English and Arabic (e.g. Blood Test / تحليل دم): {text}")
-        summary = summary_resp.text.strip()
-
-        if json_match:
-            extracted_data = json.loads(json_match.group())
-            # Split summary if it contains '/'
-            s_en, s_ar = "Document", "مستند"
-            if " / " in summary:
-                parts = summary.split(" / ")
-                s_en = parts[0].strip()
-                s_ar = parts[1].strip()
-            
-            return {
-                "data": extracted_data, 
-                "raw_text": strip_markdown(text), 
-                "summary_en": strip_markdown(s_en),
-                "summary_ar": strip_markdown(s_ar)
-            }
-        else:
-            return {"data": [], "raw_text": strip_markdown(text), "summary_en": "Document", "summary_ar": "مستند"}
+        # We also ask for technical details (extracted JSON)
+        tech_prompt = f"Based on this extracted text, provide the raw medical data (test names, values, or medication list) as a plain text summary or JSON: {text}"
+        tech_response = model.generate_content(tech_prompt)
+        tech_details = tech_response.text.strip()
+        
+        return {
+            "status": "success", 
+            "analysis_ar": strip_markdown(text), 
+            "technical_details": strip_markdown(tech_details),
+            "model_used": "gemini-flash-latest",
+            "disclaimer": "تحذير: هذا التحليل بواسطة الذكاء الاصطناعي ولا يغني عن استشارة الطبيب."
+        }
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

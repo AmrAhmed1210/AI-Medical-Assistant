@@ -135,7 +135,8 @@ public sealed class MedicalAiService : IMedicalAiService
     // ─────────────────────────────────────────────────────────────
     public async Task<MedicalAnalysisResponseDTO?> AnalyzeMedicalImageAsync(
         IFormFile file,
-        CancellationToken ct)
+        string? patientContext = null,
+        CancellationToken ct = default)
     {
         if (file is null || file.Length == 0)
         {
@@ -158,6 +159,10 @@ public sealed class MedicalAiService : IMedicalAiService
                 : new MediaTypeHeaderValue("application/octet-stream");
 
             multipart.Add(fileContent, "file", file.FileName ?? "upload.jpg");
+            if (!string.IsNullOrWhiteSpace(patientContext))
+            {
+                multipart.Add(new StringContent(patientContext), "patient_context");
+            }
 
             var response = await _http.PostAsync("/analyze-image", multipart, ct);
 

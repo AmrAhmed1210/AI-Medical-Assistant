@@ -39,7 +39,7 @@ import { addNotification } from "../../services/notificationService";
 import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpdated, onNewConsultation, onNewMedication } from "../../services/signalr";
 import { scheduleAppointmentReminders } from "../../services/appointmentReminders";
 import { analyzePatientHistory } from "../../services/aiService";
-import { updateAiDiagnosis, getVitals, getSurgeries, getMedications, getAllergies, getChronicDiseases } from "../../services/medicalRecordService";
+import { updateAiDiagnosis, getVitals, getSurgeries, getMedications, getAllergies, getChronicDiseases, getPatientDocuments } from "../../services/medicalRecordService";
 
 const { width } = Dimensions.get("window");
 
@@ -245,20 +245,26 @@ export default function HomeScreen() {
       const pid = await getMyPatientId();
       if (!pid) return;
 
-      const [vitals, surgeries, meds, allergies, chronic] = await Promise.all([
+      const [vitals, surgeries, meds, allergies, chronic, docs] = await Promise.all([
         getVitals(pid),
         getSurgeries(pid),
         getMedications(pid),
         getAllergies(pid),
         getChronicDiseases(pid),
+        getPatientDocuments(pid).catch(() => []),
       ]);
 
+      console.log("DEBUG: Patient docs fetched in Home:", JSON.stringify(docs));
       const analysis = await analyzePatientHistory({
         vitals: vitals.map(v => ({ type: v.readingType, value: v.value, recordedAt: v.recordedAt })),
         surgeries: surgeries.map(s => s.surgeryName),
         medications: meds.map(m => m.medicationName),
         allergies: allergies.map(a => a.allergenName),
         chronic_diseases: chronic.map(c => ({ diseaseName: c.diseaseName })),
+        documents_analysis: docs.map(d => ({ 
+          title: d.title ?? (d as any).Title ?? "", 
+          ai_analysis: d.description ?? (d as any).Description ?? "" 
+        }))
       });
 
       await updateAiDiagnosis(pid, JSON.stringify(analysis));

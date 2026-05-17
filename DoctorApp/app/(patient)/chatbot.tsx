@@ -135,7 +135,7 @@ export default function ChatBotScreen() {
     try {
       const result = await chatService.analyzeImage(uri, currentSessionId);
       
-      const analysisText = `${result.raw_text}\n\nSummary: ${result.summary_en} / ${result.summary_ar}`;
+      const analysisText = `${result.analysis_ar}\n\n[التفاصيل التقنية]:\n${result.technical_details}\n\n${result.disclaimer}`;
       
       const assistantMsg: ChatMessage = {
         id: Date.now() + 1,

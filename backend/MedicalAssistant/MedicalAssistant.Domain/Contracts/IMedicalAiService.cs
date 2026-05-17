@@ -18,5 +18,6 @@ public interface IMedicalAiService
 
     Task<MedicalAnalysisResponseDTO?> AnalyzeMedicalImageAsync(
         IFormFile file,
-        CancellationToken ct);
+        string? patientContext = null,
+        CancellationToken ct = default);
 }
