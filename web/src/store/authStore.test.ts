@@ -3,13 +3,10 @@ import { useAuthStore } from '@/store/authStore'
 import type { UserDto, UserRole } from '@/lib/types'
 
 const mockUser: UserDto = {
-  id: '1',
+  id: 1,
   email: 'test@test.com',
-  fullName: 'أحمد محمد',
+  name: 'Ahmed Mohamed',
   role: 'Doctor' as UserRole,
-  phone: '0123456789',
-  specialization: 'طب عام',
-  licenseNumber: '12345',
   isActive: true,
   createdAt: '2024-01-01',
 }
@@ -61,10 +58,10 @@ describe('authStore', () => {
   it('updateUser should partially update user', () => {
     const store = useAuthStore.getState()
     store.setAuth(mockUser, 'token-123')
-    store.updateUser({ fullName: 'أحمد علي' })
+    store.updateUser({ name: 'Ahmed Ali' })
 
     const state = useAuthStore.getState()
-    expect(state.user?.fullName).toBe('أحمد علي')
+    expect(state.user?.name).toBe('Ahmed Ali')
     expect(state.user?.email).toBe(mockUser.email)
   })
 })

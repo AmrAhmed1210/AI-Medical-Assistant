@@ -41,10 +41,10 @@ const MOCK_STATS: SystemStatsDto = {
 } as any
 
 const URGENCY_CONFIG = {
-  LOW:       { label: 'Low', color: '#10b981', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100' },
-  MEDIUM:    { label: 'Medium', color: '#f59e0b', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-100' },
-  HIGH:      { label: 'High', color: '#ef4444', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-100' },
-  EMERGENCY: { label: 'Emergency', color: '#7f1d1d', bg: 'bg-red-900/10', text: 'text-red-900', border: 'border-red-200' },
+  LOW:       { label: 'Low', color: '#10b981', bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-900/30' },
+  MEDIUM:    { label: 'Medium', color: '#f59e0b', bg: 'bg-amber-50 dark:bg-amber-950/20', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-900/30' },
+  HIGH:      { label: 'High', color: '#ef4444', bg: 'bg-rose-50 dark:bg-rose-950/20', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-100 dark:border-rose-900/30' },
+  EMERGENCY: { label: 'Emergency', color: '#ef4444', bg: 'bg-red-900/10 dark:bg-red-950/20', text: 'text-red-900 dark:text-red-400', border: 'border-red-200 dark:border-red-900/30' },
 }
 
 const STAT_CONFIG = {
@@ -61,12 +61,12 @@ const StatCard = ({ title, value, icon: Icon, gradient, shadow, index, trend }: 
     transition={{ delay: index * 0.1 }}
     whileHover={{ y: -5 }} className="group"
   >
-    <Card className="relative overflow-hidden border-0 shadow-2xl bg-white/90 backdrop-blur-xl rounded-3xl">
+    <Card className="relative overflow-hidden border-0 shadow-2xl rounded-3xl">
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-4">
             <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{title}</p>
-            <h3 className="text-4xl font-black text-slate-900">{value.toLocaleString()}</h3>
+            <h3 className="text-4xl font-black text-slate-900 dark:text-white">{value.toLocaleString()}</h3>
             {trend && (
               <div className={`flex items-center gap-1.5 text-xs font-bold ${trend > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {trend > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
@@ -140,7 +140,7 @@ export default function AdminDashboard() {
 
   if (loading && !stats) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8 space-y-8">
+      <div className="min-h-screen bg-slate-50/50 dark:bg-transparent p-4 md:p-8 space-y-8">
         <div className="flex justify-between">
           <Skeleton className="h-12 w-64 rounded-xl" />
           <Skeleton className="h-12 w-32 rounded-xl" />
@@ -159,23 +159,23 @@ export default function AdminDashboard() {
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-      className="min-h-screen bg-[#f8fafc] p-4 md:p-8 space-y-8"
+      className="min-h-screen bg-slate-50/50 dark:bg-transparent p-4 md:p-8 space-y-8 text-slate-900 dark:text-slate-100"
     >
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Dashboard / لوحة التحكم</h1>
-            <Badge className="bg-primary-50 text-primary-600 border-0 flex gap-1.5 items-center px-3 py-1 text-xs">
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Admin Dashboard</h1>
+            <Badge className="bg-primary-50 dark:bg-primary-950/20 text-primary-600 dark:text-primary-400 border-0 flex gap-1.5 items-center px-3 py-1 text-xs">
               <Sparkles size={12} fill="currentColor" /> Admin Portal
             </Badge>
             {usingMock && (
-              <Badge className="bg-amber-100 text-amber-800 border-0 flex gap-1.5 items-center px-3 py-1 text-xs">
-                ⚠️ Demo Data / بيانات تجريبية
+              <Badge className="bg-amber-100 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 border-0 flex gap-1.5 items-center px-3 py-1 text-xs">
+                ⚠️ Demo Data
               </Badge>
             )}
           </div>
-          <p className="text-slate-500 font-medium flex items-center gap-2">
+          <p className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
             <Clock size={16} /> Latest intelligence as of {new Date().toLocaleTimeString()}
           </p>
         </div>
@@ -184,9 +184,9 @@ export default function AdminDashboard() {
           <div className="relative">
             <button
               onClick={() => { setNewUserAlert(false); setAlertCount(0) }}
-              className="p-2 rounded-2xl bg-white/50 backdrop-blur-sm border border-slate-200 hover:bg-white transition-colors"
+              className="p-2 rounded-2xl bg-white/50 dark:bg-slate-900/55 backdrop-blur-sm border border-slate-200 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 transition-colors"
             >
-              <Bell size={20} className={`${newUserAlert ? 'text-blue-600' : 'text-slate-600'}`} />
+              <Bell size={20} className={`${newUserAlert ? 'text-blue-600' : 'text-slate-600 dark:text-slate-450'}`} />
             </button>
             {newUserAlert && (
               <>
@@ -198,24 +198,23 @@ export default function AdminDashboard() {
             )}
           </div>
           <Button variant="outline" onClick={fetchData} className="rounded-2xl gap-2 bg-white/50 backdrop-blur-sm border-slate-200">
-             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> Refresh / تحديث
+             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> Refresh
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Users / إجمالي المستخدمين" value={stats?.totalUsers ?? 0} icon={STAT_CONFIG.users.icon} gradient={STAT_CONFIG.users.gradient} shadow={STAT_CONFIG.users.shadow} index={0} trend={12} />
-        <StatCard title="Active Doctors / الأطباء النشطون" value={stats?.totalDoctors ?? 0} icon={STAT_CONFIG.doctors.icon} gradient={STAT_CONFIG.doctors.gradient} shadow={STAT_CONFIG.doctors.shadow} index={1} trend={5} />
-        <StatCard title="Patients / المرضى" value={stats?.totalPatients ?? 0} icon={STAT_CONFIG.patients.icon} gradient={STAT_CONFIG.patients.gradient} shadow={STAT_CONFIG.patients.shadow} index={2} trend={8} />
-        <StatCard title="Today's Sessions / جلسات اليوم" value={stats?.sessionsToday ?? 0} icon={STAT_CONFIG.sessions.icon} gradient={STAT_CONFIG.sessions.gradient} shadow={STAT_CONFIG.sessions.shadow} index={3} trend={24} />
+        <StatCard title="Total Users" value={stats?.totalUsers ?? 0} icon={STAT_CONFIG.users.icon} gradient={STAT_CONFIG.users.gradient} shadow={STAT_CONFIG.users.shadow} index={0} trend={12} />
+        <StatCard title="Active Doctors" value={stats?.totalDoctors ?? 0} icon={STAT_CONFIG.doctors.icon} gradient={STAT_CONFIG.doctors.gradient} shadow={STAT_CONFIG.doctors.shadow} index={1} trend={5} />
+        <StatCard title="Patients" value={stats?.totalPatients ?? 0} icon={STAT_CONFIG.patients.icon} gradient={STAT_CONFIG.patients.gradient} shadow={STAT_CONFIG.patients.shadow} index={2} trend={8} />
+        <StatCard title="Today's Sessions" value={stats?.sessionsToday ?? 0} icon={STAT_CONFIG.sessions.icon} gradient={STAT_CONFIG.sessions.gradient} shadow={STAT_CONFIG.sessions.shadow} index={3} trend={24} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2 border-0 shadow-2xl rounded-3xl overflow-hidden bg-white">
-          <CardHeader className="p-6 border-b border-slate-100 flex flex-row items-center justify-between">
+        <Card className="lg:col-span-2 border-0 shadow-2xl rounded-3xl overflow-hidden">
+          <CardHeader className="p-6 border-b border-slate-100 dark:border-slate-800/80 flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-xl font-bold">Session Activity / نشاط الجلسات</CardTitle>
+              <CardTitle className="text-xl font-bold">Session Activity</CardTitle>
               <p className="text-sm font-medium text-slate-400">System throughput over last 30 intervals</p>
             </div>
           </CardHeader>
@@ -238,9 +237,9 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-2xl rounded-3xl overflow-hidden bg-white">
-          <CardHeader className="p-6 border-b border-slate-100">
-            <CardTitle className="text-xl font-bold">Case Severity / توزيع مستوى الحالات</CardTitle>
+        <Card className="border-0 shadow-2xl rounded-3xl overflow-hidden">
+          <CardHeader className="p-6 border-b border-slate-100 dark:border-slate-800/80">
+            <CardTitle className="text-xl font-bold">Case Severity</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <ResponsiveContainer width="100%" height={240}>

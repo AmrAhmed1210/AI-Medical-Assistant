@@ -22,9 +22,9 @@ vi.mock('@/api/doctorApi', () => ({
     getProfile: vi.fn().mockResolvedValue({
       id: '1',
       userId: '1',
-      fullName: 'د. أحمد',
+      fullName: 'Dr. Ahmed',
       email: 'doc@test.com',
-      specialty: 'طب عام',
+      specialty: 'General Medicine',
       license: '12345',
       bio: null,
       photoUrl: null,
@@ -47,7 +47,7 @@ import { doctorApi } from '@/api/doctorApi'
 const setupDoctorAuth = () => {
   localStorage.setItem('medbook-auth', JSON.stringify({
     state: {
-      user: { id: 1, name: 'د. أحمد', email: 'doc@test.com', role: 'Doctor', isActive: true },
+      user: { id: 1, name: 'Dr. Ahmed', email: 'doc@test.com', role: 'Doctor', isActive: true },
       token: 'doctor-token',
       role: 'Doctor',
       isAuthenticated: true,
@@ -71,13 +71,13 @@ describe('Doctor API Integration', () => {
 
   it('should fetch doctor profile', async () => {
     const profile = await doctorApi.getProfile()
-    expect(profile.fullName).toBe('د. أحمد')
-    expect(profile.specialty).toBe('طب عام')
+    expect(profile.fullName).toBe('Dr. Ahmed')
+    expect(profile.specialty).toBe('General Medicine')
   })
 
   it('should update doctor profile', async () => {
-    await doctorApi.updateProfile({ fullName: 'د. أحمد الجديد' })
-    expect(doctorApi.updateProfile).toHaveBeenCalledWith({ fullName: 'د. أحمد الجديد' })
+    await doctorApi.updateProfile({ fullName: 'Dr. Ahmed Updated' })
+    expect(doctorApi.updateProfile).toHaveBeenCalledWith({ fullName: 'Dr. Ahmed Updated' })
   })
 
   it('should fetch appointments', async () => {
@@ -96,8 +96,8 @@ describe('Doctor API Integration', () => {
   })
 
   it('should search patients', async () => {
-    await doctorApi.getPatients('أحمد')
-    expect(doctorApi.getPatients).toHaveBeenCalledWith('أحمد')
+    await doctorApi.getPatients('Ahmed')
+    expect(doctorApi.getPatients).toHaveBeenCalledWith('Ahmed')
   })
 
   it('should handle API errors gracefully', async () => {
@@ -110,11 +110,11 @@ describe('Doctor API Integration', () => {
     vi.mocked(doctorApi.getDoctorById).mockResolvedValueOnce({
       id: '123',
       userId: '1',
-      fullName: 'د. محمد',
+      fullName: 'Dr. Mohamed',
       email: 'moh@test.com',
-      specialty: 'قلب',
+      specialty: 'Cardiology',
       license: '54321',
-      bio: 'طبيب قلب',
+      bio: 'Cardiologist',
       photoUrl: null,
       consultFee: 300,
       yearsExperience: 15,
@@ -123,8 +123,8 @@ describe('Doctor API Integration', () => {
     })
 
     const doctor = await doctorApi.getDoctorById('123')
-    expect(doctor.fullName).toBe('د. محمد')
-    expect(doctor.specialty).toBe('قلب')
+    expect(doctor.fullName).toBe('Dr. Mohamed')
+    expect(doctor.specialty).toBe('Cardiology')
   })
 
   it('should update doctor availability', async () => {
@@ -138,8 +138,8 @@ describe('Doctor API Integration', () => {
 
   it('should get all doctors list', async () => {
     vi.mocked(doctorApi.getAllDoctors).mockResolvedValueOnce([
-      { id: '1', fullName: 'د. أحمد', email: 'a@test.com', specialty: 'طب عام', bio: null, photoUrl: null, consultFee: 200, yearsExperience: 10 },
-      { id: '2', fullName: 'د. محمد', email: 'm@test.com', specialty: 'قلب', bio: null, photoUrl: null, consultFee: 300, yearsExperience: 15 },
+      { id: '1', fullName: 'Dr. Ahmed', email: 'a@test.com', specialty: 'General Medicine', bio: null, photoUrl: null, consultFee: 200, yearsExperience: 10, userId: '1', license: '12345', createdAt: '2024-01-01', updatedAt: null },
+      { id: '2', fullName: 'Dr. Mohamed', email: 'm@test.com', specialty: 'Cardiology', bio: null, photoUrl: null, consultFee: 300, yearsExperience: 15, userId: '2', license: '54321', createdAt: '2024-01-01', updatedAt: null },
     ])
 
     const doctors = await doctorApi.getAllDoctors()

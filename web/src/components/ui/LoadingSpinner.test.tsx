@@ -45,7 +45,7 @@ describe('PageLoader Component', () => {
     render(<PageLoader />)
     const spinner = document.querySelector('.animate-spin')
     expect(spinner).toBeInTheDocument()
-    expect(screen.getByText('جاري التحميل...')).toBeInTheDocument()
+    expect(screen.getByText('Loading...')).toBeInTheDocument()
   })
 
   it('centers content', () => {
@@ -65,7 +65,7 @@ describe('FullPageLoader Component', () => {
 
   it('shows loading text', () => {
     render(<FullPageLoader />)
-    expect(screen.getByText('جاري تحميل MedBook...')).toBeInTheDocument()
+    expect(screen.getByText('Loading MedBook...')).toBeInTheDocument()
   })
 
   it('has fixed positioning', () => {

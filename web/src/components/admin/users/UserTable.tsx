@@ -47,11 +47,11 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
   return (
     <Table>
       <TableHeader>
-        <TableRow className="bg-slate-50/50 border-0">
-          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest rounded-tr-3xl">User / المستخدم</TableHead>
-          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest">Role & Status / الدور والحالة</TableHead>
-          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest">Created At / تاريخ الإنشاء</TableHead>
-          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest text-center rounded-tl-3xl">Actions / إجراءات</TableHead>
+        <TableRow className="bg-slate-50/50 dark:bg-slate-900/50 border-0">
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest rounded-tr-3xl">User</TableHead>
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest">Role & Status</TableHead>
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest">Created At</TableHead>
+          <TableHead className="px-8 py-5 text-[11px] font-black uppercase text-slate-400 tracking-widest text-center rounded-tl-3xl">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <tbody>
@@ -63,7 +63,7 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, x: -30 }}
               transition={{ delay: index * 0.05 }}
-              className="group border-b border-slate-50/80 hover:bg-blue-50/30 transition-all duration-500"
+              className="group border-b border-slate-50/80 dark:border-slate-800/60 hover:bg-blue-50/30 dark:hover:bg-slate-900/30 transition-all duration-500"
             >
               <TableCell className="px-8 py-6">
                 <div className="flex items-center gap-4">
@@ -76,13 +76,13 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
                         user.name.charAt(0)
                       )}
                     </div>
-                    {user.isActive && <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-4 border-white shadow-lg" />}
+                    {user.isActive && <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-4 border-white dark:border-slate-900 shadow-lg" />}
                   </div>
                   
                   {/* STACKED INFO: Name under each other */}
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-lg font-black text-slate-800 tracking-tight group-hover:text-blue-600 transition-colors">{user.name}</span>
-                    <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
+                    <span className="text-lg font-black text-slate-800 dark:text-white tracking-tight group-hover:text-blue-600 transition-colors">{user.name}</span>
+                    <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500 text-xs font-medium">
                       <Mail size={12} className="shrink-0" />
                       {user.email}
                     </div>
@@ -99,8 +99,8 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
 
               <TableCell className="px-8 py-6">
                 <div className="flex flex-col gap-1">
-                  <span className="text-xs font-bold text-slate-700">Registered</span>
-                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-black uppercase">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-350">Registered</span>
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase">
                      <ShieldCheck size={12} className="text-blue-400" /> 
                      {user.createdAt ? formatDateTime(user.createdAt) : '—'}
                   </div>
@@ -115,8 +115,8 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
                     onClick={() => onToggle(user.id)}
                     className={`p-3 rounded-2xl transition-all duration-500 shadow-md hover:shadow-xl ${
                       user.isActive 
-                        ? 'bg-white border border-amber-100 text-amber-500 hover:bg-amber-500 hover:text-white' 
-                        : 'bg-white border border-emerald-100 text-emerald-500 hover:bg-emerald-500 hover:text-white'
+                        ? 'bg-white dark:bg-slate-900 border border-amber-100 dark:border-amber-900/40 text-amber-500 hover:bg-amber-500 hover:text-white' 
+                        : 'bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-900/40 text-emerald-500 hover:bg-emerald-500 hover:text-white'
                     }`}
                   >
                     {user.isActive ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
@@ -125,7 +125,7 @@ export const UserTable = ({ users, onToggle, onDelete }: UserTableProps) => {
                     whileHover={{ scale: 1.12, rotate: -5 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => { if(confirm('Permanently wipe this entry?')) onDelete(user.id, user.role) }}
-                    className="p-3 rounded-2xl bg-white border border-rose-100 text-rose-500 hover:bg-rose-500 hover:text-white shadow-md hover:shadow-xl transition-all duration-500"
+                    className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-100 dark:border-rose-900/40 text-rose-500 hover:bg-rose-500 hover:text-white shadow-md hover:shadow-xl transition-all duration-500"
                   >
                     <Trash2 size={20} />
                   </motion.button>

@@ -144,41 +144,41 @@ export default function SupportPage() {
           </div>
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Support Center</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage user complaints and technical requests</p>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-white">Support Center</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-450 mt-0.5">Manage user complaints and technical requests</p>
         </div>
       </div>
 
       <div className="flex gap-4 h-[calc(100vh-200px)]">
         {/* Sessions list */}
-        <motion.div className="w-80 bg-gradient-to-b from-white to-gray-50 rounded-xl border border-gray-100 shadow-sm overflow-y-auto flex-shrink-0"
+        <motion.div className="w-80 bg-gradient-to-b from-white to-gray-50 dark:from-slate-900 dark:to-slate-900/90 rounded-xl border border-gray-100 dark:border-slate-850 shadow-sm overflow-y-auto flex-shrink-0"
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
         >
-          <div className="p-4 border-b border-gray-100 bg-indigo-50/30">
-            <p className="text-sm font-semibold text-gray-700">Support Conversations</p>
-            <p className="text-xs text-gray-500 mt-1">{sessions.length} ticket(s) found</p>
+          <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-indigo-50/30 dark:bg-indigo-950/20">
+            <p className="text-sm font-semibold text-gray-700 dark:text-slate-200">Support Conversations</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{sessions.length} ticket(s) found</p>
           </div>
           {isLoadingSessions ? <PageLoader /> : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50 dark:divide-slate-800/60">
               {sessions.length === 0 ? (
-                <div className="p-12 text-center text-gray-400">
+                <div className="p-12 text-center text-gray-400 dark:text-slate-500">
                   <LifeBuoy size={40} className="mx-auto mb-3 opacity-20" />
                   <p className="text-sm">No support tickets</p>
                 </div>
               ) : sessions.map((s) => (
                 <motion.button
-                  key={s.id}
-                  onClick={() => handleOpenSession(s.id)}
-                  whileHover={{ x: 4 }}
-                  className={cn(
-                    'w-full flex items-start gap-3 p-4 transition-colors',
-                    selectedSession?.id === s.id && 'bg-indigo-50/50 border-l-4 border-indigo-600'
-                  )}
+                   key={s.id}
+                   onClick={() => handleOpenSession(s.id)}
+                   whileHover={{ x: 4 }}
+                   className={cn(
+                     'w-full flex items-start gap-3 p-4 transition-colors',
+                     selectedSession?.id === s.id && 'bg-indigo-50/50 dark:bg-indigo-950/20 border-l-4 border-indigo-600'
+                   )}
                 >
                   <div className={cn(
                     'w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm',
-                    selectedSession?.id === s.id ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-600'
+                    selectedSession?.id === s.id ? 'bg-indigo-600 text-white' : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600'
                   )}>
                     {s.patientPhotoUrl ? (
                       <img src={s.patientPhotoUrl} alt="" className="w-full h-full object-cover" />
@@ -188,13 +188,13 @@ export default function SupportPage() {
                   </div>
                   <div className="flex-1 min-w-0 text-left relative">
                     <div className="flex justify-between items-start">
-                      <p className="text-sm font-bold text-gray-800 truncate pr-2">
+                      <p className="text-sm font-bold text-gray-800 dark:text-slate-100 truncate pr-2">
                         {s.title || `User #${s.userId}`}
                       </p>
-                      <p className="text-[10px] text-gray-400 whitespace-nowrap">{formatTimeAgo(s.lastMessageAt || s.updatedAt || s.createdAt)}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-slate-500 whitespace-nowrap">{formatTimeAgo(s.lastMessageAt || s.updatedAt || s.createdAt)}</p>
                     </div>
                     {s.lastMessage && (
-                      <p className="text-xs text-gray-500 truncate mt-1">{s.lastMessage}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-450 truncate mt-1">{s.lastMessage}</p>
                     )}
                     
                     {unreadCounts[Number(s.id)] > 0 && (
@@ -210,38 +210,38 @@ export default function SupportPage() {
         </motion.div>
 
         {/* Chat area */}
-        <motion.div className="flex-1 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col overflow-hidden"
+        <motion.div className="flex-1 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-850 shadow-sm flex flex-col overflow-hidden"
           initial={{ x: 20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
         >
           {!selectedSession ? (
-            <div className="flex-1 flex items-center justify-center text-gray-400 bg-gray-50/30">
+            <div className="flex-1 flex items-center justify-center text-gray-400 bg-gray-50/30 dark:bg-slate-950/20">
               <div className="text-center">
                 <MessageSquare size={64} className="mx-auto mb-4 opacity-10" />
-                <p className="text-lg font-medium text-gray-400">Select a support ticket to respond</p>
-                <p className="text-sm text-gray-400 mt-2">View complaints from users and doctors</p>
+                <p className="text-lg font-medium text-gray-400 dark:text-slate-500">Select a support ticket to respond</p>
+                <p className="text-sm text-gray-400 dark:text-slate-500 mt-2">View complaints from users and doctors</p>
               </div>
             </div>
           ) : (
             <>
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b bg-white">
+              <div className="flex items-center justify-between px-6 py-4 border-b dark:border-slate-800 bg-white dark:bg-slate-900">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                  <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-950/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                     <User size={20} />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900">{selectedSession.title}</h3>
-                    <p className="text-xs text-gray-500">User ID: {selectedSession.userId}</p>
+                    <h3 className="font-bold text-gray-900 dark:text-white">{selectedSession.title}</h3>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">User ID: {selectedSession.userId}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-full uppercase tracking-wider">Active Ticket</span>
+                  <span className="px-3 py-1 bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400 text-[10px] font-bold rounded-full uppercase tracking-wider">Active Ticket</span>
                 </div>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/50 dark:bg-slate-950/40">
                 <AnimatePresence mode="popLayout">
                   {selectedSession.messages.map((msg, idx) => {
                     const isAdmin = msg.role === 'admin'
@@ -254,18 +254,18 @@ export default function SupportPage() {
                       >
                         <div className={cn(
                           'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm overflow-hidden',
-                          isAdmin ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600'
+                          isAdmin ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400'
                         )}>
                           {isAdmin ? <LifeBuoy size={14} /> : (msg.senderPhotoUrl ? <img src={msg.senderPhotoUrl} className="w-full h-full object-cover" /> : <User size={14} />)}
                         </div>
                         <div className={cn(
                           'px-4 py-3 rounded-2xl text-sm shadow-sm',
-                          isAdmin ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
+                          isAdmin ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 rounded-tl-none border border-gray-100 dark:border-slate-700/80'
                         )}>
                           {msg.messageType === 'image' && msg.attachmentUrl ? (
                             <img src={msg.attachmentUrl} alt="attachment" className="max-w-xs rounded-lg mb-2 cursor-pointer hover:opacity-90" onClick={() => window.open(msg.attachmentUrl!, '_blank')} />
                           ) : msg.messageType === 'file' ? (
-                            <div className="flex items-center gap-2 mb-2 p-2 bg-black/5 rounded-lg cursor-pointer" onClick={() => window.open(msg.attachmentUrl!, '_blank')}>
+                            <div className="flex items-center gap-2 mb-2 p-2 bg-black/5 dark:bg-white/5 rounded-lg cursor-pointer" onClick={() => window.open(msg.attachmentUrl!, '_blank')}>
                               <FileText size={20} className={isAdmin ? 'text-white' : 'text-indigo-600'} />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold truncate">{msg.fileName || 'Document'}</p>
@@ -274,7 +274,7 @@ export default function SupportPage() {
                             </div>
                           ) : null}
                           <p className="leading-relaxed">{msg.content}</p>
-                          <div className={cn('flex items-center justify-between gap-4 mt-2 border-t pt-1', isAdmin ? 'border-white/10' : 'border-gray-50')}>
+                          <div className={cn('flex items-center justify-between gap-4 mt-2 border-t pt-1', isAdmin ? 'border-white/10' : 'border-gray-50 dark:border-slate-700/40')}>
                             <span className="text-[10px] font-bold opacity-60 uppercase">{msg.senderName || msg.role}</span>
                             <span className="text-[10px] opacity-50">{formatTimeAgo(msg.timestamp)}</span>
                           </div>
@@ -287,7 +287,7 @@ export default function SupportPage() {
               </div>
 
               {/* Input */}
-              <div className="p-6 bg-white border-t">
+              <div className="p-6 bg-white dark:bg-slate-900 border-t dark:border-slate-800">
                 <div className="flex items-center gap-3">
                   <input
                     type="text"
@@ -295,7 +295,7 @@ export default function SupportPage() {
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                     placeholder="Type your response..."
-                    className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    className="flex-1 px-4 py-3 text-sm bg-white dark:bg-slate-950 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                   />
                   <motion.button
                     onClick={handleSend}

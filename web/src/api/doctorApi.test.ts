@@ -159,7 +159,7 @@ describe('doctorApi', () => {
       ;(axiosInstance.put as ReturnType<typeof vi.fn>).mockResolvedValue({ data: undefined })
 
       const availabilityData = [
-        { dayOfWeek: 0, startTime: '09:00', endTime: '17:00', isAvailable: true },
+        { dayOfWeek: 0 as const, startTime: '09:00', endTime: '17:00', isAvailable: true },
       ]
       await doctorApi.updateAvailability(availabilityData)
 

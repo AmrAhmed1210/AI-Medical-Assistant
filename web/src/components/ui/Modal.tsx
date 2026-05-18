@@ -32,7 +32,7 @@ export const Modal = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
           />
           <div className="fixed inset-0 flex items-center justify-center p-4 z-50 pointer-events-none">
             <motion.div
@@ -43,16 +43,16 @@ export const Modal = ({
               onClick={(e) => e.stopPropagation()}
               className={`w-full ${sizes[size]} pointer-events-auto`}
             >
-              <Card className="border-0 shadow-2xl">
-                <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                  <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-                  <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600">
+              <Card className="border-0 shadow-2xl overflow-hidden dark:bg-slate-900/95 dark:border-slate-800 dark:shadow-black/40">
+                <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-slate-800">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h3>
+                  <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors text-gray-400 hover:text-gray-600 dark:hover:text-slate-200">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                <div className="p-5 max-h-[70vh] overflow-y-auto">{children}</div>
+                <div className="p-5 max-h-[70vh] overflow-y-auto text-gray-700 dark:text-slate-300">{children}</div>
                 {footer && (
-                  <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100 bg-gray-50/50 rounded-b-3xl">
+                  <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-950/40 rounded-b-3xl">
                     {footer}
                   </div>
                 )}
@@ -86,8 +86,8 @@ export const ConfirmDialog = ({
   onConfirm,
   title,
   message,
-  confirmLabel = 'تأكيد',
-  cancelLabel = 'إلغاء',
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
   variant = 'primary',
 }: ConfirmDialogProps) => {
   const [loading, setLoading] = useState(false)
@@ -129,7 +129,7 @@ export const ConfirmDialog = ({
         </>
       }
     >
-      <p className="text-sm text-gray-600 whitespace-pre-line">{message}</p>
+      <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-line">{message}</p>
     </Modal>
   )
 }

@@ -1,244 +1,388 @@
-import { motion } from 'framer-motion'
-import { Calendar, Clock, Users, BarChart2, Activity, TrendingUp, Eye, FileText } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Calendar, Clock, Users, BarChart2, TrendingUp, Eye,
+  Stethoscope, ChevronRight, Zap,
+} from 'lucide-react'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useDoctorDashboard } from '@/hooks/useDoctor'
-import { StatCard } from '@/components/admin/StatCard'
 import { AIReportCard } from '@/components/doctor/AIReportCard'
 import { StatusBadge } from '@/components/ui/Badge'
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { PageLoader } from '@/components/ui/LoadingSpinner'
 import { formatDateTime } from '@/lib/utils'
+import { useThemeStore } from '@/store/themeStore'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/config'
-import { useEffect } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationStore } from '@/store/notificationStore'
-import toast from 'react-hot-toast'
 
+// ─── Theme tokens ──────────────────────────────────────────────────────────────
+const DARK = {
+  page: 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%)',
+  card: 'rgba(15,23,42,0.72)',
+  cardBorder: 'rgba(255,255,255,0.07)',
+  cardShadow: '0 8px 40px rgba(0,0,0,0.32)',
+  headerBorder: 'rgba(255,255,255,0.06)',
+  title: '#ffffff',
+  subtitle: 'rgba(148,163,184,0.85)',
+  rowBg: 'rgba(255,255,255,0.03)',
+  rowBorder: 'rgba(255,255,255,0.06)',
+  rowHoverBg: 'rgba(99,102,241,0.09)',
+  rowHoverBorder: 'rgba(99,102,241,0.28)',
+  mutedText: 'rgba(148,163,184,0.7)',
+  avatarBorder: '#0f172a',
+  gridLine: 'rgba(255,255,255,0.04)',
+  axisColor: 'rgba(148,163,184,0.7)',
+  tooltipBg: 'rgba(15,23,42,0.96)',
+  tooltipBorder: 'rgba(99,102,241,0.35)',
+  tooltipColor: '#ffffff',
+  btnBg: 'rgba(99,102,241,0.16)',
+  btnColor: '#818cf8',
+  btnBorder: 'rgba(99,102,241,0.28)',
+  btnGreenBg: 'rgba(16,185,129,0.13)',
+  btnGreenColor: '#34d399',
+  btnGreenBorder: 'rgba(16,185,129,0.28)',
+  emptyIconBg: 'rgba(99,102,241,0.11)',
+  emptyIconBorder: 'rgba(99,102,241,0.22)',
+  emptyIconColor: 'rgba(99,102,241,0.55)',
+  statText: '#ffffff',
+  statSubText: 'rgba(148,163,184,0.9)',
+  statCardBg: 'rgba(15,23,42,0.62)',
+  statCardBorder: 'rgba(255,255,255,0.08)',
+  toggleBg: 'rgba(99,102,241,0.15)',
+  toggleBorder: 'rgba(99,102,241,0.35)',
+  toggleColor: '#818cf8',
+}
+
+const LIGHT = {
+  page: 'linear-gradient(135deg, #f0f4ff 0%, #ffffff 50%, #f5f3ff 100%)',
+  card: '#ffffff',
+  cardBorder: 'rgba(0,0,0,0.07)',
+  cardShadow: '0 4px 24px rgba(99,102,241,0.08)',
+  headerBorder: 'rgba(0,0,0,0.07)',
+  title: '#111827',
+  subtitle: '#6b7280',
+  rowBg: '#fafafa',
+  rowBorder: 'rgba(0,0,0,0.06)',
+  rowHoverBg: '#eef2ff',
+  rowHoverBorder: 'rgba(99,102,241,0.3)',
+  mutedText: '#9ca3af',
+  avatarBorder: '#ffffff',
+  gridLine: 'rgba(0,0,0,0.05)',
+  axisColor: '#9ca3af',
+  tooltipBg: '#ffffff',
+  tooltipBorder: 'rgba(99,102,241,0.25)',
+  tooltipColor: '#111827',
+  btnBg: '#eef2ff',
+  btnColor: '#6366f1',
+  btnBorder: 'rgba(99,102,241,0.25)',
+  btnGreenBg: '#ecfdf5',
+  btnGreenColor: '#059669',
+  btnGreenBorder: 'rgba(16,185,129,0.25)',
+  emptyIconBg: '#eef2ff',
+  emptyIconBorder: 'rgba(99,102,241,0.2)',
+  emptyIconColor: '#6366f1',
+  statText: '#111827',
+  statSubText: '#6b7280',
+  statCardBg: '#ffffff',
+  statCardBorder: 'rgba(0,0,0,0.08)',
+  toggleBg: '#f3f4f6',
+  toggleBorder: 'rgba(0,0,0,0.1)',
+  toggleColor: '#374151',
+}
+
+// ─── Stat Card ─────────────────────────────────────────────────────────────────
+interface StatCardProps {
+  title: string
+  value: string | number
+  icon: React.ReactNode
+  gradient: string
+  glowColor: string
+  index: number
+  tk: typeof DARK
+}
+
+function StatCard({ title, value, icon, gradient, glowColor, index, tk }: StatCardProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 28, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay: index * 0.08, duration: 0.45, ease: 'easeOut' }}
+      whileHover={{ y: -4, scale: 1.02 }}
+      className="relative overflow-hidden rounded-2xl p-6 cursor-default"
+      style={{
+        background: tk.statCardBg,
+        backdropFilter: 'blur(16px)',
+        border: `1px solid ${tk.statCardBorder}`,
+        boxShadow: `0 0 32px ${glowColor}18, 0 6px 24px rgba(0,0,0,0.12)`,
+      }}
+    >
+      <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full opacity-[0.15] blur-2xl"
+        style={{ background: gradient }} />
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+        style={{ background: gradient, boxShadow: `0 4px 18px ${glowColor}40` }}>
+        <div className="text-white">{icon}</div>
+      </div>
+      <p className="text-3xl font-black tracking-tight mb-1" style={{ color: tk.statText }}>{value}</p>
+      <p className="text-sm font-medium" style={{ color: tk.statSubText }}>{title}</p>
+      <div className="absolute bottom-0 left-0 h-0.5 w-full opacity-50" style={{ background: gradient }} />
+    </motion.div>
+  )
+}
+
+// ─── Chart Tooltip ─────────────────────────────────────────────────────────────
+function ChartTooltip({ active, payload, label, tk }: any) {
+  if (active && payload?.length) {
+    return (
+      <div className="px-4 py-3 rounded-xl text-sm" style={{
+        background: tk.tooltipBg,
+        border: `1px solid ${tk.tooltipBorder}`,
+        backdropFilter: 'blur(16px)',
+        boxShadow: '0 8px 28px rgba(0,0,0,0.18)',
+        color: tk.tooltipColor,
+      }}>
+        <p className="font-bold text-indigo-500 mb-1">{label}</p>
+        <p className="font-semibold" style={{ color: tk.tooltipColor }}>{payload[0].value} Sessions</p>
+      </div>
+    )
+  }
+  return null
+}
+
+// ─── Main Dashboard ────────────────────────────────────────────────────────────
 export default function DoctorDashboard() {
-  const { dashboard, isLoading, refresh } = useDoctorDashboard()
+  const { dashboard, isLoading } = useDoctorDashboard()
   const navigate = useNavigate()
   const { token } = useAuthStore()
   const { addNotification } = useNotificationStore()
 
+  // Use the global theme store (toggle is in TopBar)
+  const { isDark } = useThemeStore()
+
+  const tk = isDark ? DARK : LIGHT
+
   if (isLoading) return <PageLoader />
 
+  const stats = [
+    { title: "Today's Appointments", value: dashboard?.todayAppointments ?? 0, icon: <Calendar size={22} />, gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', glowColor: '#6366f1' },
+    { title: 'Pending', value: dashboard?.pendingAppointments ?? 0, icon: <Clock size={22} />, gradient: 'linear-gradient(135deg,#f59e0b,#ef4444)', glowColor: '#f59e0b' },
+    { title: 'Total Patients', value: dashboard?.totalPatients ?? 0, icon: <Users size={22} />, gradient: 'linear-gradient(135deg,#10b981,#059669)', glowColor: '#10b981' },
+    { title: 'Weekly Sessions', value: dashboard?.weekAppointments ?? 0, icon: <BarChart2 size={22} />, gradient: 'linear-gradient(135deg,#3b82f6,#06b6d4)', glowColor: '#3b82f6' },
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30 p-6">
-      {/* Background decorative elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 right-10 w-72 h-72 bg-gradient-to-br from-primary-100/20 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-10 w-96 h-96 bg-gradient-to-tr from-blue-100/15 to-transparent rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-purple-100/10 via-transparent to-emerald-100/10 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative space-y-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-4 pb-6 border-b border-gray-100"
-        >
-          <div className="p-3 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl shadow-lg shadow-primary-500/25">
-            <Activity size={24} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Doctor Dashboard</h1>
-            <p className="text-gray-600 mt-1">Welcome back! Here's your practice overview</p>
-          </div>
-        </motion.div>
-
-        {/* Stats Grid */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-6"
-        >
-          <StatCard title="Today's Appointments" value={dashboard?.todayAppointments ?? 0} icon={<Calendar size={20} />} color="blue" index={0} />
-          <StatCard title="Pending" value={dashboard?.pendingAppointments ?? 0} icon={<Clock size={20} />} color="amber" index={1} />
-          <StatCard title="Total Patients" value={dashboard?.totalPatients ?? 0} icon={<Users size={20} />} color="green" index={2} />
-          <StatCard title="Weekly Appointments" value={dashboard?.weekAppointments ?? 0} icon={<BarChart2 size={20} />} color="purple" index={3} />
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Today Appointments */}
+    <motion.div
+      className="min-h-screen p-6 relative"
+      animate={{ background: tk.page }}
+      transition={{ duration: 0.5 }}
+      style={{ background: tk.page }}
+    >
+      {/* Dark-mode blobs */}
+      <AnimatePresence>
+        {isDark && (
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
+            key="blobs"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 overflow-hidden pointer-events-none"
           >
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-white via-gray-50/30 to-white">
-              <CardHeader className="pb-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg shadow-blue-500/25">
-                      <Calendar size={20} className="text-white" />
-                    </div>
-                    <CardTitle className="text-xl font-bold text-gray-900">Today's Appointments</CardTitle>
+            <div className="absolute top-0 right-0 w-[480px] h-[480px] opacity-10 blur-3xl rounded-full"
+              style={{ background: 'radial-gradient(circle,#6366f1,transparent)' }} />
+            <div className="absolute bottom-0 left-0 w-[380px] h-[380px] opacity-[0.07] blur-3xl rounded-full"
+              style={{ background: 'radial-gradient(circle,#10b981,transparent)' }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] opacity-[0.04] blur-3xl rounded-full"
+              style={{ background: 'radial-gradient(circle,#8b5cf6,transparent)' }} />
+            <div className="absolute inset-0 opacity-[0.04]"
+              style={{
+                backgroundImage: 'linear-gradient(rgba(99,102,241,0.35) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.35) 1px,transparent 1px)',
+                backgroundSize: '60px 60px',
+              }} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="relative space-y-8 max-w-screen-xl mx-auto">
+
+        {/* ── Header ── */}
+        <motion.div
+          initial={{ opacity: 0, y: -22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55 }}
+          className="flex items-center justify-between"
+        >
+          <div className="flex items-center gap-5">
+            <div className="p-3.5 rounded-2xl" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: '0 8px 28px rgba(99,102,241,0.38)' }}>
+              <Stethoscope size={26} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight" style={{ color: tk.title }}>Doctor Dashboard</h1>
+              <p className="text-sm mt-0.5" style={{ color: tk.subtitle }}>Welcome back! Here's your practice overview</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Live badge */}
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full"
+              style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)' }}>
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+              </span>
+              <span className="text-emerald-400 text-xs font-semibold">Live</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ── Stats Grid ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+          {stats.map((s, i) => <StatCard key={s.title} index={i} tk={tk} {...s} />)}
+        </div>
+
+        {/* ── Main Content: Appointments + Chart ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+          {/* Appointments — 3 cols */}
+          <motion.div className="lg:col-span-3"
+            initial={{ opacity: 0, x: -28 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35, duration: 0.5 }}>
+            <motion.div className="rounded-2xl overflow-hidden h-full" animate={{ background: tk.card }}
+              style={{ background: tk.card, border: `1px solid ${tk.cardBorder}`, boxShadow: tk.cardShadow }}>
+
+              {/* Card header */}
+              <div className="px-6 py-5 flex items-center justify-between"
+                style={{ borderBottom: `1px solid ${tk.headerBorder}` }}>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl"
+                    style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: '0 4px 14px rgba(99,102,241,0.32)' }}>
+                    <Calendar size={18} className="text-white" />
                   </div>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate(ROUTES.DOCTOR_APPOINTMENTS)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-xl transition-all duration-200"
-                  >
-                    <Eye size={14} />
-                    View All
-                  </motion.button>
+                  <h2 className="text-base font-bold" style={{ color: tk.title }}>Today's Appointments</h2>
                 </div>
-              </CardHeader>
-              <div className="px-6 pb-6">
-                <div className="space-y-4">
-                  {dashboard?.todayAppointmentsList?.length === 0 ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="flex flex-col items-center justify-center py-12 text-center"
-                    >
-                      <div className="p-4 bg-gradient-to-br from-gray-100 to-gray-50 rounded-2xl mb-4">
-                        <Calendar size={32} className="text-gray-400" />
-                      </div>
-                      <p className="text-gray-500 font-medium">No appointments today</p>
-                      <p className="text-sm text-gray-400 mt-1">Enjoy your day off!</p>
-                    </motion.div>
-                  ) : dashboard?.todayAppointmentsList?.slice(0, 5).map((appt, idx) => (
-                    <motion.div
-                      key={appt.id}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      whileHover={{ scale: 1.02, x: 5 }}
-                      className="flex items-center gap-4 p-4 bg-gradient-to-r from-white to-gray-50/50 rounded-2xl border border-gray-100 hover:border-primary-200 hover:shadow-lg transition-all duration-200 cursor-pointer"
-                      onClick={() => navigate(`${ROUTES.DOCTOR_APPOINTMENTS}/${appt.id}`)}
-                    >
-                      <div className="relative">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary-500/25 overflow-hidden">
-                          {appt.patientPhotoUrl ? (
-                            <img src={appt.patientPhotoUrl} alt={appt.patientName} className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-white text-sm font-bold">{appt.patientName.charAt(0)}</span>
-                          )}
-                        </div>
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{appt.patientName}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Clock size={12} className="text-gray-400" />
-                          <p className="text-xs text-gray-500">{formatDateTime(appt.scheduledAt)}</p>
-                        </div>
-                      </div>
-                      <div className="flex-shrink-0">
-                        <StatusBadge status={appt.status} />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate(ROUTES.DOCTOR_APPOINTMENTS)}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+                  style={{ background: tk.btnBg, color: tk.btnColor, border: `1px solid ${tk.btnBorder}` }}>
+                  <Eye size={12} /> View All <ChevronRight size={12} />
+                </motion.button>
               </div>
-            </Card>
+
+              {/* List */}
+              <div className="p-5 space-y-3">
+                {!dashboard?.todayAppointmentsList?.length ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                      style={{ background: tk.emptyIconBg, border: `1px solid ${tk.emptyIconBorder}` }}>
+                      <Calendar size={28} style={{ color: tk.emptyIconColor }} />
+                    </div>
+                    <p className="font-semibold" style={{ color: tk.title }}>No appointments today</p>
+                    <p className="text-sm mt-1" style={{ color: tk.mutedText }}>Enjoy your free time!</p>
+                  </div>
+                ) : dashboard.todayAppointmentsList.slice(0, 5).map((appt, idx) => (
+                  <motion.div key={appt.id}
+                    initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4 + idx * 0.07 }}
+                    whileHover={{ x: 4, scale: 1.01 }}
+                    onClick={() => navigate(`${ROUTES.DOCTOR_APPOINTMENTS}/${appt.id}`)}
+                    className="flex items-center gap-4 p-4 rounded-xl cursor-pointer transition-all duration-200"
+                    style={{ background: tk.rowBg, border: `1px solid ${tk.rowBorder}` }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.background = tk.rowHoverBg
+                      ;(e.currentTarget as HTMLElement).style.borderColor = tk.rowHoverBorder
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.background = tk.rowBg
+                      ;(e.currentTarget as HTMLElement).style.borderColor = tk.rowBorder
+                    }}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <div className="w-11 h-11 rounded-full flex items-center justify-center overflow-hidden"
+                        style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: '0 4px 12px rgba(99,102,241,0.28)' }}>
+                        {appt.patientPhotoUrl
+                          ? <img src={appt.patientPhotoUrl} alt={appt.patientName} className="w-full h-full object-cover" />
+                          : <span className="text-white text-sm font-bold">{appt.patientName.charAt(0)}</span>}
+                      </div>
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2"
+                        style={{ borderColor: tk.avatarBorder }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: tk.title }}>{appt.patientName}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Clock size={11} style={{ color: tk.mutedText }} />
+                        <p className="text-xs" style={{ color: tk.mutedText }}>{formatDateTime(appt.scheduledAt)}</p>
+                      </div>
+                    </div>
+                    <StatusBadge status={appt.status} />
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           </motion.div>
 
-          {/* Weekly chart */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-white via-gray-50/30 to-white">
-              <CardHeader className="pb-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-500/25">
-                    <TrendingUp size={20} className="text-white" />
-                  </div>
-                  <CardTitle className="text-xl font-bold text-gray-900">Weekly Sessions</CardTitle>
+          {/* Weekly Chart — 2 cols */}
+          <motion.div className="lg:col-span-2"
+            initial={{ opacity: 0, x: 28 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4, duration: 0.5 }}>
+            <motion.div className="rounded-2xl overflow-hidden h-full" animate={{ background: tk.card }}
+              style={{ background: tk.card, border: `1px solid ${tk.cardBorder}`, boxShadow: tk.cardShadow }}>
+
+              <div className="px-6 py-5 flex items-center gap-3"
+                style={{ borderBottom: `1px solid ${tk.headerBorder}` }}>
+                <div className="p-2 rounded-xl"
+                  style={{ background: 'linear-gradient(135deg,#3b82f6,#06b6d4)', boxShadow: '0 4px 14px rgba(59,130,246,0.32)' }}>
+                  <TrendingUp size={18} className="text-white" />
                 </div>
-              </CardHeader>
-              <div className="px-6 pb-6">
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart data={dashboard?.weeklySessionsChart ?? []} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+                <h2 className="text-base font-bold" style={{ color: tk.title }}>Weekly Sessions</h2>
+              </div>
+
+              <div className="p-5">
+                <ResponsiveContainer width="100%" height={260}>
+                  <AreaChart data={dashboard?.weeklySessionsChart ?? []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="weeklyGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.8} />
-                        <stop offset="100%" stopColor="#a855f7" stopOpacity={0.6} />
+                      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#6366f1" stopOpacity={isDark ? 0.5 : 0.3} />
+                        <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis
-                      dataKey="day"
-                      tick={{ fontSize: 12, fill: '#64748b', fontWeight: 500 }}
-                      axisLine={false}
-                      tickLine={false}
-                      dy={10}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 12, fill: '#64748b', fontWeight: 500 }}
-                      axisLine={false}
-                      tickLine={false}
-                      dx={-10}
-                    />
-                    <Tooltip
-                      cursor={{ fill: 'rgba(139, 92, 246, 0.1)', radius: 8 }}
-                      contentStyle={{
-                        fontSize: 13,
-                        borderRadius: 12,
-                        border: '1px solid #e2e8f0',
-                        background: 'white',
-                        boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-                        padding: '12px 16px',
-                        fontWeight: 600
-                      }}
-                      labelStyle={{ fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}
-                    />
-                    <Bar
-                      dataKey="count"
-                      fill="url(#weeklyGradient)"
-                      radius={[8, 8, 0, 0]}
-                      name="Sessions"
-                      animationDuration={1200}
-                    />
-                  </BarChart>
+                    <CartesianGrid strokeDasharray="3 3" stroke={tk.gridLine} vertical={false} />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: tk.axisColor, fontWeight: 500 }} axisLine={false} tickLine={false} dy={8} />
+                    <YAxis tick={{ fontSize: 11, fill: tk.axisColor, fontWeight: 500 }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<ChartTooltip tk={tk} />} />
+                    <Area type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={2.5}
+                      fill="url(#areaGrad)" name="Sessions"
+                      dot={{ fill: '#6366f1', strokeWidth: 0, r: 4 }}
+                      activeDot={{ r: 6, fill: '#818cf8', strokeWidth: 0 }}
+                      animationDuration={1400} />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
-            </Card>
+            </motion.div>
           </motion.div>
         </div>
 
-        {/* Recent AI Reports */}
+        {/* ── Recent AI Reports ── */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <div className="flex items-center justify-between mb-6">
+          initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.5 }}>
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg shadow-emerald-500/25">
-                <FileText size={20} className="text-white" />
+              <div className="p-2 rounded-xl"
+                style={{ background: 'linear-gradient(135deg,#10b981,#059669)', boxShadow: '0 4px 14px rgba(16,185,129,0.32)' }}>
+                <Zap size={18} className="text-white" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900">Recent AI Reports</h2>
+              <h2 className="text-base font-bold" style={{ color: tk.title }}>Recent AI Reports</h2>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
               onClick={() => navigate(ROUTES.DOCTOR_REPORTS)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-xl transition-all duration-200"
-            >
-              <Eye size={14} />
-              View All
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
+              style={{ background: tk.btnGreenBg, color: tk.btnGreenColor, border: `1px solid ${tk.btnGreenBorder}` }}>
+              <Eye size={12} /> View All <ChevronRight size={12} />
             </motion.button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {dashboard?.recentReports?.slice(0, 3).map((report, i) => (
-              <AIReportCard
-                key={report.reportId}
-                report={report}
-                index={i}
-                onClick={() => navigate(`${ROUTES.DOCTOR_REPORTS}/${report.reportId}`)}
-              />
+              <AIReportCard key={report.reportId} report={report} index={i}
+                onClick={() => navigate(`${ROUTES.DOCTOR_REPORTS}/${report.reportId}`)} />
             ))}
           </div>
         </motion.div>
+
       </div>
-    </div>
+    </motion.div>
   )
 }

@@ -56,7 +56,7 @@ export function useUsers(
         setTotal(MOCK_USERS.length)
         setConnectionStatus('connected')
 
-        toast.success('تم تحميل البيانات التجريبية')
+        toast.success('Demo data loaded successfully.')
         return
       }
 
@@ -132,9 +132,9 @@ export function useUsers(
         )
       )
 
-      toast.success('تم تحديث الحالة')
+      toast.success('User status updated successfully.')
     } catch {
-      toast.error('فشلت العملية')
+      toast.error('Operation failed.')
     }
   }, [])
 
@@ -143,7 +143,7 @@ export function useUsers(
 
   const handleDelete = useCallback(async (id: number, role: string) => {
 
-    if (!confirm('هل أنت متأكد؟')) return
+    if (!confirm('Are you sure you want to delete this user?')) return
 
     try {
       await adminApi.deleteUser(id, role)
@@ -151,9 +151,9 @@ export function useUsers(
       setUsers(prev => prev.filter(u => u.id !== id))
       setTotal(t => t - 1)
 
-      toast.success('تم الحذف')
+      toast.success('User deleted successfully.')
     } catch {
-      toast.error('فشل الحذف')
+      toast.error('Failed to delete user.')
     }
 
   }, [])
@@ -269,13 +269,13 @@ export function useUsers(
       setUsers(prev => [newUser, ...prev])
       setTotal(prev => prev + 1)
 
-      toast.success('تم إنشاء المستخدم بنجاح')
+      toast.success('User created successfully.')
 
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||
         err?.message ||
-        'فشل إنشاء المستخدم'
+        'Failed to create user.'
 
       toast.error(msg)
     } finally {

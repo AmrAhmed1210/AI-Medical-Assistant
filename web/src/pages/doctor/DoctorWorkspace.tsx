@@ -97,7 +97,7 @@ export default function DoctorWorkspace() {
 
   const handleAiAssist = async () => {
     if (!form.chiefComplaint) {
-      toast.error('يرجى إدخال الشكوى الرئيسية أولاً')
+      toast.error('Please enter the chief complaint first')
       return
     }
 
@@ -132,10 +132,10 @@ export default function DoctorWorkspace() {
         assessment: f.assessment ? f.assessment + '\n' + data.assessment_ar : data.assessment_ar,
         plan: f.plan ? f.plan + '\n' + data.plan_ar : data.plan_ar
       }))
-      toast.success('تم إنشاء اقتراحات الذكاء الاصطناعي')
+      toast.success('AI suggestions generated successfully')
     } catch (err) {
       console.error(err)
-      toast.error('فشل في الحصول على مساعدة الذكاء الاصطناعي')
+      toast.error('Failed to get AI assistance')
     } finally {
       setIsAssisting(false)
     }
@@ -156,9 +156,9 @@ export default function DoctorWorkspace() {
         followUpAfterDays: form.followUpAfterDays ? Number(form.followUpAfterDays) : undefined,
         followUpNotes: form.followUpNotes,
       })
-      toast.success('تم حفظ المسودة')
+      toast.success('Draft saved successfully')
     } catch {
-      toast.error('فشل الحفظ')
+      toast.error('Failed to save draft')
     } finally {
       setIsSaving(false)
     }
@@ -168,10 +168,10 @@ export default function DoctorWorkspace() {
     setIsClosing(true)
     try {
       await visitApi.closeVisit(id)
-      toast.success('تم إغلاق الزيارة')
+      toast.success('Visit closed successfully')
       navigate(`/doctor/visits/${id}/summary`)
     } catch {
-      toast.error('فشل الإغلاق')
+      toast.error('Failed to close visit')
       setIsClosing(false)
     }
   }
@@ -189,9 +189,9 @@ export default function DoctorWorkspace() {
     const sugar = Number(form.bloodSugar)
 
     if (sys > 180 || dia > 120) {
-      setCriticalAlert('⚠ قيمة خطيرة — ضغط دم مرتفع جداً — يتطلب تدخل فوري')
+      setCriticalAlert('⚠ Critical Value — Extremely High Blood Pressure — Immediate Intervention Required')
     } else if (sugar > 200) {
-      setCriticalAlert('⚠ قيمة خطيرة — سكر مرتفع جداً — يتطلب تدخل فوري')
+      setCriticalAlert('⚠ Critical Value — Extremely High Blood Sugar — Immediate Intervention Required')
     } else {
       setCriticalAlert(null)
     }
@@ -241,22 +241,22 @@ export default function DoctorWorkspace() {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/doctor/today')}>
             <ChevronLeft className="w-4 h-4" />
-            العودة
+            Back
           </Button>
           <div>
             <h1 className="font-bold text-gray-900 flex items-center gap-2">
               <Stethoscope className="w-5 h-5 text-primary-600" />
-              زيارة: {visit?.patientName}
+              Visit: {visit?.patientName}
             </h1>
             <p className="text-sm text-gray-500">
-              {visit?.status === 'open' ? 'جارية — قيد التعديل' : 'مغلقة'}
+              {visit?.status === 'open' ? 'In Progress — Editable' : 'Closed'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" onClick={handleSaveDraft} disabled={isSaving}>
             <Save className="w-4 h-4 ml-2" />
-            حفظ مسودة
+            Save Draft
           </Button>
           <Button
             onClick={() => setShowConfirmClose(true)}
@@ -264,7 +264,7 @@ export default function DoctorWorkspace() {
             disabled={!form.chiefComplaint}
           >
             <Lock className="w-4 h-4 ml-2" />
-            إنهاء وإغلاق
+            Finish & Close
           </Button>
         </div>
       </div>
@@ -293,13 +293,13 @@ export default function DoctorWorkspace() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-purple-900 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-purple-600" />
-                  تقرير الذكاء الاصطناعي
+                  AI Health Report
                 </h3>
                 <div className="flex bg-white rounded-lg p-1 border border-purple-100">
                   <button 
                     onClick={() => setAiLang('ar')}
                     className={`px-2 py-0.5 text-[10px] rounded-md transition-all ${aiLang === 'ar' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 hover:bg-purple-50'}`}
-                  >عربي</button>
+                  >AR</button>
                   <button 
                     onClick={() => setAiLang('en')}
                     className={`px-2 py-0.5 text-[10px] rounded-md transition-all ${aiLang === 'en' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 hover:bg-purple-50'}`}
@@ -323,15 +323,15 @@ export default function DoctorWorkspace() {
           <Card className="bg-red-50 border-red-200">
             <div className="flex items-center gap-2 text-red-700 font-bold mb-2">
               <Heart className="w-4 h-4 fill-red-600" />
-              معلومات طوارئ
+              Emergency Info
             </div>
             <div className="space-y-1 text-sm">
-              <p><span className="text-gray-500">فصيلة الدم:</span> {patientHistory?.bloodType || '—'}</p>
+              <p><span className="text-gray-500">Blood Type:</span> {patientHistory?.bloodType || '—'}</p>
               {(patientHistory?.allergies?.filter((a: Record<string, string>) => a.severity === 'life_threatening').length ?? 0) > 0 && (
                 <div className="flex items-start gap-1 text-red-600">
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
-                    حساسية خطيرة:{' '}
+                    Life-threatening allergy:{' '}
                     {patientHistory?.allergies
                       ?.filter((a: Record<string, string>) => a.severity === 'life_threatening')
                       .map((a: Record<string, string>) => `${a.allergenName} (${a.reaction})`)
@@ -347,13 +347,13 @@ export default function DoctorWorkspace() {
             <Card>
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-primary-600" />
-                الأمراض المزمنة
+                Chronic Diseases
               </h3>
               <div className="space-y-2">
                 {patientHistory?.chronicDiseases?.map((d: Record<string, string>) => (
                   <div key={d.id} className="p-2 bg-gray-50 rounded-lg text-sm">
                     <p className="font-medium">{d.diseaseName}</p>
-                    <p className="text-gray-500">الهدف: {d.targetValues}</p>
+                    <p className="text-gray-500">Target: {d.targetValues}</p>
                   </div>
                 ))}
               </div>
@@ -365,7 +365,7 @@ export default function DoctorWorkspace() {
             <Card>
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <Pill className="w-4 h-4 text-primary-600" />
-                الأدوية الحالية
+                Current Medications
               </h3>
               <div className="space-y-2">
                 {patientHistory?.medications?.map((m: Record<string, string>) => (
@@ -381,7 +381,7 @@ export default function DoctorWorkspace() {
           {/* Latest Vitals */}
           {patientHistory?.latestVitals && (
             <Card>
-              <h3 className="font-bold text-gray-900 mb-3">آخر قراءات</h3>
+              <h3 className="font-bold text-gray-900 mb-3">Latest Readings</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {Object.entries(patientHistory.latestVitals).map(([key, val]: [string, unknown]) => (
                   <div key={key} className="p-2 bg-gray-50 rounded">
@@ -396,7 +396,7 @@ export default function DoctorWorkspace() {
           {/* Last Visits */}
           {(patientHistory?.lastVisits?.length ?? 0) > 0 && (
             <Card>
-              <h3 className="font-bold text-gray-900 mb-3">آخر الزيارات</h3>
+              <h3 className="font-bold text-gray-900 mb-3">Recent Visits</h3>
               <div className="space-y-2">
                 {patientHistory?.lastVisits?.slice(0, 3).map((v: Record<string, string>) => (
                   <div key={v.id} className="p-2 bg-gray-50 rounded-lg text-sm">
@@ -413,37 +413,37 @@ export default function DoctorWorkspace() {
         <div className="w-3/5 overflow-y-auto p-6 space-y-6">
           {/* Chief Complaint */}
           <Card>
-            <label className="block font-bold text-gray-900 mb-2">الشكوى الرئيسية *</label>
+            <label className="block font-bold text-gray-900 mb-2">Chief Complaint *</label>
             <textarea
               className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
               rows={2}
               value={form.chiefComplaint}
               onChange={(e) => setForm((f) => ({ ...f, chiefComplaint: e.target.value }))}
-              placeholder="مثال: ألم في الصدر، صعوبة في التنفس"
+              placeholder="e.g. Chest pain, difficulty breathing"
             />
           </Card>
 
           {/* History of Present Illness */}
           <Card>
-            <label className="block font-bold text-gray-900 mb-2">تاريخ المرض الحالي</label>
+            <label className="block font-bold text-gray-900 mb-2">History of Present Illness</label>
             <textarea
               className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
               rows={3}
               value={form.historyOfIllness}
               onChange={(e) => setForm((f) => ({ ...f, historyOfIllness: e.target.value }))}
-              placeholder="تفاصيل بداية الأعراض، تطورها، العوامل المؤثرة..."
+              placeholder="Onset, progression, aggravating/relieving factors..."
             />
           </Card>
 
           {/* Examination Findings */}
           <Card>
-            <label className="block font-bold text-gray-900 mb-2">نتائج الفحص</label>
+            <label className="block font-bold text-gray-900 mb-2">Examination Findings</label>
             <textarea
               className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
               rows={3}
               value={form.examinationFindings}
               onChange={(e) => setForm((f) => ({ ...f, examinationFindings: e.target.value }))}
-              placeholder="الفحص البدني، العلامات الحيوية، النتائج..."
+              placeholder="Physical exam, vital signs, findings..."
             />
           </Card>
 
@@ -451,16 +451,16 @@ export default function DoctorWorkspace() {
           <Card>
             <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Activity className="w-5 h-5 text-primary-600" />
-              العلامات الحيوية
+              Vital Signs
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
-                { key: 'bpSystolic' as const, label: 'ضغط انقباضي', icon: Gauge, type: 'bp_systolic', placeholder: '120' },
-                { key: 'bpDiastolic' as const, label: 'ضغط انبساطي', icon: Gauge, type: 'bp_diastolic', placeholder: '80' },
-                { key: 'heartRate' as const, label: 'نبض', icon: Heart, type: 'heart_rate', placeholder: '72' },
-                { key: 'temperature' as const, label: 'حرارة', icon: Thermometer, type: 'temperature', placeholder: '37.0' },
-                { key: 'bloodSugar' as const, label: 'سكر', icon: Droplets, type: 'blood_sugar', placeholder: '90' },
-                { key: 'weight' as const, label: 'وزن', icon: Weight, type: '', placeholder: '70' },
+                { key: 'bpSystolic' as const, label: 'Systolic BP', icon: Gauge, type: 'bp_systolic', placeholder: '120' },
+                { key: 'bpDiastolic' as const, label: 'Diastolic BP', icon: Gauge, type: 'bp_diastolic', placeholder: '80' },
+                { key: 'heartRate' as const, label: 'Heart Rate', icon: Heart, type: 'heart_rate', placeholder: '72' },
+                { key: 'temperature' as const, label: 'Temperature', icon: Thermometer, type: 'temperature', placeholder: '37.0' },
+                { key: 'bloodSugar' as const, label: 'Blood Sugar', icon: Droplets, type: 'blood_sugar', placeholder: '90' },
+                { key: 'weight' as const, label: 'Weight (kg)', icon: Weight, type: '', placeholder: '70' },
                 { key: 'spo2' as const, label: 'SpO2', icon: Wind, type: 'spo2', placeholder: '98' },
               ].map((field) => {
                 const status = field.type ? getVitalStatus(field.type, form[field.key]) : 'neutral'
@@ -495,7 +495,7 @@ export default function DoctorWorkspace() {
                     </div>
                     {status === 'abnormal' && field.type && (
                       <p className="text-xs text-red-500 mt-1">
-                        المعدل الطبيعي: {normalRanges[field.type].min}–{normalRanges[field.type].max} {normalRanges[field.type].unit}
+                        Normal range: {normalRanges[field.type].min}–{normalRanges[field.type].max} {normalRanges[field.type].unit}
                       </p>
                     )}
                   </div>
@@ -507,10 +507,10 @@ export default function DoctorWorkspace() {
           {/* Symptoms */}
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900">الأعراض</h3>
+              <h3 className="font-bold text-gray-900">Symptoms</h3>
               <Button size="sm" variant="outline" onClick={handleAddSymptom}>
                 <Plus className="w-4 h-4 ml-1" />
-                إضافة عرض
+                Add Symptom
               </Button>
             </div>
             <div className="space-y-3">
@@ -518,7 +518,7 @@ export default function DoctorWorkspace() {
                 <div key={idx} className="p-3 bg-gray-50 rounded-lg grid grid-cols-2 md:grid-cols-4 gap-3">
                   <input
                     className="border rounded p-2 text-sm"
-                    placeholder="اسم العرض"
+                    placeholder="Symptom name"
                     value={sym.name}
                     onChange={(e) => {
                       const s = [...form.symptoms]
@@ -535,13 +535,13 @@ export default function DoctorWorkspace() {
                       setForm((f) => ({ ...f, symptoms: s }))
                     }}
                   >
-                    <option value="mild">خفيف</option>
-                    <option value="moderate">متوسط</option>
-                    <option value="severe">شديد</option>
+                    <option value="mild">Mild</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="severe">Severe</option>
                   </select>
                   <input
                     className="border rounded p-2 text-sm"
-                    placeholder="الموقع"
+                    placeholder="Location"
                     value={sym.location}
                     onChange={(e) => {
                       const s = [...form.symptoms]
@@ -561,7 +561,7 @@ export default function DoctorWorkspace() {
                 </div>
               ))}
               {form.symptoms.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">لا توجد أعراض مسجلة</p>
+                <p className="text-sm text-gray-400 text-center py-4">No symptoms recorded</p>
               )}
             </div>
           </Card>
@@ -569,7 +569,7 @@ export default function DoctorWorkspace() {
           {/* Assessment */}
           <Card>
             <div className="flex items-center justify-between mb-2">
-              <label className="block font-bold text-gray-900">التشخيص</label>
+              <label className="block font-bold text-gray-900">Assessment / Diagnosis</label>
               <Button 
                 size="sm" 
                 variant="outline" 
@@ -578,7 +578,7 @@ export default function DoctorWorkspace() {
                 disabled={isAssisting}
               >
                 {isAssisting ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <Wand2 className="w-3 h-3 ml-1" />}
-                مساعدة الذكاء الاصطناعي
+                AI Assist
               </Button>
             </div>
             <textarea
@@ -586,29 +586,29 @@ export default function DoctorWorkspace() {
               rows={2}
               value={form.assessment}
               onChange={(e) => setForm((f) => ({ ...f, assessment: e.target.value }))}
-              placeholder="التشخيص التفريقي..."
+              placeholder="Differential diagnosis..."
             />
           </Card>
 
           {/* Plan */}
           <Card>
-            <label className="block font-bold text-gray-900 mb-2">الخطة العلاجية</label>
+            <label className="block font-bold text-gray-900 mb-2">Treatment Plan</label>
             <textarea
               className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
               rows={2}
               value={form.plan}
               onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value }))}
-              placeholder="الخطوات العلاجية، التوصيات..."
+              placeholder="Treatment steps, recommendations..."
             />
           </Card>
 
           {/* Prescriptions */}
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900">الروشتة</h3>
+              <h3 className="font-bold text-gray-900">Prescription</h3>
               <Button size="sm" variant="outline" onClick={handleAddPrescription}>
                 <Plus className="w-4 h-4 ml-1" />
-                إضافة دواء
+                Add Medication
               </Button>
             </div>
             <div className="space-y-3">
@@ -617,7 +617,7 @@ export default function DoctorWorkspace() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     <input
                       className="border rounded p-2 text-sm"
-                      placeholder="اسم الدواء"
+                      placeholder="Medication name"
                       value={pres.medicationName}
                       onChange={(e) => {
                         const p = [...form.prescriptions]
@@ -627,7 +627,7 @@ export default function DoctorWorkspace() {
                     />
                     <input
                       className="border rounded p-2 text-sm"
-                      placeholder="الجرعة"
+                      placeholder="Dosage"
                       value={pres.dosage}
                       onChange={(e) => {
                         const p = [...form.prescriptions]
@@ -637,7 +637,7 @@ export default function DoctorWorkspace() {
                     />
                     <input
                       className="border rounded p-2 text-sm"
-                      placeholder="التكرار"
+                      placeholder="Frequency"
                       value={pres.frequency}
                       onChange={(e) => {
                         const p = [...form.prescriptions]
@@ -647,7 +647,7 @@ export default function DoctorWorkspace() {
                     />
                     <input
                       className="border rounded p-2 text-sm"
-                      placeholder="المدة"
+                      placeholder="Duration"
                       value={pres.duration}
                       onChange={(e) => {
                         const p = [...form.prescriptions]
@@ -667,7 +667,7 @@ export default function DoctorWorkspace() {
                           setForm((f) => ({ ...f, prescriptions: p }))
                         }}
                       />
-                      <span>دواء مزمن (يضاف للتتبع)</span>
+                      <span>Chronic medication (tracked)</span>
                     </label>
                     <button
                       className="text-red-400 hover:text-red-600 text-sm"
@@ -682,26 +682,26 @@ export default function DoctorWorkspace() {
                 </div>
               ))}
               {form.prescriptions.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">لا توجد أدوية مسجلة</p>
+                <p className="text-sm text-gray-400 text-center py-4">No medications added</p>
               )}
             </div>
           </Card>
 
           {/* Follow-up */}
           <Card>
-            <h3 className="font-bold text-gray-900 mb-4">المتابعة</h3>
+            <h3 className="font-bold text-gray-900 mb-4">Follow-up</h3>
             <label className="flex items-center gap-2 mb-3">
               <input
                 type="checkbox"
                 checked={form.followUpRequired}
                 onChange={(e) => setForm((f) => ({ ...f, followUpRequired: e.target.checked }))}
               />
-              <span>متابعة مطلوبة</span>
+              <span>Follow-up required</span>
             </label>
             {form.followUpRequired && (
               <div className="space-y-3">
                 <div>
-                  <label className="text-sm text-gray-500">بعد (يوم)</label>
+                  <label className="text-sm text-gray-500">After (days)</label>
                   <input
                     type="number"
                     className="w-full border rounded-lg p-2 text-sm mt-1"
@@ -710,7 +710,7 @@ export default function DoctorWorkspace() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">ملاحظات للمريض</label>
+                  <label className="text-sm text-gray-500">Notes for patient</label>
                   <textarea
                     className="w-full border rounded-lg p-2 text-sm mt-1"
                     rows={2}
@@ -724,13 +724,13 @@ export default function DoctorWorkspace() {
 
           {/* Notes */}
           <Card>
-            <label className="block font-bold text-gray-900 mb-2">ملاحظات إضافية</label>
+            <label className="block font-bold text-gray-900 mb-2">Additional Notes</label>
             <textarea
               className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
               rows={2}
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              placeholder="أي ملاحظات إضافية..."
+              placeholder="Any additional notes..."
             />
           </Card>
 
@@ -738,7 +738,7 @@ export default function DoctorWorkspace() {
           <div className="flex gap-3 pb-6">
             <Button variant="outline" className="flex-1" onClick={handleSaveDraft} disabled={isSaving}>
               <Save className="w-4 h-4 ml-2" />
-              حفظ مسودة
+              Save Draft
             </Button>
             <Button
               className="flex-1 bg-primary-600 hover:bg-primary-700"
@@ -746,7 +746,7 @@ export default function DoctorWorkspace() {
               disabled={!form.chiefComplaint}
             >
               <Lock className="w-4 h-4 ml-2" />
-              إنهاء وإغلاق الزيارة
+              Finish & Close Visit
             </Button>
           </div>
         </div>
@@ -767,13 +767,13 @@ export default function DoctorWorkspace() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white rounded-xl p-6 max-w-md w-full"
             >
-              <h3 className="font-bold text-lg text-gray-900 mb-2">تأكيد إغلاق الزيارة</h3>
+              <h3 className="font-bold text-lg text-gray-900 mb-2">Confirm Close Visit</h3>
               <p className="text-gray-500 text-sm mb-6">
-                بمجرد الإغلاق، لا يمكن تعديل الزيارة. هل أنت متأكد؟
+                Once closed, the visit cannot be edited. Are you sure?
               </p>
               <div className="flex gap-3">
                 <Button variant="outline" className="flex-1" onClick={() => setShowConfirmClose(false)}>
-                  إلغاء
+                  Cancel
                 </Button>
                 <Button
                   className="flex-1 bg-primary-600 hover:bg-primary-700"
@@ -783,7 +783,7 @@ export default function DoctorWorkspace() {
                   }}
                   disabled={isClosing}
                 >
-                  {isClosing ? 'جاري...' : 'تأكيد الإغلاق'}
+                  {isClosing ? 'Closing...' : 'Confirm Close'}
                 </Button>
               </div>
             </motion.div>

@@ -12,7 +12,7 @@ export function formatDate(dateStr: string, fmt = 'dd/MM/yyyy') {
   try {
     const parsed = parseDateSafe(dateStr)
     if (!parsed) return (dateStr || '').replace(/\s+/g, ' ').trim()
-    return format(parsed, fmt, { locale: ar })
+    return format(parsed, fmt)
   } catch {
     return dateStr
   }
@@ -22,7 +22,7 @@ export function formatDateTime(dateStr: string) {
   try {
     const parsed = parseDateSafe(dateStr)
     if (!parsed) return (dateStr || '').replace(/\s+/g, ' ').trim()
-    return format(parsed, 'dd/MM/yyyy - hh:mm a', { locale: ar })
+    return format(parsed, 'dd/MM/yyyy - hh:mm a')
   } catch {
     return dateStr
   }
@@ -32,7 +32,7 @@ export function formatTimeAgo(dateStr: string) {
   try {
     const parsed = parseDateSafe(dateStr)
     if (!parsed) return dateStr
-    return formatDistanceToNow(parsed, { addSuffix: true, locale: ar })
+    return formatDistanceToNow(parsed, { addSuffix: true })
   } catch {
     return dateStr
   }
@@ -57,9 +57,9 @@ function parseDateSafe(input: string): Date | null {
 }
 
 export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('ar-EG', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'EGP',
+    currency: 'USD',
   }).format(amount)
 }
 
@@ -71,21 +71,21 @@ export const URGENCY_CONFIG: Record<UrgencyLevel, {
   pulse: boolean
 }> = {
   LOW: {
-    label: 'منخفض',
+    label: 'Low',
     color: 'text-green-700',
     bg: 'bg-green-100',
     border: 'border-green-300',
     pulse: false,
   },
   MEDIUM: {
-    label: 'متوسط',
+    label: 'Medium',
     color: 'text-amber-700',
     bg: 'bg-amber-100',
     border: 'border-amber-300',
     pulse: false,
   },
   HIGH: {
-    label: 'مرتفع',
+    label: 'High',
     color: 'text-red-700',
     bg: 'bg-red-100',
     border: 'border-red-300',
@@ -99,12 +99,12 @@ export const STATUS_CONFIG: Record<AppointmentStatus, {
   color: string
   bg: string
 }> = {
-  Pending: { label: 'قيد الانتظار', color: 'text-amber-700', bg: 'bg-amber-100' },
+  Pending: { label: 'Pending', color: 'text-amber-700', bg: 'bg-amber-100' },
   Confirmed: { label: 'Confirmed', color: 'text-green-700', bg: 'bg-green-100' },
   Cancelled: { label: 'Cancelled', color: 'text-gray-600', bg: 'bg-gray-100' },
   Completed: { label: 'Completed', color: 'text-blue-700', bg: 'bg-blue-100' },
-  NoShow: { label: 'لم يحضر', color: 'text-red-700', bg: 'bg-red-100' },
-  Rescheduled: { label: 'تم إعادة الجدولة', color: 'text-purple-700', bg: 'bg-purple-100' },
+  NoShow: { label: 'No Show', color: 'text-red-700', bg: 'bg-red-100' },
+  Rescheduled: { label: 'Rescheduled', color: 'text-purple-700', bg: 'bg-purple-100' },
 }
 
 export const DAY_NAMES_AR = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']

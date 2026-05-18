@@ -43,7 +43,7 @@ export default function DoctorDetails() {
       setDoctor(transformedDoctor)
     } catch (error: any) {
       console.error('Error fetching doctor details:', error)
-      toast.error('فشل تحميل تفاصيل الطبيب')
+      toast.error('Failed to load doctor details')
       navigate('/doctors')
     } finally {
       setIsLoading(false)
@@ -75,7 +75,7 @@ export default function DoctorDetails() {
 
   const handleBookAppointment = async () => {
     if (!doctor || !selectedDate || !selectedTime) {
-      toast.error('يرجى اختيار التاريخ والوقت')
+      toast.error('Please select a date and time')
       return
     }
 
@@ -86,11 +86,11 @@ export default function DoctorDetails() {
       }
       
       await axiosInstance.post('/api/appointments', appointmentData)
-      toast.success('تم حجز الموعد بنجاح!')
+      toast.success('Appointment booked successfully!')
       navigate('/appointments')
     } catch (error: any) {
       console.error('Error booking appointment:', error)
-      toast.error(error.response?.data?.message || 'فشل حجز الموعد')
+      toast.error(error.response?.data?.message || 'Failed to book appointment')
     }
   }
 
@@ -104,15 +104,15 @@ export default function DoctorDetails() {
 
   if (!doctor) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
-          <HeartPulse className="mx-auto text-slate-300 mb-4" size={48} />
-          <h3 className="text-xl font-semibold text-slate-600 mb-2">الطبيب غير موجود</h3>
+          <HeartPulse className="mx-auto text-slate-300 dark:text-slate-700 mb-4" size={48} />
+          <h3 className="text-xl font-semibold text-slate-600 dark:text-slate-400 mb-2">Doctor not found</h3>
           <button 
             onClick={() => navigate('/doctors')}
             className="text-emerald-600 hover:text-emerald-700 font-medium"
           >
-            العودة لقائمة الأطباء
+            Back to Doctors List
           </button>
         </div>
       </div>
@@ -120,16 +120,16 @@ export default function DoctorDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50" dir="rtl">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100" dir="ltr">
       {/* Header */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white">
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <button
             onClick={() => navigate('/doctors')}
             className="flex items-center gap-2 text-white/90 hover:text-white mb-6 transition-colors"
           >
             <ArrowLeft size={20} />
-            العودة لقائمة الأطباء
+            Back to Doctors List
           </button>
 
           <div className="flex flex-col lg:flex-row items-start gap-8">
@@ -157,20 +157,20 @@ export default function DoctorDetails() {
               <div className="flex flex-wrap gap-4 text-sm">
                 {doctor.rating && (
                   <div className="flex items-center gap-1">
-                    <Star size={16} fill="currentColor" />
+                    <Star size={16} fill="currentColor" className="text-amber-400" />
                     <span>{doctor.rating}</span>
-                    <span className="text-white/70">({doctor.totalReviews} تقييم)</span>
+                    <span className="text-white/70">({doctor.totalReviews} reviews)</span>
                   </div>
                 )}
                 {doctor.yearsExperience && (
                   <div className="flex items-center gap-1">
                     <Calendar size={16} />
-                    <span>{doctor.yearsExperience} سنوات خبرة</span>
+                    <span>{doctor.yearsExperience} yrs experience</span>
                   </div>
                 )}
                 <div className="flex items-center gap-1">
                   <CheckCircle size={16} />
-                  <span>مرخص ومعتمد</span>
+                  <span>Licensed & Certified</span>
                 </div>
               </div>
             </motion.div>
@@ -184,12 +184,12 @@ export default function DoctorDetails() {
             >
               {doctor.consultFee && (
                 <div className="bg-white/20 backdrop-blur-sm rounded-xl px-6 py-3 text-center">
-                  <p className="text-sm text-white/70">رسوم الاستشارة</p>
-                  <p className="text-xl font-bold">{doctor.consultFee} ر.س</p>
+                  <p className="text-sm text-white/70">Consultation Fee</p>
+                  <p className="text-xl font-bold">${doctor.consultFee}</p>
                 </div>
               )}
-              <button className="bg-white text-emerald-600 hover:bg-white/90 px-6 py-3 rounded-xl font-semibold transition-colors">
-                حجز موعد فوري
+              <button className="bg-white text-emerald-600 hover:bg-white/90 px-6 py-3 rounded-xl font-semibold transition-colors shadow-md shadow-emerald-900/10">
+                Book Instant Appointment
               </button>
             </motion.div>
           </div>
@@ -205,16 +205,16 @@ export default function DoctorDetails() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.3 }}
-              className="bg-white rounded-2xl shadow-sm p-6"
+              className="bg-white dark:bg-slate-900/60 dark:border dark:border-slate-800/80 rounded-2xl shadow-sm p-6"
             >
-              <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-                <BookOpen size={18} className="text-emerald-600" />
-                نبذة عن الطبيب
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+                <BookOpen size={18} className="text-emerald-600 dark:text-emerald-400" />
+                About Doctor
               </h2>
               {doctor.bio ? (
-                <p className="text-slate-600 leading-relaxed">{doctor.bio}</p>
+                <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{doctor.bio}</p>
               ) : (
-                <p className="text-slate-500">لا توجد نبذة متاحة حالياً</p>
+                <p className="text-slate-500 dark:text-slate-400">Biography not available at this moment</p>
               )}
             </motion.div>
 
@@ -223,38 +223,38 @@ export default function DoctorDetails() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="bg-white rounded-2xl shadow-sm p-6"
+              className="bg-white dark:bg-slate-950/65 rounded-2xl border border-slate-100 dark:border-slate-800/80 shadow-sm p-6"
             >
-              <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
                 <Calendar size={18} className="text-emerald-600" />
-                حجز موعد
+                Book Appointment
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    التاريخ
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Date
                   </label>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    الوقت
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Time
                   </label>
                   <select
                     value={selectedTime}
                     onChange={(e) => setSelectedTime(e.target.value)}
                     disabled={!selectedDate || isLoadingSlots}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-850 dark:text-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed"
                   >
                     <option value="">
-                      {isLoadingSlots ? 'جاري التحميل...' : availableSlots.length === 0 ? 'لا توجد أوقات متاحة' : 'اختر الوقت'}
+                      {isLoadingSlots ? 'Loading slots...' : availableSlots.length === 0 ? 'No available slots' : 'Choose Time'}
                     </option>
                     {availableSlots.map(slot => (
                       <option key={slot} value={slot}>{slot}</option>
@@ -266,9 +266,9 @@ export default function DoctorDetails() {
               <button
                 onClick={handleBookAppointment}
                 disabled={!selectedDate || !selectedTime}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-colors"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-colors"
               >
-                تأكيد الحجز
+                Confirm Appointment
               </button>
             </motion.div>
           </div>
@@ -280,21 +280,21 @@ export default function DoctorDetails() {
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="bg-white rounded-2xl shadow-sm p-6"
+              className="bg-white dark:bg-slate-900/60 dark:border dark:border-slate-800/80 rounded-2xl shadow-sm p-6"
             >
-              <h3 className="font-bold text-slate-800 mb-3 text-sm">معلومات التواصل</h3>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-3 text-sm">Contact Information</h3>
               <div className="space-y-3">
-                <div className="flex items-center gap-3 text-slate-600">
-                  <Mail size={18} className="text-slate-400" />
+                <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+                  <Mail size={18} className="text-slate-400 dark:text-slate-500" />
                   <span className="text-sm">{doctor.email}</span>
                 </div>
-                <div className="flex items-center gap-3 text-slate-600">
-                  <Phone size={18} className="text-slate-400" />
-                  <span className="text-sm">غير متوفر</span>
+                <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+                  <Phone size={18} className="text-slate-400 dark:text-slate-500" />
+                  <span className="text-sm">N/A</span>
                 </div>
-                <div className="flex items-center gap-3 text-slate-600">
-                  <MapPin size={18} className="text-slate-400" />
-                  <span className="text-sm">الرياض، السعودية</span>
+                <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+                  <MapPin size={18} className="text-slate-400 dark:text-slate-500" />
+                  <span className="text-sm">Riyadh, Saudi Arabia</span>
                 </div>
               </div>
             </motion.div>
@@ -305,12 +305,12 @@ export default function DoctorDetails() {
                 initial={{ x: 20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.6 }}
-                className="bg-white rounded-2xl shadow-sm p-6"
+                className="bg-white dark:bg-slate-900/60 dark:border dark:border-slate-800/80 rounded-2xl shadow-sm p-6"
               >
-                <h3 className="font-bold text-slate-800 mb-3 text-sm">الخبرات</h3>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-3 text-sm">Experience</h3>
                 <div className="flex items-center gap-3">
-                  <Award size={18} className="text-emerald-600" />
-                  <span className="text-slate-600">{doctor.yearsExperience} سنوات خبرة</span>
+                  <Award size={18} className="text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-slate-600 dark:text-slate-300">{doctor.yearsExperience} yrs experience</span>
                 </div>
               </motion.div>
             )}
@@ -320,20 +320,20 @@ export default function DoctorDetails() {
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.7 }}
-              className="bg-white rounded-2xl shadow-sm p-6"
+              className="bg-white dark:bg-slate-900/60 dark:border dark:border-slate-800/80 rounded-2xl shadow-sm p-6"
             >
-              <h3 className="font-bold text-slate-800 mb-3 text-sm flex items-center gap-2">
-                <Languages size={16} className="text-emerald-600" />
-                اللغات
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-3 text-sm flex items-center gap-2">
+                <Languages size={16} className="text-emerald-600 dark:text-emerald-400" />
+                Languages
               </h3>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <CheckCircle size={16} className="text-emerald-600" />
-                  <span className="text-slate-600">العربية</span>
+                  <CheckCircle size={16} className="text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-slate-600 dark:text-slate-300">Arabic</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle size={16} className="text-emerald-600" />
-                  <span className="text-slate-600">الإنجليزية</span>
+                  <CheckCircle size={16} className="text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-slate-600 dark:text-slate-300">English</span>
                 </div>
               </div>
             </motion.div>

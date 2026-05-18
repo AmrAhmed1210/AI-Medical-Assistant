@@ -17,38 +17,38 @@ export function AIReportCard({ report, onClick, index = 0 }: AIReportCardProps) 
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06 }}
       onClick={onClick}
-      className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer group"
+      className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer group"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-primary-50 rounded-lg">
+          <div className="p-2 bg-primary-50 dark:bg-primary-950/20 rounded-lg">
             <Brain size={16} className="text-primary-600" />
           </div>
           <div>
-            <p className="font-semibold text-gray-800 text-sm">{report.patientName}</p>
-            <p className="text-xs text-gray-400">{formatDate(report.createdAt)}</p>
+            <p className="font-semibold text-gray-800 dark:text-slate-100 text-sm">{report.patientName}</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500">{formatDate(report.createdAt)}</p>
           </div>
         </div>
         <UrgencyBadge level={report.urgencyLevel} />
       </div>
 
       {/* Symptoms */}
-      <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-3">
+      <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400 mb-3">
         <AlertTriangle size={11} />
-        <span>{report.symptoms.length} أعراض</span>
+        <span>{report.symptoms.length} symptoms</span>
         {report.symptoms.slice(0, 2).map((s, i) => (
-          <span key={i} className="px-1.5 py-0.5 bg-gray-100 rounded-md text-gray-600">
+          <span key={i} className="px-1.5 py-0.5 bg-gray-100 dark:bg-slate-800 rounded-md text-gray-600 dark:text-slate-350">
             {s.term}
           </span>
         ))}
         {report.symptoms.length > 2 && (
-          <span className="text-gray-400">+{report.symptoms.length - 2}</span>
+          <span className="text-gray-400 dark:text-slate-500">+{report.symptoms.length - 2}</span>
         )}
       </div>
 
       {/* Disclaimer */}
-      <p className="text-xs text-gray-400 line-clamp-2 mb-3 italic">{report.disclaimer}</p>
+      <p className="text-xs text-gray-400 dark:text-slate-500 line-clamp-2 mb-3 italic">{report.disclaimer}</p>
 
       {/* Footer */}
       <div className="flex items-center justify-end">

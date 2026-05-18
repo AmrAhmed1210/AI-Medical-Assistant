@@ -7,6 +7,7 @@ import { startConnection, stopConnection } from '@/lib/signalr'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationStore } from '@/store/notificationStore'
 import { useAppointmentStore } from '@/store/appointmentStore'
+import { useThemeStore } from '@/store/themeStore'
 
 export function DashboardLayout() {
   const { token, role } = useAuthStore()
@@ -169,8 +170,27 @@ export function DashboardLayout() {
     }
   }, [token, role, incrementSessionMessage, incrementAppointments, incrementDoctorApplications, setLatestMessagePayload, addNotification, navigate])
 
+  const { isDark } = useThemeStore()
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [isDark])
+
   return (
-    <div className="min-h-screen bg-gray-50 font-outfit" dir="ltr">
+    <div
+      className="min-h-screen font-outfit"
+      dir="ltr"
+      style={{
+        background: isDark
+          ? 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%)'
+          : 'linear-gradient(135deg, #f0f4ff 0%, #ffffff 50%, #f5f3ff 100%)',
+        transition: 'background 0.4s ease',
+      }}
+    >
       <Sidebar />
       <TopBar />
       <main className="ml-64 mt-16 p-6 min-h-[calc(100vh-4rem)]">

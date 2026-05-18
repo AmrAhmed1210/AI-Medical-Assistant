@@ -17,29 +17,28 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-800 flex gap-3"
+        className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-950 border border-blue-200 dark:border-slate-800 rounded-2xl p-4 text-sm text-blue-800 dark:text-blue-450 flex gap-3"
       >
-        <div className="flex-shrink-0 p-1.5 bg-blue-100 rounded-xl">
+        <div className="flex-shrink-0 p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
           <AlertCircle className="w-4 h-4" />
         </div>
-        <p>فقط مدير النظام يمكنه إضافة مستخدمين جدد. سيتم إرسال بيانات الدخول إلى البريد الإلكتروني للمستخدم.</p>
+        <p>Only system administrators can add new users. Access credentials will be automatically sent to the user's email address.</p>
       </motion.div>
 
-      {/* Basic Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name / الاسم الكامل *</label>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Full Name *</label>
           <Input
             type="text"
             value={form.fullName}
             onChange={(e) => onChange('fullName', e.target.value)}
-            placeholder="د. أحمد محمد علي"
+            placeholder="Dr. John Doe"
             icon={<User className="w-4 h-4" />}
             error={errors.fullName}
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Email / البريد الإلكتروني *</label>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Email *</label>
           <Input
             type="email"
             value={form.email}
@@ -50,25 +49,25 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Password / كلمة المرور *</label>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Password *</label>
           <Input
             type="password"
             value={form.password}
             onChange={(e) => onChange('password', e.target.value)}
-            placeholder="•••••••• (8 أحرف على الأقل)"
+            placeholder="•••••••• (At least 8 characters)"
             icon={<Lock className="w-4 h-4" />}
             error={errors.password}
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Role / الدور *</label>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Role *</label>
           <Select
             value={form.role}
             onChange={(e) => onChange('role', e.target.value as UserRole)}
           >
-            <option value="Patient">👤 Patient / مريض</option>
-            <option value="Doctor">🩺 Doctor / طبيب</option>
-            <option value="Admin">👑 Admin / مدير نظام</option>
+            <option value="Patient">👤 Patient</option>
+            <option value="Doctor">🩺 Doctor</option>
+            <option value="Admin">👑 Admin</option>
           </Select>
         </div>
       </div>
@@ -80,16 +79,16 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="border-t border-gray-100 pt-5 space-y-4"
+            className="border-t border-gray-100 dark:border-slate-800/80 pt-5 space-y-4"
           >
             <div className="flex items-center gap-2 pb-2">
               <Stethoscope className="w-5 h-5 text-emerald-500" />
-              <p className="text-sm font-bold text-gray-800">Doctor Professional Info / بيانات الطبيب المهنية</p>
+              <p className="text-sm font-bold text-gray-800 dark:text-white">Doctor Professional Info</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Specialty (EN) / التخصص بالإنجليزي *</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Specialty (EN) *</label>
                 <Input
                   type="text"
                   value={form.specialityName}
@@ -99,48 +98,48 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Specialty (AR) / التخصص بالعربي *</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Specialty (AR) *</label>
                 <Input
                   type="text"
                   value={form.specialityNameAr}
                   onChange={(e) => onChange('specialityNameAr', e.target.value)}
-                  placeholder="أمراض القلب والأوعية الدموية"
+                  placeholder="Cardiology & Vascular Medicine"
                   error={errors.specialityNameAr}
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Years of Experience / سنوات الخبرة</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Years of Experience</label>
                 <Input
                   type="number"
                   min={0}
                   max={60}
                   value={form.yearsExperience === undefined ? '' : form.yearsExperience}
                   onChange={(e) => onChange('yearsExperience', Number(e.target.value))}
-                  placeholder="مثال: 10"
+                  placeholder="e.g. 10"
                   error={errors.yearsExperience}
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Consultation Fee (EGP) / رسوم الاستشارة</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Consultation Fee (USD)</label>
                 <Input
                   type="number"
                   min={0}
                   value={form.consultationFee === undefined ? '' : form.consultationFee}
                   onChange={(e) => onChange('consultationFee', Number(e.target.value))}
-                  placeholder="مثال: 500"
+                  placeholder="e.g. 150"
                   error={errors.consultationFee}
                 />
               </div>
             </div>
             
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Bio / نبذة تعريفية</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Bio</label>
               <textarea
                 rows={3}
                 value={form.bio}
                 onChange={(e) => onChange('bio', e.target.value)}
-                placeholder="اكتب نبذة مختصرة عن خبرة الطبيب وإنجازاته..."
-                className="w-full px-4 py-3 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-400 shadow-sm transition-all duration-200 resize-none"
+                placeholder="Write a brief summary of the doctor's experience, achievements, and credentials..."
+                className="w-full px-4 py-3 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 border border-gray-200 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-400 shadow-sm transition-all duration-200 resize-none"
               />
               {errors.bio && (
                 <p className="mt-1 text-sm text-red-500">{errors.bio}</p>

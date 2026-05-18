@@ -18,19 +18,19 @@ describe('formatDate', () => {
 })
 
 describe('formatCurrency', () => {
-  it('formats number as Egyptian Pound', () => {
+  it('formats number as USD', () => {
     const result = formatCurrency(100)
-    expect(result).toContain('ج.م')
+    expect(result).toContain('$')
   })
 })
 
 describe('getInitials', () => {
   it('returns first letter of each word', () => {
-    expect(getInitials('أحمد محمد')).toBe('أم')
+    expect(getInitials('John Doe')).toBe('JD')
   })
 
   it('returns max 2 letters', () => {
-    expect(getInitials('أحمد محمد علي')).toBe('أم')
+    expect(getInitials('John Doe Smith')).toBe('JD')
   })
 })
 

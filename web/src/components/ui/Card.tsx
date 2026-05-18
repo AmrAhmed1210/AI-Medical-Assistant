@@ -5,7 +5,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const Card = ({ className = '', children, ...props }: CardProps) => (
-  <div className={`rounded-3xl border border-white/20 bg-white/80 backdrop-blur-xl shadow-xl ${className}`} {...props}>
+  <div className={`rounded-3xl border border-white/20 bg-white/80 backdrop-blur-xl shadow-xl dark:bg-slate-950/65 dark:border-slate-800/80 dark:shadow-2xl dark:shadow-black/20 text-gray-900 dark:text-slate-100 transition-all duration-300 ${className}`} {...props}>
     {children}
   </div>
 )
@@ -15,11 +15,11 @@ export const CardHeader = ({ className = '', ...props }: React.HTMLAttributes<HT
 )
 
 export const CardTitle = ({ className = '', ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h3 className={`text-xl font-bold tracking-tight text-gray-900 ${className}`} {...props} />
+  <h3 className={`text-xl font-bold tracking-tight text-gray-900 dark:text-white transition-colors ${className}`} {...props} />
 )
 
 export const CardDescription = ({ className = '', ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
-  <p className={`text-sm text-gray-500 ${className}`} {...props} />
+  <p className={`text-sm text-gray-500 dark:text-slate-400 transition-colors ${className}`} {...props} />
 )
 
 export const CardContent = ({ className = '', ...props }: React.HTMLAttributes<HTMLDivElement>) => (

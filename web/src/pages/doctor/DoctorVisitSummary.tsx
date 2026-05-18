@@ -55,7 +55,7 @@ export default function DoctorVisitSummary() {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
         <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-        <p className="text-gray-500">لم يتم العثور على الملخص</p>
+        <p className="text-gray-500">Visit summary not found</p>
       </div>
     )
   }
@@ -66,16 +66,16 @@ export default function DoctorVisitSummary() {
       <div className="flex items-center justify-between print:hidden">
         <Button variant="ghost" size="sm" onClick={() => navigate('/doctor/today')}>
           <ChevronLeft className="w-4 h-4" />
-          العودة
+          Back
         </Button>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handlePrint}>
             <Printer className="w-4 h-4 ml-2" />
-            طباعة
+            Print
           </Button>
           <Button variant="outline" size="sm" onClick={handleDownloadPdf}>
             <Download className="w-4 h-4 ml-2" />
-            تحميل PDF
+            Download PDF
           </Button>
         </div>
       </div>
@@ -88,7 +88,7 @@ export default function DoctorVisitSummary() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">ملخص الزيارة الطبية</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Visit Medical Summary</h1>
             <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
               <span className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
@@ -96,12 +96,12 @@ export default function DoctorVisitSummary() {
               </span>
               <span className="flex items-center gap-1">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
-                مغلقة
+                Closed
               </span>
             </div>
           </div>
           <div className="text-left">
-            <p className="text-sm text-gray-500">رقم الزيارة</p>
+            <p className="text-sm text-gray-500">Visit ID</p>
             <p className="font-bold text-gray-900">#{summary.id}</p>
           </div>
         </div>
@@ -121,9 +121,9 @@ export default function DoctorVisitSummary() {
             <div>
               <h2 className="text-xl font-bold text-gray-900">{summary.patientName}</h2>
               <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
-                <span>{summary.patientAge} سنة</span>
+                <span>{summary.patientAge} yrs</span>
                 <span className="flex items-center gap-1">
-                  فصيلة: <span className="font-medium text-red-600">{summary.bloodType}</span>
+                  Blood type: <span className="font-medium text-red-600">{summary.bloodType}</span>
                 </span>
               </div>
             </div>
@@ -134,19 +134,18 @@ export default function DoctorVisitSummary() {
             <div className="mt-4 pt-4 border-t">
               <p className="text-sm text-gray-500 mb-2 flex items-center gap-1">
                 <AlertTriangle className="w-4 h-4 text-red-500" />
-                الحساسية:
+                Allergies:
               </p>
               <div className="flex flex-wrap gap-2">
                 {summary.allergies.map((a, idx) => (
                   <span
                     key={idx}
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      a.severity === 'life_threatening'
-                        ? 'bg-red-100 text-red-700 border border-red-300'
-                        : a.severity === 'severe'
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${a.severity === 'life_threatening'
+                      ? 'bg-red-100 text-red-700 border border-red-300'
+                      : a.severity === 'severe'
                         ? 'bg-orange-100 text-orange-700'
                         : 'bg-gray-100 text-gray-600'
-                    }`}
+                      }`}
                   >
                     {a.allergenName} ({a.reaction})
                   </span>
@@ -168,7 +167,7 @@ export default function DoctorVisitSummary() {
         <Card>
           <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
             <Stethoscope className="w-5 h-5 text-primary-600" />
-            الشكوى الرئيسية
+            Chief Complaint
           </h3>
           <p className="text-gray-700">{summary.chiefComplaint || '—'}</p>
         </Card>
@@ -176,7 +175,7 @@ export default function DoctorVisitSummary() {
         {/* Examination */}
         {summary.examinationFindings && (
           <Card>
-            <h3 className="font-bold text-gray-900 mb-3">نتائج الفحص</h3>
+            <h3 className="font-bold text-gray-900 mb-3">Examination Findings</h3>
             <p className="text-gray-700 whitespace-pre-line">{summary.examinationFindings}</p>
           </Card>
         )}
@@ -184,7 +183,7 @@ export default function DoctorVisitSummary() {
         {/* Assessment */}
         {summary.assessment && (
           <Card>
-            <h3 className="font-bold text-gray-900 mb-3">التشخيص</h3>
+            <h3 className="font-bold text-gray-900 mb-3">Assessment / Diagnosis</h3>
             <p className="text-gray-700">{summary.assessment}</p>
           </Card>
         )}
@@ -192,7 +191,7 @@ export default function DoctorVisitSummary() {
         {/* Plan */}
         {summary.plan && (
           <Card>
-            <h3 className="font-bold text-gray-900 mb-3">الخطة العلاجية</h3>
+            <h3 className="font-bold text-gray-900 mb-3">Treatment Plan</h3>
             <p className="text-gray-700">{summary.plan}</p>
           </Card>
         )}
@@ -202,15 +201,14 @@ export default function DoctorVisitSummary() {
           <Card>
             <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Activity className="w-5 h-5 text-primary-600" />
-              العلامات الحيوية
+              Vital Signs
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {summary.vitalSigns.map((vital, idx) => (
                 <div
                   key={idx}
-                  className={`p-3 rounded-lg text-center ${
-                    vital.isAbnormal ? 'bg-red-50 border border-red-200' : 'bg-gray-50'
-                  }`}
+                  className={`p-3 rounded-lg text-center ${vital.isAbnormal ? 'bg-red-50 border border-red-200' : 'bg-gray-50'
+                    }`}
                 >
                   <p className="text-xs text-gray-500">{vital.type}</p>
                   <p className={`font-bold text-lg mt-1 ${vital.isAbnormal ? 'text-red-600' : 'text-gray-900'}`}>
@@ -227,13 +225,13 @@ export default function DoctorVisitSummary() {
         {/* Symptoms */}
         {summary.symptoms?.length > 0 && (
           <Card>
-            <h3 className="font-bold text-gray-900 mb-3">الأعراض</h3>
+            <h3 className="font-bold text-gray-900 mb-3">Symptoms</h3>
             <div className="space-y-2">
               {summary.symptoms.map((sym, idx) => (
                 <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
                   <span className="font-medium">{sym.name}</span>
                   <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <span>{sym.severity === 'severe' ? 'شديد' : sym.severity === 'moderate' ? 'متوسط' : 'خفيف'}</span>
+                    <span>{sym.severity === 'severe' ? 'Severe' : sym.severity === 'moderate' ? 'Moderate' : 'Mild'}</span>
                     {sym.location && <span>— {sym.location}</span>}
                   </div>
                 </div>
@@ -247,17 +245,17 @@ export default function DoctorVisitSummary() {
           <Card>
             <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Pill className="w-5 h-5 text-primary-600" />
-              الروشتة
+              Prescription
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-500">
                   <tr>
-                    <th className="text-right p-3 rounded-r-lg">الدواء</th>
-                    <th className="text-right p-3">الجرعة</th>
-                    <th className="text-right p-3">التكرار</th>
-                    <th className="text-right p-3">المدة</th>
-                    <th className="text-right p-3 rounded-l-lg">نوع</th>
+                    <th className="text-left p-3 rounded-l-lg">Medication</th>
+                    <th className="text-left p-3">Dosage</th>
+                    <th className="text-left p-3">Frequency</th>
+                    <th className="text-left p-3">Duration</th>
+                    <th className="text-left p-3 rounded-r-lg">Type</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -270,7 +268,7 @@ export default function DoctorVisitSummary() {
                       <td className="p-3">
                         {pres.isChronic ? (
                           <span className="px-2 py-0.5 bg-teal-100 text-teal-700 rounded-full text-xs font-medium">
-                            مزمن
+                            Chronic
                           </span>
                         ) : (
                           <span className="text-gray-400">—</span>
@@ -290,9 +288,9 @@ export default function DoctorVisitSummary() {
             <div className="flex items-start gap-3">
               <Calendar className="w-5 h-5 text-blue-600 mt-0.5" />
               <div>
-                <h3 className="font-bold text-blue-900">متابعة مطلوبة</h3>
+                <h3 className="font-bold text-blue-900">Follow-up Required</h3>
                 <p className="text-blue-700 text-sm mt-1">
-                  بعد {summary.followUpAfterDays} يوم
+                  After {summary.followUpAfterDays} day(s)
                 </p>
                 {summary.followUpNotes && (
                   <p className="text-blue-600 text-sm mt-1">{summary.followUpNotes}</p>
@@ -305,7 +303,7 @@ export default function DoctorVisitSummary() {
         {/* Notes */}
         {summary.notes && (
           <Card>
-            <h3 className="font-bold text-gray-900 mb-3">ملاحظات</h3>
+            <h3 className="font-bold text-gray-900 mb-3">Notes</h3>
             <p className="text-gray-700 whitespace-pre-line">{summary.notes}</p>
           </Card>
         )}
@@ -313,8 +311,8 @@ export default function DoctorVisitSummary() {
 
       {/* Footer */}
       <div className="text-center text-xs text-gray-400 pt-6 border-t print:mt-8">
-        <p>MedBook — نظام إدارة المرضى الإلكتروني</p>
-        <p className="mt-1">تم إنشاء هذا الملخص تلقائياً — لا يعني الاستغناء عن الرأي الطبي</p>
+        <p>MedBook — Electronic Patient Management System</p>
+        <p className="mt-1">This summary was auto-generated — not a substitute for professional medical advice</p>
       </div>
     </div>
   )

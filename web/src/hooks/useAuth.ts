@@ -22,12 +22,12 @@ export function useAuth() {
         isActive: true
       }
       setAuth(userDto, res.accessToken)
-      toast.success(`مرحباً ${res.user.fullName}`)
+      toast.success(`Welcome back, ${res.user.fullName}!`)
       if (res.user.role === 'Admin') navigate(ROUTES.ADMIN_DASHBOARD)
       else if (res.user.role === 'Doctor') navigate(ROUTES.DOCTOR_DASHBOARD)
       else navigate('/')
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'بيانات الدخول غير صحيحة'
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Invalid login credentials.'
       toast.error(msg)
       throw err
     } finally {
@@ -43,7 +43,7 @@ export function useAuth() {
     } finally {
       storeLogout()
       navigate(ROUTES.LOGIN)
-      toast.success('تم تسجيل الخروج بنجاح')
+      toast.success('Logged out successfully.')
     }
   }, [storeLogout, navigate])
 

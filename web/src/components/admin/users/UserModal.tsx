@@ -27,13 +27,13 @@ export const UserModal = ({
     <Modal
       open={open}
       onClose={onClose}
-      title="✨ Add New User / إضافة مستخدم جديد"
+      title="Add New User"
       size="lg"
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>Cancel / إلغاء</Button>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button variant="primary" onClick={onSubmit} loading={loading}>
-            <Check className="w-4 h-4" /> Create Account / إنشاء الحساب
+            <Check className="w-4 h-4" /> Create Account
           </Button>
         </>
       }

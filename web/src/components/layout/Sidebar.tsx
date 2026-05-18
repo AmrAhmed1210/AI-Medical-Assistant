@@ -12,6 +12,7 @@ import { authApi } from '@/api/authApi'
 import { ROUTES } from '@/constants/config'
 import toast from 'react-hot-toast'
 import { useNotificationStore } from '@/store/notificationStore'
+import { useThemeStore } from '@/store/themeStore'
 
 interface NavItem {
   to: string
@@ -47,6 +48,7 @@ export function Sidebar() {
   const { user, role, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
+  const { isDark } = useThemeStore()
   const {
     unreadMessages,
     unreadAppointments,
@@ -58,36 +60,36 @@ export function Sidebar() {
 
   const navItems = role === 'Admin' ? adminNav : (role === 'Secretary' ? secretaryNav : doctorNav)
 
+  // Theme tokens for sidebar
+  const bg = isDark ? 'rgba(10,15,35,0.98)' : '#ffffff'
+  const border = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'
+  const logoText = isDark ? '#ffffff' : '#111827'
+  const logoSub = isDark ? 'rgba(148,163,184,0.7)' : '#9ca3af'
+  const navTextDefault = isDark ? 'rgba(148,163,184,0.85)' : '#4b5563'
+  const navHoverBg = isDark ? 'rgba(99,102,241,0.1)' : '#f3f4f6'
+  const navHoverText = isDark ? '#ffffff' : '#111827'
+  const userNameColor = isDark ? '#ffffff' : '#111827'
+  const userEmailColor = isDark ? 'rgba(148,163,184,0.7)' : '#9ca3af'
+  const avatarBg = isDark ? 'rgba(99,102,241,0.25)' : '#eef2ff'
+  const avatarText = isDark ? '#818cf8' : '#6366f1'
+
   const handleLogout = async () => {
-    try { 
-      await authApi.logout() 
+    try {
+      await authApi.logout()
     } catch { /* silent */ }
-    
-    // Clear all local/session storage to be safe
     localStorage.clear()
     sessionStorage.clear()
-    
-    logout() // Store logout
+    logout()
     navigate(ROUTES.LOGIN, { replace: true })
     toast.success('Logged out successfully')
-    
-    // Optional: Force reload to ensure clean state
     window.location.href = ROUTES.LOGIN
   }
 
   useEffect(() => {
-    if (location.pathname === ROUTES.DOCTOR_CHAT) {
-      clearAllMessages()
-    }
-    if (location.pathname === ROUTES.DOCTOR_APPOINTMENTS || location.pathname === ROUTES.DOCTOR_TODAY) {
-      clearAppointments()
-    }
-    if (location.pathname === ROUTES.ADMIN_APPLICATIONS) {
-      clearDoctorApplications()
-    }
-    if (location.pathname === ROUTES.ADMIN_SUPPORT) {
-      clearAllMessages()
-    }
+    if (location.pathname === ROUTES.DOCTOR_CHAT) clearAllMessages()
+    if (location.pathname === ROUTES.DOCTOR_APPOINTMENTS || location.pathname === ROUTES.DOCTOR_TODAY) clearAppointments()
+    if (location.pathname === ROUTES.ADMIN_APPLICATIONS) clearDoctorApplications()
+    if (location.pathname === ROUTES.ADMIN_SUPPORT) clearAllMessages()
   }, [location.pathname, clearAppointments, clearAllMessages, clearDoctorApplications])
 
   return (
@@ -95,28 +97,40 @@ export function Sidebar() {
       initial={{ x: -256 }}
       animate={{ x: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="fixed top-0 left-0 h-screen w-64 bg-white border-r border-gray-100 flex flex-col z-30 shadow-sm"
+      className="fixed top-0 left-0 h-screen w-64 flex flex-col z-30"
+      style={{
+        background: bg,
+        borderRight: `1px solid ${border}`,
+        backdropFilter: isDark ? 'blur(24px)' : 'none',
+        boxShadow: isDark ? '4px 0 24px rgba(0,0,0,0.4)' : '2px 0 12px rgba(0,0,0,0.06)',
+      }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
-        <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center shadow-sm">
-          <span className="text-white text-base font-bold">M</span>
+      <div className="flex items-center gap-3 px-5 py-5" style={{ borderBottom: `1px solid ${border}` }}>
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
+          style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}
+        >
+          <span className="text-white text-base font-black">M</span>
         </div>
         <div>
-          <p className="text-base font-bold text-gray-800">MedBook</p>
-          <p className="text-xs text-gray-400">Smart Medical Platform</p>
+          <p className="text-base font-black" style={{ color: logoText }}>MedBook</p>
+          <p className="text-xs" style={{ color: logoSub }}>Smart Medical Platform</p>
         </div>
       </div>
 
       {/* Role badge */}
       <div className="px-4 py-3">
-        <div className={cn(
-          'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium',
-          role === 'Admin' ? 'bg-purple-50 text-purple-700' : 
-          role === 'Secretary' ? 'bg-amber-50 text-amber-700' : 'bg-primary-50 text-primary-700'
-        )}>
-          {role === 'Admin' ? <Shield size={14} /> : role === 'Secretary' ? <Users size={14} /> : <User size={14} />}
-          {role === 'Admin' ? 'System Admin' : role === 'Secretary' ? 'Secretary' : 'Doctor'}
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold"
+          style={{
+            background: isDark ? 'rgba(99,102,241,0.12)' : '#eef2ff',
+            color: isDark ? '#818cf8' : '#6366f1',
+            border: `1px solid ${isDark ? 'rgba(99,102,241,0.25)' : 'rgba(99,102,241,0.2)'}`,
+          }}
+        >
+          {role === 'Admin' ? <Shield size={14} /> : role === 'Secretary' ? <Users size={14} /> : <Stethoscope size={14} />}
+          {role === 'Admin' ? 'System Administrator' : role === 'Secretary' ? 'Secretary' : 'Doctor'}
         </div>
       </div>
 
@@ -126,12 +140,29 @@ export function Sidebar() {
           <NavLink
             key={item.to}
             to={item.to}
-            className={({ isActive }) => cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
-              isActive
-                ? 'bg-primary-600 text-white shadow-sm'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-            )}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+            style={({ isActive }) => isActive
+              ? {
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  color: '#ffffff',
+                  boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
+                }
+              : { color: navTextDefault }
+            }
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLElement
+              if (!el.style.boxShadow) {
+                el.style.background = navHoverBg
+                el.style.color = navHoverText
+              }
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLElement
+              if (!el.style.boxShadow) {
+                el.style.background = 'transparent'
+                el.style.color = navTextDefault
+              }
+            }}
           >
             <div className="relative">
               {item.icon}
@@ -157,21 +188,27 @@ export function Sidebar() {
       </nav>
 
       {/* User info + logout */}
-      <div className="border-t border-gray-100 p-3">
+      <div className="p-3" style={{ borderTop: `1px solid ${border}` }}>
         <div className="flex items-center gap-3 px-2 py-2 mb-1">
-          <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-            <span className="text-primary-700 text-xs font-semibold">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: avatarBg }}
+          >
+            <span className="text-xs font-bold" style={{ color: avatarText }}>
               {user?.name?.charAt(0) || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-800 truncate">{user?.name}</p>
-            <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+            <p className="text-sm font-semibold truncate" style={{ color: userNameColor }}>{user?.name}</p>
+            <p className="text-xs truncate" style={{ color: userEmailColor }}>{user?.email}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-colors"
+          style={{ color: '#ef4444' }}
+          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2'}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
         >
           <LogOut size={16} />
           Log Out

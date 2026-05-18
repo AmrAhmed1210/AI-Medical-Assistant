@@ -40,7 +40,7 @@ export default function DoctorToday() {
       const data = await doctorApi.getAppointments()
       setAppointments(data)
     } catch {
-      toast.error('فشل في جلب المواعيد')
+      toast.error('Failed to load appointments')
     } finally {
       setIsLoading(false)
     }
@@ -60,10 +60,10 @@ export default function DoctorToday() {
         appointmentId: Number(appt.id),
         chiefComplaint: '',
       })
-      toast.success('تم فتح الزيارة')
+      toast.success('Visit started successfully')
       navigate(`/doctor/workspace/${visit.id}`)
     } catch {
-      toast.error('فشل في فتح الزيارة')
+      toast.error('Failed to start visit')
       setStartingVisitId(null)
     } finally {
       setIsCreating(false)
@@ -74,8 +74,8 @@ export default function DoctorToday() {
 
   const toDayKey = (dateStr: string) => {
     const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return 'غير معروف'
-    return d.toLocaleDateString('ar-EG', {
+    if (isNaN(d.getTime())) return 'Unknown'
+    return d.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -111,7 +111,7 @@ export default function DoctorToday() {
         className="flex flex-col md:flex-row md:items-center justify-between gap-4"
       >
         <motion.div variants={item}>
-          <h1 className="text-2xl font-bold text-gray-900">سجل الحضور والزيارات</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Attendance & Visit Log</h1>
           <p className="text-gray-500 text-sm mt-1 flex items-center gap-2">
             <Calendar className="w-4 h-4" />
             {todayStr}
@@ -122,14 +122,14 @@ export default function DoctorToday() {
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input 
               type="text"
-              placeholder="بحث عن مريض..."
+              placeholder="Search patient..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pr-10 pl-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
             />
           </div>
           <div className="bg-primary-50 text-primary-700 px-4 py-2 rounded-xl text-sm font-bold shadow-sm">
-            {appointments?.length ?? 0} موعد
+            {appointments?.length ?? 0} appointment{(appointments?.length ?? 0) !== 1 ? 's' : ''}
           </div>
         </motion.div>
       </motion.div>
@@ -142,9 +142,9 @@ export default function DoctorToday() {
           <motion.div variants={item}>
             <Card className="text-center py-16 border-dashed border-2">
               <Calendar className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-              <p className="text-gray-500 font-bold text-lg">لا توجد سجلات حضور</p>
+              <p className="text-gray-500 font-bold text-lg">No attendance records found</p>
               <p className="text-gray-400 text-sm mt-1">
-                ستظهر المواعيد والزيارات الجديدة هنا
+                New appointments and visits will appear here
               </p>
             </Card>
           </motion.div>
@@ -153,7 +153,7 @@ export default function DoctorToday() {
             <div key={day} className="space-y-4">
               <div className="flex items-center gap-4">
                 <h2 className={`text-sm font-bold px-3 py-1 rounded-full ${day === todayStr ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
-                  {day === todayStr ? 'اليوم' : day}
+                  {day === todayStr ? 'Today' : day}
                 </h2>
                 <div className="h-px bg-gray-200 flex-1" />
               </div>
@@ -179,7 +179,7 @@ export default function DoctorToday() {
                             <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
                               <span className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-lg font-medium">
                                 <Clock className="w-3.5 h-3.5" />
-                                {new Date(appt.scheduledAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(appt.scheduledAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                               </span>
                               <span
                                 className={`px-2.5 py-0.5 rounded-lg text-xs font-bold uppercase tracking-wider ${
@@ -193,12 +193,12 @@ export default function DoctorToday() {
                                 }`}
                               >
                                 {appt.status === 'Confirmed'
-                                  ? 'مؤكد'
+                                  ? 'Confirmed'
                                   : appt.status === 'Completed'
-                                  ? 'منتهي'
+                                  ? 'Completed'
                                   : appt.status === 'Cancelled'
-                                  ? 'ملغى'
-                                  : 'معلق'}
+                                  ? 'Cancelled'
+                                  : 'Pending'}
                               </span>
                             </div>
                           </div>
@@ -214,8 +214,8 @@ export default function DoctorToday() {
                             >
                               <Stethoscope className="w-4 h-4 ml-2" />
                               {startingVisitId === appt.id
-                                ? 'جاري الفتح...'
-                                : 'بدء الزيارة'}
+                                ? 'Starting...'
+                                : 'Start Visit'}
                             </Button>
                           ) : appt.status === 'Completed' ? (
                             <Button
@@ -224,12 +224,12 @@ export default function DoctorToday() {
                               className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
                             >
                               <History className="w-4 h-4 ml-2" />
-                              عرض السجل
+                              View Record
                               <ChevronLeft className="w-4 h-4 mr-1" />
                             </Button>
                           ) : (
                             <div className="text-xs text-gray-400 font-medium px-4 py-2 bg-gray-50 rounded-lg border">
-                              {appt.status === 'Cancelled' ? 'لا يمكن بدء زيارة لموعد ملغى' : 'بانتظار التأكيد'}
+                              {appt.status === 'Cancelled' ? 'Cannot start a cancelled appointment' : 'Awaiting confirmation'}
                             </div>
                           )}
                         </div>

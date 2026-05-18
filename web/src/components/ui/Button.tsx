@@ -26,10 +26,10 @@ export const Button = ({
   
   const variants = {
     primary: 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:-translate-y-0.5',
-    outline: 'border-2 border-gray-200 bg-white/80 text-gray-700 hover:bg-white hover:border-gray-300 hover:shadow-lg',
-    ghost: 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80',
+    outline: 'border-2 border-gray-200 bg-white/80 text-gray-700 hover:bg-white hover:border-gray-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:border-slate-700',
+    ghost: 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800/80',
     destructive: 'bg-gradient-to-r from-red-500 to-rose-600 text-white hover:from-red-600 hover:to-rose-700 shadow-lg shadow-red-500/30',
-    glass: 'bg-white/20 backdrop-blur-md border border-white/30 text-gray-700 hover:bg-white/30 hover:shadow-xl',
+    glass: 'bg-white/20 backdrop-blur-md border border-white/30 text-gray-700 hover:bg-white/30 hover:shadow-xl dark:bg-slate-950/20 dark:border-slate-800/40 dark:text-slate-200 dark:hover:bg-slate-900/30',
     success: 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 shadow-lg shadow-emerald-500/30',
   }
   

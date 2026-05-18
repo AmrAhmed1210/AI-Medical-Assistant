@@ -331,15 +331,15 @@ export default function DoctorPatientRecords() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-transparent p-6 text-slate-900 dark:text-slate-100">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-xl transition">
-          <ChevronLeft className="w-5 h-5 text-gray-600" />
+        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition">
+          <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-slate-400" />
         </button>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">{patient?.fullName || 'Patient'}</h1>
-          <p className="text-sm text-gray-500">{age ? `${age} years` : 'N/A'} / {patient?.gender || 'N/A'} / {medProfile?.bloodType || 'No blood type'}</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">{patient?.fullName || 'Patient'}</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{age ? `${age} years` : 'N/A'} / {patient?.gender || 'N/A'} / {medProfile?.bloodType || 'No blood type'}</p>
         </div>
       </div>
 
@@ -351,7 +351,7 @@ export default function DoctorPatientRecords() {
           return (
             <button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowForm(false) }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                active ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                active ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-350 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800/80'
               }`}>
               <Icon className="w-4 h-4" />
               {tab.label}
@@ -377,24 +377,23 @@ export default function DoctorPatientRecords() {
                   { l: 'Emergency Contact', v: medProfile?.emergencyContactName },
                   { l: 'Emergency Phone', v: medProfile?.emergencyContactPhone },
                 ].map((item, i) => (
-                  <div key={i} className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                    <p className="text-xs text-gray-400 font-semibold mb-1 uppercase tracking-wider">{item.l}</p>
-                    <p className="text-sm font-semibold text-gray-800">{item.v || '—'}</p>
+                  <div key={i} className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-xl border border-gray-100 dark:border-slate-800/80">
+                    <p className="text-xs text-gray-400 dark:text-slate-500 font-semibold mb-1 uppercase tracking-wider">{item.l}</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">{item.v || '—'}</p>
                   </div>
                 ))}
               </div>
 
               {/* AI REPORT SECTION */}
-              {/* AI REPORT SECTION */}
-              <div className="mt-8 border-t border-gray-100 pt-8">
+              <div className="mt-8 border-t border-gray-100 dark:border-slate-800/85 pt-8">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                      <Shield className="w-5 h-5 text-purple-600" />
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/20 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900">AI Health Insights</h3>
-                      <p className="text-xs text-gray-500">Automated analysis of patient history</p>
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">AI Health Insights</h3>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">Automated analysis of patient history</p>
                     </div>
                   </div>
                   <Button 
@@ -410,25 +409,17 @@ export default function DoctorPatientRecords() {
                 </div>
                 
                 {medProfile?.aiDiagnosisSummary ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="w-full">
                     {(() => {
                       try {
                         const report = JSON.parse(medProfile.aiDiagnosisSummary);
                         return (
-                          <>
-                            <div className="p-5 bg-purple-50/50 rounded-2xl border border-purple-100">
-                              <div className="flex items-center justify-between mb-3">
-                                <span className="text-[10px] font-bold text-purple-600 uppercase tracking-widest bg-white px-2 py-0.5 rounded-full border border-purple-100">English Report</span>
-                              </div>
-                              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{report.analysis_en}</p>
+                          <div className="p-6 bg-purple-50/50 dark:bg-purple-950/10 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-purple-100 dark:border-purple-900/30">AI Analysis Report</span>
                             </div>
-                            <div className="p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-right" dir="rtl">
-                              <div className="flex items-center justify-between mb-3 flex-row-reverse">
-                                <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest bg-white px-2 py-0.5 rounded-full border border-emerald-100">التقرير بالعربية</span>
-                              </div>
-                              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-tajawal">{report.analysis_ar}</p>
-                            </div>
-                          </>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{report.analysis_en}</p>
+                          </div>
                         );
                       } catch (e) {
                         return <p className="text-sm text-gray-500 italic">Report data is currently being processed or unavailable.</p>;

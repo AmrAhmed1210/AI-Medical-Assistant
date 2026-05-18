@@ -52,12 +52,12 @@ export default function DoctorPatients() {
   }
 
   const toDayLabel = (key: string) => {
-    if (key === 'unknown') return 'بدون تاريخ'
+    if (key === 'unknown') return 'Without Day'
     const d = new Date(`${key}T00:00:00`)
     const today = toDayKey(new Date().toISOString())
-    if (key === today) return 'اليوم'
-    
-    return d.toLocaleDateString('ar-EG', {
+    if (key === today) return 'Day'
+
+    return d.toLocaleDateString('en-US', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
@@ -125,48 +125,46 @@ export default function DoctorPatients() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-800">المرضى والمواعيد</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {patients.length} مريض مسجل · {appointments.length} موعد إجمالي
+          <h1 className="text-xl font-bold text-gray-800 dark:text-white">Patients and Appointments</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
+            {patients.length} Patient{patients.length !== 1 ? 's' : ''} registered, {appointments.length} Appointment{appointments.length !== 1 ? 's' : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setViewMode('byDay')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
-              viewMode === 'byDay'
-                ? 'bg-primary-600 text-white shadow-lg'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${viewMode === 'byDay'
+              ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/20'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+              }`}
           >
-            <Calendar className="w-3 h-3 inline ml-1" />
-            حسب اليوم
+            <Calendar className="w-3 h-3 inline mr-1" />
+            Day
           </button>
           <button
             onClick={() => setViewMode('allPatients')}
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
-              viewMode === 'allPatients'
-                ? 'bg-primary-600 text-white shadow-lg'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${viewMode === 'allPatients'
+              ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/20'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+              }`}
           >
-            <User className="w-3 h-3 inline ml-1" />
-            كل المرضى
+            <User className="w-3 h-3 inline mr-1" />
+            All Patients
           </button>
         </div>
       </div>
 
       {/* Search */}
       <Card>
-        <div className="p-4 border-b border-gray-100">
+        <div className="p-4 border-b border-gray-100 dark:border-slate-800">
           <div className="relative max-w-sm">
-            <Search size={15} className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400" />
+            <Search size={15} className="absolute top-1/2 -translate-y-1/2 left-3 text-gray-400 dark:text-slate-500" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="البحث باسم المريض..."
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/30"
+              placeholder="Search patient name..."
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/30 dark:bg-slate-900 dark:border-slate-800 dark:text-white"
             />
           </div>
         </div>
@@ -177,24 +175,23 @@ export default function DoctorPatients() {
             {groupedByDay.length === 0 ? (
               <div className="text-center py-16">
                 <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-gray-400 font-medium">لا توجد مواعيد حالياً</p>
+                <p className="text-gray-400 font-medium">No appointments scheduled</p>
               </div>
             ) : (
               groupedByDay.map((section) => (
                 <div key={section.key}>
                   {/* Day Header */}
                   <div className="flex items-center gap-3 mb-3">
-                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-                      section.isToday
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-200 text-gray-600'
-                    }`}>
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${section.isToday
+                      ? 'bg-primary-600 text-white shadow-md shadow-primary-500/10'
+                      : 'bg-gray-200 text-gray-600 dark:bg-slate-800 dark:text-slate-400'
+                      }`}>
                       {section.label}
                     </span>
-                    <span className="text-[10px] text-gray-400 font-medium">
+                    <span className="text-[10px] text-gray-400 dark:text-slate-500 font-medium">
                       {section.appointments.length} appointment{section.appointments.length > 1 ? 's' : ''}
                     </span>
-                    <div className="h-px bg-gray-100 flex-1" />
+                    <div className="h-px bg-gray-100 dark:bg-slate-800 flex-1" />
                   </div>
 
                   {/* Appointments in this day */}
@@ -202,9 +199,10 @@ export default function DoctorPatients() {
                     {section.appointments.map((appt) => (
                       <div
                         key={appt.id}
-                        className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:shadow-md cursor-pointer ${
-                          section.isToday ? 'bg-white border-gray-100' : 'bg-gray-50/50 border-gray-100'
-                        }`}
+                        className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:shadow-md cursor-pointer ${section.isToday 
+                          ? 'bg-white dark:bg-slate-900/60 border-gray-100 dark:border-slate-800/80' 
+                          : 'bg-gray-50/50 dark:bg-slate-950/20 border-gray-100 dark:border-slate-800/50'
+                          }`}
                         onClick={() => {
                           const p = patients.find(pt => String(pt.id) === String(appt.patientId))
                           if (p) setSelected(p)
@@ -217,9 +215,9 @@ export default function DoctorPatients() {
 
                         {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-800 truncate">{appt.patientName}</p>
+                          <p className="font-semibold text-gray-800 dark:text-slate-200 truncate">{appt.patientName}</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
                               <Clock className="w-3 h-3" />
                               {new Date(appt.scheduledAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -236,7 +234,7 @@ export default function DoctorPatients() {
                               e.stopPropagation()
                               navigate(`/doctor/patients/${appt.patientId}/records`)
                             }}
-                            className="p-2 rounded-xl bg-primary-50 text-primary-600 hover:bg-primary-100 transition"
+                            className="p-2 rounded-xl bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-950/30 dark:text-primary-400 dark:hover:bg-primary-900/40 transition"
                             title="View Records"
                           >
                             <FileText size={14} />
@@ -250,12 +248,12 @@ export default function DoctorPatients() {
                                 setMessageText('')
                               }
                             }}
-                            className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+                            className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-900/40 transition"
                             title="Send Message"
                           >
                             <MessageSquare size={14} />
                           </button>
-                          <ChevronRight size={14} className="text-gray-300" />
+                          <ChevronRight size={14} className="text-gray-300 dark:text-slate-600" />
                         </div>
                       </div>
                     ))}
@@ -267,17 +265,17 @@ export default function DoctorPatients() {
         ) : (
           /* ===== ALL PATIENTS VIEW ===== */
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-right" dir="rtl">
+            <table className="w-full text-sm text-left" dir="ltr">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">المريض</th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">العمر / النوع</th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">آخر زيارة</th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">المواعيد</th>
-                  <th className="px-4 py-3 text-right font-semibold text-gray-600">الإجراءات</th>
+                <tr className="bg-gray-50 border-b border-gray-100 dark:bg-slate-900/40 dark:border-slate-800/80">
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-slate-400">Patient name</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-slate-400">Gender and age</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-slate-400">Last visit</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-slate-400">Appointments</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-slate-400">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-slate-800/50">
                 {patients.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-16 text-center text-gray-400 text-sm">
@@ -287,41 +285,41 @@ export default function DoctorPatients() {
                 ) : patients.map((p) => {
                   const age = p.dateOfBirth
                     ? Math.floor(
-                        (new Date().getTime() - new Date(p.dateOfBirth).getTime()) /
-                        (365.25 * 24 * 60 * 60 * 1000)
-                      )
+                      (new Date().getTime() - new Date(p.dateOfBirth).getTime()) /
+                      (365.25 * 24 * 60 * 60 * 1000)
+                    )
                     : undefined
 
                   return (
                     <tr
                       key={p.id}
                       onClick={() => setSelected(p)}
-                      className="hover:bg-gray-50/80 cursor-pointer transition-colors"
+                      className="hover:bg-gray-50/80 dark:hover:bg-slate-900/40 cursor-pointer transition-colors"
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center overflow-hidden">
+                          <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center overflow-hidden">
                             {p.photoUrl ? (
                               <img src={p.photoUrl} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              <User size={14} className="text-green-600" />
+                              <User size={14} className="text-green-600 dark:text-green-400" />
                             )}
                           </div>
                           <div>
-                            <p className="font-medium text-gray-800">{p.fullName}</p>
+                            <p className="font-medium text-gray-800 dark:text-slate-200">{p.fullName}</p>
                             {p.phoneNumber && (
-                              <p className="text-xs text-gray-400">{p.phoneNumber}</p>
+                              <p className="text-xs text-gray-400 dark:text-slate-500">{p.phoneNumber}</p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">
+                      <td className="px-4 py-3 text-gray-600 dark:text-slate-300">
                         {age ? `${age} years` : '-'} / {p.gender || '-'}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">
+                      <td className="px-4 py-3 text-gray-600 dark:text-slate-300">
                         {p.lastVisit ? formatDate(p.lastVisit) : '-'}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{p.totalAppointments}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{p.totalAppointments}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <button
@@ -330,7 +328,7 @@ export default function DoctorPatients() {
                               e.stopPropagation()
                               navigate(`/doctor/patients/${p.id}/records`)
                             }}
-                            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700"
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 shadow-md shadow-primary-500/10"
                           >
                             Records
                           </button>
@@ -341,7 +339,7 @@ export default function DoctorPatients() {
                               setTargetPatient(p)
                               setMessageText('')
                             }}
-                            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-primary-200 text-primary-700 hover:bg-primary-50"
+                            className="px-3 py-1.5 text-xs font-medium rounded-lg border border-primary-200 text-primary-700 hover:bg-primary-50 dark:border-primary-800/80 dark:text-primary-400 dark:hover:bg-primary-950/20"
                           >
                             Message
                           </button>
@@ -392,9 +390,9 @@ export default function DoctorPatients() {
                 <p className="font-medium">
                   {selected.dateOfBirth
                     ? Math.floor(
-                        (new Date().getTime() - new Date(selected.dateOfBirth).getTime()) /
-                        (365.25 * 24 * 60 * 60 * 1000)
-                      ) + ' years'
+                      (new Date().getTime() - new Date(selected.dateOfBirth).getTime()) /
+                      (365.25 * 24 * 60 * 60 * 1000)
+                    ) + ' years'
                     : 'Not set'}
                 </p>
               </div>

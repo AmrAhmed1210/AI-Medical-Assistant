@@ -43,13 +43,13 @@ export default function AdminUsers() {
 
   if (connectionStatus === 'error' && users.length === 0 && !loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-8">
-        <Card className="max-w-lg w-full border-0 shadow-2xl bg-white/80 backdrop-blur-xl">
+      <div className="min-h-screen bg-slate-50 dark:bg-transparent flex items-center justify-center p-8">
+        <Card className="max-w-lg w-full border border-slate-100 dark:border-slate-800/80 shadow-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
           <CardContent className="p-10 text-center space-y-6">
             <div className="p-6 rounded-3xl bg-rose-50 border-2 border-rose-100 shadow-xl shadow-rose-500/10 inline-block font-black">
                <WifiOff size={48} className="text-rose-500" />
             </div>
-             <h3 className="text-3xl font-black text-slate-900">Connection Lost</h3>
+             <h3 className="text-3xl font-black text-slate-900 dark:text-white">Connection Lost</h3>
             <Button onClick={handleRetry} className="w-full h-14 rounded-2xl">Try Reconnecting</Button>
             <Button onClick={handleUseMockData} variant="outline" className="w-full h-14 rounded-2xl border-2">Use Demo Data</Button>
           </CardContent>
@@ -88,16 +88,16 @@ export default function AdminUsers() {
   }
 
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} className="min-h-screen bg-[#f1f5f9] p-4 md:p-10 space-y-10">
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} className="min-h-screen bg-slate-50/50 dark:bg-transparent p-4 md:p-10 space-y-10">
       
       {/* Header with Glassmorphism */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-             <div className="p-3 bg-white rounded-2xl shadow-lg text-blue-600"><Layers size={24} /></div>
-             <h1 className="text-4xl font-black text-slate-900 tracking-tighter">User Management</h1>
+             <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl shadow-lg text-blue-600"><Layers size={24} /></div>
+             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">User Management</h1>
           </div>
-          <p className="text-slate-500 font-bold ml-14">Manage all doctors, patients and admin accounts in one place</p>
+          <p className="text-slate-500 dark:text-slate-400 font-bold ml-14">Manage all doctors, patients and admin accounts in one place</p>
         </div>
         <div className="flex gap-4">
           <Button variant="primary" onClick={() => setShowAddModal(true)} className="h-14 px-8 rounded-2xl gap-3 shadow-2xl shadow-blue-500/40 text-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
@@ -110,8 +110,8 @@ export default function AdminUsers() {
         
         {/* SIDEBAR FILTERS: Vertical Stacking */}
         <div className="xl:col-span-3 space-y-8">
-          <div className="bg-white/60 backdrop-blur-xl border border-white p-2 rounded-[32px] shadow-xl">
-             <div className="p-6 pb-2"><h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Filter by Role</h3></div>
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white dark:border-slate-800/80 p-2 rounded-[32px] shadow-xl">
+             <div className="p-6 pb-2"><h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Filter by Role</h3></div>
              <div className="space-y-1.5 p-2">
                 {(['', 'Admin', 'Doctor', 'Patient'] as const).map((role) => {
                   const labelMap: Record<string, string> = {
@@ -129,7 +129,7 @@ export default function AdminUsers() {
                     className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all duration-300 font-black text-sm ${
                       roleFilter === role 
                       ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30' 
-                      : 'text-slate-500 hover:bg-white hover:text-slate-800'
+                      : 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white'
                     }`}
                   >
                     <div className="flex items-center gap-4">
@@ -144,7 +144,7 @@ export default function AdminUsers() {
           </div>
 
           {/* Quick Stats Block */}
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-slate-950 border border-slate-700/20 dark:border-slate-800/50 rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden">
              <div className="relative z-10 space-y-4">
                 <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Total Registered Users</p>
                 <h4 className="text-5xl font-black tracking-tighter">{total.toLocaleString()}</h4>
@@ -159,16 +159,16 @@ export default function AdminUsers() {
 
         {/* MAIN CONTENT AREA */}
         <div className="xl:col-span-9 space-y-8">
-          <Card className="border-0 shadow-2xl rounded-[40px] overflow-hidden bg-white/90 backdrop-blur-2xl">
+          <Card className="border border-slate-100 dark:border-slate-800/85 shadow-2xl rounded-[40px] overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl">
             {/* Horizontal Search Only */}
-            <div className="p-8 border-b bg-white/40 flex items-center justify-between gap-6">
+            <div className="p-8 border-b dark:border-slate-800/80 bg-white/40 dark:bg-slate-900/40 flex items-center justify-between gap-6">
               <div className="relative flex-1">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={22} />
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-500" size={22} />
                 <Input 
                   value={search}
                   onChange={(e) => handleSearch(e.target.value)}
                   placeholder="Search users by name or email..."
-                  className="h-16 pl-16 pr-6 bg-slate-50 border-0 focus:ring-blue-500/20 text-lg rounded-3xl"
+                  className="h-16 pl-16 pr-6 bg-slate-50 dark:bg-slate-950 border-0 focus:ring-blue-500/20 text-slate-800 dark:text-white text-lg rounded-3xl"
                 />
               </div>
               <Button variant="outline" onClick={handleRetry} className="h-16 w-16 rounded-3xl p-0 shrink-0">
@@ -189,7 +189,7 @@ export default function AdminUsers() {
             </CardContent>
 
             {!loading && total > PAGE_SIZE && (
-              <div className="p-8 bg-slate-50 border-t flex justify-end">
+              <div className="p-8 bg-slate-50 dark:bg-slate-950/40 border-t dark:border-slate-800/85 flex justify-end">
                 <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
               </div>
             )}

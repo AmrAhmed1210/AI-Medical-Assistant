@@ -29,7 +29,7 @@ export function PageLoader() {
     <div className="flex items-center justify-center h-64">
       <div className="flex flex-col items-center gap-3">
         <LoadingSpinner size="xl" />
-        <p className="text-sm text-gray-500">جاري التحميل...</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">Loading...</p>
       </div>
     </div>
   )
@@ -37,13 +37,13 @@ export function PageLoader() {
 
 export function FullPageLoader() {
   return (
-    <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-white dark:bg-slate-950 flex items-center justify-center z-50">
       <div className="flex flex-col items-center gap-4">
         <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center shadow-lg">
           <span className="text-white text-2xl font-bold">M</span>
         </div>
         <LoadingSpinner size="xl" />
-        <p className="text-gray-500 text-sm">جاري تحميل MedBook...</p>
+        <p className="text-gray-500 dark:text-slate-400 text-sm">Loading MedBook...</p>
       </div>
     </div>
   )

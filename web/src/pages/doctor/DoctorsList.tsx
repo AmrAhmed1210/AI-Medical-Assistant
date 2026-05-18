@@ -53,7 +53,7 @@ export default function DoctorsList() {
       setDoctors(transformedDoctors)
     } catch (error: any) {
       console.error('Error fetching doctors:', error)
-      toast.error('فشل تحميل قائمة الأطباء')
+      toast.error('Failed to load doctors list')
     } finally {
       setIsLoading(false)
     }
@@ -69,7 +69,7 @@ export default function DoctorsList() {
   )
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6" dir="rtl">
+    <div className="min-h-screen bg-slate-50 p-6" dir="ltr">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -77,8 +77,8 @@ export default function DoctorsList() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">قائمة الأطباء</h1>
-          <p className="text-slate-600">ابحث عن الطبيب المناسب لك</p>
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">Our Doctors</h1>
+          <p className="text-slate-600">Find the right doctor for you</p>
         </motion.div>
 
         {/* Search and Filters */}
@@ -94,7 +94,7 @@ export default function DoctorsList() {
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
               <input
                 type="text"
-                placeholder="ابحث عن طبيب بالاسم أو التخصص..."
+                placeholder="Search by name or specialty..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pr-12 pl-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
@@ -108,7 +108,7 @@ export default function DoctorsList() {
                 onChange={(e) => setSelectedSpecialty(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               >
-                <option value="">جميع التخصصات</option>
+                <option value="">All Specialties</option>
                 {specialties.map(specialty => (
                   <option key={specialty} value={specialty}>{specialty}</option>
                 ))}
@@ -129,8 +129,8 @@ export default function DoctorsList() {
             className="text-center py-16"
           >
             <HeartPulse className="mx-auto text-slate-300 mb-4" size={48} />
-            <h3 className="text-xl font-semibold text-slate-600 mb-2">لا يوجد أطباء</h3>
-            <p className="text-slate-500">لم يتم العثور على أطباء مطابقين لبحثك</p>
+            <h3 className="text-xl font-semibold text-slate-600 mb-2">No doctors found</h3>
+            <p className="text-slate-500">No doctors matched your search criteria</p>
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -166,13 +166,13 @@ export default function DoctorsList() {
                   {doctor.yearsExperience && (
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Calendar size={16} />
-                      <span>{doctor.yearsExperience} سنوات خبرة</span>
+                      <span>{doctor.yearsExperience} yrs experience</span>
                     </div>
                   )}
                   {doctor.consultFee && (
                     <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <span className="font-medium text-emerald-600">{doctor.consultFee} ر.س</span>
-                      <span>رسوم الاستشارة</span>
+                      <span className="font-medium text-emerald-600">${doctor.consultFee}</span>
+                      <span>consultation fee</span>
                     </div>
                   )}
                   {doctor.bio && (
@@ -183,13 +183,13 @@ export default function DoctorsList() {
                 {/* Actions */}
                 <div className="flex gap-2">
                   <button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-xl text-sm font-medium transition-colors">
-                    حجز موعد
+                    Book Appointment
                   </button>
                   <button 
                     onClick={() => navigate(`/doctor/${doctor.id}`)}
                     className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 py-2 px-4 rounded-xl text-sm font-medium transition-colors"
                   >
-                    التفاصيل
+                    View Details
                   </button>
                 </div>
               </motion.div>

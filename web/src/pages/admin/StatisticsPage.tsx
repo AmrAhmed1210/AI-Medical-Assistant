@@ -71,28 +71,28 @@ export default function AdminStatistics() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-[#f1f5f9] p-4 md:p-10 space-y-10"
+      className="min-h-screen bg-slate-50/50 dark:bg-transparent p-4 md:p-10 space-y-10 text-slate-900 dark:text-slate-100"
     >
       {/* Header Segment */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-             <div className="p-3 bg-white rounded-2xl shadow-lg text-blue-600"><BarChart3 size={24} /></div>
-             <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Statistics / الإحصائيات والتقارير</h1>
+             <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl shadow-lg text-blue-600 dark:text-blue-400"><BarChart3 size={24} /></div>
+             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">System Analytics & Statistics</h1>
              {usingMock && (
-               <div className="ml-4 px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-lg border border-amber-200">
-                 ⚠️ Demo Data / بيانات تجريبية
+               <div className="ml-4 px-3 py-1 bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-400 text-xs font-bold rounded-lg border border-amber-200 dark:border-amber-900/50">
+                 ⚠️ Demo Data
                </div>
              )}
           </div>
-          <p className="text-slate-500 font-bold ml-14 flex items-center gap-2">
+          <p className="text-slate-500 dark:text-slate-400 font-bold ml-14 flex items-center gap-2">
              <Sparkles size={16} className="text-amber-500" />
-             AI-driven performance metrics and behavioral analysis / تحليلات ذكية لأداء النظام وسلوك المستخدمين
+             AI-driven performance metrics and system behavioral analysis
           </p>
         </div>
-        <div className="flex items-center gap-4 bg-white/50 backdrop-blur-md px-6 py-3 rounded-2xl border border-white">
+        <div className="flex items-center gap-4 bg-white/50 dark:bg-slate-900/40 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 dark:border-slate-800">
            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-           <span className="text-xs font-black uppercase text-slate-600">Real-time Stream Active / البث المباشر نشط</span>
+           <span className="text-xs font-black uppercase text-slate-600 dark:text-slate-400">Real-time Stream Active</span>
         </div>
       </div>
 
@@ -104,9 +104,9 @@ export default function AdminStatistics() {
              <div className="p-6 pb-2"><h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Analysis Matrix</h3></div>
              <div className="space-y-1.5 p-2">
                 {[
-                  { id: 'overview', label: 'Overview / نظرة عامة', icon: Target },
-                  { id: 'traffic', label: 'Session Traffic / حركة الجلسات', icon: Activity },
-                  { id: 'urgency', label: 'Case Distribution / توزيع الحالات', icon: Zap },
+                  { id: 'overview', label: 'Overview', icon: Target },
+                  { id: 'traffic', label: 'Session Traffic', icon: Activity },
+                  { id: 'urgency', label: 'Case Distribution', icon: Zap },
                 ].map(tab => (
                   <motion.button
                     key={tab.id}
@@ -149,21 +149,21 @@ export default function AdminStatistics() {
           {/* Top Quick Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { label: 'Weekly Sessions / جلسات الأسبوع', value: stats?.sessionsThisWeek ?? 0, delta: '+12%', icon: Activity, color: 'text-blue-600' },
-              { label: 'Registered Doctors / الأطباء المسجلون', value: stats?.totalDoctors ?? 0, delta: '+4', icon: Target, color: 'text-emerald-600' },
-              { label: 'Total Patients / إجمالي المرضى', value: stats?.totalPatients ?? 0, delta: '+84', icon: Users, color: 'text-indigo-600' },
+              { label: 'Weekly Sessions', value: stats?.sessionsThisWeek ?? 0, delta: '+12%', icon: Activity, color: 'text-blue-600 dark:text-blue-400' },
+              { label: 'Registered Doctors', value: stats?.totalDoctors ?? 0, delta: '+4', icon: Target, color: 'text-emerald-600 dark:text-emerald-400' },
+              { label: 'Total Patients', value: stats?.totalPatients ?? 0, delta: '+84', icon: Users, color: 'text-indigo-600 dark:text-indigo-400' },
             ].map((m, idx) => (
               <motion.div key={m.label} initial={{opacity:0, y:20}} animate={{opacity:1, y:0}} transition={{delay: idx * 0.1}}>
-                <Card className="border-0 shadow-2xl rounded-[32px] bg-white/80 overflow-hidden group">
+                <Card className="border-0 shadow-2xl rounded-[32px] overflow-hidden group">
                   <div className="p-6 flex items-start justify-between">
                      <div className="space-y-3">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{m.label}</p>
-                        <h4 className="text-3xl font-black text-slate-800">{m.value.toLocaleString()}</h4>
-                        <div className="flex items-center gap-1 text-emerald-500 font-bold text-xs bg-emerald-50 w-fit px-2 py-0.5 rounded-lg">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">{m.label}</p>
+                        <h4 className="text-3xl font-black text-slate-800 dark:text-white">{m.value.toLocaleString()}</h4>
+                        <div className="flex items-center gap-1 text-emerald-500 font-bold text-xs bg-emerald-50 dark:bg-emerald-950/20 w-fit px-2 py-0.5 rounded-lg">
                            <ArrowUpRight size={14} /> {m.delta}
                         </div>
                      </div>
-                     <div className={`p-4 rounded-2xl bg-slate-50 ${m.color} group-hover:scale-110 transition-transform`}>
+                     <div className={`p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 ${m.color} group-hover:scale-110 transition-transform`}>
                         <m.icon size={22} />
                      </div>
                   </div>
@@ -182,11 +182,11 @@ export default function AdminStatistics() {
               transition={{ duration: 0.4 }}
             >
               {activeTab === 'overview' && (
-                <Card className="border-0 shadow-2xl rounded-[40px] p-8 bg-white overflow-hidden">
+                <Card className="border-0 shadow-2xl rounded-[40px] p-8 overflow-hidden">
                    <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
-                         <h3 className="text-2xl font-black text-slate-800">Growth Chart / منحنى النمو</h3>
-                         <p className="text-slate-400 font-medium">Monthly acquisition of new system entities / الاستحواذ الشهري على كيانات النظام الجديدة</p>
+                         <h3 className="text-2xl font-black text-slate-800 dark:text-white">Growth Chart</h3>
+                         <p className="text-slate-400 dark:text-slate-500 font-medium">Monthly acquisition of new system entities</p>
                       </div>
                       <div className="flex items-center gap-4">
                          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
@@ -213,10 +213,10 @@ export default function AdminStatistics() {
               )}
 
               {activeTab === 'traffic' && (
-                <Card className="border-0 shadow-2xl rounded-[40px] p-8 bg-white overflow-hidden">
+                <Card className="border-0 shadow-2xl rounded-[40px] p-8 overflow-hidden">
                    <div className="mb-10">
-                      <h3 className="text-2xl font-black text-slate-800">Daily Sessions / الجلسات اليومية</h3>
-                      <p className="text-slate-400 font-medium">Operational load across the weekly spectrum / العبء التشغيلي عبر طيف الأسبوع</p>
+                      <h3 className="text-2xl font-black text-slate-800 dark:text-white">Daily Sessions</h3>
+                      <p className="text-slate-400 dark:text-slate-500 font-medium">Operational load across the weekly spectrum</p>
                    </div>
                    <ResponsiveContainer width="100%" height={380}>
                       <BarChart data={stats?.sessionsPerDay ?? []}>
@@ -232,7 +232,7 @@ export default function AdminStatistics() {
 
               {activeTab === 'urgency' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                   <Card className="lg:col-span-7 border-0 shadow-2xl rounded-[40px] p-8 bg-white flex flex-col items-center justify-center">
+                   <Card className="lg:col-span-7 border-0 shadow-2xl rounded-[40px] p-8 flex flex-col items-center justify-center">
                       <ResponsiveContainer width="100%" height={380}>
                          <PieChart>
                            <Pie data={urgencyData} cx="50%" cy="50%" innerRadius={100} outerRadius={140} paddingAngle={8} dataKey="value" stroke="none">
@@ -244,12 +244,12 @@ export default function AdminStatistics() {
                    </Card>
                    <div className="lg:col-span-5 space-y-4">
                       {urgencyData.map((item) => (
-                        <Card key={item.name} className="border-0 shadow-xl rounded-3xl p-6 bg-white flex items-center justify-between group hover:bg-blue-600 transition-all duration-500">
+                        <Card key={item.name} className="border-0 shadow-xl rounded-3xl p-6 flex items-center justify-between group hover:bg-blue-600 transition-all duration-500">
                            <div className="flex items-center gap-4">
                               <div className={`w-3 h-3 rounded-full ${URGENCY_CONFIG[item.name as keyof typeof URGENCY_CONFIG]?.bg || 'bg-slate-500'}`} />
                               <div>
-                                 <p className="text-sm font-black uppercase text-slate-400 group-hover:text-blue-200 transition-colors tracking-widest">{item.name}</p>
-                                 <p className="text-2xl font-black text-slate-800 group-hover:text-white transition-colors">{item.value}% Prevalence</p>
+                                 <p className="text-sm font-black uppercase text-slate-400 dark:text-slate-500 group-hover:text-blue-200 transition-colors tracking-widest">{item.name}</p>
+                                 <p className="text-2xl font-black text-slate-800 dark:text-white group-hover:text-white transition-colors">{item.value}% Prevalence</p>
                               </div>
                            </div>
                            <div className="text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity">
