@@ -12,7 +12,7 @@ export function formatDate(dateStr: string, fmt = 'dd/MM/yyyy') {
   try {
     const parsed = parseDateSafe(dateStr)
     if (!parsed) return (dateStr || '').replace(/\s+/g, ' ').trim()
-    return format(parsed, fmt)
+    return format(parsed, fmt, { locale: ar })
   } catch {
     return dateStr
   }
@@ -22,7 +22,7 @@ export function formatDateTime(dateStr: string) {
   try {
     const parsed = parseDateSafe(dateStr)
     if (!parsed) return (dateStr || '').replace(/\s+/g, ' ').trim()
-    return format(parsed, 'dd/MM/yyyy - hh:mm a')
+    return format(parsed, 'dd/MM/yyyy - hh:mm a', { locale: ar })
   } catch {
     return dateStr
   }
@@ -32,7 +32,7 @@ export function formatTimeAgo(dateStr: string) {
   try {
     const parsed = parseDateSafe(dateStr)
     if (!parsed) return dateStr
-    return formatDistanceToNow(parsed, { addSuffix: true })
+    return formatDistanceToNow(parsed, { addSuffix: true, locale: ar })
   } catch {
     return dateStr
   }
@@ -57,9 +57,9 @@ function parseDateSafe(input: string): Date | null {
 }
 
 export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('ar-EG', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'EGP',
   }).format(amount)
 }
 

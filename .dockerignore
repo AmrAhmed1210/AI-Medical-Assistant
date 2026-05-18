@@ -1,0 +1,41 @@
+# Ignore git and IDE configurations
+.git/
+.vs/
+.vscode/
+.idea/
+.cursor/
+
+# Ignore frontend node_modules and builds
+node_modules/
+web/node_modules/
+web/dist/
+web/build/
+web/playwright-report/
+
+# Ignore mobile app code (Expo/React Native)
+DoctorApp/
+DoctorApp/.expo/
+DoctorApp/node_modules/
+
+# Ignore Python and virtual environments
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore local AI model weights and large datasets
+AI-Medical-Assistant/
+medical_knowledge_base.csv
+patient_service.py
+test_api.py
+trocr_model/
+*.zip
+*.pt
+
+# Ignore other non-essential files
+*.md
+*.sql
+docker-compose.yml
