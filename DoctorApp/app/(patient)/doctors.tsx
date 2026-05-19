@@ -11,6 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../constants/colors";
 import DoctorCard from "@/components/DoctorCard";
 import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
 import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor } from "../../services/doctorService";
 import { onDoctorCreated, onDoctorUpdated, startSignalRConnection } from "../../services/signalr";
 
@@ -20,6 +21,7 @@ const STATUS_BAR_HEIGHT = Platform.OS === "android" ? (StatusBar.currentHeight ?
 
 export default function DoctorsScreen() {
   const params = useLocalSearchParams<{ specialty?: string }>();
+  const { theme, isDark, colors } = useTheme();
   const { tr, isRTL } = useLanguage();
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -188,9 +190,9 @@ export default function DoctorsScreen() {
   const displayedDocs = filtered.slice(0, currentPage * docsPerPage);
   const hasMore = displayedDocs.length < filtered.length;
 
-  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
+  if (loading) return <View style={[styles.center, { backgroundColor: colors.background }]}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
   if (error) return (
-    <View style={styles.center}>
+    <View style={[styles.center, { backgroundColor: colors.background }]}>
       <Ionicons name="cloud-offline-outline" size={48} color="#e53935" />
       <Text style={styles.errorTxt}>{error}</Text>
       <TouchableOpacity style={styles.retryBtn} onPress={fetchDoctors}>
@@ -200,8 +202,8 @@ export default function DoctorsScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
 
       {/* ANIMATED HEADER: Luxury Emerald */}
       <Animated.View style={[styles.magicHeader, { 
@@ -285,10 +287,10 @@ export default function DoctorsScreen() {
           {SPECIALTIES.map((s) => (
             <TouchableOpacity
               key={s}
-              style={[styles.chip, activeSpec === s && styles.chipActive]}
+              style={[styles.chip, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", borderColor: colors.border }, activeSpec === s && styles.chipActive]}
               onPress={() => setActiveSpec(s)}
             >
-              <Text style={[styles.chipTxt, activeSpec === s && styles.chipTxtActive]}>{s}</Text>
+              <Text style={[styles.chipTxt, { color: colors.textMuted }, activeSpec === s && styles.chipTxtActive]}>{s}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -349,8 +351,8 @@ export default function DoctorsScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Ionicons name="search-outline" size={48} color="#DDD" />
-            <Text style={styles.emptyTxt}>{tr("no_doctors")}</Text>
+            <Ionicons name="search-outline" size={48} color={isDark ? "#4B5563" : "#DDD"} />
+            <Text style={[styles.emptyTxt, { color: colors.text }]}>{tr("no_doctors")}</Text>
             <Text style={styles.emptySubTxt}>{tr("try_different")}</Text>
           </View>
         }

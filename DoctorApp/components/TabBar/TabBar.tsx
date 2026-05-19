@@ -38,6 +38,7 @@ import * as Haptics from "expo-haptics";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import type { EdgeInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
+import { useTheme } from "../../context/ThemeContext";
 import { Home, Search, MessageSquare, Bot, User } from "lucide-react-native";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -74,8 +75,12 @@ const BADGE_COLOR = "#EF4444";            // red-500 for urgency contrast
 // ─── Individual Tab Item ──────────────────────────────────────────────────────
 
 const TabItem = React.memo(({ tab, isFocused, onPress }: TabItemProps) => {
+  const { isDark, colors } = useTheme();
   const scale = useSharedValue(1);
   const iconY = useSharedValue(0);
+
+  const ACTIVE_COLOR = COLORS.primary;
+  const INACTIVE_COLOR = isDark ? "#64748B" : "#94A3B8";
 
   // Animate icon scale + tiny upward nudge when focused
   const animatedIconStyle = useAnimatedStyle(() => ({
@@ -159,9 +164,8 @@ const TabItem = React.memo(({ tab, isFocused, onPress }: TabItemProps) => {
             strokeWidth={isFocused ? 2.5 : 1.8}
           />
 
-          {/* Notification badge */}
           {badgeVisible && (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { borderColor: colors.surface }]}>
               <Text style={styles.badgeText} numberOfLines={1}>
                 {(tab.badge ?? 0) > 99 ? "99+" : tab.badge}
               </Text>
@@ -174,7 +178,7 @@ const TabItem = React.memo(({ tab, isFocused, onPress }: TabItemProps) => {
       <Animated.Text
         style={[
           styles.label,
-          isFocused ? styles.labelActive : styles.labelInactive,
+          isFocused ? styles.labelActive : { color: INACTIVE_COLOR, fontWeight: "500" },
           animatedLabelStyle,
         ]}
         numberOfLines={1}
@@ -206,6 +210,7 @@ export function CustomTabBar({
   insets,
   unreadCount,
 }: CustomTabBarProps) {
+  const { colors, isDark } = useTheme();
   const tabs: TabConfig[] = TAB_CONFIGS.map((t) => ({
     ...t,
     badge: t.name === "messages" ? unreadCount : undefined,
@@ -215,11 +220,12 @@ export function CustomTabBar({
     <View
       style={[
         styles.container,
+        { backgroundColor: colors.surface },
         { paddingBottom: Math.max(insets.bottom, 8) },
       ]}
     >
       {/* Subtle top shadow line */}
-      <View style={styles.topLine} />
+      <View style={[styles.topLine, { backgroundColor: colors.border }]} />
 
       <View style={styles.inner}>
         {tabs.map((tab) => {

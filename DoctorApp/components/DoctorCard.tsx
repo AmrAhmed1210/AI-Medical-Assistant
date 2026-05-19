@@ -9,6 +9,7 @@ const ClockIcon = Clock as any;
 const MessageCircleIcon = MessageCircle as any;
 import { LinearGradient } from "expo-linear-gradient";
 import { checkIfFollowed, setFollowed } from "../services/followService";
+import { useTheme } from "../context/ThemeContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -41,6 +42,7 @@ interface Doctor {
 
 export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doctor; highlight?: boolean; compact?: boolean }) {
   const router = useRouter();
+  const { theme, isDark, colors } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
   const [message, setMessage] = useState("");
   const [showBadge, setShowBadge] = useState(false);
@@ -133,13 +135,13 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
         elevation: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [4, 12] }),
       }]}>
         <TouchableOpacity
-          style={[styles.card, highlight && styles.cardHighlightBorder]}
+          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }, highlight && styles.cardHighlightBorder]}
           onPress={goToDetails}
           activeOpacity={1}
           onPressIn={onPressIn}
           onPressOut={onPressOut}
         >
-          <LinearGradient colors={["#fff", "#F8FAFC"]} style={styles.cardGradient}>
+          <LinearGradient colors={isDark ? ["#1E293B", "#0F172A"] : ["#fff", "#F8FAFC"]} style={styles.cardGradient}>
             {/* Verified Strip */}
             <View style={styles.verifiedStrip}>
                <ShieldCheck size={10} color="#1E9E84" fill="#E6F4F1" />
@@ -161,7 +163,7 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
 
               <View style={styles.infoCol}>
                 <View style={styles.nameRow}>
-                  <Text style={styles.name} numberOfLines={1}>{doctor.name}</Text>
+                  <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>{doctor.name}</Text>
                 </View>
                 <Text style={styles.specialty}>{doctor.specialty}</Text>
                 <View style={styles.addressMiniRow}>
@@ -208,11 +210,11 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
 
             <View style={styles.actionRow}>
               <TouchableOpacity
-                style={styles.actionBtnSecondary}
+                style={[styles.actionBtnSecondary, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border }]}
                 onPress={goToDetails}
               >
-                <Text style={styles.actionBtnTextSecondary}>Profile</Text>
-                <ChevronRight size={14} color="#64748B" />
+                <Text style={[styles.actionBtnTextSecondary, { color: colors.textMuted }]}>Profile</Text>
+                <ChevronRight size={14} color={colors.textMuted} />
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -246,7 +248,7 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
       {/* Modal remains same logic, just minor styling updates if needed */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={styles.overlay}>
-          <View style={styles.sheet}>
+          <View style={[styles.sheet, { backgroundColor: colors.surface }]}>
             <View style={styles.sheetHeaderRow}>
               {doctor.photoUrl || doctor.imageUrl ? (
                 <Image source={{ uri: doctor.photoUrl || doctor.imageUrl }} style={styles.sheetAvatar} />
@@ -254,17 +256,17 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
                 <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} style={styles.sheetAvatar} />
               )}
               <View style={{ flex: 1 }}>
-                <Text style={styles.sheetTitle}>Medical Consultation</Text>
-                <Text style={styles.sheetSub}>{doctor.name} · {doctor.specialty}</Text>
+                <Text style={[styles.sheetTitle, { color: colors.text }]}>Medical Consultation</Text>
+                <Text style={[styles.sheetSub, { color: colors.textMuted }]}>{doctor.name} · {doctor.specialty}</Text>
               </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
-                <Ionicons name="close" size={20} color="#64748B" />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={[styles.closeBtn, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border }]}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]}
               placeholder="Describe your symptoms..."
-              placeholderTextColor="#BBB"
+              placeholderTextColor={isDark ? "#64748B" : "#BBB"}
               value={message}
               onChangeText={setMessage}
               multiline

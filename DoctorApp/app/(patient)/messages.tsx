@@ -18,6 +18,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { COLORS } from "../../constants/colors";
+import { useTheme } from "../../context/ThemeContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { getDoctorById } from "../../services/doctorService";
 import { getMyProfile, Profile } from "../../services/profileService";
 import * as ImagePicker from 'expo-image-picker';
@@ -61,6 +63,8 @@ const getSessionDate = (session: SessionItem): string => {
 };
 
 export default function MessagesScreen() {
+  const { theme, isDark, colors } = useTheme();
+  const { tr, isRTL } = useLanguage();
   const params = useLocalSearchParams<{
     doctorId?: string | string[];
     doctorName?: string | string[];
@@ -151,9 +155,9 @@ export default function MessagesScreen() {
   const handledDoctorIdRef = useRef<number | null>(null);
 
   const getDisplayDoctorData = useCallback(
-    (session: SessionItem): { name: string, photoUrl?: string } => {
+    (session: SessionItem): { name: string, photoUrl?: any } => {
       if (session.type === 'SupportChat' || session.title?.includes('Support')) {
-        return { name: "الشكاوي والدعم", photoUrl: "https://cdn-icons-png.flaticon.com/512/10664/10664052.png" };
+        return { name: "الشكاوي والدعم", photoUrl: require("../../assets/images/support_avatar.png") };
       }
       const direct = doctorDataBySession[session.id];
       if (direct) return direct;
@@ -445,8 +449,8 @@ export default function MessagesScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={isDark ? colors.background : "#fff"} />
 
       <View style={styles.magicHeader}>
         <LinearGradient colors={["#064E3B", "#059669"]} style={StyleSheet.absoluteFill}>
@@ -486,9 +490,9 @@ export default function MessagesScreen() {
           </View>
         ) : filteredSessions.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <Ionicons name="chatbubble-ellipses-outline" size={34} color="#9CA3AF" />
-            <Text style={styles.emptyTitle}>No conversations yet</Text>
-            <Text style={styles.emptySub}>Start a conversation from doctor profile.</Text>
+            <Ionicons name="chatbubble-ellipses-outline" size={34} color={isDark ? "#4B5563" : "#9CA3AF"} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No conversations yet</Text>
+            <Text style={[styles.emptySub, { color: colors.textMuted }]}>Start a conversation from doctor profile.</Text>
           </View>
         ) : (
           filteredSessions.map((session) => {
@@ -500,7 +504,7 @@ export default function MessagesScreen() {
             return (
               <TouchableOpacity
                 key={session.id}
-                style={styles.convoItem}
+                style={[styles.convoItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 activeOpacity={0.7}
                 onPress={() => {
                   handleOpenConversation(session).catch(() => undefined);
@@ -508,8 +512,8 @@ export default function MessagesScreen() {
               >
                 <View style={styles.avatarContainer}>
                   <View style={styles.avatarFallback}>
-                    {docData.photoUrl && !docData.photoUrl.includes('default') ? (
-                      <Image source={{ uri: docData.photoUrl }} style={styles.avatarImg} />
+                    {docData.photoUrl ? (
+                      <Image source={typeof docData.photoUrl === 'string' ? { uri: docData.photoUrl } : docData.photoUrl} style={styles.avatarImg} />
                     ) : (
                       <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} style={styles.avatarImg} />
                     )}
@@ -519,11 +523,11 @@ export default function MessagesScreen() {
 
                 <View style={styles.convoDetails}>
                   <View style={styles.convoHeader}>
-                    <Text style={styles.doctorName} numberOfLines={1}>{docData.name}</Text>
+                    <Text style={[styles.doctorName, { color: colors.text }]} numberOfLines={1}>{docData.name}</Text>
                     <Text style={styles.timeText}>{formatTimeAgo(lastAt)}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text style={styles.messageText} numberOfLines={1}>
+                    <Text style={[styles.messageText, { color: colors.textMuted }]} numberOfLines={1}>
                       {preview}
                     </Text>
                     {unread > 0 && (
@@ -541,15 +545,15 @@ export default function MessagesScreen() {
 
       <Modal visible={chatVisible} animationType="slide" onRequestClose={() => setChatVisible(false)}>
         <KeyboardAvoidingView
-          style={styles.chatContainer}
+          style={[styles.chatContainer, { backgroundColor: colors.background }]}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View style={styles.chatHeader}>
+          <View style={[styles.chatHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={() => setChatVisible(false)} style={styles.backBtn}>
-              <Ionicons name="chevron-back" size={22} color="#111827" />
+              <Ionicons name="chevron-back" size={22} color={colors.text} />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
-              <Text style={styles.chatTitle}>
+              <Text style={[styles.chatTitle, { color: colors.text }]}>
                 {selectedSession
                   ? getDisplayDoctorData(selectedSession).name
                   : targetDoctorName || "Conversation"}
@@ -569,15 +573,15 @@ export default function MessagesScreen() {
             maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
           >
             {(selectedSession?.messages || []).map((msg) => {
-              const isMine = msg.role?.toLowerCase() !== "doctor";
+              const isMine = msg.role?.toLowerCase() === "user" || msg.role?.toLowerCase() === "patient";
               const senderPhoto = isMine ? profile?.photoUrl : msg.senderPhotoUrl || getDisplayDoctorData(selectedSession!).photoUrl;
 
               return (
                 <View key={String(msg.id)} style={[styles.bubbleRow, isMine ? styles.bubbleRowMine : styles.bubbleRowDoctor]}>
                   {!isMine && (
                     <View style={styles.bubbleAvatar}>
-                      {senderPhoto && !senderPhoto.includes('default') ? (
-                        <Image source={{ uri: senderPhoto }} style={styles.bubbleAvatarImg} />
+                      {senderPhoto ? (
+                        <Image source={typeof senderPhoto === 'string' ? { uri: senderPhoto } : senderPhoto} style={styles.bubbleAvatarImg} />
                       ) : (
                         <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} style={styles.bubbleAvatarImg} />
                       )}
@@ -585,10 +589,10 @@ export default function MessagesScreen() {
                   )}
 
                   <LinearGradient
-                    colors={isMine ? [COLORS.primary, "#047857"] : ["#fff", "#F8FAFC"]}
-                    style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleDoctor]}
+                    colors={isMine ? [COLORS.primary, "#047857"] : (isDark ? ["#1E293B", "#0F172A"] : ["#fff", "#F8FAFC"])}
+                    style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleDoctor, !isMine && { borderColor: colors.border }]}
                   >
-                    <Text style={[styles.senderName, isMine ? styles.senderNameMine : styles.senderNameDoctor]}>
+                    <Text style={[styles.senderName, isMine ? styles.senderNameMine : [styles.senderNameDoctor, { color: colors.text }]]}>
                       {msg.senderName || msg.role}
                     </Text>
                     {msg.messageType === 'image' && msg.attachmentUrl ? (
@@ -608,7 +612,7 @@ export default function MessagesScreen() {
                         </View>
                       </View>
                     ) : (
-                      <Text style={[styles.bubbleTxt, isMine ? styles.bubbleTxtMine : styles.bubbleTxtDoctor]}>
+                      <Text style={[styles.bubbleTxt, isMine ? styles.bubbleTxtMine : [styles.bubbleTxtDoctor, { color: colors.text }]]}>
                         {msg.content}
                       </Text>
                     )}
@@ -633,26 +637,26 @@ export default function MessagesScreen() {
             })}
           </ScrollView>
 
-          <View style={styles.chatComposer}>
+          <View style={[styles.chatComposer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
             <View style={styles.composerActions}>
               <TouchableOpacity style={styles.attachBtn} onPress={handlePickImage}>
-                <LinearGradient colors={["#F1F5F9", "#E2E8F0"]} style={styles.attachIconWrap}>
-                  <Ionicons name="image" size={18} color="#475569" />
+                <LinearGradient colors={isDark ? ["#1E293B", "#0F172A"] : ["#F1F5F9", "#E2E8F0"]} style={[styles.attachIconWrap, { borderColor: colors.border }]}>
+                  <Ionicons name="image" size={18} color={isDark ? "#9CA3AF" : "#475569"} />
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity style={styles.attachBtn} onPress={handlePickDocument}>
-                <LinearGradient colors={["#F1F5F9", "#E2E8F0"]} style={styles.attachIconWrap}>
-                  <Ionicons name="document-attach" size={18} color="#475569" />
+                <LinearGradient colors={isDark ? ["#1E293B", "#0F172A"] : ["#F1F5F9", "#E2E8F0"]} style={[styles.attachIconWrap, { borderColor: colors.border }]}>
+                  <Ionicons name="document-attach" size={18} color={isDark ? "#9CA3AF" : "#475569"} />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-            <View style={styles.inputWrapper}>
+            <View style={[styles.inputWrapper, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border }]}>
               <TextInput
                 value={chatInput}
                 onChangeText={setChatInput}
                 placeholder="Type a message..."
-                placeholderTextColor="#9CA3AF"
-                style={styles.chatInput}
+                placeholderTextColor={isDark ? "#6B7280" : "#9CA3AF"}
+                style={[styles.chatInput, { color: colors.text }]}
                 multiline
               />
               <TouchableOpacity

@@ -20,7 +20,8 @@ public class DoctorProfile : Profile
                 && !string.IsNullOrWhiteSpace(src.ImageUrl)
                 && src.ImageUrl != "default-doctor.png"))
             .ForMember(dest => dest.IsMobileEnabled, opt => opt.MapFrom(src => src.IsAvailable))
-            .ForMember(dest => dest.HasSchedule, opt => opt.Ignore());
+            .ForMember(dest => dest.HasSchedule, opt => opt.Ignore())
+            .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User != null ? src.User.PhoneNumber : string.Empty));
 
         CreateMap<Doctor, DoctorDetailsDTO>()
             .IncludeBase<Doctor, DoctorDTO>()

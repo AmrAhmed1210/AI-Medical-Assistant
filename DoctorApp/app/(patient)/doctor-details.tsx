@@ -12,6 +12,7 @@ import { getDoctorById, getReviewsByDoctor, addReview, updateMyReview, deleteMyR
 import { bookAppointment, updateAppointment } from "../../services/appointmentService";
 import { apiFetch } from "../../services/http";
 import { BASE_URL } from "../../constants/api";
+import { useTheme } from "../../context/ThemeContext";
 import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpdated, subscribeToDoctorSchedule } from "../../services/signalr";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { addNotification } from "../../services/notificationService";
@@ -165,6 +166,7 @@ const StarRow = ({ value, size = 16 }: { value: number, size?: number }) => (
 );
 
 export default function DoctorDetailsScreen() {
+  const { theme, isDark, colors } = useTheme();
   const { id, doctorId: doctorIdParam, editAppointmentId, initialDate, initialTime } = useLocalSearchParams<{ 
     id: string, 
     doctorId: string,
@@ -381,10 +383,10 @@ export default function DoctorDetailsScreen() {
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#059669" /><Text style={styles.retryTxt}>Loading Luxury Profile...</Text></View>;
+  if (loading) return <View style={[styles.center, { backgroundColor: colors.background }]}><ActivityIndicator size="large" color="#059669" /><Text style={styles.retryTxt}>Loading Luxury Profile...</Text></View>;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* TOP GLASS NAV */}
@@ -434,40 +436,40 @@ export default function DoctorDetailsScreen() {
         contentContainerStyle={{ paddingTop: 280, paddingBottom: 120 }}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
       >
-        <View style={styles.contentCard}>
+        <View style={[styles.contentCard, { backgroundColor: colors.background }]}>
           {/* STATS */}
-          <View style={styles.statsBar}>
+          <View style={[styles.statsBar, { backgroundColor: colors.surface, shadowColor: isDark ? '#fff' : '#000' }]}>
             <View style={styles.statBox}>
               <Ionicons name="ribbon" size={18} color="#059669" />
-              <Text style={styles.statVal}>{doctor?.experience || 5}+ Yrs</Text>
-              <Text style={styles.statLab}>Exp</Text>
+              <Text style={[styles.statVal, { color: colors.text }]}>{doctor?.experience || 5}+ Yrs</Text>
+              <Text style={[styles.statLab, { color: colors.textMuted }]}>Exp</Text>
             </View>
-            <View style={styles.statLine} />
+            <View style={[styles.statLine, { backgroundColor: colors.border }]} />
             <View style={styles.statBox}>
               <Ionicons name="wallet" size={18} color="#2563EB" />
-              <Text style={styles.statVal}>${doctor?.consultationFee}</Text>
-              <Text style={styles.statLab}>Fee</Text>
+              <Text style={[styles.statVal, { color: colors.text }]}>${doctor?.consultationFee}</Text>
+              <Text style={[styles.statLab, { color: colors.textMuted }]}>Fee</Text>
             </View>
-            <View style={styles.statLine} />
+            <View style={[styles.statLine, { backgroundColor: colors.border }]} />
             <View style={styles.statBox}>
               <Ionicons name="heart" size={18} color="#EF4444" />
-              <Text style={styles.statVal}>{(doctor?.reviewCount || 0) + reviews.length}</Text>
-              <Text style={styles.statLab}>Fans & Reviews</Text>
+              <Text style={[styles.statVal, { color: colors.text }]}>{(doctor?.reviewCount || 0) + reviews.length}</Text>
+              <Text style={[styles.statLab, { color: colors.textMuted }]}>Fans & Reviews</Text>
             </View>
           </View>
 
           {/* CLINIC ADDRESS - REQUESTED FEATURE */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Clinic Location</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Clinic Location</Text>
             <TouchableOpacity style={styles.addressCard}>
-              <LinearGradient colors={["#F8FAFC", "#F1F5F9"]} style={styles.addressGradient}>
-                <View style={styles.addressIconBox}>
+              <LinearGradient colors={isDark ? ["#1E293B", "#0F172A"] : ["#F8FAFC", "#F1F5F9"]} style={styles.addressGradient}>
+                <View style={[styles.addressIconBox, { backgroundColor: colors.background }]}>
                   <Ionicons name="location" size={24} color="#059669" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.addressTitle}>Main Clinic Address</Text>
-                  <Text style={styles.addressText} numberOfLines={2}>
-                    {(doctor as any)?.location || (doctor as any)?.address || "123 Medical Plaza, Emerald District, Cairo"}
+                  <Text style={[styles.addressTitle, { color: colors.textMuted }]}>Main Clinic Address</Text>
+                  <Text style={[styles.addressText, { color: colors.text }]} numberOfLines={2}>
+                    {(doctor as any)?.location || (doctor as any)?.address || "Clinic address not configured yet"}
                   </Text>
                 </View>
                 <View style={styles.mapCircle}>
@@ -477,18 +479,39 @@ export default function DoctorDetailsScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* CONTACT INFO - REQUESTED FEATURE */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Contact Info</Text>
+            <TouchableOpacity style={styles.addressCard}>
+              <LinearGradient colors={isDark ? ["#1E293B", "#0F172A"] : ["#F8FAFC", "#F1F5F9"]} style={styles.addressGradient}>
+                <View style={[styles.addressIconBox, { backgroundColor: colors.background }]}>
+                  <Ionicons name="call" size={24} color="#059669" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.addressTitle, { color: colors.textMuted }]}>Phone Number</Text>
+                  <Text style={[styles.addressText, { color: colors.text }]}>
+                    {(doctor as any)?.phoneNumber || (doctor as any)?.phone || "No phone number registered"}
+                  </Text>
+                </View>
+                <View style={styles.mapCircle}>
+                  <Ionicons name="call-outline" size={18} color="#059669" />
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
           {/* BIO */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About Doctor</Text>
-            <View style={styles.bioCard}>
-              <Text style={styles.bioText}>{doctor?.bio || "Highly experienced specialist providing patient-centered care with state-of-the-art medical technology."}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>About Doctor</Text>
+            <View style={[styles.bioCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.bioText, { color: colors.textMuted }]}>{doctor?.bio || "Highly experienced specialist providing patient-centered care with state-of-the-art medical technology."}</Text>
             </View>
           </View>
 
           {/* SCHEDULE */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Select Schedule</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Select Schedule</Text>
               <TouchableOpacity onPress={fetchAvailability}><Ionicons name="refresh" size={20} color="#059669" /></TouchableOpacity>
             </View>
 
@@ -498,30 +521,30 @@ export default function DoctorDetailsScreen() {
               <>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.daysScroll}>
                   {days.map((d, i) => (
-                    <TouchableOpacity key={i} style={[styles.dayBtn, selectedDay === i && styles.dayBtnActive]} onPress={() => { setSelectedDay(i); setSelectedTime(null); }}>
-                      <Text style={[styles.dayName, selectedDay === i && { color: '#fff' }]}>{d.label}</Text>
-                      <Text style={[styles.dayNum, selectedDay === i && { color: '#fff' }]}>{d.date.split(' ')[0]}</Text>
+                    <TouchableOpacity key={i} style={[styles.dayBtn, { backgroundColor: isDark ? "#1E293B" : "#fff", borderColor: colors.border }, selectedDay === i && styles.dayBtnActive]} onPress={() => { setSelectedDay(i); setSelectedTime(null); }}>
+                      <Text style={[styles.dayName, { color: colors.textMuted }, selectedDay === i && { color: '#fff' }]}>{d.label}</Text>
+                      <Text style={[styles.dayNum, { color: colors.text }, selectedDay === i && { color: '#fff' }]}>{d.date.split(' ')[0]}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
                 <View style={styles.slotsGrid}>
                   {currentSlots.length === 0 ? (
-                    <View style={styles.emptySlots}><Text style={styles.emptySlotsText}>No slots available for today</Text></View>
+                    <View style={[styles.emptySlots, { backgroundColor: isDark ? "#0F172A" : "#F1F5F9", borderColor: colors.border }]}><Text style={styles.emptySlotsText}>No slots available for today</Text></View>
                   ) : (
                     currentSlots.map(s => (
-                      <TouchableOpacity key={s} style={[styles.slotBtn, selectedTime === s && styles.slotBtnActive]} onPress={() => setSelectedTime(s)}>
-                        <Text style={[styles.slotTxt, selectedTime === s && { color: '#059669', fontWeight: '900' }]}>{s}</Text>
+                      <TouchableOpacity key={s} style={[styles.slotBtn, { backgroundColor: isDark ? "#1E293B" : "#fff", borderColor: colors.border }, selectedTime === s && styles.slotBtnActive]} onPress={() => setSelectedTime(s)}>
+                        <Text style={[styles.slotTxt, { color: colors.textMuted }, selectedTime === s && { color: '#059669', fontWeight: '900' }]}>{s}</Text>
                       </TouchableOpacity>
                     ))
                   )}
                 </View>
               </>
             ) : (
-              <TouchableOpacity style={styles.notifyMeCard} onPress={handleNotifyMe}>
+              <TouchableOpacity style={[styles.notifyMeCard, { backgroundColor: isDark ? "#1E293B" : "#F0FDF4", borderColor: isDark ? "#334155" : "#DCFCE7" }]} onPress={handleNotifyMe}>
                 <Ionicons name="notifications" size={32} color="#059669" />
                 <Text style={styles.notifyTitle}>Notify Me</Text>
                 <Text style={styles.notifySub}>Get an alert when Dr. {doctor?.name} updates their schedule.</Text>
-                <View style={[styles.notifyToggle, notifyEnabled && { backgroundColor: '#059669' }]}>
+                <View style={[styles.notifyToggle, { backgroundColor: colors.background }, notifyEnabled && { backgroundColor: '#059669' }]}>
                   <Text style={[styles.notifyToggleText, notifyEnabled && { color: '#fff' }]}>{notifyEnabled ? "Enabled" : "Enable Alerts"}</Text>
                 </View>
               </TouchableOpacity>
@@ -531,17 +554,17 @@ export default function DoctorDetailsScreen() {
           {/* REVIEWS */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Reviews</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Reviews</Text>
               <TouchableOpacity onPress={() => setShowAddReview(true)}><Text style={styles.addRevTxt}>Add Review</Text></TouchableOpacity>
             </View>
             <View style={styles.reviewList}>
               {reviews.slice(0, 3).map((r, i) => (
-                <View key={i} style={styles.reviewCard}>
+                <View key={i} style={[styles.reviewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={styles.reviewHead}>
-                    <View style={styles.revAvatar}><Text style={styles.revInitial}>{r.author[0]}</Text></View>
-                    <View style={{ flex: 1 }}><Text style={styles.revName}>{r.author}</Text><StarRow value={r.rating} /></View>
+                    <View style={[styles.revAvatar, { backgroundColor: isDark ? "#0F172A" : "#F1F5F9" }]}><Text style={styles.revInitial}>{r.author[0]}</Text></View>
+                    <View style={{ flex: 1 }}><Text style={[styles.revName, { color: colors.text }]}>{r.author}</Text><StarRow value={r.rating} /></View>
                   </View>
-                  <Text style={styles.revComment}>{r.comment}</Text>
+                  <Text style={[styles.revComment, { color: colors.textMuted }]}>{r.comment}</Text>
                 </View>
               ))}
             </View>
@@ -550,8 +573,8 @@ export default function DoctorDetailsScreen() {
       </Animated.ScrollView>
 
       {/* BOTTOM BAR */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.msgBtn} onPress={() => router.push({ pathname: "/(patient)/messages", params: { doctorId, doctorName: doctor?.name } } as any)}>
+      <View style={[styles.bottomBar, { backgroundColor: colors.surface }]}>
+        <TouchableOpacity style={[styles.msgBtn, { backgroundColor: isDark ? "#1E293B" : "#F0FDF4" }]} onPress={() => router.push({ pathname: "/(patient)/messages", params: { doctorId, doctorName: doctor?.name } } as any)}>
           <Ionicons name="chatbubble-ellipses" size={20} color="#059669" />
         </TouchableOpacity>
         <TouchableOpacity style={[styles.bookBtn, !selectedTime && { opacity: 0.6 }]} disabled={!selectedTime || booking} onPress={handleProceed}>
@@ -567,18 +590,18 @@ export default function DoctorDetailsScreen() {
       {/* MODALS */}
       <Modal visible={modalStep === "payment"} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalIndicator} />
-            <Text style={styles.modalTitle}>Payment Method</Text>
-            <TouchableOpacity style={styles.payOption} onPress={() => { setPayMethod("visa"); setModalStep("visa_form"); }}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
+            <View style={[styles.modalIndicator, { backgroundColor: colors.border }]} />
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Payment Method</Text>
+            <TouchableOpacity style={[styles.payOption, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]} onPress={() => { setPayMethod("visa"); setModalStep("visa_form"); }}>
               <Ionicons name="card" size={24} color="#2563EB" />
-              <View style={{ flex: 1, marginLeft: 15 }}><Text style={styles.payOptionTitle}>Credit Card</Text><Text style={styles.payOptionSub}>Visa or Mastercard</Text></View>
-              <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
+              <View style={{ flex: 1, marginLeft: 15 }}><Text style={[styles.payOptionTitle, { color: colors.text }]}>Credit Card</Text><Text style={[styles.payOptionSub, { color: colors.textMuted }]}>Visa or Mastercard</Text></View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.payOption} onPress={() => confirmBooking("cash")}>
+            <TouchableOpacity style={[styles.payOption, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]} onPress={() => confirmBooking("cash")}>
               <Ionicons name="cash" size={24} color="#059669" />
-              <View style={{ flex: 1, marginLeft: 15 }}><Text style={styles.payOptionTitle}>Cash</Text><Text style={styles.payOptionSub}>Pay at clinic</Text></View>
-              <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
+              <View style={{ flex: 1, marginLeft: 15 }}><Text style={[styles.payOptionTitle, { color: colors.text }]}>Cash</Text><Text style={[styles.payOptionSub, { color: colors.textMuted }]}>Pay at clinic</Text></View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.closeModal} onPress={() => setModalStep(null)}><Text style={styles.closeModalText}>Cancel</Text></TouchableOpacity>
           </View>
@@ -586,10 +609,10 @@ export default function DoctorDetailsScreen() {
       </Modal>
 
       <Modal visible={showSuccess} transparent animationType="fade">
-        <View style={styles.successScreen}>
+        <View style={[styles.successScreen, { backgroundColor: colors.background }]}>
           <View style={styles.successIconBox}><Ionicons name="checkmark" size={80} color="#fff" /></View>
-          <Text style={styles.successTitle}>Booking Successful!</Text>
-          <Text style={styles.successDesc}>Your appointment with Dr. {doctor?.name} has been requested.</Text>
+          <Text style={[styles.successTitle, { color: colors.text }]}>Booking Successful!</Text>
+          <Text style={[styles.successDesc, { color: colors.textMuted }]}>Your appointment with Dr. {doctor?.name} has been requested.</Text>
           <TouchableOpacity style={styles.successBtn} onPress={() => { setShowSuccess(false); router.back(); }}><Text style={styles.successBtnText}>Done</Text></TouchableOpacity>
         </View>
       </Modal>

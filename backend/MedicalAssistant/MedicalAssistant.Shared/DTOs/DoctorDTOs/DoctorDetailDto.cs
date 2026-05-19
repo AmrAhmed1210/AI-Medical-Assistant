@@ -15,4 +15,6 @@ public class DoctorDetailDto
     public bool IsAvailable { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public string? Location { get; set; }
+    public string? PhoneNumber { get; set; }
 }

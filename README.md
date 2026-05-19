@@ -1,48 +1,40 @@
-# 🏥 AI-Medical-Assistant: Advanced Intelligent Healthcare Platform
+# MedBook: Advanced Intelligent Healthcare Platform
 
-**AI-Medical-Assistant** is a state-of-the-art integrated medical ecosystem that leverages Artificial Intelligence to bridge the gap between clinical expertise and digital efficiency. The platform provides a seamless experience for doctors, administrators, and patients through sophisticated AI diagnostics, real-time synchronization, and a premium user interface.
+## Overview
+MedBook is an enterprise-grade integrated medical ecosystem designed to bridge the gap between clinical expertise and digital efficiency. By leveraging Artificial Intelligence, the platform delivers a seamless, high-performance experience for healthcare providers, administrators, and patients. It features sophisticated AI diagnostics, real-time data synchronization, and a highly optimized user interface.
 
----
+## Key Features
 
-## 🤖 AI Medical Assistant Features (New!)
+*   **Intelligent Document Analysis**: Automatically processes and extracts clinical insights, test results, and document classifications from uploaded medical imagery, laboratory reports, and prescriptions.
+*   **Real-time Vitals Monitoring & Analysis**: Delivers immediate clinical feedback and alerts based on patient-logged vital signs, enhancing preventive care.
+*   **Medication Safety & Contraindication Checks**: Evaluates new prescriptions against the patient's comprehensive medical history, including documented allergies and chronic conditions, to identify potential adverse drug interactions.
+*   **AI-Generated Health Summaries**: Compiles professional clinical analyses and diagnostic summaries, directly accessible via the patient dashboard.
+*   **Bilingual Natural Language Processing**: Features full bilingual support (English/Arabic) for AI interactions, ensuring accessibility and precise medical terminology usage.
 
-We have integrated a comprehensive **Bilingual (Arabic/English) AI Assistant** into the patient experience:
+## Technology Stack
 
-*   **Smart Document Analysis:** Automatically extracts medical insights, test results, and titles from uploaded scans, lab results, and prescriptions.
-*   **Real-time Vitals Advice:** Provides immediate, encouraging medical feedback and warnings based on logged vital signs (Blood Pressure, Heart Rate, etc.).
-*   **Medication Safety Check:** Evaluates new medications against the patient's existing history (allergies, chronic diseases) to flag potential contraindications.
-*   **AI Health Summary:** Generates a professional medical analysis and diagnosis summary directly on the patient's home dashboard.
-*   **Intelligent Text Refinement:** Helps patients professionalize their medical history entries (surgeries, allergies) using medical terminology.
+*   **AI & Machine Learning**: Python FastAPI server integrated with Gemini 1.5 Flash for high-throughput natural language processing and diagnostic analysis.
+*   **Web Dashboard**: React, Vite, and TailwindCSS providing a highly responsive, data-rich administrative and clinical portal.
+*   **Mobile Application**: Cross-platform application built with React Native and Expo, featuring real-time state synchronization and a comprehensive dynamic theming system.
+*   **Backend Infrastructure**: ASP.NET Core Web API with Entity Framework Core, PostgreSQL persistence, and SignalR for robust, low-latency communication.
 
----
+## Architecture & Project Structure
 
-## 🚀 Core Technologies
+*   `backend/` - ASP.NET Core Web API handling core business logic, authentication, and database orchestration.
+*   `web/` - React-based clinical dashboard for medical professionals and system administrators.
+*   `DoctorApp/` - React Native application tailored for patient engagement and telemetry.
+*   `server.py` - Microservice handling AI inference and large language model integrations.
 
-*   **AI ML Core:** High-performance machine learning core powered by **Gemini 1.5 Flash** for precise medical diagnostics and natural language processing.
-*   **Luxury Web Portal:** A premium, responsive dashboard for medical professionals featuring advanced analytics and patient management.
-*   **Smart Mobile Experience:** Cross-platform mobile application (React Native + Expo) for patients with real-time AI insights.
-*   **Enterprise-Grade Backend:** Robust C# .NET Core infrastructure with PostgreSQL persistence and SignalR synchronization.
+## Getting Started
 
----
-
-## 🛠️ Project Structure
-
-*   **`backend/`** – ASP.NET Core Web API (Core logic and Database orchestration).
-*   **`web/`** – React + Vite + Tailwind (Professional medical dashboard).
-*   **`DoctorApp/`** – React Native + Expo (Mobile application for patients).
-*   **`server.py`** – Python FastAPI server handling the AI/Gemini integration.
-
----
-
-## 🚦 Installation & Getting Started
-
-### 1️⃣ AI Server (Python)
+### 1. AI Inference Service
+Configure the `GOOGLE_API_KEY` in your environment variables, then initialize the server:
 ```bash
-# Set GOOGLE_API_KEY in .env
 python server.py
 ```
 
-### 2️⃣ Backend Service (C# .NET)
+### 2. Backend API Service
+Ensure a local or remote PostgreSQL instance is running, then execute the database migrations and start the server:
 ```bash
 cd backend/MedicalAssistant
 dotnet restore
@@ -50,33 +42,30 @@ dotnet ef database update --project MedicalAssistant.Persistance --startup-proje
 dotnet run --project MedicalAssistant.Web
 ```
 
-### 3️⃣ Mobile Application (Expo)
+### 3. Mobile Client Application
+Install the required Node dependencies and start the Expo development server:
 ```bash
 cd DoctorApp
 npm install
 npx expo start
 ```
 
----
+## Testing & Quality Assurance
 
-## 🧪 Testing & Quality Assurance
+The repository maintains a comprehensive testing suite to guarantee system stability and prevent regressions.
 
-We maintain a rigorous testing environment to ensure 100% system stability and data integrity.
-
-### Execution Commands
-
-**Web Environment (Vitest & Playwright):**
+**Web Client Testing:**
 ```bash
 cd web
-npm run test          # Executes Unit & Integration Tests
-npx playwright test   # Executes End-to-End Browser Tests
+npm run test          # Execute Unit and Integration Tests via Vitest
+npx playwright test   # Execute End-to-End browser validation via Playwright
 ```
 
----
+## Administrative Credentials
 
-## 🔑 Administrative Access
-*   **System Email:** `admin@medbook.com`
-*   **Credentials:** `123456789`
+Default system administrator access for development environments:
+*   **Email:** admin@medbook.com
+*   **Password:** 123456789
 
 ---
-_Last updated: May 12, 2026 - Integrated Bilingual AI Assistant_
+*Maintained by the MedBook Engineering Team*

@@ -20,6 +20,7 @@ import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "../../constants/colors";
 import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
 
 // Import services
 import { getMyProfile, updateMyProfile, Profile, uploadProfilePhoto } from "../../services/profileService";
@@ -62,6 +63,7 @@ const formatBookingDate = (appt: Appointment) => {
 export default function ProfileScreen() {
   const router = useRouter();
   const { tr, isRTL, lang, switchLanguage } = useLanguage();
+  const { theme, isDark, toggleTheme, colors } = useTheme();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
 
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -78,6 +80,7 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [isEditModalVisible, setEditModalVisible] = useState(false);
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const [editData, setEditData] = useState({
     name: "", phone: "", dateOfBirth: "",
     gender: "", bloodType: "", weight: "", height: "", smokingStatus: ""
@@ -363,8 +366,8 @@ export default function ProfileScreen() {
   });
 
   return (
-    <View style={styles.main}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={[styles.main, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
 
       {/* 1. FIXED BUTTONS LAYER (Z-INDEX 1000) */}
       <View style={styles.fixedHeaderTop}>
@@ -378,8 +381,8 @@ export default function ProfileScreen() {
           <TouchableOpacity onPress={() => router.push("/(patient)/vitals" as any)} style={styles.headerActionBtn}>
             <Activity size={18} color="#fff" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => switchLanguage(lang === 'ar' ? 'en' : 'ar')} style={styles.headerActionBtn}>
-            <Globe size={18} color="#fff" />
+          <TouchableOpacity onPress={() => setSettingsModalVisible(true)} style={styles.headerActionBtn}>
+            <Settings size={18} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -409,10 +412,10 @@ export default function ProfileScreen() {
         bounces={true}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#059669" />}
       >
-        <View style={styles.contentOverlap}>
+        <View style={[styles.contentOverlap, { backgroundColor: colors.background }]}>
           <View style={styles.profileCardWrap}>
-            <Animated.View style={[styles.glassProfileCard, { transform: [{ scale: avatarScale }, { translateY: avatarTranslateY }] }]}>
-              <LinearGradient colors={["rgba(255,255,255,1)", "rgba(252,255,254,0.98)"]} style={styles.cardGlassOverlay} />
+            <Animated.View style={[styles.glassProfileCard, { backgroundColor: colors.surface, shadowColor: isDark ? "#000" : "#059669", transform: [{ scale: avatarScale }, { translateY: avatarTranslateY }] }]}>
+              <LinearGradient colors={isDark ? ["rgba(18,27,46,0.95)", "rgba(23,35,59,0.9)"] : ["rgba(255,255,255,1)", "rgba(252,255,254,0.98)"]} style={styles.cardGlassOverlay} />
               <LinearGradient colors={["#FBBF24", "#D97706", "#FBBF24"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.goldHairline} />
               <View style={styles.profileMain}>
                 <View style={styles.avatarGlowContainer}>
@@ -432,12 +435,12 @@ export default function ProfileScreen() {
                 </View>
                 <View style={styles.profileInfo}>
                   <View style={styles.nameRow}>
-                    <Text style={styles.profileName} numberOfLines={1}>{profile?.name || "Patient Name"}</Text>
+                    <Text style={[styles.profileName, { color: colors.text }]} numberOfLines={1}>{profile?.name || "Patient Name"}</Text>
                     <LinearGradient colors={["#FBBF24", "#D97706"]} style={styles.eliteStarBadge}><Star size={10} color="#fff" fill="#fff" /></LinearGradient>
                   </View>
-                  <Text style={styles.profileEmail} numberOfLines={1}>{profile?.email || "patient@example.com"}</Text>
+                  <Text style={[styles.profileEmail, { color: colors.textMuted }]} numberOfLines={1}>{profile?.email || "patient@example.com"}</Text>
                   <View style={styles.badgeRow}>
-                    <LinearGradient colors={["#ECFDF5", "#D1FAE5"]} style={styles.premiumBadge}><ShieldCheck size={12} color="#059669" /><Text style={styles.badgeText}>{tr("verified_patient")}</Text></LinearGradient>
+                    <LinearGradient colors={isDark ? ["#064E3B", "#047857"] : ["#ECFDF5", "#D1FAE5"]} style={styles.premiumBadge}><ShieldCheck size={12} color={isDark ? "#10B981" : "#059669"} /><Text style={[styles.badgeText, { color: isDark ? "#10B981" : "#059669" }]}>{tr("verified_patient")}</Text></LinearGradient>
                   </View>
                 </View>
               </View>
@@ -466,17 +469,32 @@ export default function ProfileScreen() {
                     <Text style={styles.actionLabel}>{tr("medications")}</Text>
                   </TouchableOpacity>
                 </View>
-                <View style={styles.luxuryInfoBox}>
+                 <View style={[styles.luxuryInfoBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <InfoRow icon={Mail} label={tr("email")} value={profile?.email || "—"} />
-                  <View style={styles.boxDivider} /><InfoRow icon={Phone} label={tr("phone")} value={profile?.phone || "—"} />
-                  <View style={styles.boxDivider} /><InfoRow icon={Calendar} label={tr("date_of_birth")} value={profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : "—"} />
-                  <View style={styles.boxDivider} /><InfoRow icon={Users} label="Gender" value={profile?.gender || "—"} />
-                  <View style={styles.boxDivider} /><InfoRow icon={Droplet} label="Blood Type" value={profile?.bloodType || "—"} />
-                  <View style={styles.boxDivider} /><InfoRow icon={Scale} label="Weight" value={profile?.weight ? `${profile.weight} kg` : "—"} />
-                  <View style={styles.boxDivider} /><InfoRow icon={Ruler} label="Height" value={profile?.height ? `${profile.height} cm` : "—"} />
-                  <View style={styles.boxDivider} /><InfoRow icon={Cigarette} label="Smoking" value={profile?.smokingStatus || "—"} />
+                  <View style={[styles.boxDivider, { backgroundColor: colors.border }]} /><InfoRow icon={Phone} label={tr("phone")} value={profile?.phone || "—"} />
+                  <View style={[styles.boxDivider, { backgroundColor: colors.border }]} /><InfoRow icon={Calendar} label={tr("date_of_birth")} value={profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : "—"} />
+                  <View style={[styles.boxDivider, { backgroundColor: colors.border }]} /><InfoRow icon={Users} label="Gender" value={profile?.gender || "—"} />
+                  <View style={[styles.boxDivider, { backgroundColor: colors.border }]} /><InfoRow icon={Droplet} label="Blood Type" value={profile?.bloodType || "—"} />
+                  <View style={[styles.boxDivider, { backgroundColor: colors.border }]} /><InfoRow icon={Scale} label="Weight" value={profile?.weight ? `${profile.weight} kg` : "—"} />
+                  <View style={[styles.boxDivider, { backgroundColor: colors.border }]} /><InfoRow icon={Ruler} label="Height" value={profile?.height ? `${profile.height} cm` : "—"} />
+                  <View style={[styles.boxDivider, { backgroundColor: colors.border }]} /><InfoRow icon={Cigarette} label="Smoking" value={profile?.smokingStatus || "—"} />
                 </View>
-                <TouchableOpacity style={styles.supportBtn} onPress={handleSupport} activeOpacity={0.7}><View style={styles.supportIcon}><Headphones size={20} color="#F59E0B" /></View><Text style={styles.supportText}>{tr("contact_support")}</Text><ChevronRight size={18} color="#CBD5E1" /></TouchableOpacity>
+                <TouchableOpacity style={[styles.supportBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={handleSupport} activeOpacity={0.7}>
+                  <View style={styles.supportIcon}>
+                    <Headphones size={20} color="#F59E0B" />
+                  </View>
+                  <Text style={[styles.supportText, { color: colors.text }]}>{tr("contact_support")}</Text>
+                  <ChevronRight size={18} color={colors.textLight} />
+                </TouchableOpacity>
+
+                {/* DARK MODE TOGGLE - REQUESTED FEATURE */}
+                <TouchableOpacity style={[styles.supportBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={toggleTheme} activeOpacity={0.7}>
+                  <View style={[styles.supportIcon, { backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)' }]}>
+                    <Ionicons name={isDark ? "moon" : "sunny"} size={20} color={isDark ? "#10B981" : "#F59E0B"} />
+                  </View>
+                  <Text style={[styles.supportText, { color: colors.text }]}>{isDark ? "Dark Mode: ON" : "Dark Mode: OFF"}</Text>
+                  <Ionicons name={isDark ? "toggle" : "toggle-outline"} size={28} color={isDark ? "#10B981" : "#CBD5E1"} />
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.luxuryBtn} onPress={() => setEditModalVisible(true)} activeOpacity={0.8}><LinearGradient colors={["#059669", "#047857"]} style={styles.btnGradient}><Edit3 size={18} color="#fff" /><Text style={styles.btnText}>{tr("edit_profile")}</Text></LinearGradient></TouchableOpacity>
               </View>
             )}
@@ -608,45 +626,143 @@ export default function ProfileScreen() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
+
+      {/* 5. PREMIUM SETTINGS MODAL */}
+      <Modal
+        visible={settingsModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setSettingsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface, height: 'auto', maxHeight: '80%' }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border, borderBottomWidth: 1, paddingBottom: 15 }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{tr("settings") || "Settings"}</Text>
+              <TouchableOpacity onPress={() => setSettingsModalVisible(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ paddingVertical: 10, gap: 15 }} showsVerticalScrollIndicator={false}>
+              
+              {/* EDIT PROFILE OPTION */}
+              <TouchableOpacity
+                style={[styles.settingsOptionRow, { backgroundColor: colors.background, borderColor: colors.border }]}
+                onPress={() => {
+                  setSettingsModalVisible(false);
+                  setEditModalVisible(true);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.settingsIconBox, { backgroundColor: 'rgba(5,150,105,0.1)' }]}>
+                  <User size={20} color="#059669" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.settingsOptionTitle, { color: colors.text }]}>{tr("edit_profile") || "Edit Profile"}</Text>
+                  <Text style={[styles.settingsOptionSub, { color: colors.textMuted }]}>Update your medical information and photo</Text>
+                </View>
+                <ChevronRight size={18} color={colors.textLight} />
+              </TouchableOpacity>
+
+              {/* DARK MODE OPTION */}
+              <TouchableOpacity
+                style={[styles.settingsOptionRow, { backgroundColor: colors.background, borderColor: colors.border }]}
+                onPress={toggleTheme}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.settingsIconBox, { backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)' }]}>
+                  <Ionicons name={isDark ? "moon" : "sunny"} size={20} color={isDark ? "#10B981" : "#F59E0B"} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.settingsOptionTitle, { color: colors.text }]}>{isDark ? "Dark Mode: ON" : "Dark Mode: OFF"}</Text>
+                  <Text style={[styles.settingsOptionSub, { color: colors.textMuted }]}>Switch between dark and light appearance</Text>
+                </View>
+                <Ionicons name={isDark ? "toggle" : "toggle-outline"} size={28} color={isDark ? "#10B981" : "#CBD5E1"} />
+              </TouchableOpacity>
+
+              {/* LANGUAGE OPTION */}
+              <TouchableOpacity
+                style={[styles.settingsOptionRow, { backgroundColor: colors.background, borderColor: colors.border }]}
+                onPress={() => switchLanguage(lang === 'ar' ? 'en' : 'ar')}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.settingsIconBox, { backgroundColor: 'rgba(99,102,241,0.1)' }]}>
+                  <Globe size={20} color="#6366F1" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.settingsOptionTitle, { color: colors.text }]}>{lang === 'ar' ? "العربية (Arabic)" : "English"}</Text>
+                  <Text style={[styles.settingsOptionSub, { color: colors.textMuted }]}>Change application language</Text>
+                </View>
+                <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>
+                  {lang === 'ar' ? "EN" : "عربي"}
+                </Text>
+              </TouchableOpacity>
+
+              {/* LOGOUT OPTION */}
+              <TouchableOpacity
+                style={[styles.settingsOptionRow, { backgroundColor: 'rgba(239,68,68,0.05)', borderColor: 'rgba(239,68,68,0.1)' }]}
+                onPress={() => {
+                  setSettingsModalVisible(false);
+                  handleLogout();
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.settingsIconBox, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
+                  <LogOut size={20} color="#EF4444" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.settingsOptionTitle, { color: "#EF4444" }]}>{tr("logout") || "Log Out"}</Text>
+                  <Text style={[styles.settingsOptionSub, { color: 'rgba(239,68,68,0.6)' }]}>Safely sign out of your account</Text>
+                </View>
+                <ChevronRight size={18} color="#EF4444" />
+              </TouchableOpacity>
+
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
       <Toast />
     </View>
   );
 }
 
 function TabItem({ label, active, onPress, icon: Icon }: any) {
+  const { colors, isDark } = useTheme();
   return (
-    <TouchableOpacity style={[styles.tabItem, active && styles.tabItemActive]} onPress={onPress} activeOpacity={0.9}>
-      <Icon size={16} color={active ? "#fff" : "#64748B"} /><Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
+    <TouchableOpacity style={[styles.tabItem, { backgroundColor: isDark ? (active ? '#064E3B' : colors.surface) : (active ? '#064E3B' : '#F8FAFC'), borderColor: isDark ? (active ? '#064E3B' : colors.border) : (active ? '#064E3B' : '#F1F5F9') }, active && styles.tabItemActive]} onPress={onPress} activeOpacity={0.9}>
+      <Icon size={16} color={active ? "#fff" : colors.textMuted} /><Text style={[styles.tabLabel, { color: active ? '#fff' : colors.textMuted }, active && styles.tabLabelActive]}>{label}</Text>
       {active && <View style={styles.activeIndicator} />}
     </TouchableOpacity>
   );
 }
 
 function InfoRow({ icon: Icon, label, value }: any) {
+  const { colors } = useTheme();
   return (
-    <View style={styles.infoRow}><View style={styles.infoIconBox}><Icon size={18} color="#059669" /></View><View style={{ flex: 1 }}><Text style={styles.infoLabel}>{label}</Text><Text style={styles.infoValue}>{value}</Text></View><ChevronRight size={14} color="#CBD5E1" /></View>
+    <View style={[styles.infoRow, { borderBottomColor: colors.border }]}><View style={styles.infoIconBox}><Icon size={18} color={colors.primary} /></View><View style={{ flex: 1 }}><Text style={[styles.infoLabel, { color: colors.textMuted }]}>{label}</Text><Text style={[styles.infoValue, { color: colors.text }]}>{value}</Text></View><ChevronRight size={14} color={colors.textLight} /></View>
   );
 }
 
 function HistoryCard({ icon: Icon, color, title, items, onAdd }: any) {
+  const { colors, isDark } = useTheme();
   return (
-    <View style={styles.historyCard}>
+    <View style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.historyHeader}>
-        <View style={[styles.historyIconCircle, { backgroundColor: color + '15' }]}>
+        <View style={[styles.historyIconCircle, { backgroundColor: color + (isDark ? '25' : '15') }]}>
           <Icon size={18} color={color} />
         </View>
-        <Text style={styles.historyTitle}>{title}</Text>
+        <Text style={[styles.historyTitle, { color: colors.text }]}>{title}</Text>
         <TouchableOpacity style={styles.miniAddBtn} onPress={onAdd} activeOpacity={0.7}>
           <Plus size={16} color="#fff" />
         </TouchableOpacity>
       </View>
       <View style={styles.historyItemsList}>
         {items.length === 0 ?
-          <Text style={styles.historyEmpty}>No records found</Text> :
+          <Text style={[styles.historyEmpty, { color: colors.textMuted }]}>No records found</Text> :
           items.map((it: any, i: number) => (
             <View key={i} style={styles.historyItemRow}>
               <View style={[styles.luxuryBullet, { backgroundColor: color }]} />
-              <Text style={styles.historyTextContent}>{it}</Text>
+              <Text style={[styles.historyTextContent, { color: colors.text }]}>{it}</Text>
             </View>
           ))
         }
@@ -663,27 +779,28 @@ function InputBox({ label, value, onChange, icon: Icon }: { label: string, value
 
 function FollowedDoctorCard({ doctor }: { doctor: DoctorDetails }) {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const photoUrl = doctor.imageUrl || (doctor as any).photoUrl || "https://cdn-icons-png.flaticon.com/512/3774/3774299.png";
   const rating = Number(doctor.rating || 0).toFixed(1);
 
   return (
     <TouchableOpacity
-      style={styles.followedDoctorCard}
+      style={[styles.followedDoctorCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
       activeOpacity={0.82}
       onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { id: doctor.id } } as any)}
     >
       <Image source={{ uri: photoUrl }} style={styles.followedDoctorAvatar} />
       <View style={{ flex: 1 }}>
-        <Text style={styles.followedDoctorName} numberOfLines={1}>Dr. {doctor.name}</Text>
-        <Text style={styles.followedDoctorMeta} numberOfLines={1}>{doctor.specialty || "Specialist"}</Text>
+        <Text style={[styles.followedDoctorName, { color: colors.text }]} numberOfLines={1}>Dr. {doctor.name}</Text>
+        <Text style={[styles.followedDoctorMeta, { color: colors.textMuted }]} numberOfLines={1}>{doctor.specialty || "Specialist"}</Text>
         <View style={styles.followedDoctorStats}>
           <Star size={12} color="#F59E0B" fill="#F59E0B" />
           <Text style={styles.followedDoctorStatText}>{rating}</Text>
-          <Text style={styles.followedDoctorDot}>•</Text>
+          <Text style={[styles.followedDoctorDot, { color: colors.textMuted }]}>•</Text>
           <Text style={styles.followedDoctorStatText}>{doctor.yearsExperience || doctor.experience || 0} yrs</Text>
         </View>
       </View>
-      <View style={styles.followedDoctorChevron}>
+      <View style={[styles.followedDoctorChevron, { backgroundColor: isDark ? 'rgba(5, 150, 105, 0.2)' : '#F0FDF4' }]}>
         <ChevronRight size={18} color="#059669" />
       </View>
     </TouchableOpacity>
@@ -692,35 +809,36 @@ function FollowedDoctorCard({ doctor }: { doctor: DoctorDetails }) {
 
 function BookingCard({ appt, variant, onCancel, onDelete }: any) {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const isConfirmed = appt.status?.toLowerCase() === "confirmed";
   const isPending = appt.status?.toLowerCase() === "pending";
   const isCancelled = appt.status?.toLowerCase() === "cancelled" || (appt as any).isAutoCancelled;
   const isCompleted = appt.status?.toLowerCase() === "completed";
   const isActive = variant === "active";
 
-  let cardBg = ["#F8FAFC", "#fff"];
-  let iconBg = "#F1F5F9";
-  let iconColor = "#64748B";
-  let statusBg = "#F1F5F9";
-  let statusText = "#64748B";
+  let cardBg = isDark ? ["#1E293B", "#0F172A"] : ["#F8FAFC", "#fff"];
+  let iconBg = isDark ? "rgba(148, 163, 184, 0.2)" : "#F1F5F9";
+  let iconColor = isDark ? "#94A3B8" : "#64748B";
+  let statusBg = isDark ? "rgba(148, 163, 184, 0.2)" : "#F1F5F9";
+  let statusText = isDark ? "#94A3B8" : "#64748B";
 
   if (isConfirmed) {
-    cardBg = ["#ECFDF5", "#fff"];
-    iconBg = "#DCFCE7";
-    iconColor = "#059669";
-    statusBg = "#059669";
+    cardBg = isDark ? ["#064E3B", "#022C22"] : ["#ECFDF5", "#fff"];
+    iconBg = isDark ? "rgba(5, 150, 105, 0.2)" : "#DCFCE7";
+    iconColor = isDark ? "#10B981" : "#059669";
+    statusBg = isDark ? "#059669" : "#059669";
     statusText = "#fff";
   } else if (isPending) {
-    cardBg = ["#FFF7ED", "#fff"];
-    iconBg = "#FFEDD5";
-    iconColor = "#D97706";
-    statusBg = "#F59E0B";
+    cardBg = isDark ? ["#78350F", "#451A03"] : ["#FFF7ED", "#fff"];
+    iconBg = isDark ? "rgba(217, 119, 6, 0.2)" : "#FFEDD5";
+    iconColor = isDark ? "#F59E0B" : "#D97706";
+    statusBg = isDark ? "#D97706" : "#F59E0B";
     statusText = "#fff";
   } else if (isCancelled) {
-    cardBg = ["#FEF2F2", "#fff"];
-    iconBg = "#FEE2E2";
-    iconColor = "#EF4444";
-    statusBg = "#EF4444";
+    cardBg = isDark ? ["#7F1D1D", "#450A0A"] : ["#FEF2F2", "#fff"];
+    iconBg = isDark ? "rgba(239, 68, 68, 0.2)" : "#FEE2E2";
+    iconColor = isDark ? "#F87171" : "#EF4444";
+    statusBg = isDark ? "#DC2626" : "#EF4444";
     statusText = "#fff";
   }
 
@@ -732,8 +850,8 @@ function BookingCard({ appt, variant, onCancel, onDelete }: any) {
             <Calendar size={20} color={iconColor} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardDoctorName}>Dr. {appt.doctorName}</Text>
-            <Text style={styles.cardSpecialtyText}>{appt.specialty}</Text>
+            <Text style={[styles.cardDoctorName, { color: colors.text }]}>Dr. {appt.doctorName}</Text>
+            <Text style={[styles.cardSpecialtyText, { color: colors.textMuted }]}>{appt.specialty}</Text>
           </View>
           <View style={[styles.statusTagModern, { backgroundColor: statusBg }]}>
             <Text style={styles.statusTagText}>{appt.status?.toUpperCase()}</Text>
@@ -741,18 +859,18 @@ function BookingCard({ appt, variant, onCancel, onDelete }: any) {
         </View>
 
         <View style={styles.bookingInfoRow}>
-          <View style={styles.infoPill}>
-            <Ionicons name="calendar" size={14} color="#64748B" />
-            <Text style={styles.infoPillText}>{formatBookingDate(appt)}</Text>
+          <View style={[styles.infoPill, { backgroundColor: isDark ? "rgba(148, 163, 184, 0.1)" : "#F1F5F9" }]}>
+            <Ionicons name="calendar" size={14} color={isDark ? "#94A3B8" : "#64748B"} />
+            <Text style={[styles.infoPillText, { color: isDark ? "#94A3B8" : "#64748B" }]}>{formatBookingDate(appt)}</Text>
           </View>
-          <View style={styles.infoPill}>
-            <Ionicons name="time" size={14} color="#64748B" />
-            <Text style={styles.infoPillText}>{appt.time}</Text>
+          <View style={[styles.infoPill, { backgroundColor: isDark ? "rgba(148, 163, 184, 0.1)" : "#F1F5F9" }]}>
+            <Ionicons name="time" size={14} color={isDark ? "#94A3B8" : "#64748B"} />
+            <Text style={[styles.infoPillText, { color: isDark ? "#94A3B8" : "#64748B" }]}>{appt.time}</Text>
           </View>
           {appt.paymentMethod ? (
-            <View style={styles.infoPill}>
-              <CreditCard size={14} color="#64748B" />
-              <Text style={styles.infoPillText}>{appt.paymentMethod}</Text>
+            <View style={[styles.infoPill, { backgroundColor: isDark ? "rgba(148, 163, 184, 0.1)" : "#F1F5F9" }]}>
+              <CreditCard size={14} color={isDark ? "#94A3B8" : "#64748B"} />
+              <Text style={[styles.infoPillText, { color: isDark ? "#94A3B8" : "#64748B" }]}>{appt.paymentMethod}</Text>
             </View>
           ) : null}
         </View>
@@ -967,4 +1085,8 @@ const styles = StyleSheet.create({
   profileFolderCard: { width: 110, height: 110, marginRight: 15, borderRadius: 24, overflow: 'hidden', elevation: 8, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, borderWidth: 1, borderColor: '#F1F5F9' },
   profileFolderGradient: { flex: 1, padding: 15, justifyContent: 'center', alignItems: 'center', gap: 10 },
   profileFolderLabel: { fontSize: 12, fontWeight: '800' },
+  settingsOptionRow: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 20, borderWidth: 1, gap: 15 },
+  settingsIconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  settingsOptionTitle: { fontSize: 14, fontWeight: '700' },
+  settingsOptionSub: { fontSize: 10, marginTop: 2 },
 });

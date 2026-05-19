@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -22,5 +22,6 @@ namespace MedicalAssistant.Shared.DTOs.DoctorDTOs
         public bool IsMobileEnabled { get; set; }
         public bool HasSchedule { get; set; }
         public bool IsScheduleVisible { get; set; } = true;
+        public string? PhoneNumber { get; set; }
     }
 }

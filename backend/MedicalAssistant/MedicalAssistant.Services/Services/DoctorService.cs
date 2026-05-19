@@ -208,7 +208,9 @@ public class DoctorService : IDoctorService
             YearsExperience = doctor.Experience ?? 0,
             IsAvailable = true,
             CreatedAt = DateTime.UtcNow,
-            UpdatedAt = null
+            UpdatedAt = null,
+            Location = doctor.Location,
+            PhoneNumber = doctor.User?.PhoneNumber
         };
     }
 
@@ -232,10 +234,15 @@ public class DoctorService : IDoctorService
         doctor.Bio = request.Bio ?? string.Empty;
         doctor.Experience = request.YearsExperience;
         doctor.ConsultationFee = request.ConsultationFee;
+        doctor.Location = request.Location;
 
-        if (doctor.User is not null && !string.IsNullOrWhiteSpace(request.FullName))
+        if (doctor.User is not null)
         {
-            doctor.User.FullName = request.FullName.Trim();
+            if (!string.IsNullOrWhiteSpace(request.FullName))
+            {
+                doctor.User.FullName = request.FullName.Trim();
+            }
+            doctor.User.PhoneNumber = request.PhoneNumber;
             doctor.User.UpdatedAt = DateTime.UtcNow;
         }
 

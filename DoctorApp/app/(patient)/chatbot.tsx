@@ -19,9 +19,11 @@ import { chatService, ChatMessage } from "../../services/chatService";
 import Toast from "react-native-toast-message";
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import { useTheme } from "../../context/ThemeContext";
 
 export default function ChatBotScreen() {
   const router = useRouter();
+  const { theme, isDark, colors } = useTheme();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -167,8 +169,8 @@ export default function ChatBotScreen() {
             <Ionicons name="sparkles" size={16} color="#fff" />
           </View>
         )}
-        <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.aiBubble]}>
-          <Text style={[styles.messageText, isUser ? styles.userText : styles.aiText]}>
+        <View style={[styles.messageBubble, isUser ? styles.userBubble : [styles.aiBubble, { backgroundColor: colors.surface, borderColor: colors.border }]]}>
+          <Text style={[styles.messageText, isUser ? styles.userText : [styles.aiText, { color: colors.text }]]}>
             {item.content}
           </Text>
           <Text style={[styles.timestamp, isUser ? styles.userTimestamp : styles.aiTimestamp]}>
@@ -180,16 +182,16 @@ export default function ChatBotScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" />
       
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={24} color="#1E293B" />
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: isDark ? "#0F172A" : "#F1F5F9" }]}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>AI Assistant</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>AI Assistant</Text>
           <View style={styles.statusDot} />
           <Text style={styles.statusText}>Online</Text>
         </View>
@@ -217,7 +219,7 @@ export default function ChatBotScreen() {
             <View style={styles.emptyIconContainer}>
               <Ionicons name="chatbubbles-outline" size={48} color={COLORS.primary} />
             </View>
-            <Text style={styles.emptyTitle}>How can I help you today?</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>How can I help you today?</Text>
             <Text style={styles.emptySubtitle}>
               Ask me about your symptoms, medications,{'\n'}
               or general health advice.
@@ -237,26 +239,26 @@ export default function ChatBotScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
-        <View style={styles.inputContainer}>
-          <View style={styles.inputWrapper}>
+        <View style={[styles.inputContainer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+          <View style={[styles.inputWrapper, { backgroundColor: isDark ? "#0F172A" : "#F1F5F9" }]}>
             <TouchableOpacity 
               style={styles.attachButton}
               onPress={handleImagePick}
               disabled={isLoading}
             >
-              <Ionicons name="attach" size={24} color="#64748B" />
+              <Ionicons name="attach" size={24} color={isDark ? "#94A3B8" : "#64748B"} />
             </TouchableOpacity>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: colors.text }]}
               placeholder="Type your message..."
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={isDark ? "#4B5563" : "#94A3B8"}
               value={inputText}
               onChangeText={setInputText}
               multiline
               maxLength={500}
             />
             <TouchableOpacity 
-              style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+              style={[styles.sendButton, !inputText.trim() && { backgroundColor: isDark ? "#334155" : "#CBD5E1" }]}
               onPress={handleSend}
               disabled={!inputText.trim() || isLoading}
             >

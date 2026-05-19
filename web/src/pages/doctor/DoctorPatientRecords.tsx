@@ -73,7 +73,8 @@ export default function DoctorPatientRecords() {
         chronic_diseases: chronic.map(c => ({ diseaseName: c.diseaseName })),
       }
 
-      const response = await fetch(`http://192.168.1.3:8000/analyze-history`, {
+      const aiServerUrl = import.meta.env.VITE_AI_SERVER_URL || 'http://localhost:8000'
+      const response = await fetch(`${aiServerUrl}/analyze-history`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

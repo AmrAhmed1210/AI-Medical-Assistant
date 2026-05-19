@@ -123,25 +123,6 @@ namespace MedicalAssistant.Services.Services
         {
             var email = dto.Email.ToLower().Trim();
 
-            if (email == "admin@admin.com" && dto.Password == "12345678")
-            {
-                var adminUser = (await _unitOfWork.Repository<User>().FindAsync(u => u.Email == email)).FirstOrDefault();
-                return new AuthResponseDto
-                {
-                    AccessToken = GenerateToken("Hassan Mohamed", email, "Admin", "999"),
-                    RefreshToken = "",
-                    ExpiresIn = 86400,
-                    User = new UserDto
-                    {
-                        Id = 999,
-                        FullName = "Hassan Mohamed",
-                        Email = email,
-                        Role = "Admin",
-                        PhotoUrl = adminUser?.PhotoUrl
-                    }
-                };
-            }
-
             var patient = await _unitOfWork.Patients.GetByEmailAsync(email);
             if (patient != null)
             {

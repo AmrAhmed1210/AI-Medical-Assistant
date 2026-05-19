@@ -35,7 +35,7 @@ const adminNav: NavItem[] = [
   { to: ROUTES.ADMIN_DASHBOARD, icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
   { to: ROUTES.ADMIN_USERS, icon: <Users size={18} />, label: 'Users' },
   { to: ROUTES.ADMIN_STATISTICS, icon: <TrendingUp size={18} />, label: 'Statistics' },
-  { to: ROUTES.ADMIN_MODELS, icon: <Cpu size={18} />, label: 'AI Models' },
+
   { to: ROUTES.ADMIN_APPLICATIONS, icon: <FileText size={18} />, label: 'Applications' },
   { to: ROUTES.ADMIN_SUPPORT, icon: <LifeBuoy size={18} />, label: 'Support Center' },
 ]

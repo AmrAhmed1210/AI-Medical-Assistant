@@ -24,6 +24,7 @@ import {
 } from "../../services/medicationReminderService";
 import Toast from "react-native-toast-message";
 import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
 import { onNewMedication } from "../../services/signalr";
 
 const { width, height } = Dimensions.get("window");
@@ -32,6 +33,7 @@ const DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"
 const FORMS = ["Pill", "Syrup", "Injection", "Inhaler", "Cream", "Drops", "Patch", "Powder"];
 
 export default function MedicationsScreen() {
+  const { theme, isDark, colors } = useTheme();
   const { tr, isRTL } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [patientId, setPatientId] = useState<number | null>(null);
@@ -366,8 +368,8 @@ export default function MedicationsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
 
       {/* ANIMATED LUXURY HEADER - INCREASED Z-INDEX FOR TOUCHES */}
       <Animated.View style={[styles.magicHeader, { height: headerHeight, opacity: headerOpacity, zIndex: 1000 }]}>
@@ -400,7 +402,7 @@ export default function MedicationsScreen() {
       {sosData && <SosBar bloodType={sosData.bloodType} allergies={sosData.allergies} />}
 
       <Animated.View style={[styles.pillTabsContainer, { transform: [{ translateY: tabsTranslateY }] }]}>
-        <View style={styles.pillTabsBackground}>
+        <View style={[styles.pillTabsBackground, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
           <TouchableOpacity
             style={[styles.pillTab, activeTab === "schedule" && styles.pillTabActive]}
             onPress={() => setActiveTab("schedule")}
@@ -432,11 +434,11 @@ export default function MedicationsScreen() {
           {activeTab === "schedule" ? (
             <>
               {schedule.length === 0 ? (
-                <View style={styles.emptyCard}>
-                  <View style={styles.emptyIconBox}>
-                    <Pill size={48} color="#CBD5E1" />
+                <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={[styles.emptyIconBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                    <Pill size={48} color={isDark ? "#4B5563" : "#CBD5E1"} />
                   </View>
-                  <Text style={styles.emptyTitle}>{tr("no_doses_today")}</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>{tr("no_doses_today")}</Text>
                   <Text style={styles.emptyDesc}>{tr("add_medication_hint")}</Text>
                   <TouchableOpacity style={styles.primaryBtnSmall} onPress={() => setShowAddModal(true)}>
                     <LinearGradient colors={["#059669", "#047857"]} style={styles.btnGradient}>
@@ -481,16 +483,16 @@ export default function MedicationsScreen() {
                       <>
                         <View style={styles.tipWrapper}>
                           <LinearGradient
-                            colors={["rgba(255, 255, 255, 0.95)", "rgba(240, 253, 244, 0.9)"]}
-                            style={styles.magicTargetCard}
+                            colors={isDark ? ["#1E293B", "#121B2E"] : ["rgba(255, 255, 255, 0.95)", "rgba(240, 253, 244, 0.9)"]}
+                            style={[styles.magicTargetCard, { borderColor: colors.border }]}
                           >
                             <View style={styles.targetIconBox}>
-                              <View style={styles.innerIconBox}>
+                              <View style={[styles.innerIconBox, { backgroundColor: colors.surface }]}>
                                 <ShieldCheck size={22} color="#059669" />
                               </View>
                             </View>
                             <View style={{ flex: 1 }}>
-                              <Text style={styles.targetTitleText}>{tr("daily_target")}</Text>
+                              <Text style={[styles.targetTitleText, { color: isDark ? "#fff" : '#064E3B' }]}>{tr("daily_target")}</Text>
                               <Text style={styles.targetDescText}>
                                 {taken === total && total > 0
                                   ? tr("all_done_today")
@@ -530,11 +532,11 @@ export default function MedicationsScreen() {
                                   <Text style={styles.timelineTime}>{time}</Text>
                                 </View>
 
-                                <View style={[styles.timelineCard, isPending && styles.timelineCardPending, isMissed && styles.timelineCardMissed]}>
+                                <View style={[styles.timelineCard, { backgroundColor: colors.surface, borderColor: colors.border }, isPending && styles.timelineCardPending, isMissed && styles.timelineCardMissed]}>
                                   <View style={styles.timelineCardHeader}>
                                     <View style={{ flex: 1 }}>
-                                      <Text style={styles.timelineMedName}>{item.medicationName}</Text>
-                                      <Text style={styles.timelineDosageText}>{item.dosage}</Text>
+                                      <Text style={[styles.timelineMedName, { color: colors.text }]}>{item.medicationName}</Text>
+                                      <Text style={[styles.timelineDosageText, { color: colors.textMuted }]}>{item.dosage}</Text>
                                     </View>
                                     <View style={[styles.timelineStatusBadge, { backgroundColor: status.bg }]}>
                                       <Text style={[styles.timelineStatusText, { color: status.text }]}>{status.label}</Text>
@@ -571,11 +573,11 @@ export default function MedicationsScreen() {
                         {takenItems.length > 0 && (
                           <View style={styles.takenSection}>
                             <View style={styles.sectionHeaderRow}>
-                              <Text style={styles.takenSectionTitle}>{tr("completed_today")}</Text>
+                              <Text style={[styles.takenSectionTitle, { color: colors.text }]}>{tr("completed_today")}</Text>
                               <View style={styles.countBadge}><Text style={styles.countBadgeText}>{takenItems.length}</Text></View>
                             </View>
                             {takenItems.map((item, i) => (
-                              <View key={`taken-${i}`} style={styles.takenCard}>
+                              <View key={`taken-${i}`} style={[styles.takenCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                                 <View style={styles.takenCheckIcon}>
                                   <CheckCircle2 size={20} color="#059669" />
                                 </View>
@@ -597,11 +599,11 @@ export default function MedicationsScreen() {
           ) : (
             <>
               {medications.length === 0 ? (
-                <View style={styles.emptyCard}>
-                  <View style={styles.emptyIconBox}>
-                    <Ionicons name="medkit-outline" size={48} color="#CBD5E1" />
+                <View style={[styles.emptyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={[styles.emptyIconBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}>
+                    <Ionicons name="medkit-outline" size={48} color={isDark ? "#4B5563" : "#CBD5E1"} />
                   </View>
-                  <Text style={styles.emptyTitle}>{tr("no_medications")}</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>{tr("no_medications")}</Text>
                   <Text style={styles.emptyDesc}>{tr("add_medication_hint")}</Text>
                   <TouchableOpacity style={styles.primaryBtnSmall} onPress={() => setShowAddModal(true)}>
                     <LinearGradient colors={["#059669", "#047857"]} style={styles.btnGradient}>
@@ -618,7 +620,7 @@ export default function MedicationsScreen() {
                     return (
                       <TouchableOpacity
                         key={med.id}
-                        style={[styles.medCard, isExpanded && styles.medCardExpanded]}
+                        style={[styles.medCard, { backgroundColor: colors.surface, borderColor: colors.border }, isExpanded && styles.medCardExpanded]}
                         onPress={() => toggleExpand(med.id)}
                         activeOpacity={0.9}
                       >
@@ -627,8 +629,8 @@ export default function MedicationsScreen() {
                             <Pill size={22} color="#059669" />
                           </View>
                           <View style={{ flex: 1, marginLeft: 12 }}>
-                            <Text style={styles.medName}>{med.medicationName}</Text>
-                            <Text style={styles.medCompactSub}>{med.dosage} • {med.frequency}</Text>
+                            <Text style={[styles.medName, { color: colors.text }]}>{med.medicationName}</Text>
+                            <Text style={[styles.medCompactSub, { color: colors.textMuted }]}>{med.dosage} • {med.frequency}</Text>
                           </View>
                           <View style={styles.headerRightInfo}>
                             <View style={[styles.stockBadgeCompact, { backgroundColor: stock.bg }]}>
@@ -644,22 +646,22 @@ export default function MedicationsScreen() {
                             <View style={styles.medBodyGrid}>
                               <View style={styles.gridItem}>
                                 <Text style={styles.gridLabel}>FORM</Text>
-                                <Text style={styles.gridValue}>{med.form}</Text>
+                                <Text style={[styles.gridValue, { color: colors.text }]}>{med.form}</Text>
                               </View>
                               <View style={styles.gridItem}>
                                 <Text style={styles.gridLabel}>TYPE</Text>
-                                <Text style={styles.gridValue}>{med.isChronic ? "Chronic" : "Regular"}</Text>
+                                <Text style={[styles.gridValue, { color: colors.text }]}>{med.isChronic ? "Chronic" : "Regular"}</Text>
                               </View>
                               <View style={styles.gridItem}>
                                 <Text style={styles.gridLabel}>REFILL AT</Text>
-                                <Text style={styles.gridValue}>{med.refillThreshold}</Text>
+                                <Text style={[styles.gridValue, { color: colors.text }]}>{med.refillThreshold}</Text>
                               </View>
                             </View>
 
                             {med.doseTimes && (
                               <View style={styles.scheduleRow}>
                                 <Clock size={14} color="#64748B" />
-                                <Text style={styles.scheduleText}>{med.doseTimes.split(',').join(' • ')}</Text>
+                                <Text style={[styles.scheduleText, { color: colors.text }]}>{med.doseTimes.split(',').join(' • ')}</Text>
                               </View>
                             )}
 
@@ -668,7 +670,7 @@ export default function MedicationsScreen() {
                             {med.instructions && (
                               <View style={styles.noteBox}>
                                 <Info size={14} color="#64748B" />
-                                <Text style={styles.noteText}>{med.instructions}</Text>
+                                <Text style={[styles.noteText, { color: colors.text }]}>{med.instructions}</Text>
                               </View>
                             )}
 
@@ -704,10 +706,10 @@ export default function MedicationsScreen() {
       {/* Add Medication Modal */}
       <Modal visible={showAddModal} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
             <View style={styles.sheetHandle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editingId ? "Edit Medication" : "Add Medication"}</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{editingId ? "Edit Medication" : "Add Medication"}</Text>
               <TouchableOpacity style={styles.modalCloseBtn} onPress={() => { resetForm(); setShowAddModal(false); }}>
                 <X size={24} color="#64748B" />
               </TouchableOpacity>
@@ -716,7 +718,7 @@ export default function MedicationsScreen() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Medication Name *</Text>
-                <TextInput style={styles.textInput} value={medName} onChangeText={setMedName} placeholder="e.g. Panadol" placeholderTextColor="#CBD5E1" />
+                <TextInput style={[styles.textInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]} value={medName} onChangeText={setMedName} placeholder="e.g. Panadol" placeholderTextColor={isDark ? "#4B5563" : "#CBD5E1"} />
                 <TouchableOpacity
                   style={[styles.aiSafetyBtn, isCheckingSafety && { opacity: 0.7 }]}
                   onPress={handleAiSafetyCheck}
@@ -752,7 +754,7 @@ export default function MedicationsScreen() {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Dosage *</Text>
-                <TextInput style={styles.textInput} value={dosage} onChangeText={setDosage} placeholder="e.g. 500mg" placeholderTextColor="#CBD5E1" />
+                <TextInput style={[styles.textInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]} value={dosage} onChangeText={setDosage} placeholder="e.g. 500mg" placeholderTextColor={isDark ? "#4B5563" : "#CBD5E1"} />
               </View>
 
               <View style={styles.inputGroup}>
@@ -802,17 +804,17 @@ export default function MedicationsScreen() {
                 {doseMode === "fixed" ? (
                   <View style={{ marginTop: 15 }}>
                     <Text style={styles.smallInputLabel}>Dose Times (e.g. 08:00, 20:00)</Text>
-                    <TextInput style={styles.textInput} value={doseTimes} onChangeText={setDoseTimes} placeholder="08:00, 14:00, 20:00" placeholderTextColor="#CBD5E1" />
+                    <TextInput style={[styles.textInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]} value={doseTimes} onChangeText={setDoseTimes} placeholder="08:00, 14:00, 20:00" placeholderTextColor={isDark ? "#4B5563" : "#CBD5E1"} />
                   </View>
                 ) : (
                   <View style={styles.intervalRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.smallInputLabel}>Interval (hrs)</Text>
-                      <TextInput style={styles.textInput} value={intervalHours} onChangeText={setIntervalHours} keyboardType="number-pad" placeholder="8" placeholderTextColor="#CBD5E1" />
+                      <TextInput style={[styles.textInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]} value={intervalHours} onChangeText={setIntervalHours} keyboardType="number-pad" placeholder="8" placeholderTextColor={isDark ? "#4B5563" : "#CBD5E1"} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.smallInputLabel}>Times/Day</Text>
-                      <TextInput style={styles.textInput} value={timesPerDay} onChangeText={setTimesPerDay} keyboardType="number-pad" placeholder="3" placeholderTextColor="#CBD5E1" />
+                      <TextInput style={[styles.textInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]} value={timesPerDay} onChangeText={setTimesPerDay} keyboardType="number-pad" placeholder="3" placeholderTextColor={isDark ? "#4B5563" : "#CBD5E1"} />
                     </View>
                   </View>
                 )}
@@ -830,16 +832,16 @@ export default function MedicationsScreen() {
                   ))}
                 </View>
                 {durationMode === "days" && (
-                  <TextInput style={[styles.textInput, { marginTop: 15 }]} value={durationDays} onChangeText={setDurationDays} keyboardType="number-pad" placeholder="Number of days" placeholderTextColor="#CBD5E1" />
+                  <TextInput style={[styles.textInput, { marginTop: 15, backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]} value={durationDays} onChangeText={setDurationDays} keyboardType="number-pad" placeholder="Number of days" placeholderTextColor={isDark ? "#4B5563" : "#CBD5E1"} />
                 )}
                 {durationMode === "until" && (
-                  <TextInput style={[styles.textInput, { marginTop: 15 }]} value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" placeholderTextColor="#CBD5E1" />
+                  <TextInput style={[styles.textInput, { marginTop: 15, backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]} value={endDate} onChangeText={setEndDate} placeholder="YYYY-MM-DD" placeholderTextColor={isDark ? "#4B5563" : "#CBD5E1"} />
                 )}
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Instructions</Text>
-                <TextInput style={[styles.textInput, { height: 80, textAlignVertical: 'top' }]} value={instructions} onChangeText={setInstructions} placeholder="e.g. Take after meal" placeholderTextColor="#CBD5E1" multiline />
+                <TextInput style={[styles.textInput, { height: 80, textAlignVertical: 'top', backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]} value={instructions} onChangeText={setInstructions} placeholder="e.g. Take after meal" placeholderTextColor={isDark ? "#4B5563" : "#CBD5E1"} multiline />
               </View>
 
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>

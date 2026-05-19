@@ -11,6 +11,7 @@ using MedicalAssistant.Domain.Entities.ReviewsModule;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.Admin;
 using MedicalAssistant.Shared.DTOs.Common;
+using MedicalAssistant.Domain.Entities.AnalysisModule;
 
 namespace MedicalAssistant.Services.Services
 {
@@ -382,7 +383,76 @@ namespace MedicalAssistant.Services.Services
                         _unitOfWork.Repository<Session>().DeleteRange(sessions);
                     }
 
+                    // 6. Delete AnalysisResults
+                    var analysisResults = (await _unitOfWork.Repository<AnalysisResult>().FindAsync(a => a.PatientId == patient.Id)).ToList();
+                    if (analysisResults.Any()) _unitOfWork.Repository<AnalysisResult>().DeleteRange(analysisResults);
+
+                    // 7. Delete PatientDocuments
+                    var patientDocs = (await _unitOfWork.Repository<PatientDocument>().FindAsync(d => d.PatientId == patient.Id)).ToList();
+                    if (patientDocs.Any()) _unitOfWork.Repository<PatientDocument>().DeleteRange(patientDocs);
+
+                    // 8. Delete MedicationLogs
+                    var medLogs = (await _unitOfWork.Repository<MedicationLog>().FindAsync(l => l.PatientId == patient.Id)).ToList();
+                    if (medLogs.Any()) _unitOfWork.Repository<MedicationLog>().DeleteRange(medLogs);
+
+                    // 9. Delete MedicationTrackers
+                    var medTrackers = (await _unitOfWork.Repository<MedicationTracker>().FindAsync(t => t.PatientId == patient.Id)).ToList();
+                    if (medTrackers.Any()) _unitOfWork.Repository<MedicationTracker>().DeleteRange(medTrackers);
+
+                    // 10. Delete VitalReadings
+                    var vitals = (await _unitOfWork.Repository<VitalReading>().FindAsync(v => v.PatientId == patient.Id)).ToList();
+                    if (vitals.Any()) _unitOfWork.Repository<VitalReading>().DeleteRange(vitals);
+
+                    // 11. Delete ChronicDiseaseMonitors
+                    var monitors = (await _unitOfWork.Repository<ChronicDiseaseMonitor>().FindAsync(m => m.PatientId == patient.Id)).ToList();
+                    if (monitors.Any()) _unitOfWork.Repository<ChronicDiseaseMonitor>().DeleteRange(monitors);
+
+                    // 12. Delete AllergyRecords
+                    var allergies = (await _unitOfWork.Repository<AllergyRecord>().FindAsync(a => a.PatientId == patient.Id)).ToList();
+                    if (allergies.Any()) _unitOfWork.Repository<AllergyRecord>().DeleteRange(allergies);
+
+                    // 13. Delete SurgeryHistories
+                    var surgeries = (await _unitOfWork.Repository<SurgeryHistory>().FindAsync(s => s.PatientId == patient.Id)).ToList();
+                    if (surgeries.Any()) _unitOfWork.Repository<SurgeryHistory>().DeleteRange(surgeries);
+
+                    // 14. Delete MedicalProfiles
+                    var profiles = (await _unitOfWork.Repository<MedicalProfile>().FindAsync(p => p.PatientId == patient.Id)).ToList();
+                    if (profiles.Any()) _unitOfWork.Repository<MedicalProfile>().DeleteRange(profiles);
+
+                    // 15. Delete PatientVisits sub-records and visits
+                    var visits = (await _unitOfWork.Repository<PatientVisit>().FindAsync(v => v.PatientId == patient.Id)).ToList();
+                    if (visits.Any())
+                    {
+                        foreach (var v in visits)
+                        {
+                            var visitSymptoms = (await _unitOfWork.Repository<Symptom>().FindAsync(s => s.PatientVisitId == v.Id)).ToList();
+                            if (visitSymptoms.Any()) _unitOfWork.Repository<Symptom>().DeleteRange(visitSymptoms);
+
+                            var visitVitals = (await _unitOfWork.Repository<VisitVitalSign>().FindAsync(vs => vs.PatientVisitId == v.Id)).ToList();
+                            if (visitVitals.Any()) _unitOfWork.Repository<VisitVitalSign>().DeleteRange(visitVitals);
+
+                            var visitPrescriptions = (await _unitOfWork.Repository<VisitPrescription>().FindAsync(vp => vp.PatientVisitId == v.Id)).ToList();
+                            if (visitPrescriptions.Any()) _unitOfWork.Repository<VisitPrescription>().DeleteRange(visitPrescriptions);
+
+                            var visitDocs = (await _unitOfWork.Repository<VisitDocument>().FindAsync(vd => vd.PatientVisitId == v.Id)).ToList();
+                            if (visitDocs.Any()) _unitOfWork.Repository<VisitDocument>().DeleteRange(visitDocs);
+                        }
+                        _unitOfWork.Repository<PatientVisit>().DeleteRange(visits);
+                    }
+
+                    // 16. Finally delete Patient from Patients table
                     _unitOfWork.Patients.Delete(patient);
+
+                    // 17. Delete associated User if exists
+                    if (patient.UserId.HasValue)
+                    {
+                        var assocUser = await _unitOfWork.Repository<User>().GetByIdAsync(patient.UserId.Value);
+                        if (assocUser != null)
+                        {
+                            _unitOfWork.Repository<User>().Delete(assocUser);
+                        }
+                    }
+
                     await _unitOfWork.CommitTransactionAsync();
                     return true;
                 }

@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -35,6 +36,7 @@ const VITAL_TYPES = [
 
 export default function VitalsScreen() {
   const router = useRouter();
+  const { theme, isDark, colors } = useTheme();
   const { tr, isRTL } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [patientId, setPatientId] = useState<number | null>(null);
@@ -237,8 +239,8 @@ export default function VitalsScreen() {
   });
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
 
       {/* ANIMATED LUXURY HEADER */}
       <Animated.View style={[styles.magicHeader, { height: headerHeight, opacity: headerOpacity }]}>
@@ -283,17 +285,17 @@ export default function VitalsScreen() {
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: 260, paddingBottom: 100 }}
       >
-        <View style={styles.contentOverlap}>
+        <View style={[styles.contentOverlap, { backgroundColor: colors.background }]}>
 
           {/* AI ADVICE CARD */}
           {(aiAdvice || isAnalyzingAdvice) && (
             <View style={styles.aiAdviceWrapper}>
-              <LinearGradient colors={["#F5F3FF", "#EDE9FE"]} style={styles.aiAdviceCard}>
+              <LinearGradient colors={isDark ? ["#1E293B", "#121B2E"] : ["#F5F3FF", "#EDE9FE"]} style={[styles.aiAdviceCard, { borderColor: colors.border }]}>
                 <View style={styles.aiAdviceHeader}>
                   <View style={styles.aiSparkleBg}>
                     <Sparkles size={18} color="#7C3AED" />
                   </View>
-                  <Text style={styles.aiAdviceTitle}>{isRTL ? "نصيحة ذكية من AI" : "Smart AI Insights"}</Text>
+                  <Text style={[styles.aiAdviceTitle, { color: colors.text }]}>{isRTL ? "نصيحة ذكية من AI" : "Smart AI Insights"}</Text>
                   <View style={styles.cardLangToggle}>
                     <TouchableOpacity onPress={() => setAdviceLang("en")} style={[styles.cardLangBtn, adviceLang === "en" && styles.cardLangBtnActive]}>
                       <Text style={[styles.cardLangText, adviceLang === "en" && styles.cardLangTextActive]}>EN</Text>
@@ -305,7 +307,7 @@ export default function VitalsScreen() {
                   {isAnalyzingAdvice && <ActivityIndicator size="small" color="#7C3AED" />}
                 </View>
                 {aiAdvice && (
-                  <Text style={[styles.aiAdviceText, adviceLang === 'ar' && { textAlign: 'right' }]}>
+                  <Text style={[styles.aiAdviceText, { color: colors.textMuted }, adviceLang === 'ar' && { textAlign: 'right' }]}>
                     {adviceLang === 'ar' ? aiAdvice.advice_ar : aiAdvice.advice_en}
                   </Text>
                 )}
@@ -315,7 +317,7 @@ export default function VitalsScreen() {
 
           {/* Quick Add Toggle */}
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Latest Health Metrics</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Latest Health Metrics</Text>
             <TouchableOpacity style={styles.addBtnSmall} onPress={() => setShowAddForm(!showAddForm)}>
               <LinearGradient colors={["#059669", "#047857"]} style={styles.addBtnSmallGradient}>
                 <Plus size={18} color="#fff" />
@@ -326,15 +328,15 @@ export default function VitalsScreen() {
 
           {/* Add Form with Glass Style */}
           {showAddForm && (
-            <View style={styles.formCard}>
-              <View style={styles.formIndicator} />
-              <Text style={styles.formTitle}>{editingId ? "Edit Reading" : "New Vital Reading"}</Text>
+            <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[styles.formIndicator, { backgroundColor: colors.border }]} />
+              <Text style={[styles.formTitle, { color: colors.text }]}>{editingId ? "Edit Reading" : "New Vital Reading"}</Text>
 
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll} contentContainerStyle={{ paddingRight: 20 }}>
                 {VITAL_TYPES.map((t) => (
                   <TouchableOpacity
                     key={t.key}
-                    style={[styles.typeChip, selectedType === t.key && styles.typeChipActive]}
+                    style={[styles.typeChip, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border }, selectedType === t.key && styles.typeChipActive]}
                     onPress={() => { setSelectedType(t.key); setValue(""); setValue2(""); }}
                   >
                     <t.icon size={16} color={selectedType === t.key ? "#fff" : "#64748B"} />
@@ -347,7 +349,7 @@ export default function VitalsScreen() {
                 <View style={styles.inputWrap}>
                   <Text style={styles.inputLabel}>Value {currentTypeInfo.hasValue2 && "(Systolic)"}</Text>
                   <TextInput
-                    style={styles.premiumInput}
+                    style={[styles.premiumInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]}
                     keyboardType="numeric"
                     value={value}
                     onChangeText={(t) => { setValue(t); validateAndSetNormal(); }}
@@ -359,7 +361,7 @@ export default function VitalsScreen() {
                   <View style={styles.inputWrap}>
                     <Text style={styles.inputLabel}>Diastolic</Text>
                     <TextInput
-                      style={styles.premiumInput}
+                      style={[styles.premiumInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]}
                       keyboardType="numeric"
                       value={value2}
                       onChangeText={(t) => { setValue2(t); validateAndSetNormal(); }}
@@ -379,7 +381,7 @@ export default function VitalsScreen() {
 
               <View style={styles.inputWrap}>
                 <Text style={styles.inputLabel}>Notes (optional)</Text>
-                <TextInput style={styles.premiumInput} value={notes} onChangeText={setNotes} placeholder="e.g., after meal..." placeholderTextColor="#CBD5E1" />
+                <TextInput style={[styles.premiumInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]} value={notes} onChangeText={setNotes} placeholder="e.g., after meal..." placeholderTextColor="#CBD5E1" />
               </View>
 
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving} activeOpacity={0.8}>
@@ -411,7 +413,7 @@ export default function VitalsScreen() {
               const isAbnormal = reading && !reading.isNormal;
               return (
                 <View key={t.key} style={styles.latestCardWrap}>
-                  <View style={[styles.latestCard, isAbnormal && styles.latestCardAbnormal]}>
+                  <View style={[styles.latestCard, { backgroundColor: colors.surface, borderColor: colors.border }, isAbnormal && styles.latestCardAbnormal]}>
                     <View style={styles.cardHeaderRow}>
                       <View style={[styles.iconCircle, { backgroundColor: t.bg }]}>
                         <t.icon size={16} color={t.color} />
@@ -424,7 +426,7 @@ export default function VitalsScreen() {
                     {reading ? (
                       <View style={styles.readingContent}>
                         <View style={styles.valueRow}>
-                          <Text style={[styles.latestValue, isAbnormal && styles.latestValueAbnormal]}>
+                          <Text style={[styles.latestValue, { color: colors.text }, isAbnormal && styles.latestValueAbnormal]}>
                             {reading.value}{reading.value2 != null ? `/${reading.value2}` : ""}
                           </Text>
                           <Text style={styles.latestUnit}>{reading.unit}</Text>
@@ -448,7 +450,7 @@ export default function VitalsScreen() {
 
           {/* History Section */}
           <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Medical Timeline</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Medical Timeline</Text>
             <View style={styles.historyBadgeCount}><Text style={styles.historyBadgeCountText}>{vitals.length}</Text></View>
           </View>
 
@@ -469,9 +471,9 @@ export default function VitalsScreen() {
                       <View style={[styles.timelineDot, { backgroundColor: typeInfo?.color || '#CBD5E1' }]} />
                       {i !== vitals.length - 1 && <View style={styles.timelineLine} />}
                     </View>
-                    <View style={[styles.historyCard, isAbnormal && styles.historyCardAbnormal]}>
+                    <View style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border }, isAbnormal && styles.historyCardAbnormal]}>
                       <View style={styles.historyTopRow}>
-                        <Text style={styles.historyType}>{v.readingType}</Text>
+                        <Text style={[styles.historyType, { color: colors.text }]}>{v.readingType}</Text>
                         <View style={[styles.statusBadge, isAbnormal ? styles.statusBadgeError : styles.statusBadgeSuccess]}>
                           <Text style={[styles.statusText, isAbnormal ? styles.statusTextError : styles.statusTextSuccess]}>
                             {isAbnormal ? "High Alert" : "Normal"}
@@ -487,7 +489,7 @@ export default function VitalsScreen() {
                         </View>
                       </View>
                       <View style={styles.historyValueRow}>
-                        <Text style={[styles.historyValue, isAbnormal && styles.historyValueAbnormal]}>
+                        <Text style={[styles.historyValue, { color: colors.text }, isAbnormal && styles.historyValueAbnormal]}>
                           {v.value}{v.value2 != null ? ` / ${v.value2}` : ""}
                         </Text>
                         <Text style={styles.historyUnit}>{v.unit}</Text>
@@ -498,7 +500,7 @@ export default function VitalsScreen() {
                           <Text style={styles.historyNotes}>{v.notes}</Text>
                         </View>
                       )}
-                      <Text style={styles.historyDate}>{new Date(v.recordedAt).toLocaleString()}</Text>
+                      <Text style={[styles.historyDate, { color: colors.textMuted }]}>{new Date(v.recordedAt).toLocaleString()}</Text>
                     </View>
                   </View>
                 );

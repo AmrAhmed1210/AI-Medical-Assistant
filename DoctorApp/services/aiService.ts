@@ -1,9 +1,24 @@
 import axios from "axios";
+import Constants from "expo-constants";
 
-// For real devices: use your computer's IP (e.g. 192.168.1.5)
-// For Android Emulator: use 10.0.2.2
-const AI_IP = "192.168.1.4"; // Change this if your computer IP changes
-const AI_SERVER_URL = `http://${AI_IP}:8000`; 
+function getExpoHost(): string | null {
+  const candidates = [
+    (Constants as any).expoGoConfig?.debuggerHost,
+    (Constants as any).manifest2?.extra?.expoClient?.hostUri,
+    (Constants.expoConfig as any)?.hostUri,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string" || !candidate.trim()) continue;
+    const [host] = candidate.split(":");
+    if (host) return host;
+  }
+
+  return null;
+}
+
+const expoHost = getExpoHost();
+const AI_SERVER_URL = expoHost ? `http://${expoHost}:8000` : "http://localhost:8000"; 
 
 export const analyzePatientHistory = async (history: any) => {
     try {

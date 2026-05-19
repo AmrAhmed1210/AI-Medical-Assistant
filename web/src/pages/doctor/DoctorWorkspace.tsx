@@ -103,8 +103,8 @@ export default function DoctorWorkspace() {
 
     setIsAssisting(true)
     try {
-      // Use machine IP for better connectivity across the network
-      const response = await fetch('http://192.168.1.3:8000/doctor-ai-assist', {
+      const aiServerUrl = import.meta.env.VITE_AI_SERVER_URL || 'http://localhost:8000'
+      const response = await fetch(`${aiServerUrl}/doctor-ai-assist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

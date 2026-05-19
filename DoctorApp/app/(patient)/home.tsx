@@ -14,6 +14,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { BASE_URL } from "../../constants/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "../../context/LanguageContext";
+import { useTheme } from "../../context/ThemeContext";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Animated as RNAnimated, Platform } from "react-native";
 import * as Haptics from 'expo-haptics';
@@ -55,6 +56,7 @@ function resolvePhotoUrl(url?: string | null): string {
 export default function HomeScreen() {
   const router = useRouter();
   const { tr, isRTL } = useLanguage();
+  const { theme, isDark, colors } = useTheme();
   const [userName, setUserName] = useState("");
   const [popularDocs, setPopularDocs] = useState<Doctor[]>([]);
   const [nextBooking, setNextBooking] = useState<Appointment | null>(null);
@@ -311,8 +313,8 @@ export default function HomeScreen() {
   });
 
   return (
-    <View style={styles.main}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.main, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <RNAnimated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -373,17 +375,17 @@ export default function HomeScreen() {
         {/* FLOATING GLASS TIP CARD */}
         <View style={styles.tipWrapper}>
           <LinearGradient
-            colors={["rgba(255, 255, 255, 0.95)", "rgba(254, 252, 232, 0.9)"]}
-            style={styles.magicTipCard}
+            colors={isDark ? ["rgba(30, 41, 59, 0.95)", "rgba(15, 23, 42, 0.9)"] : ["rgba(255, 255, 255, 0.95)", "rgba(254, 252, 232, 0.9)"]}
+            style={[styles.magicTipCard, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.8)' }]}
           >
-            <View style={styles.tipIconBox}>
-              <View style={styles.innerIconBox}>
-                <Ionicons name="bulb" size={22} color="#D97706" />
+            <View style={[styles.tipIconBox, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7' }]}>
+              <View style={[styles.innerIconBox, { backgroundColor: isDark ? '#D97706' : '#fff' }]}>
+                <Ionicons name="bulb" size={22} color={isDark ? "#fff" : "#D97706"} />
               </View>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.tipTitle}>Daily Wellness</Text>
-              <Text style={styles.tipDesc}>"Small steps lead to great health. Stay active and hydrated."</Text>
+              <Text style={[styles.tipTitle, { color: isDark ? '#FCD34D' : '#92400E' }]}>Daily Wellness</Text>
+              <Text style={[styles.tipDesc, { color: isDark ? '#FBBF24' : '#B45309' }]}>"Small steps lead to great health. Stay active and hydrated."</Text>
             </View>
             <TouchableOpacity style={styles.tipArrow}>
               <ChevronRight size={18} color="#D97706" />
@@ -393,12 +395,12 @@ export default function HomeScreen() {
 
         {/* AI HEALTH INSIGHTS CARD - REFINED BILINGUAL */}
         <View style={styles.aiInsightContainer}>
-          <View style={styles.aiWhiteCardRefined}>
+          <View style={[styles.aiWhiteCardRefined, { backgroundColor: colors.surface, borderColor: isDark ? '#0284C7' : '#BAE6FD' }]}>
             <View style={styles.aiHeaderRefined}>
-              <View style={styles.aiIconBoxRefined}>
+              <View style={[styles.aiIconBoxRefined, { backgroundColor: isDark ? 'rgba(14, 165, 233, 0.2)' : '#F0F9FF' }]}>
                 <Sparkles size={20} color="#0EA5E9" />
               </View>
-              <Text style={styles.aiTitleRefined}>{isRTL ? "تحليل الذكاء الاصطناعي" : "AI Health Insights"}</Text>
+              <Text style={[styles.aiTitleRefined, { color: colors.text }]}>{isRTL ? "تحليل الذكاء الاصطناعي" : "AI Health Insights"}</Text>
 
               <View style={styles.miniToggleBox}>
                 <TouchableOpacity onPress={() => setReportLang('en')} style={[styles.miniToggleBtn, reportLang === 'en' && styles.miniToggleBtnActive]}>
@@ -420,7 +422,7 @@ export default function HomeScreen() {
 
             {profile?.aiDiagnosisSummary ? (
               <View style={styles.aiContentRefined}>
-                <Text style={[styles.aiTextRefined, reportLang === 'ar' && { textAlign: 'right' }]} numberOfLines={3}>
+                <Text style={[styles.aiTextRefined, { color: colors.textMuted }, reportLang === 'ar' && { textAlign: 'right' }]} numberOfLines={3}>
                   {(() => {
                     try {
                       const parsed = JSON.parse(profile.aiDiagnosisSummary);
@@ -438,7 +440,7 @@ export default function HomeScreen() {
               </View>
             ) : (
               <View style={styles.aiEmptyStateRefined}>
-                <Text style={styles.aiEmptyTextRefined}>{isRTL ? "لا يوجد تحليل حالياً. اضغط تحديث." : "No AI analysis yet. Tap refresh."}</Text>
+                <Text style={[styles.aiEmptyTextRefined, { color: colors.textMuted }]}>{isRTL ? "لا يوجد تحليل حالياً. اضغط تحديث." : "No AI analysis yet. Tap refresh."}</Text>
               </View>
             )}
           </View>
@@ -451,16 +453,16 @@ export default function HomeScreen() {
               activeOpacity={0.9}
             >
               <LinearGradient
-                colors={["#ECFDF5", "#F0FDF4"]}
-                style={styles.reminderCardCalm}
+                colors={isDark ? ["#064E3B", "#121B2E"] : ["#ECFDF5", "#F0FDF4"]}
+                style={[styles.reminderCardCalm, { borderColor: isDark ? '#047857' : '#DCFCE7' }]}
               >
                 <View style={styles.reminderHeaderCompact}>
-                  <View style={styles.reminderIconBoxCalm}>
+                  <View style={[styles.reminderIconBoxCalm, { backgroundColor: isDark ? 'rgba(5, 150, 105, 0.2)' : '#fff' }]}>
                     <Calendar size={18} color="#059669" />
                   </View>
                   <View style={{ flex: 1, marginLeft: 15 }}>
-                    <Text style={styles.reminderTitleCalm}>Upcoming Appointment</Text>
-                    <Text style={styles.reminderDoctorCalm}>Dr. {nextBooking.doctorName} • {nextBooking.time}</Text>
+                    <Text style={[styles.reminderTitleCalm, { color: isDark ? '#34D399' : '#059669' }]}>Upcoming Appointment</Text>
+                    <Text style={[styles.reminderDoctorCalm, { color: isDark ? '#fff' : '#064E3B' }]}>Dr. {nextBooking.doctorName} • {nextBooking.time}</Text>
                   </View>
                   <ChevronRight size={20} color="#059669" />
                 </View>
@@ -478,59 +480,59 @@ export default function HomeScreen() {
           style={styles.healthDashboardContainer}
         >
           <LinearGradient
-            colors={["#FFFFFF", "#F0F9FF"]}
-            style={styles.healthDashboardCard}
+            colors={isDark ? ["#121B2E", "#0F172A"] : ["#FFFFFF", "#F0F9FF"]}
+            style={[styles.healthDashboardCard, { borderColor: colors.border }]}
           >
             <View style={styles.dashboardHeader}>
               <View>
-                <Text style={styles.dashboardTitle}>{isRTL ? "متابعة صحتك اليوم" : "Today's Health Tracker"}</Text>
-                <Text style={styles.dashboardSubTitle}>{isRTL ? "سجل قياساتك للحصول على تحليل دقيق" : "Track your vitals & medications"}</Text>
+                <Text style={[styles.dashboardTitle, { color: colors.text }]}>{isRTL ? "متابعة صحتك اليوم" : "Today's Health Tracker"}</Text>
+                <Text style={[styles.dashboardSubTitle, { color: colors.textMuted }]}>{isRTL ? "سجل قياساتك للحصول على تحليل دقيق" : "Track your vitals & medications"}</Text>
               </View>
-              <View style={styles.healthScoreCircle}>
+              <View style={[styles.healthScoreCircle, { backgroundColor: isDark ? 'rgba(14,165,233,0.15)' : '#E0F2FE' }]}>
                 <Activity size={20} color="#0EA5E9" />
               </View>
             </View>
 
-            <View style={styles.dashboardDivider} />
+            <View style={[styles.dashboardDivider, { backgroundColor: colors.border }]} />
 
             <View style={styles.healthTasksRow}>
               <TouchableOpacity
-                style={styles.healthTaskItem}
+                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => {
                   triggerHaptic();
                   router.push("/(patient)/vitals");
                 }}
               >
-                <View style={styles.taskIconCircle}>
+                <View style={[styles.taskIconCircle, { backgroundColor: isDark ? 'rgba(14,165,233,0.1)' : '#F0F9FF' }]}>
                   <Activity size={20} color="#0EA5E9" />
                 </View>
-                <Text style={styles.taskLabel}>{isRTL ? "القياسات" : "Vitals"}</Text>
+                <Text style={[styles.taskLabel, { color: colors.text }]}>{isRTL ? "القياسات" : "Vitals"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.healthTaskItem}
+                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => {
                   triggerHaptic();
                   router.push("/(patient)/medications");
                 }}
               >
-                <View style={styles.taskIconCircle}>
+                <View style={[styles.taskIconCircle, { backgroundColor: isDark ? 'rgba(99,102,241,0.1)' : '#EEF2FF' }]}>
                   <Pill size={20} color="#6366F1" />
                 </View>
-                <Text style={styles.taskLabel}>{isRTL ? "الأدوية" : "Meds"}</Text>
+                <Text style={[styles.taskLabel, { color: colors.text }]}>{isRTL ? "الأدوية" : "Meds"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.healthTaskItem}
+                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => {
                   triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
                   setShowAiModal(true);
                 }}
               >
-                <View style={styles.taskIconCircle}>
+                <View style={[styles.taskIconCircle, { backgroundColor: isDark ? 'rgba(14,165,233,0.1)' : '#F0F9FF' }]}>
                   <Sparkles size={20} color="#0EA5E9" />
                 </View>
-                <Text style={styles.taskLabel}>{isRTL ? "التقرير" : "Report"}</Text>
+                <Text style={[styles.taskLabel, { color: colors.text }]}>{isRTL ? "التقرير" : "Report"}</Text>
               </TouchableOpacity>
             </View>
 
@@ -554,13 +556,13 @@ export default function HomeScreen() {
         {/* MEDICATION DUE REMINDER CARD */}
         {nextDose && (
           <View style={styles.medTaskContainer}>
-            <LinearGradient colors={["#EEF2FF", "#E0E7FF"]} style={styles.medTaskCard}>
-              <View style={styles.medTaskIconBox}>
+            <LinearGradient colors={isDark ? ["#1E1B4B", "#312E81"] : ["#EEF2FF", "#E0E7FF"]} style={[styles.medTaskCard, { borderColor: isDark ? '#4338CA' : '#C7D2FE' }]}>
+              <View style={[styles.medTaskIconBox, { backgroundColor: isDark ? 'rgba(79, 70, 229, 0.2)' : '#fff' }]}>
                 <Pill size={20} color="#4F46E5" />
               </View>
               <View style={{ flex: 1, marginLeft: 15 }}>
-                <Text style={styles.medTaskTitle}>Medication Due</Text>
-                <Text style={styles.medTaskName}>{nextDose.medicationName} • {nextDose.dosage}</Text>
+                <Text style={[styles.medTaskTitle, { color: isDark ? '#818CF8' : '#4F46E5' }]}>Medication Due</Text>
+                <Text style={[styles.medTaskName, { color: isDark ? '#fff' : '#1E1B4B' }]}>{nextDose.medicationName} • {nextDose.dosage}</Text>
               </View>
               <TouchableOpacity
                 style={styles.medTaskBtn}
@@ -579,20 +581,20 @@ export default function HomeScreen() {
               style={{ width: '48%' }}
               onPress={() => router.push("/(patient)/medications" as any)}
             >
-              <SmallMetric icon={Pill} color="#6366F1" bg="#EEF2FF" label="Your Medications" val={nextDose ? nextDose.medicationName : "Up to date"} />
+              <SmallMetric icon={Pill} color="#6366F1" bg={isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF"} label="Your Medications" val={nextDose ? nextDose.medicationName : "Up to date"} />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={{ width: '48%' }}
               onPress={() => router.push("/(patient)/vitals" as any)}
             >
-              <SmallMetric icon={HeartPulse} color="#6366F1" bg="#EEF2FF" label="Record Vitals" val={lastBP ? `${lastBP.value}/${lastBP.value2}` : "No readings"} />
+              <SmallMetric icon={HeartPulse} color="#6366F1" bg={isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF"} label="Record Vitals" val={lastBP ? `${lastBP.value}/${lastBP.value2}` : "No readings"} />
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Medical History & Records</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Medical History & Records</Text>
         </View>
         <View style={styles.quickAccessRow}>
           <TouchableOpacity
@@ -600,13 +602,13 @@ export default function HomeScreen() {
             onPress={() => router.push("/(patient)/profile?tab=history")}
             activeOpacity={0.8}
           >
-            <LinearGradient colors={["#ECFDF5", "#fff"]} style={styles.fullHistoryGradient}>
+            <LinearGradient colors={isDark ? ["#064E3B", "#121B2E"] : ["#ECFDF5", "#fff"]} style={[styles.fullHistoryGradient, { borderColor: colors.border }]}>
               <View style={styles.historyIconCircle}>
                 <Clock size={24} color="#059669" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.fullHistoryTitle}>View Full Medical History</Text>
-                <Text style={styles.fullHistorySub}>Allergies, Surgeries, Records & Folders</Text>
+                <Text style={[styles.fullHistoryTitle, { color: colors.text }]}>View Full Medical History</Text>
+                <Text style={[styles.fullHistorySub, { color: colors.textMuted }]}>Allergies, Surgeries, Records & Folders</Text>
               </View>
               <ChevronRight size={20} color="#059669" />
             </LinearGradient>
@@ -614,12 +616,12 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.bottomMetricsRow}>
-          <SmallMetric icon={Activity} color="#0EA5E9" bg="#F0F9FF" label="Vitals" val="Latest" onPress={() => router.push("/(patient)/vitals")} />
-          <SmallMetric icon={Pill} color="#F59E0B" bg="#FFF7ED" label="Meds" val="Schedule" onPress={() => router.push("/(patient)/medications")} />
+          <SmallMetric icon={Activity} color="#0EA5E9" bg={isDark ? "rgba(14, 165, 233, 0.2)" : "#F0F9FF"} label="Vitals" val="Latest" onPress={() => router.push("/(patient)/vitals")} />
+          <SmallMetric icon={Pill} color="#F59E0B" bg={isDark ? "rgba(245, 158, 11, 0.2)" : "#FFF7ED"} label="Meds" val="Schedule" onPress={() => router.push("/(patient)/medications")} />
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Medical Specialists</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Medical Specialists</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
           {CATEGORIES.map((cat, i) => (
@@ -628,16 +630,16 @@ export default function HomeScreen() {
               style={styles.catCard}
               onPress={() => router.push({ pathname: "/(patient)/doctors", params: { specialty: cat.specialty } } as any)}
             >
-              <LinearGradient colors={["#fff", "#F1F5F9"]} style={styles.catIconBox}>
-                <cat.icon size={24} color={COLORS.primary} />
+              <LinearGradient colors={isDark ? ["#1E293B", "#121B2E"] : ["#fff", "#F1F5F9"]} style={[styles.catIconBox, { borderColor: colors.border }]}>
+                <cat.icon size={24} color={colors.primary} />
               </LinearGradient>
-              <Text style={styles.catText}>{cat.label}</Text>
+              <Text style={[styles.catText, { color: colors.text }]}>{cat.label}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Top Rated Doctors</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Top Rated Doctors</Text>
           <TouchableOpacity onPress={() => router.push("/(patient)/doctors")}><Text style={styles.seeMore}>View All</Text></TouchableOpacity>
         </View>
 
@@ -663,14 +665,14 @@ export default function HomeScreen() {
       {/* AI FULL REPORT MODAL */}
       <Modal visible={showAiModal} animationType="fade" transparent>
         <View style={styles.modalOverlayRefined}>
-          <View style={styles.modalContentRefined}>
+          <View style={[styles.modalContentRefined, { backgroundColor: colors.surface }]}>
             <View style={styles.modalHeaderRefined}>
               <Sparkles size={22} color="#0EA5E9" />
-              <Text style={styles.modalTitleRefined}>{isRTL ? "تقرير الصحة الذكي" : "Smart AI Report"}</Text>
-              <TouchableOpacity onPress={() => setShowAiModal(false)}><Ionicons name="close" size={26} color="#64748B" /></TouchableOpacity>
+              <Text style={[styles.modalTitleRefined, { color: colors.text }]}>{isRTL ? "تقرير الصحة الذكي" : "Smart AI Report"}</Text>
+              <TouchableOpacity onPress={() => setShowAiModal(false)}><Ionicons name="close" size={26} color={colors.textMuted} /></TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBodyRefined}>
-              <Text style={[styles.modalTextRefined, reportLang === 'ar' && { textAlign: 'right' }]}>
+              <Text style={[styles.modalTextRefined, { color: colors.textMuted }, reportLang === 'ar' && { textAlign: 'right' }]}>
                 {(() => {
                   try {
                     const parsed = JSON.parse(profile?.aiDiagnosisSummary || "{}");
@@ -698,14 +700,15 @@ export default function HomeScreen() {
 }
 
 function SmallMetric({ icon: Icon, color, bg, label, val, onPress }: any) {
+  const { colors } = useTheme();
   return (
-    <TouchableOpacity style={styles.smallMetric} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={[styles.smallMetric, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={onPress} activeOpacity={0.7}>
       <View style={[styles.mIcon, { backgroundColor: bg }]}>
         <Icon size={20} color={color} />
       </View>
-      <View>
-        <Text style={styles.mLabel}>{label}</Text>
-        <Text style={styles.mVal}>{val}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.mLabel, { color: colors.textMuted }]}>{label}</Text>
+        <Text style={[styles.mVal, { color: colors.text }]} numberOfLines={1}>{val}</Text>
       </View>
     </TouchableOpacity>
   );

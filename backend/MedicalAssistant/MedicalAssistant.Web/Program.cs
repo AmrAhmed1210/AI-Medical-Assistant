@@ -216,6 +216,31 @@ public class Program
                 {
                     logger.LogInformation("No pending migrations found.");
                 }
+
+                // Seed Admin User securely if not exists
+                var adminUser = context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()
+                    .FirstOrDefault(u => u.Email == "admin@admin.com");
+
+                if (adminUser == null)
+                {
+                    logger.LogInformation("Seeding Admin user...");
+                    var hashedPassword = BCrypt.Net.BCrypt.HashPassword("12345678");
+                    
+                    var newAdmin = new MedicalAssistant.Domain.Entities.UserModule.User
+                    {
+                        FullName = "Hassan Mohamed",
+                        Email = "admin@admin.com",
+                        PasswordHash = hashedPassword,
+                        Role = "Admin",
+                        IsActive = true,
+                        IsDeleted = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    
+                    context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().Add(newAdmin);
+                    context.SaveChanges();
+                    logger.LogInformation("Admin user seeded successfully.");
+                }
             }
             catch (Exception ex)
             {
