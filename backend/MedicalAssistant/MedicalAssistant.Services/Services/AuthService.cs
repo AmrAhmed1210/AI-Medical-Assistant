@@ -188,8 +188,8 @@ namespace MedicalAssistant.Services.Services
                     }
                 }
 
-                var refreshToken = GenerateRefreshToken();
-                patientUser.RefreshToken = refreshToken;
+                var patientRefreshToken = GenerateRefreshToken();
+                patientUser.RefreshToken = patientRefreshToken;
                 patientUser.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
                 _unitOfWork.Repository<User>().Update(patientUser);
                 await _unitOfWork.SaveChangesAsync();
@@ -197,7 +197,7 @@ namespace MedicalAssistant.Services.Services
                 return new AuthResponseDto
                 {
                     AccessToken = GenerateToken(patient.FullName, patient.Email, "Patient", patientUser.Id.ToString(), patient.Id.ToString()),
-                    RefreshToken = refreshToken,
+                    RefreshToken = patientRefreshToken,
                     ExpiresIn = 86400,
                     User = new UserDto
                     {
