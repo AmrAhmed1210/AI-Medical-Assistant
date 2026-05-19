@@ -59,5 +59,20 @@ namespace MedicalAssistant.Presentation.Controllers
             // Frontend will clear the token from localStorage
             return Ok(new { message = "Logged out successfully" });
         }
+
+        // POST /auth/refresh-token
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto dto)
+        {
+            try
+            {
+                var result = await _authService.RefreshTokenAsync(dto);
+                return Ok(result);
+            }
+            catch (Microsoft.IdentityModel.Tokens.SecurityTokenException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+        }
     }
 }

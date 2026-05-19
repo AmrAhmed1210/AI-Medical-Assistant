@@ -147,6 +147,7 @@ public class Program
 
             client.BaseAddress = new Uri(url);
             client.Timeout = TimeSpan.FromSeconds(60);
+            client.DefaultRequestHeaders.Add("x-internal-token", "LuxuryMedicalAiSecretKey2026");
         });
 
 

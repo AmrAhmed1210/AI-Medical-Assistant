@@ -6,5 +6,6 @@ namespace MedicalAssistant.Services_Abstraction.Contracts
     {
         Task<AuthResponseDto> RegisterAsync(RegisterDto dto);
         Task<AuthResponseDto> LoginAsync(LoginDto dto);
+        Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto dto);
     }
 }

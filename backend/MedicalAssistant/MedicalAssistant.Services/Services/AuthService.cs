@@ -51,6 +51,7 @@ namespace MedicalAssistant.Services.Services
                 ? DateTime.SpecifyKind(dto.DateOfBirth.Value, DateTimeKind.Utc)
                 : null;
 
+            var refreshToken = GenerateRefreshToken();
             var user = new User
             {
                 FullName = dto.FullName.Trim(),
@@ -61,7 +62,9 @@ namespace MedicalAssistant.Services.Services
                 BirthDate = birthDateUtc,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                IsActive = true
+                IsActive = true,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7)
             };
             await _unitOfWork.Repository<User>().AddAsync(user);
             await _unitOfWork.SaveChangesAsync();
@@ -106,7 +109,7 @@ namespace MedicalAssistant.Services.Services
             return new AuthResponseDto
             {
                 AccessToken = token,
-                RefreshToken = "",
+                RefreshToken = refreshToken,
                 ExpiresIn = 86400,
                 User = new UserDto
                 {
@@ -185,10 +188,16 @@ namespace MedicalAssistant.Services.Services
                     }
                 }
 
+                var refreshToken = GenerateRefreshToken();
+                patientUser.RefreshToken = refreshToken;
+                patientUser.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+                _unitOfWork.Repository<User>().Update(patientUser);
+                await _unitOfWork.SaveChangesAsync();
+
                 return new AuthResponseDto
                 {
                     AccessToken = GenerateToken(patient.FullName, patient.Email, "Patient", patientUser.Id.ToString(), patient.Id.ToString()),
-                    RefreshToken = "",
+                    RefreshToken = refreshToken,
                     ExpiresIn = 86400,
                     User = new UserDto
                     {
@@ -244,10 +253,16 @@ namespace MedicalAssistant.Services.Services
                 doctorId = sec.FirstOrDefault()?.DoctorId.ToString();
             }
 
+            var refreshToken = GenerateRefreshToken();
+            user.RefreshToken = refreshToken;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+            _unitOfWork.Repository<User>().Update(user);
+            await _unitOfWork.SaveChangesAsync();
+
             return new AuthResponseDto
             {
                 AccessToken = GenerateToken(user.FullName, user.Email, user.Role, user.Id.ToString(), null, doctorId),
-                RefreshToken = "",
+                RefreshToken = refreshToken,
                 ExpiresIn = 86400,
                 User = new UserDto
                 {
@@ -294,6 +309,76 @@ namespace MedicalAssistant.Services.Services
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequestDto dto)
+        {
+            var principal = GetPrincipalFromExpiredToken(dto.AccessToken);
+            if (principal == null)
+                throw new SecurityTokenException("Invalid access token");
+
+            var userIdClaim = principal.FindFirst("UserId") ?? principal.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                throw new SecurityTokenException("Invalid token claims");
+
+            var userId = int.Parse(userIdClaim.Value);
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
+
+            if (user == null || user.RefreshToken != dto.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+                throw new SecurityTokenException("Invalid refresh token");
+
+            var patientId = principal.FindFirst("PatientId")?.Value;
+            var doctorId = principal.FindFirst("DoctorId")?.Value;
+
+            var newAccessToken = GenerateToken(user.FullName, user.Email, user.Role, user.Id.ToString(), patientId, doctorId);
+            var newRefreshToken = GenerateRefreshToken();
+
+            user.RefreshToken = newRefreshToken;
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+            _unitOfWork.Repository<User>().Update(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            return new AuthResponseDto
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken,
+                ExpiresIn = 86400,
+                User = new UserDto
+                {
+                    Id = user.Id,
+                    FullName = user.FullName,
+                    Email = user.Email,
+                    Role = user.Role,
+                    PhotoUrl = user.PhotoUrl
+                }
+            };
+        }
+
+        private static string GenerateRefreshToken()
+        {
+            var randomNumber = new byte[64];
+            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
+        }
+
+        private ClaimsPrincipal? GetPrincipalFromExpiredToken(string? token)
+        {
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = false,
+                ValidateIssuer = false,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!)),
+                ValidateLifetime = false
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
+            if (securityToken is not JwtSecurityToken jwtSecurityToken || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+                throw new SecurityTokenException("Invalid token");
+
+            return principal;
         }
     }
 }

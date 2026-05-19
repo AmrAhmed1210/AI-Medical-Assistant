@@ -3,7 +3,7 @@ import io
 import json
 import re
 import google.generativeai as genai
-from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form
+from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 from pydantic import BaseModel
@@ -22,6 +22,13 @@ if GOOGLE_API_KEY:
     model = genai.GenerativeModel('gemini-flash-latest')
 else:
     print("WARNING: GOOGLE_API_KEY not found in environment variables.")
+
+# Internal security key for ASP.NET to FastAPI communication
+INTERNAL_SECRET_KEY = "LuxuryMedicalAiSecretKey2026"
+
+def verify_internal_token(x_internal_token: str = Header(None)):
+    if not x_internal_token or x_internal_token != INTERNAL_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid or missing internal token")
 
 app = FastAPI(title="Luxury Medical AI API")
 
@@ -58,7 +65,7 @@ class PatientHistoryInput(BaseModel):
 def root():
     return {"status": "ok", "message": "Luxury Medical AI API is active 🤖"}
 
-@app.post("/summarize-surgery")
+@app.post("/summarize-surgery", dependencies=[Depends(verify_internal_token)])
 async def summarize_surgery(data: SurgeryInput):
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
@@ -87,7 +94,7 @@ async def summarize_surgery(data: SurgeryInput):
         print(f"DEBUG: Error in summarize_surgery: {str(e)}")
         return {"summary_en": "Surgery recorded.", "summary_ar": "تم تسجيل العملية."}
 
-@app.post("/analyze-history")
+@app.post("/analyze-history", dependencies=[Depends(verify_internal_token)])
 async def analyze_history(data: PatientHistoryInput):
     print(f"DEBUG: Received history data for analysis. Documents analysis: {data.documents_analysis}")
     if not GOOGLE_API_KEY:
@@ -176,7 +183,7 @@ async def analyze_history(data: PatientHistoryInput):
 
 
 
-@app.post("/analyze-image")
+@app.post("/analyze-image", dependencies=[Depends(verify_internal_token)])
 async def analyze_image(
     file: UploadFile = File(...), 
     type: str = Form("prescription"),
@@ -255,7 +262,7 @@ async def analyze_image(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/summarize-medical-item")
+@app.post("/summarize-medical-item", dependencies=[Depends(verify_internal_token)])
 async def summarize_item(data: dict):
     """Refines medical descriptions for surgeries, diseases, or allergies."""
     item_type = data.get("type", "medical item")
@@ -285,7 +292,7 @@ async def summarize_item(data: dict):
         print(f"DEBUG: Error in summarize_item: {e}")
         return {"summary_en": description, "summary_ar": description}
 
-@app.post("/analyze-vitals")
+@app.post("/analyze-vitals", dependencies=[Depends(verify_internal_token)])
 async def analyze_vitals(data: dict):
     """Analyzes vital signs and gives immediate advice."""
     vitals = data.get("vitals", [])
@@ -324,7 +331,7 @@ async def analyze_vitals(data: dict):
         print(f"DEBUG: Error in analyze_vitals: {e}")
         return {"advice_en": "Keep monitoring.", "advice_ar": "استمر في المتابعة."}
 
-@app.post("/check-medication-safety")
+@app.post("/check-medication-safety", dependencies=[Depends(verify_internal_token)])
 async def check_medication(data: dict):
     """Checks for risks between a new medication and existing history."""
     new_med = data.get("medication", "")
@@ -360,7 +367,7 @@ async def check_medication(data: dict):
         print(f"DEBUG: Error in check_medication: {e}")
         return {"safety_en": "Consult doctor.", "safety_ar": "استشر الطبيب."}
 
-@app.post("/doctor-ai-assist")
+@app.post("/doctor-ai-assist", dependencies=[Depends(verify_internal_token)])
 async def doctor_ai_assist(data: dict):
     """Provides AI help for doctors while filling visit records."""
     chief_complaint = data.get("chief_complaint", "")

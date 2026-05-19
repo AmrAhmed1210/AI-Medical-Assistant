@@ -16,6 +16,8 @@ public class User : BaseEntity
     public string? PhotoUrl { get; set; }
     public bool IsActive { get; set; } = true; // [cite: 79]
     public bool IsDeleted { get; set; } = false; // 
+    public string? RefreshToken { get; set; }
+    public DateTime? RefreshTokenExpiryTime { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // 
     public DateTime? UpdatedAt { get; set; } // 
 }

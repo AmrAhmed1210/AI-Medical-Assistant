@@ -22,12 +22,18 @@ from typing import List, Optional, Tuple
 
 from google import genai
 from google.genai import types
-from fastapi import FastAPI, File, Request, UploadFile
+from fastapi import FastAPI, File, Request, UploadFile, Header, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pinecone import Pinecone
 from pydantic import BaseModel, field_validator
 from sentence_transformers import SentenceTransformer
+
+INTERNAL_SECRET_KEY = "LuxuryMedicalAiSecretKey2026"
+
+def verify_internal_token(x_internal_token: str = Header(None)):
+    if not x_internal_token or x_internal_token != INTERNAL_SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid or missing internal token")
 
 # ─────────────────────────────────────────────
 # Configuration
@@ -808,7 +814,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # /ask Endpoint
 # ─────────────────────────────────────────────
 
-@app.post("/ask", response_model=AskResponse)
+@app.post("/ask", response_model=AskResponse, dependencies=[Depends(verify_internal_token)])
 async def ask(req: AskRequest):
     language    = LanguageDetector.detect(req.text)
     is_egyptian = LanguageDetector.is_egyptian_dialect(req.text)
@@ -919,7 +925,7 @@ async def ask(req: AskRequest):
 # /analyze-image Endpoint
 # ─────────────────────────────────────────────
 
-@app.post("/analyze-image")
+@app.post("/analyze-image", dependencies=[Depends(verify_internal_token)])
 async def analyze_image(file: UploadFile = File(...)):
     """
     Analyze a medical image (lab report, prescription, X-ray, etc.)
