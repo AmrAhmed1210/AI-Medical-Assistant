@@ -44,7 +44,7 @@ namespace MedicalAssistant.Persistance.Data.Configurations
 
             builder.Property(u => u.CreatedAt)
                    .IsRequired()
-                   .HasDefaultValueSql("NOW()");
+                   .HasDefaultValueSql("GETUTCDATE()");
 
             builder.Property(u => u.UpdatedAt)
                    .IsRequired(false);

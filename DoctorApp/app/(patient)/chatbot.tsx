@@ -30,22 +30,7 @@ export default function ChatBotScreen() {
   const [currentSessionId, setCurrentSessionId] = useState<number | undefined>(undefined);
   const flatListRef = useRef<FlatList>(null);
 
-  useEffect(() => {
-    loadSessions();
-  }, []);
-
-  const loadSessions = async () => {
-    try {
-      const sessions = await chatService.getSessions();
-      if (sessions && sessions.length > 0) {
-        const latest = sessions[0];
-        setCurrentSessionId(latest.id);
-        loadMessages(latest.id);
-      }
-    } catch (error) {
-      console.error("Load sessions error:", error);
-    }
-  };
+  // AI medical chat is stateless on the server — no session restore needed.
 
   const loadMessages = async (sessionId: number) => {
     try {
@@ -330,4 +315,4 @@ const styles = StyleSheet.create({
   input: { flex: 1, minHeight: 40, maxHeight: 120, fontSize: 16, color: '#1E293B', paddingHorizontal: 8, paddingTop: 8 },
   sendButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginLeft: 8, marginBottom: 2 },
   sendButtonDisabled: { backgroundColor: '#CBD5E1' }
-});
+});

@@ -252,7 +252,7 @@ namespace MedicalAssistant.Services.Services
                     var doctor = new Doctor
                     {
                         Name = request.FullName,
-                        Location = string.Empty,
+                        Location = string.IsNullOrWhiteSpace(request.Location) ? string.Empty : request.Location.Trim(),
                         Experience = request.YearsExperience ?? 0,
                         ConsultationFee = request.ConsultationFee ?? 0,
                         Bio = request.Bio ?? string.Empty,

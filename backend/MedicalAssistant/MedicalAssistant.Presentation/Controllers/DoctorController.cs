@@ -249,6 +249,7 @@ namespace MedicalAssistant.Presentation.Controllers
         // POST: api/doctors/photo
         [Authorize(Roles = "Doctor")]
         [HttpPost("photo")]
+        [HttpPost("profile/photo")]
         public async Task<IActionResult> UploadPhoto(IFormFile file)
         {
             if (file == null || file.Length == 0)

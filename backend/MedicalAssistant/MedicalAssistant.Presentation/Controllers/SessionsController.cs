@@ -241,10 +241,15 @@ namespace MedicalAssistant.Presentation.Controllers
             else if (senderRole == "user")
             {
                 var patientIdClaim = User.FindFirst("PatientId")?.Value;
+                Patient? patient = null;
                 if (!int.TryParse(patientIdClaim, out var patientId))
                 {
-                    var p = (await _unitOfWork.Repository<Patient>().FindAsync(pa => pa.UserId == userId)).FirstOrDefault();
-                    patientId = p?.Id ?? 0;
+                    patient = (await _unitOfWork.Repository<Patient>().FindAsync(pa => pa.UserId == userId)).FirstOrDefault();
+                    patientId = patient?.Id ?? 0;
+                }
+                else
+                {
+                    patient = await _unitOfWork.Repository<Patient>().GetByIdAsync(patientId);
                 }
 
                 var patientUser = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
@@ -264,7 +269,7 @@ namespace MedicalAssistant.Presentation.Controllers
                                 id,
                                 doctorUser.Id,
                                 patientId,
-                                patientUser.PhotoUrl);
+                                patient?.ImageUrl ?? patientUser.PhotoUrl);
                         }
                     }
                 }

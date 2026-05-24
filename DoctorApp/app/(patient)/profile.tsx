@@ -19,6 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import Toast from "react-native-toast-message";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "../../constants/colors";
+import PatientBackgroundBubbles from "@/components/PatientBackgroundBubbles";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 
@@ -63,6 +64,7 @@ const formatBookingDate = (appt: Appointment) => {
 export default function ProfileScreen() {
   const router = useRouter();
   const { tr, isRTL, lang, switchLanguage } = useLanguage();
+  const isAr = lang === "ar";
   const { theme, isDark, toggleTheme, colors } = useTheme();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
 
@@ -368,7 +370,6 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.main, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
-
       {/* 1. FIXED BUTTONS LAYER (Z-INDEX 1000) */}
       <View style={styles.fixedHeaderTop}>
         <View style={styles.headerLeft}>
@@ -413,6 +414,7 @@ export default function ProfileScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#059669" />}
       >
         <View style={[styles.contentOverlap, { backgroundColor: colors.background }]}>
+          <PatientBackgroundBubbles isDark={isDark} />
           <View style={styles.profileCardWrap}>
             <Animated.View style={[styles.glassProfileCard, { backgroundColor: colors.surface, shadowColor: isDark ? "#000" : "#059669", transform: [{ scale: avatarScale }, { translateY: avatarTranslateY }] }]}>
               <LinearGradient colors={isDark ? ["rgba(18,27,46,0.95)", "rgba(23,35,59,0.9)"] : ["rgba(255,255,255,1)", "rgba(252,255,254,0.98)"]} style={styles.cardGlassOverlay} />
@@ -460,11 +462,17 @@ export default function ProfileScreen() {
             {activeTab === "info" && (
               <View style={styles.section}>
                 <View style={styles.infoQuickActions}>
-                  <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/(patient)/vitals")} activeOpacity={0.8}>
+                  <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/(patient)/ai-profile-assistant" as any)} activeOpacity={0.8}>
+                    <LinearGradient colors={["#FBBF24", "#D97706"]} style={styles.actionIconBox}>
+                      <Sparkles size={22} color="#fff" />
+                    </LinearGradient>
+                    <Text style={styles.actionLabel}>{isAr ? "مساعد AI" : "AI Assist"}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/(patient)/vitals" as any)} activeOpacity={0.8}>
                     <LinearGradient colors={["#0EA5E9", "#0284C7"]} style={styles.actionIconBox}><HeartPulse size={22} color="#fff" /></LinearGradient>
                     <Text style={styles.actionLabel}>{tr("vitals")}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/(patient)/medications")} activeOpacity={0.8}>
+                  <TouchableOpacity style={styles.actionCard} onPress={() => router.push("/(patient)/medications" as any)} activeOpacity={0.8}>
                     <LinearGradient colors={["#6366F1", "#4F46E5"]} style={styles.actionIconBox}><Pill size={22} color="#fff" /></LinearGradient>
                     <Text style={styles.actionLabel}>{tr("medications")}</Text>
                   </TouchableOpacity>
@@ -487,7 +495,7 @@ export default function ProfileScreen() {
                   <ChevronRight size={18} color={colors.textLight} />
                 </TouchableOpacity>
 
-                {/* DARK MODE TOGGLE - REQUESTED FEATURE */}
+                {/* DARK MODE TOGGLE */}
                 <TouchableOpacity style={[styles.supportBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={toggleTheme} activeOpacity={0.7}>
                   <View style={[styles.supportIcon, { backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)' }]}>
                     <Ionicons name={isDark ? "moon" : "sunny"} size={20} color={isDark ? "#10B981" : "#F59E0B"} />
@@ -627,7 +635,7 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* 5. PREMIUM SETTINGS MODAL */}
+      {/* SETTINGS MODAL */}
       <Modal
         visible={settingsModalVisible}
         animationType="slide"
@@ -637,7 +645,7 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface, height: 'auto', maxHeight: '80%' }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border, borderBottomWidth: 1, paddingBottom: 15 }]}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>{tr("settings") || "Settings"}</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{tr("settings" as any) || "Settings"}</Text>
               <TouchableOpacity onPress={() => setSettingsModalVisible(false)} style={styles.modalCloseBtn}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
@@ -959,22 +967,27 @@ function QuickAddOption({ icon: Icon, label, color, onPress }: any) {
 }
 
 const styles = StyleSheet.create({
-  main: { flex: 1, backgroundColor: "#fff" },
+  main: { flex: 1, backgroundColor: "#F8FAFC" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  scroll: { paddingBottom: 120, zIndex: 10, paddingTop: 260 },
+
+  scroll: { paddingBottom: 120, zIndex: 10, paddingTop: 290 },
   fixedHeaderTop: { position: 'absolute', top: 0, left: 0, right: 0, height: 120, paddingTop: 60, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 9999 },
   headerLeft: { width: 50, alignItems: 'flex-start' },
   headerRight: { width: 90, flexDirection: 'row', gap: 8, justifyContent: 'flex-end' },
   backBtn: { width: 40, height: 40, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   headerTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: 0.5, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.2)', textShadowRadius: 5 },
   headerActionBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  magicHeader: { height: 320, borderBottomLeftRadius: 50, borderBottomRightRadius: 50, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0, overflow: 'hidden' },
+
+  magicHeader: { height: 360, borderBottomLeftRadius: 50, borderBottomRightRadius: 50, position: 'absolute', top: 0, left: 0, right: 0, zIndex: 0, overflow: 'hidden' },
+
   liquidBlob: { position: 'absolute', borderRadius: 125, opacity: 0.15 },
   goldDustContainer: { ...StyleSheet.absoluteFillObject },
   goldParticle: { position: 'absolute', width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#FBBF24', opacity: 0.4 },
   emeraldWave: { position: 'absolute', bottom: -10, left: 0, right: 0, height: 40, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 100, transform: [{ scaleX: 2 }] },
-  contentOverlap: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, minHeight: SCREEN_HEIGHT, paddingTop: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 30, elevation: 15 },
-  profileCardWrap: { paddingHorizontal: 20, marginTop: -80, zIndex: 20, marginBottom: 15 },
+  contentOverlap: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, minHeight: SCREEN_HEIGHT, paddingTop: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 30, elevation: 15, position: 'relative', overflow: 'hidden' },
+
+  profileCardWrap: { paddingHorizontal: 20, marginTop: 20, zIndex: 20, marginBottom: 15 },
+
   glassProfileCard: { backgroundColor: '#fff', borderRadius: 24, padding: 18, elevation: 15, shadowColor: '#064E3B', shadowOpacity: 0.15, shadowRadius: 25, position: 'relative', overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
   cardGlassOverlay: { ...StyleSheet.absoluteFillObject, opacity: 0.6 },
   goldHairline: { position: 'absolute', top: 0, left: '15%', right: '15%', height: 4, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 },
@@ -1036,6 +1049,7 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(6, 78, 59, 0.4)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, height: '85%', padding: 25 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+  modalCloseBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   modalTitle: { fontSize: 20, fontWeight: '800', color: '#064E3B' },
   modalBody: { flex: 1 },
   inputBox: { marginBottom: 18 },

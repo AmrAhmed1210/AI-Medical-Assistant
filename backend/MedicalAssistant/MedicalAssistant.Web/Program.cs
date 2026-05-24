@@ -1,6 +1,7 @@
 using MedicalAssistant.Application.Services;
 using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Persistance.Data.DbContexts;
+using MedicalAssistant.Persistance.Data.SqlServer;
 using MedicalAssistant.Persistance.Repositories;
 using MedicalAssistant.Presentation.Hubs;
 using MedicalAssistant.Services.MappingProfiles;
@@ -22,6 +23,10 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+
+        builder.Logging.ClearProviders();
+        builder.Logging.AddConsole();
+        builder.Logging.AddDebug();
 
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
@@ -60,19 +65,7 @@ public class Program
             ?? throw new InvalidOperationException("DefaultConnection is missing");
 
         builder.Services.AddDbContext<MedicalAssistantDbContext>(options =>
-        {
-            if (connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
-                || connectionString.Contains("Username=", StringComparison.OrdinalIgnoreCase)
-                || connectionString.Contains("User Id=", StringComparison.OrdinalIgnoreCase)
-                || connectionString.Contains("Port=", StringComparison.OrdinalIgnoreCase))
-            {
-                options.UseNpgsql(connectionString, o => o.EnableRetryOnFailure());
-            }
-            else
-            {
-                options.UseSqlServer(connectionString, o => o.EnableRetryOnFailure());
-            }
-        });
+            options.UseSqlServer(connectionString, o => o.EnableRetryOnFailure()));
 
         var jwtKey = builder.Configuration["Jwt:Key"]
             ?? throw new InvalidOperationException("JWT Key is missing");
@@ -138,12 +131,12 @@ public class Program
         var pythonServiceUrl =
             builder.Configuration["AIService:Url"]
             ?? builder.Configuration["MEDICAL_AI_URL"]
-            ?? "https://medicalassistantai-production.up.railway.app";
+            ?? "http://localhost:8000";
 
         builder.Services.AddHttpClient<IMedicalAiService, MedicalAiService>(client =>
         {
             var url = builder.Configuration["AIService:Url"]
-                      ?? "https://medicalassistantai-production.up.railway.app";
+                      ?? "http://localhost:8000";
 
             client.BaseAddress = new Uri(url);
             client.Timeout = TimeSpan.FromSeconds(60);
@@ -193,30 +186,10 @@ public class Program
 
             try
             {
-                logger.LogInformation("Starting database migration...");
+                logger.LogInformation("Applying SQL Server migrations...");
 
-                var context =
-                    services.GetRequiredService<MedicalAssistantDbContext>();
-
-                var pendingMigrations =
-                    context.Database.GetPendingMigrations().ToList();
-
-                if (pendingMigrations.Any())
-                {
-                    logger.LogInformation(
-                        "Found {Count} pending migrations: {Migrations}",
-                        pendingMigrations.Count,
-                        string.Join(", ", pendingMigrations));
-
-                    context.Database.Migrate();
-
-                    logger.LogInformation(
-                        "Database migration completed successfully.");
-                }
-                else
-                {
-                    logger.LogInformation("No pending migrations found.");
-                }
+                var context = services.GetRequiredService<MedicalAssistantDbContext>();
+                SqlServerMigrationBootstrap.Apply(context, logger);
 
                 // Seed Admin User securely if not exists
                 var adminUser = context.Set<MedicalAssistant.Domain.Entities.UserModule.User>()

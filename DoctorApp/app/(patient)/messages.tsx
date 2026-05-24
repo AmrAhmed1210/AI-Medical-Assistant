@@ -18,6 +18,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { COLORS } from "../../constants/colors";
+import PatientBackgroundBubbles from "@/components/PatientBackgroundBubbles";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { getDoctorById } from "../../services/doctorService";
@@ -301,6 +302,7 @@ export default function MessagesScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      fetchProfile();
       loadSessions(true).catch(() => undefined);
     }, [loadSessions])
   );
@@ -451,6 +453,7 @@ export default function MessagesScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={isDark ? colors.background : "#fff"} />
+      <PatientBackgroundBubbles isDark={isDark} />
 
       <View style={styles.magicHeader}>
         <LinearGradient colors={["#064E3B", "#059669"]} style={StyleSheet.absoluteFill}>
@@ -548,6 +551,7 @@ export default function MessagesScreen() {
           style={[styles.chatContainer, { backgroundColor: colors.background }]}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
+          <PatientBackgroundBubbles isDark={isDark} />
           <View style={[styles.chatHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={() => setChatVisible(false)} style={styles.backBtn}>
               <Ionicons name="chevron-back" size={22} color={colors.text} />

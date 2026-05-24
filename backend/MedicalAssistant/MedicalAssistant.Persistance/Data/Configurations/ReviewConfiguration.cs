@@ -30,7 +30,7 @@ namespace MedicalAssistant.Persistence.Configurations
                    .IsRequired();
 
             builder.Property(r => r.CreatedAt)
-                   .HasDefaultValueSql("NOW()");
+                   .HasDefaultValueSql("GETUTCDATE()");
 
             builder.HasOne(r => r.Doctor)
                    .WithMany(d => d.Reviews)

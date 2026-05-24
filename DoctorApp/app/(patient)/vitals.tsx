@@ -228,7 +228,7 @@ export default function VitalsScreen() {
 
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 150],
-    outputRange: [300, 180],
+    outputRange: [220, 120],
     extrapolate: 'clamp',
   });
 
@@ -241,6 +241,11 @@ export default function VitalsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
+
+      {/* Background Bubbles */}
+      <View style={[styles.bgBubble, styles.bubbleTopLeft, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)' }]} />
+      <View style={[styles.bgBubble, styles.bubbleBottomRight, { backgroundColor: isDark ? 'rgba(14, 165, 233, 0.15)' : 'rgba(14, 165, 233, 0.08)' }]} />
+      <View style={[styles.bgBubble, styles.bubbleCenter, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)' }]} />
 
       {/* ANIMATED LUXURY HEADER */}
       <Animated.View style={[styles.magicHeader, { height: headerHeight, opacity: headerOpacity }]}>
@@ -283,7 +288,7 @@ export default function VitalsScreen() {
           { useNativeDriver: false }
         )}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: 260, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingTop: 200, paddingBottom: 100 }}
       >
         <View style={[styles.contentOverlap, { backgroundColor: colors.background }]}>
 
@@ -326,77 +331,116 @@ export default function VitalsScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Add Form with Glass Style */}
+          {/* Add Form with Glass Style & Premium Feel */}
           {showAddForm && (
-            <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={[styles.formIndicator, { backgroundColor: colors.border }]} />
-              <Text style={[styles.formTitle, { color: colors.text }]}>{editingId ? "Edit Reading" : "New Vital Reading"}</Text>
+            <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: isDark ? '#1E293B' : '#E0F2FE' }]}>
+              <View style={[styles.formIndicator, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+              
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <Text style={[styles.formTitle, { color: colors.text }]}>{editingId ? (isRTL ? "تعديل القياس" : "Edit Reading") : (isRTL ? "تسجيل قياس جديد" : "New Vital Reading")}</Text>
+                {editingId && (
+                  <TouchableOpacity onPress={() => { setEditingId(null); setValue(""); setValue2(""); setNotes(""); setShowAddForm(false); }} style={styles.cancelEditBtn}>
+                    <Ionicons name="close" size={20} color={colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll} contentContainerStyle={{ paddingRight: 20 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll} contentContainerStyle={{ paddingRight: 20, gap: 10 }}>
                 {VITAL_TYPES.map((t) => (
                   <TouchableOpacity
                     key={t.key}
-                    style={[styles.typeChip, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border }, selectedType === t.key && styles.typeChipActive]}
-                    onPress={() => { setSelectedType(t.key); setValue(""); setValue2(""); }}
+                    style={[
+                      styles.typeChip, 
+                      { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? "#1E293B" : "#F1F5F9" }, 
+                      selectedType === t.key && styles.typeChipActive
+                    ]}
+                    onPress={() => { 
+                      import('expo-haptics').then(Haptics => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light));
+                      setSelectedType(t.key); 
+                      setValue(""); 
+                      setValue2(""); 
+                    }}
                   >
-                    <t.icon size={16} color={selectedType === t.key ? "#fff" : "#64748B"} />
-                    <Text style={[styles.typeChipTxt, selectedType === t.key && styles.typeChipTxtActive]}>{t.key}</Text>
+                    <View style={[styles.typeChipIconWrapper, selectedType === t.key && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                      <t.icon size={16} color={selectedType === t.key ? "#fff" : t.color} />
+                    </View>
+                    <Text style={[styles.typeChipTxt, selectedType === t.key && styles.typeChipTxtActive]}>{isRTL ? t.key : t.key}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
               <View style={styles.inputRow}>
                 <View style={styles.inputWrap}>
-                  <Text style={styles.inputLabel}>Value {currentTypeInfo.hasValue2 && "(Systolic)"}</Text>
-                  <TextInput
-                    style={[styles.premiumInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]}
-                    keyboardType="numeric"
-                    value={value}
-                    onChangeText={(t) => { setValue(t); validateAndSetNormal(); }}
-                    placeholder={getVitalRangeText(selectedType + (currentTypeInfo.hasValue2 ? " Systolic" : ""))}
-                    placeholderTextColor="#CBD5E1"
-                  />
+                  <Text style={styles.inputLabel}>{isRTL ? "القيمة" : "Value"} {currentTypeInfo.hasValue2 && (isRTL ? "(الانقباضي)" : "(Systolic)")}</Text>
+                  <View style={[styles.inputPremiumContainer, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                    <TextInput
+                      style={[styles.premiumInputInner, { color: colors.text }]}
+                      keyboardType="numeric"
+                      value={value}
+                      onChangeText={(t) => { setValue(t); validateAndSetNormal(); }}
+                      placeholder="0"
+                      placeholderTextColor="#CBD5E1"
+                    />
+                    <Text style={styles.inputUnitTag}>{currentTypeInfo.unit}</Text>
+                  </View>
                 </View>
                 {currentTypeInfo.hasValue2 && (
                   <View style={styles.inputWrap}>
-                    <Text style={styles.inputLabel}>Diastolic</Text>
-                    <TextInput
-                      style={[styles.premiumInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]}
-                      keyboardType="numeric"
-                      value={value2}
-                      onChangeText={(t) => { setValue2(t); validateAndSetNormal(); }}
-                      placeholder={getVitalRangeText("Blood Pressure Diastolic")}
-                      placeholderTextColor="#CBD5E1"
-                    />
+                    <Text style={styles.inputLabel}>{isRTL ? "الانبساطي" : "Diastolic"}</Text>
+                    <View style={[styles.inputPremiumContainer, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                      <TextInput
+                        style={[styles.premiumInputInner, { color: colors.text }]}
+                        keyboardType="numeric"
+                        value={value2}
+                        onChangeText={(t) => { setValue2(t); validateAndSetNormal(); }}
+                        placeholder="0"
+                        placeholderTextColor="#CBD5E1"
+                      />
+                      <Text style={styles.inputUnitTag}>{currentTypeInfo.unit}</Text>
+                    </View>
                   </View>
                 )}
               </View>
 
-              {!isNormal && (
+              {!isNormal && value !== "" && (
                 <View style={styles.abnormalBanner}>
-                  <AlertCircle size={16} color="#991B1B" />
-                  <Text style={styles.abnormalText}>Outside normal range</Text>
+                  <AlertCircle size={18} color="#B91C1C" />
+                  <Text style={styles.abnormalText}>{isRTL ? "القياس خارج المعدل الطبيعي!" : "Warning: Outside normal range"}</Text>
                 </View>
               )}
 
               <View style={styles.inputWrap}>
-                <Text style={styles.inputLabel}>Notes (optional)</Text>
-                <TextInput style={[styles.premiumInput, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: colors.border }]} value={notes} onChangeText={setNotes} placeholder="e.g., after meal..." placeholderTextColor="#CBD5E1" />
+                <Text style={styles.inputLabel}>{isRTL ? "ملاحظات (اختياري)" : "Notes (optional)"}</Text>
+                <TextInput 
+                  style={[styles.premiumInputFull, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: isDark ? '#1E293B' : '#F1F5F9' }]} 
+                  value={notes} 
+                  onChangeText={setNotes} 
+                  placeholder={isRTL ? "مثال: بعد الأكل..." : "e.g., after meal..."} 
+                  placeholderTextColor="#CBD5E1" 
+                  multiline
+                />
               </View>
 
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving} activeOpacity={0.8}>
+              <TouchableOpacity 
+                style={[styles.saveBtn, saving && { opacity: 0.7 }]} 
+                onPress={() => {
+                  import('expo-haptics').then(Haptics => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
+                  handleSave();
+                }} 
+                disabled={saving} 
+                activeOpacity={0.8}
+              >
                 <LinearGradient colors={["#059669", "#047857"]} style={styles.saveBtnGradient}>
-                  {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.saveBtnTxt}>{editingId ? "Update Record" : "Save Record"}</Text>}
+                  {saving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Sparkles size={18} color="#fff" style={{ marginRight: 8 }} />
+                      <Text style={styles.saveBtnTxt}>{editingId ? (isRTL ? "تحديث القياس" : "Update Record") : (isRTL ? "حفظ القياس" : "Save Record")}</Text>
+                    </>
+                  )}
                 </LinearGradient>
               </TouchableOpacity>
-              {editingId && (
-                <TouchableOpacity
-                  style={{ marginTop: 12, alignItems: 'center' }}
-                  onPress={() => { setEditingId(null); setValue(""); setValue2(""); setNotes(""); setShowAddForm(false); }}
-                >
-                  <Text style={{ color: '#64748B', fontWeight: '600' }}>Cancel Edit</Text>
-                </TouchableOpacity>
-              )}
             </View>
           )}
 
@@ -515,7 +559,11 @@ export default function VitalsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  bgBubble: { position: 'absolute', borderRadius: 300, filter: 'blur(40px)' },
+  bubbleTopLeft: { width: 350, height: 350, top: -100, left: -100 },
+  bubbleBottomRight: { width: 400, height: 400, bottom: -150, right: -150 },
+  bubbleCenter: { width: 250, height: 250, top: '40%', left: '20%' },
   magicHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, overflow: 'hidden' },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60, zIndex: 10 },
   glassBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
@@ -537,48 +585,55 @@ const styles = StyleSheet.create({
 
   formCard: { backgroundColor: '#fff', borderRadius: 32, padding: 25, marginHorizontal: 20, marginBottom: 30, elevation: 12, shadowColor: '#0EA5E9', shadowOpacity: 0.1, shadowRadius: 20, borderWidth: 2, borderColor: '#BAE6FD' },
   formIndicator: { width: 40, height: 5, backgroundColor: '#F1F5F9', borderRadius: 5, alignSelf: 'center', marginBottom: 20 },
-  formTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginBottom: 25 },
+  formTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginBottom: 0 },
+  cancelEditBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
   typeScroll: { marginBottom: 25 },
-  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 18, backgroundColor: '#F8FAFC', marginRight: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#F8FAFC', marginRight: 12, borderWidth: 1, borderColor: '#F1F5F9' },
   typeChipActive: { backgroundColor: '#0EA5E9', borderColor: '#0EA5E9' },
-  typeChipTxt: { fontSize: 13, fontWeight: '700', color: '#64748B' },
+  typeChipIconWrapper: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
+  typeChipTxt: { fontSize: 13, fontWeight: '700', color: '#64748B', marginRight: 6 },
   typeChipTxtActive: { color: "#fff" },
   inputRow: { flexDirection: "row", gap: 15 },
   inputWrap: { flex: 1, marginBottom: 20 },
-  inputLabel: { fontSize: 13, fontWeight: "700", color: "#94A3B8", marginBottom: 10, marginLeft: 4 },
-  premiumInput: { backgroundColor: '#F8FAFC', borderRadius: 18, paddingHorizontal: 18, height: 55, fontSize: 15, color: '#1E293B', borderWidth: 1.5, borderColor: '#F1F5F9', fontWeight: '600' },
-  abnormalBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: "#FEF2F2", borderRadius: 15, padding: 12, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: "#EF4444" },
-  abnormalText: { color: "#991B1B", fontSize: 12, fontWeight: "800" },
-  saveBtn: { borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#0EA5E9', shadowOpacity: 0.3 },
-  saveBtnGradient: { height: 58, justifyContent: 'center', alignItems: 'center' },
-  saveBtnTxt: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  inputLabel: { fontSize: 13, fontWeight: "800", color: "#64748B", marginBottom: 10, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  
+  inputPremiumContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 18, paddingHorizontal: 16, height: 60, borderWidth: 1.5, borderColor: '#F1F5F9' },
+  premiumInputInner: { flex: 1, fontSize: 18, fontWeight: '800', color: '#1E293B' },
+  inputUnitTag: { fontSize: 13, fontWeight: '800', color: '#94A3B8', marginLeft: 8 },
+  premiumInputFull: { backgroundColor: '#F8FAFC', borderRadius: 18, paddingHorizontal: 18, height: 100, fontSize: 15, color: '#1E293B', borderWidth: 1.5, borderColor: '#F1F5F9', fontWeight: '600', textAlignVertical: 'top', paddingTop: 16 },
+  
+  abnormalBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: 15, padding: 12, marginBottom: 20, borderWidth: 1, borderColor: "#FCD34D" },
+  abnormalText: { color: "#D97706", fontSize: 12, fontWeight: "800" },
+  saveBtn: { borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#059669', shadowOpacity: 0.3, shadowRadius: 10 },
+  saveBtnGradient: { flexDirection: 'row', height: 60, justifyContent: 'center', alignItems: 'center' },
+  saveBtnTxt: { color: "#fff", fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
 
   liveIndicatorRow: { paddingHorizontal: 25, marginBottom: 15 },
-  liveIndicator: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F0FDF4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15, alignSelf: 'flex-start' },
+  liveIndicator: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15, alignSelf: 'flex-start' },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' },
   liveText: { fontSize: 10, fontWeight: '800', color: '#10B981', textTransform: 'uppercase' },
 
   latestGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 20, gap: 12, marginBottom: 30 },
   latestCardWrap: { width: '48%', marginBottom: 5 },
-  latestCard: { backgroundColor: '#fff', borderRadius: 28, padding: 18, borderWidth: 2, borderColor: '#BAE6FD', elevation: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15 },
-  latestCardAbnormal: { borderColor: "#FCA5A5", backgroundColor: "#FFF1F2" },
+  latestCard: { borderRadius: 28, padding: 18, borderWidth: 2, elevation: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15 },
+  latestCardAbnormal: { borderColor: "#FCD34D", backgroundColor: "rgba(245, 158, 11, 0.05)" },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   iconCircle: { width: 36, height: 36, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  alertDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444' },
+  alertDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#F59E0B' },
   latestType: { fontSize: 10, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   readingContent: { gap: 6 },
   valueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
-  latestValue: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
-  latestValueAbnormal: { color: "#991B1B" },
+  latestValue: { fontSize: 20, fontWeight: '900' },
+  latestValueAbnormal: { color: "#D97706" },
   latestUnit: { fontSize: 11, color: '#64748B', fontWeight: '700' },
   readingMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   latestDate: { fontSize: 10, color: "#94A3B8", fontWeight: '600' },
-  addPlaceholder: { height: 45, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', paddingHorizontal: 12, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1' },
+  addPlaceholder: { height: 45, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'transparent', paddingHorizontal: 12, borderRadius: 12, borderStyle: 'dashed', borderWidth: 1, borderColor: '#CBD5E1' },
   addPlaceholderText: { fontSize: 12, color: '#94A3B8', fontWeight: '700' },
 
   historyBadgeCount: { backgroundColor: '#059669', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   historyBadgeCountText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-  emptyCard: { backgroundColor: '#fff', borderRadius: 35, padding: 40, alignItems: 'center', marginHorizontal: 20, borderWidth: 2, borderColor: '#BAE6FD' },
+  emptyCard: { borderRadius: 35, padding: 40, alignItems: 'center', marginHorizontal: 20, borderWidth: 2, borderColor: '#BAE6FD' },
   emptyTitle: { fontSize: 18, fontWeight: "900", color: "#1E293B", marginTop: 20 },
   emptyDesc: { fontSize: 14, color: "#94A3B8", marginTop: 10, textAlign: "center", lineHeight: 22 },
 
@@ -587,19 +642,19 @@ const styles = StyleSheet.create({
   timelineLeft: { alignItems: 'center', width: 20 },
   timelineDot: { width: 12, height: 12, borderRadius: 6, zIndex: 10, marginTop: 25 },
   timelineLine: { flex: 1, width: 2, backgroundColor: '#E2E8F0', marginTop: -10 },
-  historyCard: { flex: 1, backgroundColor: '#fff', borderRadius: 24, padding: 18, marginBottom: 20, borderWidth: 2, borderColor: '#BAE6FD', elevation: 5, shadowColor: '#000', shadowOpacity: 0.04 },
-  historyCardAbnormal: { borderColor: "#FCA5A5" },
+  historyCard: { flex: 1, borderRadius: 24, padding: 18, marginBottom: 20, borderWidth: 2, elevation: 5, shadowColor: '#000', shadowOpacity: 0.04 },
+  historyCardAbnormal: { borderColor: "#FCD34D" },
   historyTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  historyType: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  historyType: { fontSize: 15, fontWeight: '800' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  statusBadgeSuccess: { backgroundColor: "#F0FDF4" },
-  statusBadgeError: { backgroundColor: "#FFF1F2" },
+  statusBadgeSuccess: { backgroundColor: "rgba(16, 185, 129, 0.1)" },
+  statusBadgeError: { backgroundColor: "rgba(245, 158, 11, 0.1)" },
   statusText: { fontSize: 10, fontWeight: "800", textTransform: 'uppercase' },
   statusTextSuccess: { color: "#059669" },
-  statusTextError: { color: "#EF4444" },
+  statusTextError: { color: "#D97706" },
   historyValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  historyValue: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
-  historyValueAbnormal: { color: "#991B1B" },
+  historyValue: { fontSize: 20, fontWeight: '900' },
+  historyValueAbnormal: { color: "#D97706" },
   historyUnit: { fontSize: 13, color: '#64748B', fontWeight: '700' },
   historyNotesBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', padding: 10, borderRadius: 12, marginTop: 12 },
   historyNotes: { fontSize: 12, color: "#64748B", fontWeight: '500' },

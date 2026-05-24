@@ -1,9 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 
 let Notifications: any = null;
-try {
-  Notifications = require("expo-notifications");
-  Notifications.setNotificationHandler?.({
+if (Constants.appOwnership !== "expo") {
+  try {
+    Notifications = require("expo-notifications");
+    Notifications.setNotificationHandler?.({
     handleNotification: async () => ({
       shouldShowAlert: true,
       shouldPlaySound: true,
@@ -12,8 +14,9 @@ try {
       shouldShowList: true,
     }),
   });
-} catch {
-  // expo-notifications not available (e.g. Expo Go SDK 53+)
+  } catch {
+    // expo-notifications not available
+  }
 }
 
 const NOTIF_KEY = "@medication_notifs";

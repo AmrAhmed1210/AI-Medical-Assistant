@@ -12,6 +12,8 @@ import {
 } from "../../../services/medicalRecordService";
 import Toast from "react-native-toast-message";
 import { useLanguage } from "../../../context/LanguageContext";
+import { useTheme } from "../../../context/ThemeContext";
+import PatientBackgroundBubbles from "@/components/PatientBackgroundBubbles";
 
 type CategoryId = "allergies" | "chronic" | "medications" | "vitals" | "surgeries" | "documents";
 
@@ -27,6 +29,7 @@ interface CategoryInfo {
 export default function MedicalRecordsHub() {
   const router = useRouter();
   const { tr, isRTL } = useLanguage();
+  const { isDark, colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState<Record<CategoryId, number>>({
     allergies: 0, chronic: 0, medications: 0, vitals: 0, surgeries: 0, documents: 0,
@@ -41,7 +44,7 @@ export default function MedicalRecordsHub() {
       setLoading(true);
       const pid = await getMyPatientId();
       if (pid <= 0) {
-        Toast.show({ type: "error", text1: tr("patient_profile_not_found") });
+        Toast.show({ type: "error", text1: tr("patient_profile_not_found" as any) });
         return;
       }
       const [a, c, m, v, s, d] = await Promise.all([
@@ -71,15 +74,16 @@ export default function MedicalRecordsHub() {
   if (loading) {
     return (
       <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
-        <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <PatientBackgroundBubbles isDark={isDark} />
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => router.back()}>
@@ -90,12 +94,12 @@ export default function MedicalRecordsHub() {
         </View>
       </View>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.sectionTitle}>{tr("health_categories")}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>{tr("health_categories")}</Text>
         <View style={styles.grid}>
           {categories.map((cat) => (
             <TouchableOpacity
               key={cat.id}
-              style={[styles.card, { borderLeftColor: cat.color }]}
+              style={[styles.card, { borderLeftColor: cat.color, backgroundColor: colors.surface, borderColor: colors.border }]}
               onPress={() => router.push({ pathname: "/(patient)/medical-records/[category]", params: { category: cat.id } })}
               activeOpacity={0.8}
             >
@@ -103,7 +107,7 @@ export default function MedicalRecordsHub() {
                 <Ionicons name={cat.icon} size={22} color={cat.color} />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.cardTitle}>{tr(cat.titleKey)}</Text>
+                <Text style={[styles.cardTitle, { color: colors.text }]}>{tr(cat.titleKey as any)}</Text>
                 <Text style={[styles.cardCount, { color: cat.color }]}>
                   {counts[cat.id]} {tr("items")}
                 </Text>

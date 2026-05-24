@@ -203,7 +203,7 @@ public class DoctorService : IDoctorService
             Specialty = doctor.Specialty?.Name ?? string.Empty,
             SpecialityNameAr = doctor.Specialty?.NameAr,
             Bio = doctor.Bio,
-            PhotoUrl = GetFullImageUrl(doctor.ImageUrl),
+            PhotoUrl = GetDoctorImageUrl(doctor),
             ConsultFee = doctor.ConsultationFee,
             YearsExperience = doctor.Experience ?? 0,
             IsAvailable = true,
@@ -248,7 +248,7 @@ public class DoctorService : IDoctorService
 
         _unitOfWork.Repository<Doctor>().Update(doctor);
         await _unitOfWork.SaveChangesAsync();
-        await _notificationService.NotifyProfileUpdated(doctor.Id, doctor.User?.FullName ?? string.Empty, GetFullImageUrl(doctor.ImageUrl));
+        await _notificationService.NotifyProfileUpdated(doctor.Id, doctor.User?.FullName ?? string.Empty, GetDoctorImageUrl(doctor));
     }
 
     public async Task<IEnumerable<AppointmentDto>> GetAppointmentsAsync(int doctorId, string? status)
@@ -566,7 +566,7 @@ public class DoctorService : IDoctorService
             Location = doctor.Location,
             ConsultationFee = doctor.ConsultationFee,
             IsAvailable = doctor.IsAvailable && hasSchedule,
-            ImageUrl = GetFullImageUrl(doctor.ImageUrl),
+            ImageUrl = GetDoctorImageUrl(doctor),
             YearsExperience = doctor.Experience,
             IsProfileComplete = IsProfileComplete(doctor),
             IsMobileEnabled = doctor.IsAvailable,
@@ -587,7 +587,7 @@ public class DoctorService : IDoctorService
             Location = doctor.Location,
             ConsultationFee = doctor.ConsultationFee,
             IsAvailable = doctor.IsAvailable && schedule.HasSchedule,
-            ImageUrl = GetFullImageUrl(doctor.ImageUrl),
+            ImageUrl = GetDoctorImageUrl(doctor),
             YearsExperience = doctor.Experience,
             IsProfileComplete = schedule.IsProfileComplete,
             IsMobileEnabled = doctor.IsAvailable,
@@ -720,8 +720,7 @@ public class DoctorService : IDoctorService
     private static bool IsProfileComplete(Doctor doctor)
     {
         return !string.IsNullOrWhiteSpace(doctor.Bio)
-            && !string.IsNullOrWhiteSpace(doctor.ImageUrl)
-            && !string.Equals(doctor.ImageUrl, "default-doctor.png", StringComparison.OrdinalIgnoreCase);
+            && HasDoctorPhoto(doctor);
     }
 
     private static string GetDayName(byte dayOfWeek)
@@ -931,6 +930,25 @@ public class DoctorService : IDoctorService
             await _unitOfWork.SaveChangesAsync();
             await _notificationService.NotifyProfileUpdated(doctor.Id, doctor.User?.FullName ?? string.Empty, photoUrl);
         }
+    }
+
+    private string GetDoctorImageUrl(Doctor doctor)
+    {
+        var imageUrl = !string.IsNullOrWhiteSpace(doctor.ImageUrl)
+            ? doctor.ImageUrl
+            : doctor.User?.PhotoUrl;
+
+        return GetFullImageUrl(imageUrl);
+    }
+
+    private static bool HasDoctorPhoto(Doctor doctor)
+    {
+        var imageUrl = !string.IsNullOrWhiteSpace(doctor.ImageUrl)
+            ? doctor.ImageUrl
+            : doctor.User?.PhotoUrl;
+
+        return !string.IsNullOrWhiteSpace(imageUrl)
+            && !string.Equals(imageUrl, "default-doctor.png", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task UpdateApplicationDocumentAsync(int applicationId, string documentUrl)

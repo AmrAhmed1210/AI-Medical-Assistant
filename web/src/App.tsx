@@ -59,7 +59,7 @@ function RoleGuard({ roles }: { roles: string[] }) {
   const isHydrated = useAuthStore.persist.hasHydrated()
 
   if (!isHydrated) return <FullPageLoader />
-  if (!role || !roles.includes(role)) return <Navigate to={ROUTES.LOGIN} replace />
+  if (!role || !roles.some(r => r.toLowerCase() === role.toLowerCase())) return <Navigate to={ROUTES.LOGIN} replace />
   return <Outlet />
 }
 
@@ -70,9 +70,10 @@ function PublicGuard() {
 
   if (!isHydrated) return <FullPageLoader />
   if (isAuthenticated) {
-    if (role === 'Admin') return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
-    if (role === 'Doctor') return <Navigate to={ROUTES.DOCTOR_DASHBOARD} replace />
-    if (role === 'Secretary') return <Navigate to="/secretary/dashboard" replace />
+    const lowerRole = role?.toLowerCase()
+    if (lowerRole === 'admin') return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
+    if (lowerRole === 'doctor') return <Navigate to={ROUTES.DOCTOR_DASHBOARD} replace />
+    if (lowerRole === 'secretary') return <Navigate to="/secretary/dashboard" replace />
   }
   return <Outlet />
 }
@@ -156,8 +157,9 @@ function RootRedirect() {
 
   if (!isHydrated) return <FullPageLoader />
   if (!isAuthenticated) return <Navigate to={ROUTES.LOGIN} replace />
-  if (role === 'Admin') return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
-  if (role === 'Doctor') return <Navigate to={ROUTES.DOCTOR_DASHBOARD} replace />
-  if (role === 'Secretary') return <Navigate to="/secretary/dashboard" replace />
+  const lowerRole = role?.toLowerCase()
+  if (lowerRole === 'admin') return <Navigate to={ROUTES.ADMIN_DASHBOARD} replace />
+  if (lowerRole === 'doctor') return <Navigate to={ROUTES.DOCTOR_DASHBOARD} replace />
+  if (lowerRole === 'secretary') return <Navigate to="/secretary/dashboard" replace />
   return <Navigate to={ROUTES.LOGIN} replace />
 }

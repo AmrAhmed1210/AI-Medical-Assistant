@@ -249,6 +249,7 @@ export function useUsers(
     yearsExperience?: number
     consultationFee?: number
     bio?: string
+    location?: string
   }) => {
     try {
       setLoading(true)
@@ -262,7 +263,8 @@ export function useUsers(
         specialityNameAr: data.specialityNameAr,
         yearsExperience: data.yearsExperience,
         consultationFee: data.consultationFee,
-        bio: data.bio
+        bio: data.bio,
+        location: data.location
       })
 
       // Update list

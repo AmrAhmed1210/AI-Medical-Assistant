@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { BASE_URL } from "../constants/api";
 
 type ApiFetchOptions = RequestInit & {
   allowedStatusCodes?: number[];
@@ -115,6 +116,23 @@ export async function apiFetch<T>(
     
   } catch (error) {
     const status = (error as ApiRequestError)?.status
+    const rawMessage = error instanceof Error ? error.message : String(error)
+    const isNetworkFailure =
+      rawMessage.includes("Network request failed") ||
+      rawMessage.includes("Failed to fetch") ||
+      rawMessage.includes("Network Error")
+
+    if (isNetworkFailure) {
+      const networkError = new Error(
+        `تعذر الاتصال بالسيرفر.\n` +
+          `• تأكد أن الموبايل والكمبيوتر على نفس شبكة الواي فاي\n` +
+          `• شغّل Backend: dotnet run (منفذ 5194)\n` +
+          `• العنوان الحالي: ${BASE_URL}`
+      ) as ApiRequestError
+      console.error("[API] Network error:", url, "→", BASE_URL)
+      throw networkError
+    }
+
     if (typeof status === "number" && status >= 400 && status < 500) {
       console.warn('[API] Request failed:', url, error)
     } else {

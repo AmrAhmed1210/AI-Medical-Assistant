@@ -10,6 +10,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "../../constants/colors";
 import DoctorCard from "@/components/DoctorCard";
+import PatientBackgroundBubbles from "@/components/PatientBackgroundBubbles";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor } from "../../services/doctorService";
@@ -204,6 +205,7 @@ export default function DoctorsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
+      <PatientBackgroundBubbles isDark={isDark} />
 
       {/* ANIMATED HEADER: Luxury Emerald */}
       <Animated.View style={[styles.magicHeader, { 

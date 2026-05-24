@@ -13,4 +13,5 @@ public class CreateUserRequest
     public decimal? ConsultationFee { get; set; }
     public string? Bio { get; set; }
     public string? PhotoUrl { get; set; }
+    public string? Location { get; set; }
 }

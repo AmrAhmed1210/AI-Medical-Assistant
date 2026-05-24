@@ -224,6 +224,63 @@ public sealed class MedicalAiService : IMedicalAiService
         }
     }
 
+    public async Task<object?> AnalyzePatientHistoryAsync(
+        object historyPayload,
+        CancellationToken ct = default) =>
+        await PostJsonAsync<object>("/analyze-history", historyPayload, ct);
+
+    public async Task<object?> SummarizeSurgeryAsync(
+        string description,
+        CancellationToken ct = default) =>
+        await PostJsonAsync<object>("/summarize-surgery", new { description }, ct);
+
+    public async Task<object?> SummarizeMedicalItemAsync(
+        string type,
+        string description,
+        CancellationToken ct = default) =>
+        await PostJsonAsync<object>("/summarize-medical-item", new { type, description }, ct);
+
+    public async Task<object?> AnalyzeVitalsAsync(
+        object payload,
+        CancellationToken ct = default) =>
+        await PostJsonAsync<object>("/analyze-vitals", payload, ct);
+
+    public async Task<object?> CheckMedicationSafetyAsync(
+        object payload,
+        CancellationToken ct = default) =>
+        await PostJsonAsync<object>("/check-medication-safety", payload, ct);
+
+    public async Task<object?> ParseMedicalProfileAsync(
+        string text,
+        CancellationToken ct = default) =>
+        await PostJsonAsync<object>("/parse-medical-profile", new { text }, ct);
+
+    private async Task<T?> PostJsonAsync<T>(
+        string path,
+        object payload,
+        CancellationToken ct) where T : class
+    {
+        try
+        {
+            var response = await _http.PostAsJsonAsync(path, payload, JsonOptions, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                _log.LogWarning(
+                    "[MedicalAiService] {Path} returned {StatusCode}",
+                    path,
+                    (int)response.StatusCode);
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync<T>(JsonOptions, ct);
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "[MedicalAiService] {Path} failed", path);
+            return null;
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────
     // Helpers
     // ─────────────────────────────────────────────────────────────

@@ -315,6 +315,12 @@ export default function HomeScreen() {
   return (
     <View style={[styles.main, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+
+      {/* Background Bubbles */}
+      <View style={[styles.bgBubble, styles.bubbleTopLeft, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)' }]} />
+      <View style={[styles.bgBubble, styles.bubbleBottomRight, { backgroundColor: isDark ? 'rgba(14, 165, 233, 0.15)' : 'rgba(14, 165, 233, 0.08)' }]} />
+      <View style={[styles.bgBubble, styles.bubbleCenter, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)' }]} />
+
       <RNAnimated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -495,7 +501,7 @@ export default function HomeScreen() {
 
             <View style={[styles.dashboardDivider, { backgroundColor: colors.border }]} />
 
-            <View style={styles.healthTasksRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.healthTasksRow}>
               <TouchableOpacity
                 style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => {
@@ -526,15 +532,28 @@ export default function HomeScreen() {
                 style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 onPress={() => {
                   triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push("/(patient)/ai-profile-assistant");
+                }}
+              >
+                <View style={[styles.taskIconCircle, { backgroundColor: isDark ? 'rgba(16,185,129,0.1)' : '#ECFDF5' }]}>
+                  <Sparkles size={20} color="#10B981" />
+                </View>
+                <Text style={[styles.taskLabel, { color: colors.text }]}>{isRTL ? "مساعد AI" : "AI Assist"}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                onPress={() => {
+                  triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
                   setShowAiModal(true);
                 }}
               >
                 <View style={[styles.taskIconCircle, { backgroundColor: isDark ? 'rgba(14,165,233,0.1)' : '#F0F9FF' }]}>
-                  <Sparkles size={20} color="#0EA5E9" />
+                  <Activity size={20} color="#0EA5E9" />
                 </View>
                 <Text style={[styles.taskLabel, { color: colors.text }]}>{isRTL ? "التقرير" : "Report"}</Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
 
             {showVitalReminder && (
               <TouchableOpacity
@@ -716,6 +735,10 @@ function SmallMetric({ icon: Icon, color, bg, label, val, onPress }: any) {
 
 const styles = StyleSheet.create({
   main: { flex: 1, backgroundColor: "#F8FAFC" },
+  bgBubble: { position: 'absolute', borderRadius: 300, filter: 'blur(40px)' },
+  bubbleTopLeft: { width: 350, height: 350, top: -100, left: -100 },
+  bubbleBottomRight: { width: 400, height: 400, bottom: -150, right: -150 },
+  bubbleCenter: { width: 250, height: 250, top: '40%', left: '20%' },
   scroll: { paddingBottom: 100 },
   magicHeaderContainer: { zIndex: 10 },
   magicHeader: {
@@ -828,8 +851,8 @@ const styles = StyleSheet.create({
   healthScoreCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#F0F9FF', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#BAE6FD' },
   healthScoreText: { fontSize: 12, fontWeight: '900', color: '#0EA5E9' },
   dashboardDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 15 },
-  healthTasksRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
-  healthTaskItem: { flex: 1, backgroundColor: '#fff', padding: 12, borderRadius: 20, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', elevation: 2 },
+  healthTasksRow: { flexDirection: 'row', alignItems: 'center' },
+  healthTaskItem: { width: 95, backgroundColor: '#fff', padding: 12, borderRadius: 20, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', elevation: 2, marginRight: 10 },
   healthTaskDone: { borderColor: '#BAE6FD', backgroundColor: '#F0FDF4' },
   taskIconCircle: { width: 40, height: 40, borderRadius: 14, backgroundColor: '#F0F9FF', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   taskIconDone: { backgroundColor: '#059669' },

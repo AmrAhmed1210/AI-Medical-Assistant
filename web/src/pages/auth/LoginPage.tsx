@@ -40,12 +40,12 @@ export default function LoginPage() {
 
       setAuth(user, response.accessToken)
 
-      const role = response.user.role
-      if (role === 'Admin') {
+      const role = response.user.role?.toLowerCase()
+      if (role === 'admin') {
         navigate('/admin/dashboard')
-      } else if (role === 'Doctor') {
+      } else if (role === 'doctor') {
         navigate('/doctor/dashboard')
-      } else if (role === 'Secretary') {
+      } else if (role === 'secretary') {
         navigate('/secretary/dashboard')
       } else {
         setError('Access denied. Please use the mobile application.')

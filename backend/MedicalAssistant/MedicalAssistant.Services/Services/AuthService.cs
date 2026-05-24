@@ -46,7 +46,7 @@ namespace MedicalAssistant.Services.Services
 
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
 
-            // Normalize DateOfBirth to UTC to satisfy Npgsql's timestamp with time zone requirement
+            // Normalize DateOfBirth to UTC for consistent SQL Server datetime storage
             DateTime? birthDateUtc = dto.DateOfBirth.HasValue
                 ? DateTime.SpecifyKind(dto.DateOfBirth.Value, DateTimeKind.Utc)
                 : null;
@@ -74,6 +74,7 @@ namespace MedicalAssistant.Services.Services
                 FullName    = dto.FullName.Trim(),
                 Email       = email,
                 PhoneNumber = dto.PhoneNumber?.Trim().Length > 0 ? dto.PhoneNumber.Trim() : "N/A",
+                Address     = string.IsNullOrWhiteSpace(dto.Address) ? null : dto.Address.Trim(),
                 PasswordHash = hashedPassword,
                 DateOfBirth = birthDateUtc ?? DateTime.UtcNow.AddYears(-25),
                 Gender      = dto.Gender ?? "N/A",

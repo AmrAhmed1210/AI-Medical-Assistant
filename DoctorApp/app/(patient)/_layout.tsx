@@ -271,6 +271,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="doctor-details"  options={{ href: null }} />
       <Tabs.Screen name="followed-doctors" options={{ href: null }} />
       <Tabs.Screen name="visit-summary"   options={{ href: null }} />
+      <Tabs.Screen name="ai-profile-assistant" options={{ href: null }} />
       <Tabs.Screen name="medical-records/index" options={{ href: null }} />
     </Tabs>
   );

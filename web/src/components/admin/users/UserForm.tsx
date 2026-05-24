@@ -1,8 +1,16 @@
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertCircle, User, Mail, Lock, Stethoscope } from 'lucide-react'
+import { AlertCircle, User, Mail, Lock, Stethoscope, MapPin } from 'lucide-react'
 import type { UserRole, CreateUserRequest } from '@/lib/types'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import axiosInstance from '@/api/axiosInstance'
+
+interface SpecialtyOption {
+  id: number
+  name: string
+  nameAr?: string | null
+}
 
 interface UserFormProps {
   form: CreateUserRequest
@@ -11,6 +19,38 @@ interface UserFormProps {
 }
 
 export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
+  const [specialties, setSpecialties] = useState<SpecialtyOption[]>([])
+  const [isWritingSpecialty, setIsWritingSpecialty] = useState(false)
+
+  useEffect(() => {
+    axiosInstance.get<SpecialtyOption[]>('/api/specialties')
+      .then((res) => setSpecialties(res.data ?? []))
+      .catch(() => setSpecialties([]))
+  }, [])
+
+  const selectedSpecialtyValue = useMemo(() => {
+    if (isWritingSpecialty) return '__custom'
+    const selected = specialties.find(s => s.name.toLowerCase() === (form.specialityName ?? '').toLowerCase())
+    if (selected) return String(selected.id)
+    return form.specialityName ? '__custom' : ''
+  }, [form.specialityName, isWritingSpecialty, specialties])
+
+  const isCustomSpecialty = selectedSpecialtyValue === '__custom'
+
+  const handleSpecialtyChange = (value: string) => {
+    if (value === '__custom') {
+      setIsWritingSpecialty(true)
+      onChange('specialityName', '')
+      onChange('specialityNameAr', '')
+      return
+    }
+
+    const selected = specialties.find(s => String(s.id) === value)
+    setIsWritingSpecialty(false)
+    onChange('specialityName', selected?.name ?? '')
+    onChange('specialityNameAr', selected?.nameAr || selected?.name || '')
+  }
+
   return (
     <div className="space-y-5">
       {/* Info Notice */}
@@ -87,24 +127,54 @@ export const UserForm = ({ form, errors, onChange }: UserFormProps) => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Specialty (EN) *</label>
-                <Input
-                  type="text"
-                  value={form.specialityName}
-                  onChange={(e) => onChange('specialityName', e.target.value)}
-                  placeholder="Cardiology"
-                  error={errors.specialityName}
-                />
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Specialty *</label>
+                <Select value={selectedSpecialtyValue} onChange={(e) => handleSpecialtyChange(e.target.value)}>
+                  <option value="">Select specialty</option>
+                  {specialties.map((specialty) => (
+                    <option key={specialty.id} value={specialty.id}>
+                      {specialty.name}{specialty.nameAr ? ` - ${specialty.nameAr}` : ''}
+                    </option>
+                  ))}
+                  <option value="__custom">Not listed, write it manually</option>
+                </Select>
+                {errors.specialityName && (
+                  <p className="mt-1 text-sm text-red-500">{errors.specialityName}</p>
+                )}
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Specialty (AR) *</label>
+              {isCustomSpecialty && (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Specialty (EN) *</label>
+                    <Input
+                      type="text"
+                      value={form.specialityName ?? ''}
+                      onChange={(e) => onChange('specialityName', e.target.value)}
+                      placeholder="Cardiology"
+                      error={errors.specialityName}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Specialty (AR) *</label>
+                    <Input
+                      type="text"
+                      value={form.specialityNameAr ?? ''}
+                      onChange={(e) => onChange('specialityNameAr', e.target.value)}
+                      placeholder="Cardiology & Vascular Medicine"
+                      error={errors.specialityNameAr}
+                    />
+                  </div>
+                </>
+              )}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-350 mb-2">Clinic Address *</label>
                 <Input
                   type="text"
-                  value={form.specialityNameAr}
-                  onChange={(e) => onChange('specialityNameAr', e.target.value)}
-                  placeholder="Cardiology & Vascular Medicine"
-                  error={errors.specialityNameAr}
+                  value={form.location ?? ''}
+                  onChange={(e) => onChange('location', e.target.value)}
+                  placeholder="Cairo, Helwan, main street"
+                  icon={<MapPin className="w-4 h-4" />}
+                  error={errors.location}
                 />
               </div>
               <div>

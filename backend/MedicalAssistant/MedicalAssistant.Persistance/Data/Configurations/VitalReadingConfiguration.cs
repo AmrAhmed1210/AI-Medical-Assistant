@@ -23,7 +23,7 @@ namespace MedicalAssistant.Persistance.Data.Configurations
             builder.HasOne(x => x.ChronicDiseaseMonitor)
                    .WithMany(c => c.VitalReadings)
                    .HasForeignKey(x => x.ChronicDiseaseMonitorId)
-                   .OnDelete(DeleteBehavior.SetNull)  // لو المرض اتحذف، القراءات تفضل
+                   .OnDelete(DeleteBehavior.NoAction)
                    .IsRequired(false);
 
             builder.Property(x => x.ReadingType).HasMaxLength(30).IsRequired();

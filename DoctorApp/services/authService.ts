@@ -38,6 +38,7 @@ export interface RegisterPayload {
   password:    string;
   role:        string;
   phoneNumber?: string;
+  address?:     string;
   dateOfBirth?: string; // ISO format: YYYY-MM-DD
   gender?:      string;
   bloodType?:   string;
@@ -112,6 +113,7 @@ export const registerApi = async (payload: RegisterPayload): Promise<AuthRespons
       password: payload.password,
       role: payload.role || "Patient",
       phoneNumber: payload.phoneNumber || "",
+      address: payload.address || "",
       dateOfBirth: normalizedDateOfBirth,
       gender:      payload.gender || "",
       bloodType:   payload.bloodType || "",

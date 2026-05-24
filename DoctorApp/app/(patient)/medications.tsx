@@ -311,17 +311,17 @@ export default function MedicationsScreen() {
 
   const getStatusStyle = (status: string) => {
     const s = status?.toLowerCase() || "";
-    if (s === "taken") return { bg: "#ECFDF5", text: "#059669", label: tr("taken"), icon: "checkmark-circle" as const, dot: "#10B981" };
-    if (s === "missed") return { bg: "#FEF2F2", text: "#DC2626", label: tr("missed"), icon: "close-circle" as const, dot: "#EF4444" };
-    if (s === "accumulated") return { bg: "#FFF7ED", text: "#EA580C", label: tr("accumulated"), icon: "alert-circle" as const, dot: "#F97316" };
-    if (s === "skipped") return { bg: "#FFFBEB", text: "#D97706", label: tr("skipped"), icon: "remove-circle" as const, dot: "#F59E0B" };
-    return { bg: "#EFF6FF", text: "#2563EB", label: tr("pending"), icon: "time" as const, dot: "#3B82F6" };
+    if (s === "taken") return { bg: "rgba(16, 185, 129, 0.1)", text: "#059669", label: tr("taken"), icon: "checkmark-circle" as const, dot: "#10B981" };
+    if (s === "missed") return { bg: "rgba(245, 158, 11, 0.1)", text: "#D97706", label: tr("missed"), icon: "close-circle" as const, dot: "#F59E0B" };
+    if (s === "accumulated") return { bg: "rgba(249, 115, 22, 0.1)", text: "#EA580C", label: tr("accumulated"), icon: "alert-circle" as const, dot: "#F97316" };
+    if (s === "skipped") return { bg: "rgba(245, 158, 11, 0.1)", text: "#D97706", label: tr("skipped"), icon: "remove-circle" as const, dot: "#F59E0B" };
+    return { bg: "rgba(59, 130, 246, 0.1)", text: "#2563EB", label: tr("pending"), icon: "time" as const, dot: "#3B82F6" };
   };
 
   const getStockStyle = (pills: number, threshold: number) => {
-    if (pills <= 3) return { bg: "#FEF2F2", text: "#DC2626" };
-    if (pills <= threshold) return { bg: "#FFFBEB", text: "#D97706" };
-    return { bg: "#ECFDF5", text: "#059669" };
+    if (pills <= 3) return { bg: "rgba(245, 158, 11, 0.1)", text: "#D97706" };
+    if (pills <= threshold) return { bg: "rgba(249, 115, 22, 0.1)", text: "#EA580C" };
+    return { bg: "rgba(16, 185, 129, 0.1)", text: "#059669" };
   };
 
   const headerHeight = scrollY.interpolate({
@@ -370,6 +370,11 @@ export default function MedicationsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
+
+      {/* Background Bubbles */}
+      <View style={[styles.bgBubble, styles.bubbleTopLeft, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)' }]} />
+      <View style={[styles.bgBubble, styles.bubbleBottomRight, { backgroundColor: isDark ? 'rgba(14, 165, 233, 0.15)' : 'rgba(14, 165, 233, 0.08)' }]} />
+      <View style={[styles.bgBubble, styles.bubbleCenter, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)' }]} />
 
       {/* ANIMATED LUXURY HEADER - INCREASED Z-INDEX FOR TOUCHES */}
       <Animated.View style={[styles.magicHeader, { height: headerHeight, opacity: headerOpacity, zIndex: 1000 }]}>
@@ -859,7 +864,11 @@ export default function MedicationsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  bgBubble: { position: 'absolute', borderRadius: 300, filter: 'blur(40px)' },
+  bubbleTopLeft: { width: 350, height: 350, top: -100, left: -100 },
+  bubbleBottomRight: { width: 400, height: 400, bottom: -150, right: -150 },
+  bubbleCenter: { width: 250, height: 250, top: '40%', left: '20%' },
   magicHeader: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden' },
   aiSafetyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#0EA5E9', paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12, marginTop: 10, alignSelf: 'flex-start', elevation: 4 },
   aiSafetyBtnTxt: { color: '#fff', fontSize: 12, fontWeight: '800' },

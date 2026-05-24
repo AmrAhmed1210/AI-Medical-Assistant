@@ -116,7 +116,7 @@ namespace MedicalAssistant.Services.Services
                 var user = await _unitOfWork.Repository<User>().GetByIdAsync(userId);
                 var patient = (await _unitOfWork.Repository<Patient>().FindAsync(p => p.UserId == userId)).FirstOrDefault();
                 
-                string? photoUrl = user?.PhotoUrl ?? patient?.ImageUrl;
+                string? photoUrl = patient?.ImageUrl ?? user?.PhotoUrl;
                 string name = user?.FullName ?? patient?.FullName ?? "User";
 
                 return (name.Trim(), photoUrl);

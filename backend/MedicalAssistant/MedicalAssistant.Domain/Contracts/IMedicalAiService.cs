@@ -20,4 +20,29 @@ public interface IMedicalAiService
         IFormFile file,
         string? patientContext = null,
         CancellationToken ct = default);
+
+    Task<object?> AnalyzePatientHistoryAsync(
+        object historyPayload,
+        CancellationToken ct = default);
+
+    Task<object?> SummarizeSurgeryAsync(
+        string description,
+        CancellationToken ct = default);
+
+    Task<object?> SummarizeMedicalItemAsync(
+        string type,
+        string description,
+        CancellationToken ct = default);
+
+    Task<object?> AnalyzeVitalsAsync(
+        object payload,
+        CancellationToken ct = default);
+
+    Task<object?> CheckMedicationSafetyAsync(
+        object payload,
+        CancellationToken ct = default);
+
+    Task<object?> ParseMedicalProfileAsync(
+        string text,
+        CancellationToken ct = default);
 }

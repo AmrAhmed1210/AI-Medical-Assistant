@@ -1,5 +1,6 @@
 using MedicalAssistant.Domain.Contracts;
 using MedicalAssistant.Shared.DTOs.AIChatDTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -10,6 +11,7 @@ namespace MedicalAssistant.Presentation.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 [Produces("application/json")]
 public sealed class ChatController : ControllerBase
 {
@@ -141,10 +143,197 @@ public sealed class ChatController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("analyze-history")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> AnalyzeHistory(
+        [FromBody] object body,
+        CancellationToken ct)
+    {
+        var result = await _medical.AnalyzePatientHistoryAsync(body, ct);
+        if (result is null)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new ErrorResponse("تعذّر تحليل السجل الطبي مؤقتاً."));
+        return Ok(result);
+    }
+
+    [HttpPost("summarize-surgery")]
+    public async Task<IActionResult> SummarizeSurgery(
+        [FromBody] SurgerySummaryRequest req,
+        CancellationToken ct)
+    {
+        var result = await _medical.SummarizeSurgeryAsync(req.Description ?? string.Empty, ct);
+        return result is null
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable, new ErrorResponse("AI service unavailable."))
+            : Ok(result);
+    }
+
+    [HttpPost("summarize-medical-item")]
+    public async Task<IActionResult> SummarizeMedicalItem(
+        [FromBody] MedicalItemSummaryRequest req,
+        CancellationToken ct)
+    {
+        var result = await _medical.SummarizeMedicalItemAsync(req.Type ?? "", req.Description ?? "", ct);
+        return result is null
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable, new ErrorResponse("AI service unavailable."))
+            : Ok(result);
+    }
+
+    [HttpPost("analyze-vitals")]
+    public async Task<IActionResult> AnalyzeVitals([FromBody] object body, CancellationToken ct)
+    {
+        var result = await _medical.AnalyzeVitalsAsync(body, ct);
+        return result is null
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable, new ErrorResponse("AI service unavailable."))
+            : Ok(result);
+    }
+
+    [HttpPost("check-medication-safety")]
+    public async Task<IActionResult> CheckMedicationSafety([FromBody] object body, CancellationToken ct)
+    {
+        var result = await _medical.CheckMedicationSafetyAsync(body, ct);
+        return result is null
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable, new ErrorResponse("AI service unavailable."))
+            : Ok(result);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // POST api/chat/parse-medical-profile
+    // AI-powered medical profile data extraction + auto-save
+    // ─────────────────────────────────────────────────────────────
+    [HttpPost("parse-medical-profile")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> ParseMedicalProfile(
+        [FromBody] ParseMedicalProfileRequest req,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.Text))
+            return BadRequest(new ErrorResponse("النص مطلوب."));
+
+        _log.LogInformation("[ChatController] parse-medical-profile — text='{Text}'", req.Text.Length > 80 ? req.Text[..80] + "…" : req.Text);
+
+        // 1. Ask AI to parse the text
+        var result = await _medical.ParseMedicalProfileAsync(req.Text.Trim(), ct);
+        if (result is null)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable,
+                new ErrorResponse("تعذّر تحليل البيانات الطبية مؤقتاً."));
+
+        // 2. If saveToProfile is true, auto-save extracted data
+        if (req.SaveToProfile)
+        {
+            var patientId = GetPatientIdFromClaims();
+            if (patientId > 0)
+            {
+                try
+                {
+                    var json = System.Text.Json.JsonSerializer.Serialize(result);
+                    var doc = System.Text.Json.JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+                    int savedDiseases = 0, savedMeds = 0, savedAllergies = 0;
+
+                    // Save chronic diseases
+                    if (root.TryGetProperty("chronic_diseases", out var diseases) && diseases.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        foreach (var d in diseases.EnumerateArray())
+                        {
+                            try
+                            {
+                                DateOnly? diagnosedDate = null;
+                                if (d.TryGetProperty("diagnosedDate", out var dd) && dd.ValueKind == System.Text.Json.JsonValueKind.String)
+                                {
+                                    var ddStr = dd.GetString();
+                                    if (!string.IsNullOrEmpty(ddStr) && DateOnly.TryParse(ddStr, out var parsed))
+                                        diagnosedDate = parsed;
+                                }
+
+                                var entity = new MedicalAssistant.Domain.Entities.PatientModule.ChronicDiseaseMonitor
+                                {
+                                    DiseaseName = d.TryGetProperty("diseaseName", out var dn) ? dn.GetString() ?? "" : "",
+                                    DiseaseType = d.TryGetProperty("diseaseType", out var dt) ? dt.GetString() ?? "" : "",
+                                    Severity = d.TryGetProperty("severity", out var sv) ? sv.GetString() ?? "Moderate" : "Moderate",
+                                    DiagnosedDate = diagnosedDate,
+                                    IsActive = true,
+                                    DoctorNotes = d.TryGetProperty("notes", out var nt) ? nt.GetString() : null,
+                                    MonitoringFrequency = "Monthly"
+                                };
+                                await _recordService.AddChronicDiseaseAsync(patientId, entity);
+                                savedDiseases++;
+                            }
+                            catch (Exception ex) { _log.LogWarning(ex, "Failed to save chronic disease"); }
+                        }
+                    }
+
+                    // Save medications
+                    if (root.TryGetProperty("medications", out var meds) && meds.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        foreach (var m in meds.EnumerateArray())
+                        {
+                            try
+                            {
+                                var entity = new MedicalAssistant.Domain.Entities.PatientModule.MedicationTracker
+                                {
+                                    MedicationName = m.TryGetProperty("medicationName", out var mn) ? mn.GetString() ?? "" : "",
+                                    GenericName = m.TryGetProperty("genericName", out var gn) ? gn.GetString() : null,
+                                    Dosage = m.TryGetProperty("dosage", out var ds) ? ds.GetString() ?? "" : "",
+                                    Form = m.TryGetProperty("form", out var fm) ? fm.GetString() ?? "Tablet" : "Tablet",
+                                    Frequency = m.TryGetProperty("frequency", out var fq) ? fq.GetString() ?? "Once daily" : "Once daily",
+                                    Instructions = m.TryGetProperty("instructions", out var ins) ? ins.GetString() : null,
+                                    IsChronic = m.TryGetProperty("isChronic", out var ic) && ic.ValueKind == System.Text.Json.JsonValueKind.True,
+                                    IsActive = true,
+                                    StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                                    TimesPerDay = 1,
+                                    DoseTimes = "08:00"
+                                };
+                                await _recordService.AddMedicationAsync(patientId, entity);
+                                savedMeds++;
+                            }
+                            catch (Exception ex) { _log.LogWarning(ex, "Failed to save medication"); }
+                        }
+                    }
+
+                    // Save allergies
+                    if (root.TryGetProperty("allergies", out var allergies) && allergies.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        foreach (var a in allergies.EnumerateArray())
+                        {
+                            try
+                            {
+                                var entity = new MedicalAssistant.Domain.Entities.PatientModule.AllergyRecord
+                                {
+                                    AllergenName = a.TryGetProperty("allergenName", out var an) ? an.GetString() ?? "" : "",
+                                    AllergyType = a.TryGetProperty("allergyType", out var at) ? at.GetString() ?? "Other" : "Other",
+                                    Severity = a.TryGetProperty("severity", out var sv) ? sv.GetString() ?? "Moderate" : "Moderate",
+                                    ReactionDescription = a.TryGetProperty("reactionDescription", out var rd) ? rd.GetString() : null,
+                                    IsActive = true
+                                };
+                                await _recordService.AddAllergyAsync(patientId, entity);
+                                savedAllergies++;
+                            }
+                            catch (Exception ex) { _log.LogWarning(ex, "Failed to save allergy"); }
+                        }
+                    }
+
+                    _log.LogInformation(
+                        "[ChatController] parse-medical-profile — saved {Diseases} diseases, {Meds} medications, {Allergies} allergies for patient {PatientId}",
+                        savedDiseases, savedMeds, savedAllergies, patientId);
+                }
+                catch (Exception ex)
+                {
+                    _log.LogError(ex, "[ChatController] Failed to auto-save parsed medical profile data");
+                }
+            }
+        }
+
+        return Ok(result);
+    }
+
     // ─────────────────────────────────────────────────────────────
     // GET api/chat/health
     // ─────────────────────────────────────────────────────────────
     [HttpGet("health")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public IActionResult Health() =>
         Ok(new { status = "ok", service = "Medical AI API" });
@@ -193,4 +382,18 @@ public sealed record ChatResponse(
 public sealed record ErrorResponse(
     [property: JsonPropertyName("error")]
     string Error
+);
+
+public sealed record SurgerySummaryRequest(
+    [property: JsonPropertyName("description")] string? Description
+);
+
+public sealed record MedicalItemSummaryRequest(
+    [property: JsonPropertyName("type")] string? Type,
+    [property: JsonPropertyName("description")] string? Description
+);
+
+public sealed record ParseMedicalProfileRequest(
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("saveToProfile")] bool SaveToProfile = false
 );

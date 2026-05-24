@@ -53,6 +53,7 @@ export type CreateUserRequest = {
   consultationFee?: number
   yearsExperience?: number
   bio?: string
+  location?: string
 }
 
 export type SystemStatsDto = {

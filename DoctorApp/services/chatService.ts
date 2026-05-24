@@ -1,5 +1,6 @@
 import { API } from "../constants/api";
 import { apiFetch } from "./http";
+import { getSessionDetails } from "./sessionService";
 
 export interface ChatMessage {
   id: number;
@@ -19,15 +20,22 @@ export interface ChatSession {
 
 export const chatService = {
   getSessions: async () => {
-    return apiFetch<ChatSession[]>(API.chat.sessions, { method: "GET" }, true);
+    return apiFetch<ChatSession[]>(API.sessions.list, { method: "GET" }, true);
   },
 
   getMessages: async (sessionId: number) => {
-    return apiFetch<ChatMessage[]>(API.chat.messages(sessionId), { method: "GET" }, true);
+    const session = await getSessionDetails(sessionId);
+    return (session.messages ?? []).map((m) => ({
+      id: m.id,
+      sessionId: m.sessionId,
+      role: m.role,
+      content: m.content,
+      timestamp: m.timestamp,
+    })) as ChatMessage[];
   },
 
   ask: async (question: string, sessionId?: number) => {
-    return apiFetch<{ reply: string; sessionId: number }>(
+    return apiFetch<{ reply: string; sessionId?: number }>(
       API.chat.ask,
       {
         method: "POST",
@@ -43,11 +51,11 @@ export const chatService = {
     const match = /\.(\w+)$/.exec(filename);
     const mimeType = match ? `image/${match[1]}` : "image/jpeg";
 
-    formData.append("Image", { uri: imageUri, name: filename, type: mimeType } as any);
+    formData.append("file", { uri: imageUri, name: filename, type: mimeType } as any);
     if (sessionId) formData.append("SessionId", sessionId.toString());
 
-    return apiFetch<any>(
-      `${API.chat.ask.replace("/ask", "/analyze-image")}`,
+    return apiFetch<unknown>(
+      API.chat.analyzeImage,
       {
         method: "POST",
         body: formData,

@@ -34,7 +34,7 @@ namespace MedicalAssistant.Persistance.Data.Configurations
 
             builder.Property(m => m.Timestamp)
                    .IsRequired()
-                   .HasDefaultValueSql("NOW()");
+                   .HasDefaultValueSql("GETUTCDATE()");
 
             builder.HasIndex(m => m.SessionId).HasDatabaseName("IX_Messages_SessionId");
             builder.HasIndex(m => m.Timestamp).HasDatabaseName("IX_Messages_Timestamp");

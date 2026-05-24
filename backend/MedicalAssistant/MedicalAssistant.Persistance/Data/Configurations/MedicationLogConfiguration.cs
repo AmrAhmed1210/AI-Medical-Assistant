@@ -24,7 +24,7 @@ namespace MedicalAssistant.Persistance.Data.Configurations
             builder.HasOne(x => x.Patient)
                    .WithMany(p => p.MedicationLogs)
                    .HasForeignKey(x => x.PatientId)
-                   .OnDelete(DeleteBehavior.Cascade);
+                   .OnDelete(DeleteBehavior.NoAction);
 
             builder.Property(x => x.Status).HasMaxLength(20).HasDefaultValue("pending");
 

@@ -1,6 +1,8 @@
 import Constants from "expo-constants";
 
-const configuredBaseUrl = (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)?.apiBaseUrl;
+const configuredBaseUrl = (
+  (Constants.expoConfig?.extra as { apiBaseUrl?: string } | undefined)?.apiBaseUrl || ""
+).trim() || undefined;
 
 function getExpoHost(): string | null {
   const candidates = [
@@ -21,8 +23,12 @@ function getExpoHost(): string | null {
 const expoHost = getExpoHost();
 const inferredBaseUrl = expoHost ? `http://${expoHost}:5194` : null;
 
-// Prefer the current Expo host in development so mobile builds do not keep using a stale LAN IP.
-export const BASE_URL = "https://ai-medical-assistant-production-38a3.up.railway.app";
+// Expo host updates when you change Wi‑Fi; app.json apiBaseUrl is only a fallback.
+export const BASE_URL = inferredBaseUrl || configuredBaseUrl || "http://localhost:5194";
+
+if (__DEV__) {
+  console.log("[API] Using backend:", BASE_URL);
+}
 
 // ============================================
 // ENDPOINTS
@@ -123,10 +129,16 @@ export const API = {
     vitalDelete:     (vitalId: number | string) => `${BASE_URL}/api/vitals/${vitalId}`,
   },
 
-  // AI Chat
+  // AI Chat (doctor messaging uses /api/sessions via sessionService)
   chat: {
-    sessions: `${BASE_URL}/api/chat/sessions`,
-    messages: (sessionId: number | string) => `${BASE_URL}/api/chat/sessions/${sessionId}/messages`,
-    ask:      `${BASE_URL}/api/chat/ask`,
+    ask: `${BASE_URL}/api/chat/ask`,
+    analyzeHistory: `${BASE_URL}/api/chat/analyze-history`,
+    analyzeImage: `${BASE_URL}/api/chat/analyze-image`,
+    parseMedicalProfile: `${BASE_URL}/api/chat/parse-medical-profile`,
+  },
+
+  sessions: {
+    list: `${BASE_URL}/api/sessions`,
+    detail: (sessionId: number | string) => `${BASE_URL}/api/sessions/${sessionId}`,
   },
 };

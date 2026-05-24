@@ -1,10 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 
 let Notifications: any = null;
-try {
-  Notifications = require("expo-notifications");
-} catch {
-  // expo-notifications not available
+if (Constants.appOwnership !== "expo") {
+  try {
+    Notifications = require("expo-notifications");
+  } catch {
+    // expo-notifications not available
+  }
 }
 
 const APPT_NOTIF_KEY = "@appointment_notifs";

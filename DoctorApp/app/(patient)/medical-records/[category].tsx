@@ -21,6 +21,8 @@ import {
 } from "../../../services/medicalRecordService";
 import Toast from "react-native-toast-message";
 import { useLanguage } from "../../../context/LanguageContext";
+import { useTheme } from "../../../context/ThemeContext";
+import PatientBackgroundBubbles from "@/components/PatientBackgroundBubbles";
 import * as ImagePicker from "expo-image-picker";
 import { summarizeSurgery, analyzeMedicalImage } from "../../../services/aiService";
 
@@ -28,26 +30,27 @@ const PRIMARY_COLOR = COLORS.primary;
 const PRIMARY_LIGHT = "#E8F6F2";
 const TAB_COLORS: Record<string, string> = {
   allergies: "#10B981",
-  chronic: "#6366F1",
+  chronic: "#2563EB",
   medications: "#F59E0B",
   vitals: "#0EA5E9",
-  surgeries: "#8B5CF6",
-  documents: "#6366F1",
+  surgeries: "#0D9488",
+  documents: "#0EA5E9",
 };
 
 const TAB_BG: Record<string, string> = {
   allergies: "#ECFDF5",
-  chronic: "#EEF2FF",
+  chronic: "#EFF6FF",
   medications: "#FFF7ED",
   vitals: "#F0F9FF",
-  surgeries: "#F5F3FF",
-  documents: "#EEF2FF",
+  surgeries: "#ECFDF5",
+  documents: "#F0F9FF",
 };
 
 export default function MedicalRecordsCategory() {
   const router = useRouter();
   const { category, folder } = useLocalSearchParams<{ category: string, folder?: string }>();
   const { tr, isRTL } = useLanguage();
+  const { isDark, colors } = useTheme();
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
@@ -97,15 +100,20 @@ export default function MedicalRecordsCategory() {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
 
   const DOCUMENT_FOLDERS = [
-    { id: "Blood Test", label: "Blood Tests", icon: "water-outline", color: "#6366F1" },
-    { id: "X-Ray", label: "X-Rays / Scans", icon: "scan-outline", color: "#6366F1" },
-    { id: "MRI", label: "MRI / CT", icon: "layers-outline", color: "#8B5CF6" },
+    { id: "Blood Test", label: "Blood Tests", icon: "water-outline", color: "#0EA5E9" },
+    { id: "X-Ray", label: "X-Rays / Scans", icon: "scan-outline", color: "#2563EB" },
+    { id: "MRI", label: "MRI / CT", icon: "layers-outline", color: "#0D9488" },
     { id: "Prescription", label: "Prescriptions", icon: "receipt-outline", color: "#10B981" },
     { id: "Other", label: "Other", icon: "document-text-outline", color: "#64748B" },
   ];
 
   const canAdd = true; // Patients should be able to add all record types
   const color = TAB_COLORS[category as string] || COLORS.primary;
+  const inputTheme = {
+    backgroundColor: isDark ? "#0F172A" : "#F8FAFC",
+    borderColor: colors.border,
+    color: colors.text,
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -242,7 +250,7 @@ export default function MedicalRecordsCategory() {
       }
 
       const type = docType === "Prescription" ? "prescription" : "lab";
-      const result = await analyzeMedicalImage(docUri, type, patientContext);
+      const result = await analyzeMedicalImage(docUri, type, patientContext) as any;
       
       // Use the updated python fields
       if (result.analysis_ar) {
@@ -386,9 +394,9 @@ export default function MedicalRecordsCategory() {
     switch (category) {
       case "allergies":
         return (
-          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor }]}>
+          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor, backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.cardRow}>
-              <Text style={styles.cardTitle}>{item.allergenName}</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{item.allergenName}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <View style={[styles.badge, { backgroundColor: itemColor + '20' }]}>
                   <Text style={[styles.badgeTxt, { color: itemColor }]}>{item.severity}</Text>
@@ -403,14 +411,14 @@ export default function MedicalRecordsCategory() {
               </View>
               </View>
             </View>
-            {item.notes && <Text style={styles.cardMeta}>{item.notes}</Text>}
+            {item.notes && <Text style={[styles.cardMeta, { color: colors.textMuted }]}>{item.notes}</Text>}
           </View>
         );
       case "chronic":
         return (
-          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor }]}>
+          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor, backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.cardRow}>
-              <Text style={styles.cardTitle}>{item.diseaseName}</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{item.diseaseName}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <TouchableOpacity onPress={() => handleEdit(item)}>
                   <Ionicons name="create-outline" size={18} color={itemColor} />
@@ -420,14 +428,14 @@ export default function MedicalRecordsCategory() {
                 </TouchableOpacity>
               </View>
             </View>
-            {item.diagnosedDate && <Text style={styles.cardMeta}>{tr("date")}: {item.diagnosedDate}</Text>}
+            {item.diagnosedDate && <Text style={[styles.cardMeta, { color: colors.textMuted }]}>{tr("date")}: {item.diagnosedDate}</Text>}
           </View>
         );
       case "medications":
         return (
-          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor }]}>
+          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor, backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.cardRow}>
-              <Text style={styles.cardTitle}>{item.medicationName}</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{item.medicationName}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 {/* Medications are often read-only or complex to edit, but we enable deletion */}
                 <TouchableOpacity onPress={() => handleEdit(item)}>
@@ -439,14 +447,14 @@ export default function MedicalRecordsCategory() {
               </View>
             </View>
             <Text style={styles.cardText}>{item.dosage} • {item.frequency}</Text>
-            {item.instructions && <Text style={styles.cardMeta}>{item.instructions}</Text>}
+            {item.instructions && <Text style={[styles.cardMeta, { color: colors.textMuted }]}>{item.instructions}</Text>}
           </View>
         );
       case "vitals":
         return (
-          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor }]}>
+          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor, backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.cardRow}>
-              <Text style={styles.cardTitle}>{item.readingType}</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{item.readingType}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <TouchableOpacity onPress={() => handleEdit(item)}>
                   <Ionicons name="create-outline" size={18} color={itemColor} />
@@ -456,15 +464,15 @@ export default function MedicalRecordsCategory() {
                 </TouchableOpacity>
               </View>
             </View>
-            {item.notes && <Text style={styles.cardMeta}>{item.notes}</Text>}
-            {item.recordedAt && <Text style={styles.cardMeta}>{new Date(item.recordedAt).toLocaleDateString()}</Text>}
+            {item.notes && <Text style={[styles.cardMeta, { color: colors.textMuted }]}>{item.notes}</Text>}
+            {item.recordedAt && <Text style={[styles.cardMeta, { color: colors.textMuted }]}>{new Date(item.recordedAt).toLocaleDateString()}</Text>}
           </View>
         );
       case "surgeries":
         return (
-          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor }]}>
+          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor, backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.cardRow}>
-              <Text style={styles.cardTitle}>{item.surgeryName}</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{item.surgeryName}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <TouchableOpacity onPress={() => handleEdit(item)}>
                   <Ionicons name="create-outline" size={18} color={itemColor} />
@@ -474,16 +482,16 @@ export default function MedicalRecordsCategory() {
                 </TouchableOpacity>
               </View>
             </View>
-            {item.hospitalName && <Text style={styles.cardText}>{tr("hospital" as any)}: {item.hospitalName}</Text>}
-            {item.doctorName && <Text style={styles.cardText}>{tr("doctor")}: {item.doctorName}</Text>}
-            {item.surgeryDate && <Text style={styles.cardMeta}>{tr("date")}: {item.surgeryDate}</Text>}
+            {item.hospitalName && <Text style={[styles.cardText, { color: colors.textMuted }]}>{tr("hospital" as any)}: {item.hospitalName}</Text>}
+            {item.doctorName && <Text style={[styles.cardText, { color: colors.textMuted }]}>{tr("doctor")}: {item.doctorName}</Text>}
+            {item.surgeryDate && <Text style={[styles.cardMeta, { color: colors.textMuted }]}>{tr("date")}: {item.surgeryDate}</Text>}
           </View>
         );
       case "documents":
         return (
-          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor }]}>
+          <View key={item.id || index} style={[styles.card, { borderLeftColor: itemColor, backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.cardRow}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={[styles.cardTitle, { color: colors.text }]}>{item.title}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={[styles.badge, { backgroundColor: itemColor + '20' }]}>
                   <Text style={[styles.badgeTxt, { color: itemColor }]}>{item.documentType}</Text>
@@ -505,20 +513,20 @@ export default function MedicalRecordsCategory() {
               </TouchableOpacity>
             )}
             {item.description && (
-              <View style={styles.aiDescBox}>
+              <View style={[styles.aiDescBox, { backgroundColor: isDark ? "#0F172A" : "#F0F9FF", borderColor: colors.border }]}>
                 <TouchableOpacity 
                   style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
                   onPress={() => setExpandedDocs(prev => ({...prev, [item.id]: !prev[item.id]}))}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Sparkles size={16} color="#7C3AED" />
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: '#5B21B6' }}>AI Analysis Report</Text>
+                    <Sparkles size={16} color={itemColor} />
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: itemColor }}>AI Analysis Report</Text>
                   </View>
-                  <Ionicons name={expandedDocs[item.id] ? "chevron-up" : "chevron-down"} size={20} color="#7C3AED" />
+                  <Ionicons name={expandedDocs[item.id] ? "chevron-up" : "chevron-down"} size={20} color={itemColor} />
                 </TouchableOpacity>
                 {expandedDocs[item.id] && (
-                  <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#EDE9FE' }}>
-                    <Text style={styles.aiDescTxt}>{item.description}</Text>
+                  <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
+                    <Text style={[styles.aiDescTxt, { color: colors.textMuted }]}>{item.description}</Text>
                   </View>
                 )}
               </View>
@@ -533,9 +541,9 @@ export default function MedicalRecordsCategory() {
     if (!showModal) return null;
     return (
       <Modal visible={showModal} animationType="slide" transparent onRequestClose={() => setShowModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
+        <View style={[styles.modalOverlay, { backgroundColor: isDark ? "rgba(2, 6, 23, 0.72)" : "rgba(6, 78, 59, 0.4)" }]}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
               {selectedItem ? (tr("edit" as any) + " " + tr(category as any)) : (
                 category === "allergies" ? tr("add_allergy" as any) : 
                 category === "chronic" ? tr("add_chronic" as any) :
@@ -598,44 +606,45 @@ export default function MedicalRecordsCategory() {
               {category === "documents" && (
                 <>
                   <View style={styles.inputWithAi}>
-                    <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder={tr("title" as any)} value={docTitle} onChangeText={setDocTitle} />
+                    <TextInput style={[styles.input, inputTheme, { flex: 1, marginBottom: 0 }]} placeholder={tr("title" as any)} placeholderTextColor={colors.textLight} value={docTitle} onChangeText={setDocTitle} />
                     {docUri && (
                       <TouchableOpacity style={[styles.aiButtonSmall, { backgroundColor: color }]} onPress={handleAiAnalyzeDocument} disabled={isAiProcessing}>
                         {isAiProcessing ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="sparkles" size={18} color="#fff" />}
                       </TouchableOpacity>
                     )}
                   </View>
-                  {docUri && <Text style={styles.aiHint}>AI can analyze image to extract title & description</Text>}
-                  <Text style={styles.inputLabelSmall}>Select Folder</Text>
+                  {docUri && <Text style={[styles.aiHint, { color }]}>AI can analyze image to extract title & description</Text>}
+                  <Text style={[styles.inputLabelSmall, { color: colors.textMuted }]}>Select Folder</Text>
                   <View style={styles.folderPickerRow}>
                     {DOCUMENT_FOLDERS.map(f => (
                       <TouchableOpacity 
                         key={f.id} 
-                        style={[styles.folderOption, docType === f.id && { borderColor: f.color, backgroundColor: f.color + '10' }]}
+                        style={[styles.folderOption, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border }, docType === f.id && { borderColor: f.color, backgroundColor: f.color + '18' }]}
                         onPress={() => setDocType(f.id)}
                       >
                         <Ionicons name={f.icon as any} size={20} color={docType === f.id ? f.color : "#94A3B8"} />
-                        <Text style={[styles.folderOptionTxt, docType === f.id && { color: f.color }]}>{f.label}</Text>
+                        <Text style={[styles.folderOptionTxt, { color: colors.textMuted }, docType === f.id && { color: f.color }]}>{f.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <TouchableOpacity style={styles.imageBtn} onPress={pickImage}>
+                  <TouchableOpacity style={[styles.imageBtn, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border }]} onPress={pickImage}>
                     <Ionicons name="camera-outline" size={24} color={color} />
                     <Text style={[styles.imageBtnTxt, { color }]}>{docUri ? tr("change_image" as any) : tr("select_image" as any)}</Text>
                   </TouchableOpacity>
                   {docUri && (
                     <View style={styles.aiResultBox}>
-                      <Text style={styles.inputLabelSmall}>Document Description & AI Analysis</Text>
+                      <Text style={[styles.inputLabelSmall, { color: colors.textMuted }]}>Document Description & AI Analysis</Text>
                       <TextInput 
-                        style={[styles.input, { height: 180, textAlignVertical: 'top', backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', fontSize: 14 }]} 
+                        style={[styles.input, inputTheme, { height: 180, textAlignVertical: 'top', fontSize: 14 }]} 
                         placeholder="AI will place the analysis here..." 
+                        placeholderTextColor={colors.textLight}
                         value={docDescription} 
                         onChangeText={setDocDescription} 
                         multiline 
                       />
                     </View>
                   )}
-                  {docUri && <Text style={styles.imageUri} numberOfLines={1}>{docUri}</Text>}
+                  {docUri && <Text style={[styles.imageUri, { color: colors.textMuted }]} numberOfLines={1}>{docUri}</Text>}
                 </>
               )}
             </ScrollView>
@@ -655,16 +664,18 @@ export default function MedicalRecordsCategory() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
-        <StatusBar barStyle="light-content" />
+      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }]}>
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+        <PatientBackgroundBubbles isDark={isDark} />
         <ActivityIndicator size="large" color={color} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <PatientBackgroundBubbles isDark={isDark} />
       <LinearGradient colors={[color, color + 'CC']} style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -680,14 +691,14 @@ export default function MedicalRecordsCategory() {
             {DOCUMENT_FOLDERS.map(f => (
               <TouchableOpacity 
                 key={f.id} 
-                style={styles.folderCard} 
+                style={[styles.folderCard, { backgroundColor: colors.surface, borderColor: colors.border }]} 
                 onPress={() => setSelectedFolder(f.id)}
               >
                 <View style={[styles.folderIconBox, { backgroundColor: f.color + '15' }]}>
                   <Ionicons name={f.icon as any} size={32} color={f.color} />
                 </View>
-                <Text style={styles.folderName}>{f.label}</Text>
-                <Text style={styles.folderCount}>{items.filter(it => it.documentType === f.id).length} Files</Text>
+                <Text style={[styles.folderName, { color: colors.text }]}>{f.label}</Text>
+                <Text style={[styles.folderCount, { color: colors.textMuted }]}>{items.filter(it => it.documentType === f.id).length} Files</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -710,8 +721,8 @@ export default function MedicalRecordsCategory() {
                     category === "surgeries" ? "cut-outline" : "document-text-outline"
                   } size={32} color={color} />
                 </View>
-                <Text style={styles.emptyStateTitle}>{tr("no_records" as any)}</Text>
-                <Text style={styles.emptyStateSub}>{tr("no_records_sub" as any)}</Text>
+                <Text style={[styles.emptyStateTitle, { color: colors.text }]}>{tr("no_records" as any)}</Text>
+                <Text style={[styles.emptyStateSub, { color: colors.textMuted }]}>{tr("no_records_sub" as any)}</Text>
               </View>
             ) : (
               (category === "documents" ? items.filter(it => it.documentType === selectedFolder) : items)

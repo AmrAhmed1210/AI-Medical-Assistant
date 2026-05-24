@@ -299,15 +299,21 @@ namespace MedicalAssistant.Services.Services
             if (patient == null) return false;
 
             patient.ImageUrl = photoUrl;
-            
-            // Also update user photo if it exists
-            var user = await unitOfWork.Repository<User>().GetByIdAsync(patientId); // Assuming patientId maps to userId or similar? 
-            // Wait, patients have their own table. Let's find user by email.
-            var userByEmail = (await unitOfWork.Repository<User>().FindAsync(u => u.Email == patient.Email)).FirstOrDefault();
-            if (userByEmail != null)
+
+            User? user = null;
+            if (patient.UserId.HasValue)
             {
-                userByEmail.PhotoUrl = photoUrl;
-                unitOfWork.Repository<User>().Update(userByEmail);
+                user = await unitOfWork.Repository<User>().GetByIdAsync(patient.UserId.Value);
+            }
+
+            user ??= (await unitOfWork.Repository<User>()
+                .FindAsync(u => u.Email == patient.Email))
+                .FirstOrDefault();
+
+            if (user != null)
+            {
+                user.PhotoUrl = photoUrl;
+                unitOfWork.Repository<User>().Update(user);
             }
 
             unitOfWork.Patients.Update(patient);

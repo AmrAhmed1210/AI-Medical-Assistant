@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MedicalAssistant.Persistance.Migrations
 {
     [DbContext(typeof(MedicalAssistantDbContext))]
-    [Migration("20260505123517_AddVisitFollowUpFields")]
-    partial class AddVisitFollowUpFields
+    [Migration("20260523205153_InitialSqlServerCreate")]
+    partial class InitialSqlServerCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -38,7 +38,7 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("Disclaimer")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("MessageId")
                         .HasColumnType("int");
@@ -50,10 +50,10 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("SymptomsJson")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UrgencyLevel")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal?>("UrgencyScore")
                         .HasColumnType("decimal(18,2)");
@@ -76,19 +76,19 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<string>("Date")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("DoctorId")
                         .HasColumnType("int");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
@@ -97,20 +97,20 @@ namespace MedicalAssistant.Persistance.Migrations
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(10)
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(10)")
                         .HasDefaultValue("cash");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("Pending");
 
                     b.Property<string>("Time")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 
@@ -134,7 +134,7 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("DoctorId")
                         .HasColumnType("int");
@@ -147,11 +147,11 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -175,7 +175,7 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("Bio")
                         .HasMaxLength(1000)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<decimal?>("ConsultationFee")
                         .HasColumnType("decimal(10,2)");
@@ -188,7 +188,7 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("ImageUrl")
                         .HasMaxLength(500)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsAvailable")
                         .ValueGeneratedOnAdd()
@@ -202,16 +202,16 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("License")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Location")
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<double>("Rating")
                         .ValueGeneratedOnAdd()
@@ -251,37 +251,37 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("Bio")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("DocumentUrl")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Experience")
                         .HasColumnType("int");
 
                     b.Property<string>("LicenseNumber")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Phone")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhotoUrl")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("ProcessedAt")
                         .HasColumnType("datetime2");
@@ -291,7 +291,7 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("SubmittedAt")
                         .HasColumnType("datetime2");
@@ -352,7 +352,7 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -380,10 +380,10 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("NameAr")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
@@ -401,12 +401,12 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("AllergenName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("AllergyType")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -421,12 +421,12 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("ReactionDescription")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Severity")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(30)");
 
                     b.HasKey("Id");
 
@@ -454,15 +454,15 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("DiseaseName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("DiseaseType")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("DoctorNotes")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -473,7 +473,7 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("MonitoringFrequency")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
@@ -481,10 +481,10 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("Severity")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("TargetValues")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -506,9 +506,12 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AiDiagnosisSummary")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("BloodType")
                         .HasMaxLength(5)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(5)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -518,19 +521,19 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("EmergencyContactName")
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("EmergencyContactPhone")
                         .HasMaxLength(30)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("EmergencyContactRelation")
                         .HasMaxLength(100)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("ExerciseHabits")
                         .HasMaxLength(100)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<decimal?>("HeightCm")
                         .HasColumnType("decimal(5,2)");
@@ -538,11 +541,14 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<bool>("IsSmoker")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("LastAiAnalysisAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
 
                     b.Property<string>("SmokingDetails")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -582,7 +588,7 @@ namespace MedicalAssistant.Persistance.Migrations
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("pending");
 
                     b.Property<DateTime?>("TakenAt")
@@ -611,15 +617,19 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("DaysOfWeek")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Dosage")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("DoseTimes")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
@@ -627,19 +637,19 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("Form")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("Frequency")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("GenericName")
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Instructions")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -650,7 +660,7 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("MedicationName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
@@ -693,16 +703,16 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("Address")
                         .HasMaxLength(300)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("BloodType")
                         .HasMaxLength(5)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(5)");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<DateTime>("DateOfBirth")
                         .HasColumnType("datetime2");
@@ -710,20 +720,20 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Gender")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("ImageUrl")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -731,16 +741,16 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasDefaultValue(true);
 
                     b.Property<string>("MedicalNotes")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int?>("UserId")
                         .HasColumnType("int");
@@ -755,6 +765,49 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.ToTable("Patients");
                 });
 
+            modelBuilder.Entity("MedicalAssistant.Domain.Entities.PatientModule.PatientDocument", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("DocumentDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FileType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FileUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PatientId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientId");
+
+                    b.ToTable("PatientDocuments");
+                });
+
             modelBuilder.Entity("MedicalAssistant.Domain.Entities.PatientModule.PatientVisit", b =>
                 {
                     b.Property<int>("Id")
@@ -767,11 +820,11 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Assessment")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ChiefComplaint")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("ClosedAt")
                         .HasColumnType("datetime2");
@@ -783,38 +836,38 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("ExaminationFindings")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("FollowUpAfterDays")
                         .HasColumnType("int");
 
                     b.Property<string>("FollowUpNotes")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool?>("FollowUpRequired")
                         .HasColumnType("bit");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
 
                     b.Property<string>("Plan")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PresentIllnessHistory")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(20)")
                         .HasDefaultValue("active");
 
                     b.Property<string>("SummarySnapshot")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateOnly>("VisitDate")
                         .HasColumnType("date");
@@ -839,21 +892,21 @@ namespace MedicalAssistant.Persistance.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Complications")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("DoctorName")
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("HospitalName")
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
@@ -864,7 +917,7 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("SurgeryName")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(300)");
 
                     b.HasKey("Id");
 
@@ -885,38 +938,38 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Duration")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsChronic")
                         .HasColumnType("bit");
 
                     b.Property<string>("Location")
                         .HasMaxLength(100)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Onset")
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("PatientVisitId")
                         .HasColumnType("int");
 
                     b.Property<string>("Progression")
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Severity")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.HasKey("Id");
 
@@ -934,21 +987,21 @@ namespace MedicalAssistant.Persistance.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Description")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("DocumentType")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("FileType")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("FileUrl")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("PatientVisitId")
                         .HasColumnType("int");
@@ -956,7 +1009,7 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(300)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("datetime2");
@@ -982,28 +1035,28 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("Dosage")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Duration")
                         .HasMaxLength(100)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Form")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("Frequency")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("GenericName")
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Instructions")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsChronic")
                         .HasColumnType("bit");
@@ -1014,10 +1067,10 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("MedicationName")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("PatientVisitId")
                         .HasColumnType("int");
@@ -1032,7 +1085,7 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("SpecificTimes")
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("TimesPerDay")
                         .HasColumnType("int");
@@ -1062,7 +1115,7 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasColumnType("decimal(8,2)");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
@@ -1076,17 +1129,17 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("RecordedBy")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<string>("Unit")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<decimal>("Value")
                         .HasColumnType("decimal(8,2)");
@@ -1111,14 +1164,14 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("ChronicDiseaseMonitorId")
+                    b.Property<int?>("ChronicDiseaseMonitorId")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsNormal")
                         .HasColumnType("bit");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
@@ -1126,7 +1179,7 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("ReadingType")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<DateTime>("RecordedAt")
                         .HasColumnType("datetime2");
@@ -1134,16 +1187,16 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("RecordedBy")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("SugarReadingContext")
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("Unit")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<decimal>("Value")
                         .HasColumnType("decimal(8,2)");
@@ -1171,17 +1224,17 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("Author")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Comment")
                         .IsRequired()
                         .HasMaxLength(1000)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<int>("DoctorId")
                         .HasColumnType("int");
@@ -1190,7 +1243,7 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("PatientName")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Rating")
                         .HasColumnType("int");
@@ -1211,33 +1264,33 @@ namespace MedicalAssistant.Persistance.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AttachmentUrl")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("FileName")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("MessageType")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("SenderName")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(200)
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(200)")
                         .HasDefaultValue("");
 
                     b.Property<string>("SenderPhotoUrl")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("SessionId")
                         .HasColumnType("int");
@@ -1245,7 +1298,7 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<DateTime>("Timestamp")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.HasKey("Id");
 
@@ -1269,7 +1322,7 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -1278,18 +1331,18 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<string>("Title")
                         .HasMaxLength(200)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("UrgencyLevel")
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -1342,17 +1395,17 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValueSql("NOW()");
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(120)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(120)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -1367,20 +1420,26 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(512)
-                        .HasColumnType("text")
+                        .HasColumnType("nvarchar(512)")
                         .HasColumnName("PasswordHash");
 
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("PhotoUrl")
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RefreshToken")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RefreshTokenExpiryTime")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("text");
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1558,7 +1617,7 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.HasOne("MedicalAssistant.Domain.Entities.PatientModule.Patient", "Patient")
                         .WithMany("MedicationLogs")
                         .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("MedicationTracker");
@@ -1571,7 +1630,7 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.HasOne("MedicalAssistant.Domain.Entities.PatientModule.ChronicDiseaseMonitor", "ChronicDiseaseMonitor")
                         .WithMany("Medications")
                         .HasForeignKey("ChronicDiseaseMonitorId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("MedicalAssistant.Domain.Entities.PatientModule.Patient", "Patient")
                         .WithMany("MedicationTrackers")
@@ -1598,6 +1657,17 @@ namespace MedicalAssistant.Persistance.Migrations
                         .HasForeignKey("UserId");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MedicalAssistant.Domain.Entities.PatientModule.PatientDocument", b =>
+                {
+                    b.HasOne("MedicalAssistant.Domain.Entities.PatientModule.Patient", "Patient")
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
                 });
 
             modelBuilder.Entity("MedicalAssistant.Domain.Entities.PatientModule.PatientVisit", b =>
@@ -1686,7 +1756,7 @@ namespace MedicalAssistant.Persistance.Migrations
                     b.HasOne("MedicalAssistant.Domain.Entities.PatientModule.ChronicDiseaseMonitor", "ChronicDiseaseMonitor")
                         .WithMany("VitalReadings")
                         .HasForeignKey("ChronicDiseaseMonitorId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("MedicalAssistant.Domain.Entities.PatientModule.Patient", "Patient")
                         .WithMany("VitalReadings")

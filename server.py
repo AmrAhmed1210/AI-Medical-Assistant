@@ -420,6 +420,108 @@ async def doctor_ai_assist(data: dict):
         print(f"DEBUG: Error in doctor_ai_assist: {e}")
         return {"error": str(e)}
 
+class MedicalProfileInput(BaseModel):
+    text: str
+
+@app.post("/parse-medical-profile", dependencies=[Depends(verify_internal_token)])
+async def parse_medical_profile(data: MedicalProfileInput):
+    """Parse natural language medical text into structured data (chronic diseases, medications, allergies)."""
+    if not GOOGLE_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured")
+
+    if not data.text or not data.text.strip():
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    prompt = f"""
+    You are a medical data extraction AI. Analyze the following patient description and extract all medical information mentioned.
+    The patient may write in Arabic, English, or a mix of both. You MUST understand both languages perfectly.
+    
+    Patient says: "{data.text.strip()}"
+    
+    Extract and return ONLY a valid JSON object with these arrays:
+    {{
+      "chronic_diseases": [
+        {{
+          "diseaseName": "Professional English name of the disease",
+          "diseaseNameAr": "اسم المرض بالعربية",
+          "diseaseType": "Category (e.g., Endocrine, Cardiovascular, Respiratory, Neurological, Musculoskeletal, Gastrointestinal, Other)",
+          "severity": "Mild | Moderate | Severe",
+          "diagnosedDate": "YYYY-MM-DD if mentioned, otherwise null",
+          "notes": "Any additional details mentioned"
+        }}
+      ],
+      "medications": [
+        {{
+          "medicationName": "Brand name if mentioned, otherwise generic name",
+          "genericName": "Generic/scientific name",
+          "dosage": "e.g., 500mg",
+          "form": "Tablet | Capsule | Syrup | Injection | Cream | Inhaler | Drops | Other",
+          "frequency": "e.g., Twice daily, Once daily, As needed",
+          "instructions": "Any special instructions mentioned (e.g., before meals, with water)",
+          "doseTimes": "e.g., 08:00, 20:00 (if the user mentioned times, try to format them in 24h, else null)",
+          "isChronic": true or false based on context
+        }}
+      ],
+      "allergies": [
+        {{
+          "allergenName": "Name of the allergen in English",
+          "allergenNameAr": "اسم المادة المسببة للحساسية بالعربية",
+          "allergyType": "Drug | Food | Environmental | Insect | Latex | Other",
+          "severity": "Mild | Moderate | Severe",
+          "reactionDescription": "Description of the allergic reaction if mentioned"
+        }}
+      ],
+      "summary_ar": "ملخص جميل ومنظم بالعربية لما تم استخراجه من بيانات المريض. اكتب بأسلوب ودود ومطمئن. استخدم إيموجي مناسبة. إذا لاحظت أي تداخل دوائي خطير أو أعراض مقلقة، يجب أن تضع تحذيراً واضحاً هنا (مثال: ⚠️ تحذير: ...). اذكر كل عنصر تم استخراجه بوضوح.",
+      "summary_en": "A friendly, well-organized English summary of what was extracted. Use emojis. If you notice any dangerous drug interactions or alarming symptoms, put a clear warning here. Mention each extracted item clearly.",
+      "follow_up_ar": "سؤال متابعة بالعربية. اسأل عن التفاصيل الناقصة (مثال: إذا ذكر المريض دواء ولم يذكر الجرعة أو المواعيد، اسأله عنها: 'امتى بتاخد الدواء ده وتحديداً كم مللي؟'). وإذا كانت البيانات مكتملة، اسأل إذا كان يود إضافة شيء آخر كعمليات جراحية أو حساسيات.",
+      "follow_up_en": "A follow-up question in English asking for missing details (like dose times) or if they want to add anything else."
+    }}
+    
+    RULES:
+    1. If the patient mentions a disease in Arabic slang (e.g., "سكر" = Diabetes, "ضغط" = Hypertension), translate it professionally.
+    2. If a medication is mentioned in Arabic (e.g., "جلوكوفاج"), use the proper brand name (Glucophage).
+    3. If duration is mentioned (e.g., "من 5 سنين"), calculate the approximate diagnosed date.
+    4. If the user mentions a medication without dose/times, YOU MUST ask about them in the follow_up_ar.
+    5. If no items are found for a category, return an empty array [].
+    6. Be thorough — extract EVERY medical detail mentioned.
+    7. RETURN ONLY THE JSON OBJECT. No markdown, no extra text.
+    """
+
+    try:
+        response = model.generate_content(prompt)
+        content = response.text.strip()
+
+        # Robust JSON extraction
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            # Ensure all required keys exist
+            result.setdefault("chronic_diseases", [])
+            result.setdefault("medications", [])
+            result.setdefault("allergies", [])
+            result.setdefault("summary_ar", "تم تحليل البيانات.")
+            result.setdefault("summary_en", "Data parsed successfully.")
+            result.setdefault("follow_up_ar", "هل تحب تضيف حاجة تانية؟")
+            result.setdefault("follow_up_en", "Would you like to add anything else?")
+            return result
+
+        return {
+            "chronic_diseases": [], "medications": [], "allergies": [],
+            "summary_ar": "لم أتمكن من استخراج بيانات طبية. حاول وصف حالتك بشكل أوضح.",
+            "summary_en": "Could not extract medical data. Please describe your condition more clearly.",
+            "follow_up_ar": "ممكن تقولي ايه الأمراض أو الأدوية اللي عندك؟",
+            "follow_up_en": "Can you tell me about your diseases or medications?"
+        }
+    except Exception as e:
+        print(f"DEBUG: Error in parse_medical_profile: {e}")
+        raise HTTPException(status_code=500, detail=f"AI parsing error: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

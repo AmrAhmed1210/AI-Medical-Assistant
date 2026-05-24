@@ -275,7 +275,7 @@ export const uploadDoctorPhoto = async (uri: string): Promise<string> => {
 
   formData.append("file", { uri, name: filename, type } as any);
 
-  const res = await apiFetch<any>(`${API.doctors.profile}/photo`, {
+  const res = await apiFetch<any>(API.doctors.uploadPhoto, {
     method: "POST",
     body: formData,
   }, true);

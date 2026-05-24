@@ -26,7 +26,7 @@ export default function AdminUsers() {
 
   const [form, setForm] = useState<CreateUserRequest>({
     fullName: '', email: '', password: '', role: 'Patient',
-    specialityName: '', specialityNameAr: '', consultationFee: 0, yearsExperience: 0, bio: '',
+    specialityName: '', specialityNameAr: '', consultationFee: 0, yearsExperience: 0, bio: '', location: '',
   })
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof CreateUserRequest, string>>>({})
   const [addLoading, setAddLoading] = useState(false)
@@ -67,6 +67,7 @@ export default function AdminUsers() {
     if (form.role === 'Doctor') {
       if (!form.specialityName?.trim()) errors.specialityName = 'Required'
       if (!form.specialityNameAr?.trim()) errors.specialityNameAr = 'Required'
+      if (!form.location?.trim()) errors.location = 'Required'
       if (form.yearsExperience === undefined || form.yearsExperience < 0 || form.yearsExperience > 60) {
         errors.yearsExperience = 'Must be 0-60'
       }

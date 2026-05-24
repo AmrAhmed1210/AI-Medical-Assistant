@@ -29,7 +29,7 @@ namespace MedicalAssistant.Presentation.Controllers
             if (role.Equals("Doctor", StringComparison.OrdinalIgnoreCase))
             {
                 var doctor = (await _unitOfWork.Repository<Doctor>().FindAsync(d => d.UserId == userId)).FirstOrDefault();
-                if (doctor != null) await doctorService.UpdatePhotoAsync(doctor.Id, url);
+                if (doctor != null) await doctorService.UpdatePhotoAsync(userId, url);
             }
             else
             {

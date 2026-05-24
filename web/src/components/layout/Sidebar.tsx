@@ -58,7 +58,8 @@ export function Sidebar() {
     clearDoctorApplications,
   } = useNotificationStore()
 
-  const navItems = role === 'Admin' ? adminNav : (role === 'Secretary' ? secretaryNav : doctorNav)
+  const lowerRole = role?.toLowerCase()
+  const navItems = lowerRole === 'admin' ? adminNav : (lowerRole === 'secretary' ? secretaryNav : doctorNav)
 
   // Theme tokens for sidebar
   const bg = isDark ? 'rgba(10,15,35,0.98)' : '#ffffff'
@@ -129,8 +130,8 @@ export function Sidebar() {
             border: `1px solid ${isDark ? 'rgba(99,102,241,0.25)' : 'rgba(99,102,241,0.2)'}`,
           }}
         >
-          {role === 'Admin' ? <Shield size={14} /> : role === 'Secretary' ? <Users size={14} /> : <Stethoscope size={14} />}
-          {role === 'Admin' ? 'System Administrator' : role === 'Secretary' ? 'Secretary' : 'Doctor'}
+          {lowerRole === 'admin' ? <Shield size={14} /> : lowerRole === 'secretary' ? <Users size={14} /> : <Stethoscope size={14} />}
+          {lowerRole === 'admin' ? 'System Administrator' : lowerRole === 'secretary' ? 'Secretary' : 'Doctor'}
         </div>
       </div>
 
