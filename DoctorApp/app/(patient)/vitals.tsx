@@ -60,8 +60,6 @@ export default function VitalsScreen() {
   const [aiAdvice, setAiAdvice] = useState<any>(null);
   const [isAnalyzingAdvice, setIsAnalyzingAdvice] = useState(false);
   const [adviceLang, setAdviceLang] = useState<"en" | "ar">(isRTL ? "ar" : "en");
-  const [healthReport, setHealthReport] = useState<any>(null);
-  const [generatingReport, setGeneratingReport] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -196,35 +194,33 @@ export default function VitalsScreen() {
     }
   };
 
-  const triggerAiAdvice = async (reading: any) => {
-    try {
-      setIsAnalyzingAdvice(true);
-      const { analyzeVitalsAdvice } = await import("../../services/aiService");
-      const advice = await analyzeVitalsAdvice([reading], { id: patientId });
-      setAiAdvice(advice);
-    } catch (e) {
-      console.log("AI Advice failed", e);
-    } finally {
-      setIsAnalyzingAdvice(false);
-    }
-  };
+  const triggerAiAdvice = (reading: any) => {
+    const val = reading.value;
+    const val2 = reading.value2;
+    const assessment = assessVitalReading(reading.readingType, val, val2);
 
-  const generateComprehensiveReport = async () => {
-    try {
-      setGeneratingReport(true);
-      const readings = VITAL_TYPES.map(t => latestVitals[t.key]).filter(Boolean);
-      if (readings.length === 0) {
-        Toast.show({ type: "info", text1: isRTL ? "لا توجد قياسات" : "No readings yet", text2: isRTL ? "سجل بعض القياسات أولاً" : "Record some vitals first" });
-        return;
-      }
-      const { analyzeVitalsAdvice } = await import("../../services/aiService");
-      const report = await analyzeVitalsAdvice(readings, { id: patientId });
-      setHealthReport(report);
-    } catch (e) {
-      console.log("Health report failed", e);
-    } finally {
-      setGeneratingReport(false);
-    }
+    const typeAr: Record<string, string> = {
+      "Blood Pressure": "ضغط الدم", "Blood Sugar": "سكر الدم",
+      "Heart Rate": "معدل ضربات القلب", "Temperature": "درجة الحرارة",
+      "SpO2": "الأكسجين", "Respiratory Rate": "معدل التنفس"
+    };
+    const nameAr = typeAr[reading.readingType] || reading.readingType;
+    const readingStr = `${val}${val2 != null ? `/${val2}` : ""} ${reading.unit || ""}`;
+
+    const advice_en = assessment.isNormal
+      ? `Your ${reading.readingType} reading (${readingStr}) is within the normal range (${assessment.rangeText}). Keep up the good health!`
+      : `${assessment.title}: ${reading.readingType} reading ${readingStr} is outside normal range (${assessment.rangeText}). ${assessment.message}`;
+
+    const titleAr: Record<string, string> = {
+      "Low blood pressure warning": "تحذير: انخفاض ضغط الدم",
+      "High blood pressure warning": "تحذير: ارتفاع ضغط الدم",
+      "Invalid reading": "قراءة غير صالحة",
+    };
+    const advice_ar = assessment.isNormal
+      ? `قراءة ${nameAr} (${readingStr}) ضمن المعدل الطبيعي (${assessment.rangeText}). حافظ على صحتك!`
+      : `${titleAr[assessment.title] || "تنبيه صحي"}: قراءة ${nameAr} ${readingStr} خارج المعدل الطبيعي (${assessment.rangeText}). يرجى مراجعة الطبيب.`;
+
+    setAiAdvice({ advice_en, advice_ar });
   };
 
   const handleDelete = async (id: number) => {
@@ -597,48 +593,6 @@ export default function VitalsScreen() {
               })}
             </View>
           )}
-
-          {/* Health Report Section */}
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              {isRTL ? "تقرير الصحة الشامل" : "Comprehensive Health Report"}
-            </Text>
-            <TouchableOpacity style={styles.addBtnSmall} onPress={generateComprehensiveReport} disabled={generatingReport}>
-              <LinearGradient colors={["#7C3AED", "#6D28D9"]} style={styles.addBtnSmallGradient}>
-                {generatingReport ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Sparkles size={16} color="#fff" />
-                    <Text style={styles.addBtnSmallText}>{isRTL ? "تحليل" : "Analyze"}</Text>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          {healthReport ? (
-            <View style={[styles.reportCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.reportLangRow}>
-                <View style={styles.reportSection}>
-                  <Text style={styles.reportLangLabel}>EN</Text>
-                  <Text style={[styles.reportText, { color: colors.text }]}>{healthReport.advice_en}</Text>
-                </View>
-                <View style={styles.reportDivider} />
-                <View style={styles.reportSection}>
-                  <Text style={[styles.reportLangLabel, { textAlign: 'right' }]}>عربي</Text>
-                  <Text style={[styles.reportText, { color: colors.text, textAlign: 'right', writingDirection: 'rtl' }]}>{healthReport.advice_ar}</Text>
-                </View>
-              </View>
-            </View>
-          ) : (
-            <View style={[styles.reportEmpty, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <Sparkles size={32} color={colors.textMuted} />
-              <Text style={[styles.reportEmptyText, { color: colors.textMuted }]}>
-                {isRTL ? "اضغط على تحليل لإنشاء تقرير صحي شامل" : "Tap Analyze to generate a comprehensive health report"}
-              </Text>
-            </View>
-          )}
         </View>
       </Animated.ScrollView>
     </View>
@@ -759,12 +713,4 @@ const styles = StyleSheet.create({
   cardLangBtnActive: { backgroundColor: '#fff', elevation: 2 },
   cardLangText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
   cardLangTextActive: { color: '#0EA5E9' },
-  reportCard: { borderRadius: 24, padding: 20, marginHorizontal: 25, marginBottom: 30, borderWidth: 1, elevation: 4, shadowOpacity: 0.05 },
-  reportLangRow: { gap: 16 },
-  reportSection: { padding: 8 },
-  reportLangLabel: { fontSize: 10, fontWeight: '800', color: '#7C3AED', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
-  reportDivider: { height: 1, backgroundColor: '#E2E8F0', marginHorizontal: 4 },
-  reportText: { fontSize: 13, fontWeight: '500', lineHeight: 22 },
-  reportEmpty: { borderRadius: 24, padding: 30, marginHorizontal: 25, marginBottom: 30, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', gap: 12 },
-  reportEmptyText: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
 });
