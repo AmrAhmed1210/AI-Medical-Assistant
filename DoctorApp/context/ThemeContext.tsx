@@ -54,11 +54,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem('@user_theme').then((savedTheme) => {
       if (savedTheme === 'light' || savedTheme === 'dark') {
         setTheme(savedTheme);
-      } else if (systemScheme) {
-        setTheme(systemScheme);
+      } else {
+        setTheme('light'); // Unconditionally default to light mode on first launch
       }
     });
-  }, [systemScheme]);
+  }, []);
 
   const toggleTheme = () => {
     const nextTheme = theme === 'light' ? 'dark' : 'light';

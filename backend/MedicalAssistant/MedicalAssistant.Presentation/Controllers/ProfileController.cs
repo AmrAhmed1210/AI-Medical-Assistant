@@ -40,6 +40,30 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(new { photoUrl = url });
         }
 
+        // DELETE /api/profile/photo
+        [HttpDelete("photo")]
+        public async Task<IActionResult> DeletePhoto()
+        {
+            var userIdClaim = User.FindFirst("UserId")?.Value ?? User.FindFirst("sub")?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
+
+            var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "Patient";
+
+            if (role.Equals("Doctor", StringComparison.OrdinalIgnoreCase))
+            {
+                var doctor = (await _unitOfWork.Repository<Doctor>().FindAsync(d => d.UserId == userId)).FirstOrDefault();
+                if (doctor != null) await doctorService.UpdatePhotoAsync(userId, "");
+            }
+            else
+            {
+                var patient = (await _unitOfWork.Repository<Patient>().FindAsync(p => p.UserId == userId)).FirstOrDefault();
+                if (patient != null) await patientService.UpdatePhotoAsync(patient.Id, "");
+            }
+
+            return Ok(new { message = "Photo deleted successfully" });
+        }
+
         [HttpPost("upload")]
         public async Task<IActionResult> UploadFile(IFormFile file)
         {

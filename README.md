@@ -48,6 +48,7 @@ Install the required Node dependencies and start the Expo development server:
 cd DoctorApp
 npm install
 npx expo start
+npx expo start --web --port 8082
 ```
 
 ## Testing & Quality Assurance

@@ -79,9 +79,14 @@ namespace MedicalAssistant.Presentation.Controllers
 
         // PATCH /api/patients/{id}/profile
         [HttpPatch("{id:int}/profile")]
-        [Authorize(Roles = "Doctor,Nurse")]
+        [Authorize(Roles = "Doctor,Nurse,Patient")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateMedicalProfileDto dto)
         {
+            var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty;
+            var currentPatientId = GetPatientIdFromClaims();
+            if (!role.Equals("Doctor", StringComparison.OrdinalIgnoreCase) && !role.Equals("Nurse", StringComparison.OrdinalIgnoreCase) && currentPatientId != id)
+                return Forbid();
+
             if (dto == null) return BadRequest(new { message = "Invalid payload." });
 
             var updates = new MedicalProfile

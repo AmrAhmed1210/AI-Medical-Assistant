@@ -131,7 +131,8 @@ export const parseMedicalProfile = async (
   saveToProfile: boolean = false
 ): Promise<ParsedMedicalProfile> => {
   try {
-    return await apiFetch<ParsedMedicalProfile>(
+    console.log("[parseMedicalProfile] Calling API...");
+    const result = await apiFetch<ParsedMedicalProfile>(
       API.chat.parseMedicalProfile,
       {
         method: "POST",
@@ -139,32 +140,92 @@ export const parseMedicalProfile = async (
       },
       true
     );
-  } catch {
+    console.log("[parseMedicalProfile] API success, items:", 
+      (result.chronic_diseases?.length ?? 0) + (result.medications?.length ?? 0) + (result.allergies?.length ?? 0));
+    return result;
+  } catch (err: any) {
+    console.warn("[parseMedicalProfile] API failed, using local fallback:", err?.message);
     return parseMedicalProfileLocally(text);
   }
 };
 
-const DISEASE_KEYWORDS = [
-  ["diabetes", "Diabetes"],
-  ["sugar", "Diabetes"],
-  ["سكر", "Diabetes"],
-  ["hypertension", "Hypertension"],
-  ["blood pressure", "Hypertension"],
-  ["pressure", "Hypertension"],
-  ["ضغط", "Hypertension"],
-  ["asthma", "Asthma"],
-  ["ربو", "Asthma"],
-  ["heart", "Heart disease"],
-  ["قلب", "Heart disease"],
+const DISEASE_KEYWORDS: [string, string, string][] = [
+  ["diabetes", "Diabetes", "سكر"],
+  ["sugar", "Diabetes", "سكر"],
+  ["سكر", "Diabetes", "سكر"],
+  ["سكري", "Diabetes", "سكري"],
+  ["hypertension", "Hypertension", "ضغط عالي"],
+  ["blood pressure", "Hypertension", "ضغط عالي"],
+  ["pressure", "Hypertension", "ضغط عالي"],
+  ["ضغط", "Hypertension", "ضغط عالي"],
+  ["asthma", "Asthma", "ربو"],
+  ["ربو", "Asthma", "ربو"],
+  ["حساسية صدر", "Asthma", "حساسية صدرية"],
+  ["heart", "Heart Disease", "قلب"],
+  ["قلب", "Heart Disease", "مرض قلبي"],
+  ["cholesterol", "High Cholesterol", "كوليسترول"],
+  ["كوليسترول", "High Cholesterol", "كوليسترول عالي"],
+  ["دهون", "High Cholesterol", "دهون عالية"],
+  ["thyroid", "Thyroid Disorder", "غدة درقية"],
+  ["غدة", "Thyroid Disorder", "غدة درقية"],
+  ["درقية", "Thyroid Disorder", "غدة درقية"],
+  ["كلى", "Kidney Disease", "مرض كلوي"],
+  ["kidney", "Kidney Disease", "مرض كلوي"],
+  ["كبد", "Liver Disease", "مرض كبدي"],
+  ["liver", "Liver Disease", "مرض كبدي"],
+  ["انيميا", "Anemia", "أنيميا"],
+  ["anemia", "Anemia", "أنيميا"],
+  ["روماتيزم", "Rheumatism", "روماتيزم"],
+  ["arthritis", "Arthritis", "التهاب مفاصل"],
+  ["مفاصل", "Arthritis", "التهاب مفاصل"],
+  ["depression", "Depression", "اكتئاب"],
+  ["اكتئاب", "Depression", "اكتئاب"],
+  ["epilepsy", "Epilepsy", "صرع"],
+  ["صرع", "Epilepsy", "صرع"],
 ];
 
-const ALLERGY_KEYWORDS = [
-  ["penicillin", "Penicillin"],
-  ["بنسلين", "Penicillin"],
-  ["aspirin", "Aspirin"],
+const ALLERGY_KEYWORDS: [string, string, string][] = [
+  ["penicillin", "Penicillin", "بنسلين"],
+  ["بنسلين", "Penicillin", "بنسلين"],
+  ["aspirin", "Aspirin", "أسبرين"],
+  ["اسبرين", "Aspirin", "أسبرين"],
+  ["sulfa", "Sulfa drugs", "سلفا"],
+  ["سلفا", "Sulfa drugs", "سلفا"],
+  ["ibuprofen", "Ibuprofen", "ايبوبروفين"],
+  ["بروفين", "Ibuprofen", "بروفين"],
+  ["حساسية", "General Allergy", "حساسية"],
+  ["allergy", "General Allergy", "حساسية"],
+  ["بيض", "Eggs", "بيض"],
+  ["لبن", "Milk/Dairy", "لبن"],
+  ["فول سوداني", "Peanuts", "فول سوداني"],
+  ["peanut", "Peanuts", "فول سوداني"],
+  ["gluten", "Gluten", "جلوتين"],
+  ["جلوتين", "Gluten", "جلوتين"],
+];
+
+const MED_KEYWORDS: [string, string][] = [
+  ["جلوكوفاج", "Glucophage (Metformin)"],
+  ["glucophage", "Glucophage (Metformin)"],
+  ["metformin", "Metformin"],
+  ["ميتفورمين", "Metformin"],
+  ["كونكور", "Concor (Bisoprolol)"],
+  ["concor", "Concor (Bisoprolol)"],
+  ["اميلور", "Amilor"],
+  ["لازكس", "Lasix (Furosemide)"],
+  ["lasix", "Lasix (Furosemide)"],
+  ["انسولين", "Insulin"],
+  ["insulin", "Insulin"],
   ["اسبرين", "Aspirin"],
-  ["allergy", "Allergy"],
-  ["حساسية", "Allergy"],
+  ["aspirin", "Aspirin"],
+  ["بنادول", "Panadol (Paracetamol)"],
+  ["panadol", "Panadol (Paracetamol)"],
+  ["ليبيتور", "Lipitor (Atorvastatin)"],
+  ["lipitor", "Lipitor (Atorvastatin)"],
+  ["اوميبرازول", "Omeprazole"],
+  ["omeprazole", "Omeprazole"],
+  ["ثيروكسين", "Thyroxine"],
+  ["eltroxin", "Eltroxin (Thyroxine)"],
+  ["التروكسين", "Eltroxin (Thyroxine)"],
 ];
 
 const uniqueByName = <T extends Record<string, unknown>>(items: T[], key: keyof T) => {
@@ -183,9 +244,9 @@ function parseMedicalProfileLocally(text: string): ParsedMedicalProfile {
 
   const chronic_diseases = uniqueByName(DISEASE_KEYWORDS
     .filter(([keyword]) => lower.includes(keyword.toLowerCase()))
-    .map(([, name]) => ({
+    .map(([, name, nameAr]) => ({
       diseaseName: name,
-      diseaseNameAr: name,
+      diseaseNameAr: nameAr,
       diseaseType: "Chronic",
       severity: "Moderate",
       diagnosedDate: null,
@@ -194,39 +255,77 @@ function parseMedicalProfileLocally(text: string): ParsedMedicalProfile {
 
   const allergies = uniqueByName(ALLERGY_KEYWORDS
     .filter(([keyword]) => lower.includes(keyword.toLowerCase()))
-    .map(([, name]) => ({
+    .map(([, name, nameAr]) => ({
       allergenName: name,
-      allergenNameAr: name,
+      allergenNameAr: nameAr,
       allergyType: "Medication",
       severity: "Moderate",
       reactionDescription: source,
     })), "allergenName");
 
-  const medicationMatch = source.match(/(?:take|taking|باخد|اخد|دواء|علاج)\s+([^،,.]+)/i);
-  const medications = medicationMatch?.[1]?.trim()
-    ? [{
-        medicationName: medicationMatch[1].trim(),
-        dosage: "",
-        form: "Tablet",
-        frequency: "Once daily",
-        instructions: source,
-        doseTimes: null,
-        isChronic: true,
-      }]
-    : [];
+  // Match medications from known list
+  const medications = uniqueByName(MED_KEYWORDS
+    .filter(([keyword]) => lower.includes(keyword.toLowerCase()))
+    .map(([, name]) => ({
+      medicationName: name,
+      dosage: "",
+      form: "Tablet",
+      frequency: "Once daily",
+      instructions: source,
+      doseTimes: null,
+      isChronic: true,
+    })), "medicationName");
+
+  // Fallback: try to extract unknown medication from common patterns
+  if (medications.length === 0) {
+    const medPatterns = [
+      /(?:باخد|بأخد|اخد|آخد|بتاخد|take|taking)\s+([^\u060C،,.]+)/i,
+      /(?:دواء|علاج|حبوب|medication)\s+([^\u060C،,.]+)/i,
+    ];
+    for (const pattern of medPatterns) {
+      const match = source.match(pattern);
+      if (match?.[1]?.trim()) {
+        medications.push({
+          medicationName: match[1].trim(),
+          dosage: "",
+          form: "Tablet",
+          frequency: "Once daily",
+          instructions: source,
+          doseTimes: null,
+          isChronic: true,
+        });
+        break;
+      }
+    }
+  }
 
   const total = chronic_diseases.length + allergies.length + medications.length;
+  const hasArabic = /[\u0600-\u06FF]/.test(source);
+
   const summary = total > 0
-    ? `I found ${total} medical item(s). You can add more details or save.`
-    : "I could not extract a clear medical item yet. Please mention a condition, medication, or allergy.";
+    ? (hasArabic
+      ? `✅ تم استخراج ${total} عنصر طبي من كلامك. راجع البيانات واضغط "حفظ الكل" لتسجيلها.`
+      : `✅ Extracted ${total} medical item(s). Review the data and tap "Save All" to record them.`)
+    : (hasArabic
+      ? "لم أتمكن من استخراج بيانات طبية واضحة. جرّب تقول حاجة زي \"عندي سكر\" أو \"باخد جلوكوفاج\"."
+      : "I could not extract a clear medical item yet. Try saying \"I have diabetes\" or \"I take Glucophage\".");
+
+  const follow_up = total > 0
+    ? (hasArabic
+      ? "هل في أدوية تانية أو حساسية عايز تضيفها؟ لو خلصت اضغط حفظ الكل."
+      : "Any other medications or allergies to add? If done, tap Save All.")
+    : (hasArabic
+      ? "اكتب أمراضك أو أدويتك بأي شكل وأنا هفهمك."
+      : "Describe your conditions or medications in any way.");
 
   return {
     chronic_diseases,
     medications,
     allergies,
-    summary_ar: summary,
-    summary_en: summary,
-    follow_up_ar: "Add any missing medications, allergies, or chronic conditions, then press Save.",
-    follow_up_en: "Add any missing medications, allergies, or chronic conditions, then press Save.",
+    summary_ar: hasArabic ? summary : "",
+    summary_en: hasArabic ? "" : summary,
+    follow_up_ar: hasArabic ? follow_up : "",
+    follow_up_en: hasArabic ? "" : follow_up,
   };
 }
+

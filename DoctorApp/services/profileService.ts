@@ -127,3 +127,16 @@ export const uploadProfilePhoto = async (uri: string): Promise<string> => {
 
   return response.photoUrl;
 };
+
+// ============================================
+// Delete Profile Photo
+// ============================================
+export const deleteProfilePhoto = async (): Promise<void> => {
+  await apiFetch<unknown>(
+    API.profile.photo, // api/profile/photo
+    {
+      method: "DELETE",
+    },
+    true
+  );
+};

@@ -23,8 +23,19 @@ import PatientBackgroundBubbles from "@/components/PatientBackgroundBubbles";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
 
+import { BASE_URL } from "../../constants/api";
+
+const DEFAULT_AVATAR = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
+
+function resolvePhotoUrl(url?: string | null): string {
+  if (!url || !url.trim()) return DEFAULT_AVATAR;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const separator = url.startsWith('/') ? '' : '/';
+  return `${BASE_URL}${separator}${url}`;
+}
+
 // Import services
-import { getMyProfile, updateMyProfile, Profile, uploadProfilePhoto } from "../../services/profileService";
+import { getMyProfile, updateMyProfile, Profile, uploadProfilePhoto, deleteProfilePhoto } from "../../services/profileService";
 import { getMyAppointments, Appointment, cancelAppointment, deleteAppointment } from "../../services/appointmentService";
 import { scheduleAppointmentReminders } from "../../services/appointmentReminders";
 import { getMyVisits, PatientVisit } from "../../services/visitService";
@@ -247,15 +258,39 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleDeleteImage = async () => {
+    try {
+      setPhotoUploading(true);
+      await deleteProfilePhoto();
+      Toast.show({ type: "success", text1: isAr ? "نجاح" : "Success", text2: isAr ? "تم حذف الصورة الشخصية!" : "Profile photo removed!" });
+      fetchAll();
+    } catch (err: any) {
+      Alert.alert(isAr ? "خطأ" : "Error", (isAr ? "فشل حذف الصورة: " : "Failed to delete photo: ") + (err.message || "Unknown error"));
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
   const handlePickImage = async () => {
+    const options: { text: string; onPress?: () => void; style?: "default" | "cancel" | "destructive" }[] = [
+      { text: isAr ? "التقاط صورة" : "Take Photo", onPress: () => pickImage(true) },
+      { text: isAr ? "اختيار من المعرض" : "Choose from Gallery", onPress: () => pickImage(false) }
+    ];
+
+    if (profile?.photoUrl && profile.photoUrl.trim() !== "") {
+      options.push({
+        text: isAr ? "حذف الصورة" : "Delete Photo",
+        onPress: handleDeleteImage,
+        style: "destructive"
+      });
+    }
+
+    options.push({ text: isAr ? "إلغاء" : "Cancel", style: "cancel" });
+
     Alert.alert(
-      "Update Profile Photo",
-      "Would you like to take a new photo or choose from your gallery?",
-      [
-        { text: "Take Photo", onPress: () => pickImage(true) },
-        { text: "Choose from Gallery", onPress: () => pickImage(false) },
-        { text: "Cancel", style: "cancel" }
-      ]
+      isAr ? "تحديث الصورة الشخصية" : "Update Profile Photo",
+      isAr ? "هل تريد التقاط صورة جديدة أم اختيار صورة من المعرض؟" : "Would you like to take a new photo or choose from your gallery?",
+      options
     );
   };
 
@@ -414,11 +449,11 @@ export default function ProfileScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#059669" />}
       >
         <View style={[styles.contentOverlap, { backgroundColor: colors.background }]}>
-          <PatientBackgroundBubbles isDark={isDark} />
+          <PatientBackgroundBubbles isDark={isDark} scrollY={scrollY} />
           <View style={styles.profileCardWrap}>
             <Animated.View style={[styles.glassProfileCard, { backgroundColor: colors.surface, shadowColor: isDark ? "#000" : "#059669", transform: [{ scale: avatarScale }, { translateY: avatarTranslateY }] }]}>
               <LinearGradient colors={isDark ? ["rgba(18,27,46,0.95)", "rgba(23,35,59,0.9)"] : ["rgba(255,255,255,1)", "rgba(252,255,254,0.98)"]} style={styles.cardGlassOverlay} />
-              <LinearGradient colors={["#FBBF24", "#D97706", "#FBBF24"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.goldHairline} />
+              <LinearGradient colors={["#10B981", "#059669", "#10B981"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.goldHairline} />
               <View style={styles.profileMain}>
                 <View style={styles.avatarGlowContainer}>
                   <View style={styles.avatarPulse} />
@@ -426,10 +461,10 @@ export default function ProfileScreen() {
                     {photoUploading ? (
                       <ActivityIndicator color="#059669" style={styles.profileImg} />
                     ) : (
-                      <Image source={{ uri: profile?.photoUrl || "https://via.placeholder.com/150" }} style={styles.profileImg} />
+                      <Image source={{ uri: resolvePhotoUrl(profile?.photoUrl) }} style={styles.profileImg} />
                     )}
                     <TouchableOpacity style={styles.editPhotoBtn} onPress={handlePickImage} activeOpacity={0.8}>
-                      <LinearGradient colors={["#FBBF24", "#D97706"]} style={styles.editPhotoGradient}>
+                      <LinearGradient colors={["#10B981", "#059669"]} style={styles.editPhotoGradient}>
                         <Camera size={12} color="#fff" />
                       </LinearGradient>
                     </TouchableOpacity>
@@ -438,7 +473,7 @@ export default function ProfileScreen() {
                 <View style={styles.profileInfo}>
                   <View style={styles.nameRow}>
                     <Text style={[styles.profileName, { color: colors.text }]} numberOfLines={1}>{profile?.name || "Patient Name"}</Text>
-                    <LinearGradient colors={["#FBBF24", "#D97706"]} style={styles.eliteStarBadge}><Star size={10} color="#fff" fill="#fff" /></LinearGradient>
+                    <LinearGradient colors={["#10B981", "#059669"]} style={styles.eliteStarBadge}><Star size={10} color="#fff" fill="#fff" /></LinearGradient>
                   </View>
                   <Text style={[styles.profileEmail, { color: colors.textMuted }]} numberOfLines={1}>{profile?.email || "patient@example.com"}</Text>
                   <View style={styles.badgeRow}>

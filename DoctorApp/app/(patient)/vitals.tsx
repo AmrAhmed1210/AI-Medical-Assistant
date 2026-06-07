@@ -13,6 +13,7 @@ import {
 } from "lucide-react-native";
 import { COLORS } from "../../constants/colors";
 import { SosBar } from "../../components/SosBar";
+import PatientBackgroundBubbles from "@/components/PatientBackgroundBubbles";
 import { getMyPatientId } from "../../services/authService";
 import {
   getPatientVitals, getLatestVital, addVitalReading,
@@ -243,9 +244,7 @@ export default function VitalsScreen() {
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
 
       {/* Background Bubbles */}
-      <View style={[styles.bgBubble, styles.bubbleTopLeft, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.08)' }]} />
-      <View style={[styles.bgBubble, styles.bubbleBottomRight, { backgroundColor: isDark ? 'rgba(14, 165, 233, 0.15)' : 'rgba(14, 165, 233, 0.08)' }]} />
-      <View style={[styles.bgBubble, styles.bubbleCenter, { backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)' }]} />
+      <PatientBackgroundBubbles isDark={isDark} scrollY={scrollY} />
 
       {/* ANIMATED LUXURY HEADER */}
       <Animated.View style={[styles.magicHeader, { height: headerHeight, opacity: headerOpacity }]}>

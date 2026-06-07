@@ -8,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { useLanguage } from "../context/LanguageContext";
 import { getMyPatientId } from "../services/authService";
-import { addAllergy, addSurgery } from "../services/medicalRecordService";
+import { createAllergy, createSurgery } from "../services/medicalRecordService";
 import Toast from "react-native-toast-message";
 
 export default function OnboardingScreen() {

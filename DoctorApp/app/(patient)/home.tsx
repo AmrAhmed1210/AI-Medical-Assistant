@@ -381,20 +381,20 @@ export default function HomeScreen() {
         {/* FLOATING GLASS TIP CARD */}
         <View style={styles.tipWrapper}>
           <LinearGradient
-            colors={isDark ? ["rgba(30, 41, 59, 0.95)", "rgba(15, 23, 42, 0.9)"] : ["rgba(255, 255, 255, 0.95)", "rgba(254, 252, 232, 0.9)"]}
-            style={[styles.magicTipCard, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.8)' }]}
+            colors={isDark ? ["rgba(30, 41, 59, 0.95)", "rgba(15, 23, 42, 0.9)"] : ["rgba(255, 255, 255, 0.95)", "rgba(240, 253, 244, 0.9)"]}
+            style={[styles.magicTipCard, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(5, 150, 105, 0.12)' }]}
           >
-            <View style={[styles.tipIconBox, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.2)' : '#FEF3C7' }]}>
-              <View style={[styles.innerIconBox, { backgroundColor: isDark ? '#D97706' : '#fff' }]}>
-                <Ionicons name="bulb" size={22} color={isDark ? "#fff" : "#D97706"} />
+            <View style={[styles.tipIconBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5' }]}>
+              <View style={[styles.innerIconBox, { backgroundColor: isDark ? '#059669' : '#fff' }]}>
+                <Ionicons name="bulb" size={22} color={isDark ? "#fff" : "#059669"} />
               </View>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.tipTitle, { color: isDark ? '#FCD34D' : '#92400E' }]}>Daily Wellness</Text>
-              <Text style={[styles.tipDesc, { color: isDark ? '#FBBF24' : '#B45309' }]}>"Small steps lead to great health. Stay active and hydrated."</Text>
+              <Text style={[styles.tipTitle, { color: isDark ? '#6EE7B7' : '#064E3B' }]}>Daily Wellness</Text>
+              <Text style={[styles.tipDesc, { color: isDark ? '#34D399' : '#047857' }]}>"Small steps lead to great health. Stay active and hydrated."</Text>
             </View>
             <TouchableOpacity style={styles.tipArrow}>
-              <ChevronRight size={18} color="#D97706" />
+              <ChevronRight size={18} color="#059669" />
             </TouchableOpacity>
           </LinearGradient>
         </View>
@@ -522,8 +522,8 @@ export default function HomeScreen() {
                   router.push("/(patient)/medications");
                 }}
               >
-                <View style={[styles.taskIconCircle, { backgroundColor: isDark ? 'rgba(99,102,241,0.1)' : '#EEF2FF' }]}>
-                  <Pill size={20} color="#6366F1" />
+                <View style={[styles.taskIconCircle, { backgroundColor: isDark ? 'rgba(20, 184, 166, 0.1)' : '#F0FDFA' }]}>
+                  <Pill size={20} color="#14B8A6" />
                 </View>
                 <Text style={[styles.taskLabel, { color: colors.text }]}>{isRTL ? "الأدوية" : "Meds"}</Text>
               </TouchableOpacity>
@@ -575,13 +575,13 @@ export default function HomeScreen() {
         {/* MEDICATION DUE REMINDER CARD */}
         {nextDose && (
           <View style={styles.medTaskContainer}>
-            <LinearGradient colors={isDark ? ["#1E1B4B", "#312E81"] : ["#EEF2FF", "#E0E7FF"]} style={[styles.medTaskCard, { borderColor: isDark ? '#4338CA' : '#C7D2FE' }]}>
-              <View style={[styles.medTaskIconBox, { backgroundColor: isDark ? 'rgba(79, 70, 229, 0.2)' : '#fff' }]}>
-                <Pill size={20} color="#4F46E5" />
+            <LinearGradient colors={isDark ? ["#042F2E", "#134E4A"] : ["#F0FDFA", "#CCFBF1"]} style={[styles.medTaskCard, { borderColor: isDark ? '#0D9488' : '#99F6E4' }]}>
+              <View style={[styles.medTaskIconBox, { backgroundColor: isDark ? 'rgba(20, 184, 166, 0.2)' : '#fff' }]}>
+                <Pill size={20} color="#14B8A6" />
               </View>
               <View style={{ flex: 1, marginLeft: 15 }}>
-                <Text style={[styles.medTaskTitle, { color: isDark ? '#818CF8' : '#4F46E5' }]}>Medication Due</Text>
-                <Text style={[styles.medTaskName, { color: isDark ? '#fff' : '#1E1B4B' }]}>{nextDose.medicationName} • {nextDose.dosage}</Text>
+                <Text style={[styles.medTaskTitle, { color: isDark ? '#5EEAD4' : '#0F766E' }]}>Medication Due</Text>
+                <Text style={[styles.medTaskName, { color: isDark ? '#fff' : '#134E4A' }]}>{nextDose.medicationName} • {nextDose.dosage}</Text>
               </View>
               <TouchableOpacity
                 style={styles.medTaskBtn}
@@ -600,14 +600,14 @@ export default function HomeScreen() {
               style={{ width: '48%' }}
               onPress={() => router.push("/(patient)/medications" as any)}
             >
-              <SmallMetric icon={Pill} color="#6366F1" bg={isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF"} label="Your Medications" val={nextDose ? nextDose.medicationName : "Up to date"} />
+              <SmallMetric icon={Pill} color="#14B8A6" bg={isDark ? "rgba(20, 184, 166, 0.2)" : "#F0FDFA"} label="Your Medications" val={nextDose ? nextDose.medicationName : "Up to date"} />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={{ width: '48%' }}
               onPress={() => router.push("/(patient)/vitals" as any)}
             >
-              <SmallMetric icon={HeartPulse} color="#6366F1" bg={isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF"} label="Record Vitals" val={lastBP ? `${lastBP.value}/${lastBP.value2}` : "No readings"} />
+              <SmallMetric icon={HeartPulse} color="#0EA5E9" bg={isDark ? "rgba(14, 165, 233, 0.2)" : "#F0F9FF"} label="Record Vitals" val={lastBP ? `${lastBP.value}/${lastBP.value2}` : "No readings"} />
             </TouchableOpacity>
           </View>
         </View>
@@ -636,7 +636,7 @@ export default function HomeScreen() {
 
         <View style={styles.bottomMetricsRow}>
           <SmallMetric icon={Activity} color="#0EA5E9" bg={isDark ? "rgba(14, 165, 233, 0.2)" : "#F0F9FF"} label="Vitals" val="Latest" onPress={() => router.push("/(patient)/vitals")} />
-          <SmallMetric icon={Pill} color="#F59E0B" bg={isDark ? "rgba(245, 158, 11, 0.2)" : "#FFF7ED"} label="Meds" val="Schedule" onPress={() => router.push("/(patient)/medications")} />
+          <SmallMetric icon={Pill} color="#14B8A6" bg={isDark ? "rgba(20, 184, 166, 0.2)" : "#F0FDFA"} label="Meds" val="Schedule" onPress={() => router.push("/(patient)/medications")} />
         </View>
 
         <View style={styles.sectionHeader}>
@@ -710,7 +710,7 @@ export default function HomeScreen() {
         activeOpacity={0.95}
         onPress={() => router.push("/(patient)/doctors")}
       >
-        <LinearGradient colors={["#FBBF24", "#D97706"]} style={styles.fabGradient}>
+        <LinearGradient colors={["#10B981", "#059669"]} style={styles.fabGradient}>
           <Search size={28} color="#fff" />
         </LinearGradient>
       </TouchableOpacity>
@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
   innerIconBox: { width: 38, height: 38, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
   tipTitle: { fontSize: 14, fontWeight: '800', color: '#92400E', marginBottom: 2 },
   tipDesc: { fontSize: 12, color: '#B45309', lineHeight: 17, fontWeight: '500' },
-  tipArrow: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(217, 119, 6, 0.1)', justifyContent: 'center', alignItems: 'center' },
+  tipArrow: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(5, 150, 105, 0.1)', justifyContent: 'center', alignItems: 'center' },
 
   metricsArea: { paddingHorizontal: 10, marginTop: 25, overflow: 'visible' },
   metricsRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15, overflow: 'visible' },
@@ -795,7 +795,7 @@ const styles = StyleSheet.create({
   floatingSearch: {
     position: 'absolute', bottom: 30, right: 25,
     width: 64, height: 64, borderRadius: 32,
-    elevation: 12, shadowColor: '#D97706', shadowOpacity: 0.4, shadowRadius: 15
+    elevation: 12, shadowColor: '#059669', shadowOpacity: 0.4, shadowRadius: 15
   },
   fabGradient: { width: '100%', height: '100%', borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
 
@@ -816,11 +816,11 @@ const styles = StyleSheet.create({
   vitalTaskBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 
   medTaskContainer: { paddingHorizontal: 20, marginTop: 15 },
-  medTaskCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#C7D2FE' },
+  medTaskCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#99F6E4' },
   medTaskIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
-  medTaskTitle: { fontSize: 11, fontWeight: '700', color: '#4F46E5', textTransform: 'uppercase', letterSpacing: 0.5 },
-  medTaskName: { fontSize: 15, fontWeight: '700', color: '#1E1B4B', marginTop: 1 },
-  medTaskBtn: { backgroundColor: '#4F46E5', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
+  medTaskTitle: { fontSize: 11, fontWeight: '700', color: '#0F766E', textTransform: 'uppercase', letterSpacing: 0.5 },
+  medTaskName: { fontSize: 15, fontWeight: '700', color: '#134E4A', marginTop: 1 },
+  medTaskBtn: { backgroundColor: '#14B8A6', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
   medTaskBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 
   reminderCardCalm: { borderRadius: 24, padding: 16, elevation: 8, shadowColor: '#059669', shadowOpacity: 0.1, shadowRadius: 15, overflow: 'hidden', borderWidth: 1, borderColor: '#DCFCE7' },

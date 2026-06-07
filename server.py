@@ -61,6 +61,14 @@ class PatientHistoryInput(BaseModel):
     chronic_diseases: Optional[List[Any]] = []
     documents_analysis: Optional[List[Any]] = []
 
+class MessageDto(BaseModel):
+    role: str
+    content: str
+    
+class AskRequest(BaseModel):
+    question: str
+    history: Optional[List[MessageDto]] = None
+
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Luxury Medical AI API is active 🤖"}
@@ -93,6 +101,47 @@ async def summarize_surgery(data: SurgeryInput):
     except Exception as e:
         print(f"DEBUG: Error in summarize_surgery: {str(e)}")
         return {"summary_en": "Surgery recorded.", "summary_ar": "تم تسجيل العملية."}
+
+@app.post("/ask", dependencies=[Depends(verify_internal_token)])
+async def ask_endpoint(data: AskRequest):
+    if not GOOGLE_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured")
+    
+    chat_history = []
+    if data.history:
+        for msg in data.history:
+            # map roles to 'user' and 'model'
+            role = "user" if msg.role.lower() == "user" else "model"
+            chat_history.append({"role": role, "parts": [msg.content]})
+            
+    try:
+        chat = model.start_chat(history=chat_history)
+        prompt = f"""
+        You are an advanced, professional medical AI assistant.
+        The user is asking: {data.question}
+        
+        CRITICAL RULES:
+        1. STRICTLY MEDICAL: You are a medical assistant. You are ONLY allowed to answer medical, health, and wellness related questions. If the user asks about programming (like Python), tech, math, general knowledge, or anything outside the medical field, you MUST politely apologize and state that you are a specialized medical assistant and can only help with health-related matters.
+        2. Always respond in the SAME language the user is speaking.
+        3. Keep it professional, empathetic, and highly informative.
+        4. DO NOT use markdown symbols like # or *. Return beautiful plain text with elegant spacing and emojis where appropriate.
+        5. ACTIVE INQUIRY: If the user complains of pain, tiredness, or any symptoms, DO NOT just give a final diagnosis. Instead, ALWAYS end your response by asking 1 or 2 relevant follow-up questions to gather more details. Keep investigating until you have a clear picture.
+        6. Once you have a clear picture, provide safe advice and ALWAYS conclude with a recommendation to see a doctor.
+        """
+        response = chat.send_message(prompt)
+        return {
+            "query": data.question,
+            "reply": strip_markdown(response.text),
+            "model_used": "gemini-flash-latest",
+            "is_medical": True,
+            "found_in_database": False,
+            "low_confidence": False,
+            "language": "ar" if any("\u0600" <= c <= "\u06FF" for c in data.question) else "en",
+            "disclaimer": "This is an AI response and should not replace professional medical advice."
+        }
+    except Exception as e:
+        print(f"DEBUG: Error in /ask: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze-history", dependencies=[Depends(verify_internal_token)])
 async def analyze_history(data: PatientHistoryInput):

@@ -205,7 +205,7 @@ export default function DoctorsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
-      <PatientBackgroundBubbles isDark={isDark} />
+      <PatientBackgroundBubbles isDark={isDark} scrollY={scrollY} />
 
       {/* ANIMATED HEADER: Luxury Emerald */}
       <Animated.View style={[styles.magicHeader, { 

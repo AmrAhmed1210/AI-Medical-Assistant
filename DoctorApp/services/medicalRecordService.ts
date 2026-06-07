@@ -234,6 +234,15 @@ export const deletePatientDocument = async (docId: number): Promise<void> =>
   apiFetch<any>(API.records.documentDelete(docId), { method: "DELETE" }, true);
 
 // ============================================
+// Medical Profile
+// ============================================
+export const getMedicalProfile = async (patientId: number): Promise<any> =>
+  apiFetch<any>(API.patients.profile(patientId), { method: "GET" }, true);
+
+export const updateMedicalProfile = async (patientId: number, payload: any): Promise<any> =>
+  apiFetch<any>(API.patients.profile(patientId), { method: "PATCH", body: JSON.stringify(payload) }, true);
+
+// ============================================
 // AI Diagnosis
 // ============================================
 export const updateAiDiagnosis = async (patientId: number, diagnosisSummary: string): Promise<any> =>
