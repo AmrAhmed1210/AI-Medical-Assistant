@@ -15,6 +15,8 @@ import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../context/LanguageContext";
 import { getMyPatientId } from "../../services/authService";
 import { parseMedicalProfile, analyzeMedicalImage } from "../../services/aiService";
+import { assessMedicationSafety, assessVitalReading, getVitalUnit } from "../../services/healthSafety";
+import { addNotification } from "../../services/notificationService";
 import {
   getChronicDiseases, getMedications, getAllergies, getSurgeries, getVitals, getMedicalProfile,
   createChronicDisease, createMedication, createAllergy, createSurgery, createVital,
@@ -155,6 +157,31 @@ export default function AIProfileAssistantScreen() {
     timestamp: new Date().toISOString(),
   });
 
+  const saveVitalDraft = async (pid: number, draftData: any, nextMessages: ChatMsg[]) => {
+    const assessment = assessVitalReading(draftData.readingType, draftData.value, draftData.value2);
+    const payload = {
+      readingType: draftData.readingType,
+      value: draftData.value,
+      value2: draftData.value2,
+      unit: getVitalUnit(draftData.readingType),
+      isNormal: assessment.isNormal,
+      notes: assessment.isNormal ? undefined : `[Health warning] ${assessment.message}`,
+    };
+    if (state.intent === "edit") await updateVital(draftData.id, payload);
+    else await createVital(pid, payload);
+    if (!assessment.isNormal) {
+      nextMessages.push(addMsg(t(`تحذير: ${assessment.message}`, `Warning: ${assessment.message}`), "assistant"));
+      await addNotification({
+        id: `vital_${Date.now()}`,
+        type: "update",
+        icon: "alert-circle",
+        title: assessment.title,
+        message: assessment.message,
+        timestamp: Date.now(),
+      });
+    }
+  };
+
   /* ── data ── */
   const loadData = async () => {
     try {
@@ -209,6 +236,14 @@ export default function AIProfileAssistantScreen() {
   const skipNoneChips = () => [
     { label: t("تخطي", "Skip"), value: "SKIP" },
     { label: t("لا يوجد", "None"), value: "NONE" },
+  ];
+  const vitalTypeChips = () => [
+    { label: t("الضغط", "Blood Pressure"), value: "Blood Pressure" },
+    { label: t("السكر", "Blood Sugar"), value: "Blood Sugar" },
+    { label: t("النبض", "Heart Rate"), value: "Heart Rate" },
+    { label: t("الحرارة", "Temperature"), value: "Temperature" },
+    { label: t("الأكسجين", "SpO2"), value: "SpO2" },
+    { label: t("التنفس", "Respiratory Rate"), value: "Respiratory Rate" },
   ];
 
   const startOnboarding = () => {
@@ -296,10 +331,7 @@ export default function AIProfileAssistantScreen() {
           next.push(addMsg(t("ما اسم العملية الجراحية؟", "Surgery name?"), "assistant", skipChips()));
           pushState({ subIntent: "surgery", step: 1, draft: {}, messages: next });
         } else if (val === "VITAL") {
-          next.push(addMsg(t("ما نوع القياس؟", "Vital type?"), "assistant", [
-            { label: t("الضغط", "Blood Pressure"), value: "Blood Pressure" },
-            { label: t("السكر", "Blood Sugar"), value: "Blood Sugar" },
-          ]));
+          next.push(addMsg(t("ما نوع القياس؟", "Vital type?"), "assistant", vitalTypeChips()));
           pushState({ subIntent: "vital", step: 1, draft: {}, messages: next });
         } else if (val === "GENERAL") {
           next.push(addMsg(t("هل أنت مدخن؟", "Are you a smoker?"), "assistant", [
@@ -525,7 +557,12 @@ export default function AIProfileAssistantScreen() {
           pushState({ step: 3, draft, messages: next });
         } else if (step === 3) {
           draft.frequency = label;
-          const isTwice = draft.frequency.includes("مرتين");
+          const isTwice = draft.frequency.includes("مرتين") || draft.frequency.toLowerCase().includes("twice");
+          const safety = assessMedicationSafety(draft.medicationName, {
+            allergies: allergies.map((a) => a.allergenName),
+            medications: meds.filter((m) => m.id !== draft.id).map((m) => m.medicationName),
+            chronicDiseases: diseases.map((d) => d.diseaseName),
+          });
           const payload = { 
             medicationName: draft.medicationName, 
             dosage: draft.dosage, 
@@ -536,11 +573,23 @@ export default function AIProfileAssistantScreen() {
             startDate: new Date().toISOString().split("T")[0],
             timesPerDay: isTwice ? 2 : 1,
             doseTimes: isTwice ? "08:00, 20:00" : "08:00",
-            daysOfWeek: "All",
-            refillThreshold: 5
+            daysOfWeek: "Saturday,Sunday,Monday,Tuesday,Wednesday,Thursday,Friday",
+            refillThreshold: 5,
+            instructions: safety.hasWarning ? `[Medication safety warning] ${safety.message}` : undefined,
           };
           if (intent === "edit") await updateMedication(draft.id, payload);
           else await createMedication(pid, payload);
+          if (safety.hasWarning) {
+            next.push(addMsg(t(`تحذير دوائي: ${safety.message}`, `Medication warning: ${safety.message}`), "assistant"));
+            await addNotification({
+              id: `med_safety_${Date.now()}`,
+              type: "update",
+              icon: "alert-circle",
+              title: safety.title,
+              message: safety.message,
+              timestamp: Date.now(),
+            });
+          }
           await loadData();
           if (intent === "onboarding") {
             next.push(addMsg(t("تم الحفظ.\nهل لديك حساسية؟", "Saved.\nAny allergies?"), "assistant", [
@@ -581,7 +630,12 @@ export default function AIProfileAssistantScreen() {
           else await createAllergy(pid, payload);
           await loadData();
           if (intent === "onboarding") {
-            next.push(addMsg(t("تم إعداد ملفك بالكامل.", "Profile complete."), "assistant"));
+            next.push(addMsg(t("هل تريد تسجيل قياس صحي الآن؟", "Do you want to record a vital reading now?"), "assistant", [
+              ...vitalTypeChips(),
+              { label: t("تخطي", "Skip"), value: "SKIP" },
+            ]));
+            pushState({ subIntent: "vital", step: 1, onboardingSection: "vital", draft: {}, messages: next });
+            return;
           }
           next = askAfterAction(next);
           pushState({ intent: "after_action", subIntent: null, step: 0, onboardingSection: "done", draft: {}, messages: next });
@@ -608,19 +662,53 @@ export default function AIProfileAssistantScreen() {
       // Vital flow
       else if (subIntent === "vital") {
         if (step === 1) {
+          if (isSkip && intent === "onboarding") {
+            next.push(addMsg(t("حسناً. هل أنت مدخن؟", "Okay. Are you a smoker?"), "assistant", [
+              { label: t("نعم", "Yes"), value: "YES" },
+              { label: t("لا", "No"), value: "NO" },
+            ]));
+            pushState({ subIntent: "general", step: 1, onboardingSection: "general", draft: profile || {}, messages: next });
+            return;
+          }
           draft.readingType = isSkip ? "Blood Pressure" : label;
           next.push(addMsg(t("ما هي القيمة؟ (مثال: 120)", "What is the value? (e.g. 120)"), "assistant", skipChips()));
           pushState({ step: 2, draft, messages: next });
         } else if (step === 2) {
-          draft.value = parseFloat(label) || 120;
-          next.push(addMsg(t("ما هي القيمة الثانية (إذا وجدت، للضغط)؟", "Second value (if any, for BP)?"), "assistant", skipNoneChips()));
-          pushState({ step: 3, draft, messages: next });
+          draft.value = parseFloat(label);
+          if (!Number.isFinite(draft.value) || draft.value <= 0) {
+            next.push(addMsg(t("القيمة غير صحيحة. اكتب رقماً صحيحاً.", "Invalid value. Please enter a valid number."), "assistant"));
+            pushState({ step: 2, draft, messages: next });
+            return;
+          }
+          if (draft.readingType === "Blood Pressure") {
+            next.push(addMsg(t("ما هي القيمة الثانية للضغط الانبساطي؟", "What is the diastolic value?"), "assistant", skipNoneChips()));
+            pushState({ step: 3, draft, messages: next });
+          } else {
+            await saveVitalDraft(pid, draft, next);
+            await loadData();
+            if (intent === "onboarding") {
+              next.push(addMsg(t("تم تسجيل القياس. هل أنت مدخن؟", "Vital saved. Are you a smoker?"), "assistant", [
+                { label: t("نعم", "Yes"), value: "YES" },
+                { label: t("لا", "No"), value: "NO" },
+              ]));
+              pushState({ subIntent: "general", step: 1, onboardingSection: "general", draft: profile || {}, messages: next });
+              return;
+            }
+            next = askAfterAction(next);
+            pushState({ intent: "after_action", subIntent: null, step: 0, draft: {}, messages: next });
+          }
         } else if (step === 3) {
-          draft.value2 = isSkip ? undefined : parseFloat(label) || 80;
-          const payload = { readingType: draft.readingType, value: draft.value, value2: draft.value2, unit: "standard", isNormal: true };
-          if (intent === "edit") await updateVital(draft.id, payload);
-          else await createVital(pid, payload);
+          draft.value2 = isSkip ? undefined : parseFloat(label) || undefined;
+          await saveVitalDraft(pid, draft, next);
           await loadData();
+          if (intent === "onboarding") {
+            next.push(addMsg(t("تم تسجيل القياس. هل أنت مدخن؟", "Vital saved. Are you a smoker?"), "assistant", [
+              { label: t("نعم", "Yes"), value: "YES" },
+              { label: t("لا", "No"), value: "NO" },
+            ]));
+            pushState({ subIntent: "general", step: 1, onboardingSection: "general", draft: profile || {}, messages: next });
+            return;
+          }
           next = askAfterAction(next);
           pushState({ intent: "after_action", subIntent: null, step: 0, draft: {}, messages: next });
         }

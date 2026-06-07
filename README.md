@@ -1,72 +1,139 @@
-# MedBook: Advanced Intelligent Healthcare Platform
+# MedBook
 
-## Overview
-MedBook is an enterprise-grade integrated medical ecosystem designed to bridge the gap between clinical expertise and digital efficiency. By leveraging Artificial Intelligence, the platform delivers a seamless, high-performance experience for healthcare providers, administrators, and patients. It features sophisticated AI diagnostics, real-time data synchronization, and a highly optimized user interface.
+MedBook is a medical assistant platform made of four main parts: an ASP.NET Core backend, a React web dashboard, an Expo mobile app, and a Python FastAPI AI service. The system supports admins, doctors, secretaries, and patients with appointments, profiles, patient records, chat, notifications, reviews, and AI-assisted medical analysis.
 
-## Key Features
+## Project Map
 
-*   **Intelligent Document Analysis**: Automatically processes and extracts clinical insights, test results, and document classifications from uploaded medical imagery, laboratory reports, and prescriptions.
-*   **Real-time Vitals Monitoring & Analysis**: Delivers immediate clinical feedback and alerts based on patient-logged vital signs, enhancing preventive care.
-*   **Medication Safety & Contraindication Checks**: Evaluates new prescriptions against the patient's comprehensive medical history, including documented allergies and chronic conditions, to identify potential adverse drug interactions.
-*   **AI-Generated Health Summaries**: Compiles professional clinical analyses and diagnostic summaries, directly accessible via the patient dashboard.
-*   **Bilingual Natural Language Processing**: Features full bilingual support (English/Arabic) for AI interactions, ensuring accessibility and precise medical terminology usage.
+```mermaid
+flowchart LR
+    Mobile["DoctorApp\nExpo mobile app"] --> Api["ASP.NET Core API\nbackend/MedicalAssistant"]
+    Web["web\nReact dashboard"] --> Api
+    Api --> Db["SQL Server\nMedicalAssistantDb"]
+    Api --> Ai["server.py\nFastAPI AI service"]
+    Api --> Hub["SignalR\nnotifications"]
+```
 
-## Technology Stack
+## Repository Structure
 
-*   **AI & Machine Learning**: Python FastAPI server integrated with Gemini 1.5 Flash for high-throughput natural language processing and diagnostic analysis.
-*   **Web Dashboard**: React, Vite, and TailwindCSS providing a highly responsive, data-rich administrative and clinical portal.
-*   **Mobile Application**: Cross-platform application built with React Native and Expo, featuring real-time state synchronization and a comprehensive dynamic theming system.
-*   **Backend Infrastructure**: ASP.NET Core Web API with Entity Framework Core, PostgreSQL persistence, and SignalR for robust, low-latency communication.
+```text
+E:\AI
+|-- backend/
+|   `-- MedicalAssistant/
+|       |-- MedicalAssistant.Web/             # ASP.NET Core startup project
+|       |-- MedicalAssistant.Presentation/    # Controllers and SignalR hubs
+|       |-- MedicalAssistant.Services/        # Business services and mapping
+|       |-- MedicalAssistant.Services Abstraction/
+|       |-- MedicalAssistant.Persistance/     # EF Core DbContext, migrations, repositories
+|       |-- MedicalAssistant.Domain/          # Entities and repository contracts
+|       |-- MedicalAssistant.Shared/          # DTOs and shared settings
+|       `-- MedicalAssistant.Web Solution.sln
+|-- web/
+|   |-- src/
+|   |   |-- api/          # Axios clients and API wrappers
+|   |   |-- components/   # Layout, UI, doctor, and admin components
+|   |   |-- hooks/        # Reusable React hooks
+|   |   |-- pages/        # Auth, admin, doctor, and secretary pages
+|   |   |-- store/        # Zustand stores
+|   |   `-- lib/          # Shared frontend utilities
+|   |-- e2e/              # Playwright tests
+|   `-- package.json
+|-- DoctorApp/
+|   |-- app/              # Expo Router screens
+|   |-- components/       # Mobile UI components
+|   |-- services/         # Mobile API clients
+|   |-- store/            # Mobile state
+|   |-- __tests__/        # Jest tests
+|   |-- e2e/              # Playwright mobile-web tests
+|   `-- package.json
+|-- MedicalAssistant.Ai/  # Alternate/experimental AI service
+|-- server.py             # Main FastAPI AI service used by the backend
+|-- requirements.txt      # Python deps for server.py
+|-- test_ai.py            # AI service smoke test
+`-- README.md
+```
 
-## Architecture & Project Structure
+## Tech Stack
 
-*   `backend/` - ASP.NET Core Web API handling core business logic, authentication, and database orchestration.
-*   `web/` - React-based clinical dashboard for medical professionals and system administrators.
-*   `DoctorApp/` - React Native application tailored for patient engagement and telemetry.
-*   `server.py` - Microservice handling AI inference and large language model integrations.
+| Area | Stack |
+| --- | --- |
+| Backend API | .NET 8, ASP.NET Core, EF Core, SignalR, Swagger |
+| Database | SQL Server / SQL Server Express |
+| Web dashboard | React, Vite, TypeScript, Tailwind CSS, Zustand, Playwright, Vitest |
+| Mobile app | React Native, Expo Router, TypeScript, Zustand, Jest |
+| AI service | Python, FastAPI, Gemini, Pinecone, Pillow |
 
-## Getting Started
+## Run Locally
 
-### 1. AI Inference Service
-Configure the `GOOGLE_API_KEY` in your environment variables, then initialize the server:
-```bash
+### 1. AI Service
+
+```powershell
+cd E:\AI
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+$env:GEMINI_API_KEY="your-key"
 python server.py
 ```
 
-### 2. Backend API Service
-Ensure a local or remote PostgreSQL instance is running, then execute the database migrations and start the server:
-```bash
-cd backend/MedicalAssistant
-dotnet restore
+Default URL: `http://localhost:8000`
+
+Optional smoke test:
+
+```powershell
+python test_ai.py
+```
+
+### 2. Backend API
+
+```powershell
+cd E:\AI\backend\MedicalAssistant
+dotnet restore "MedicalAssistant.Web Solution.sln"
 dotnet ef database update --project MedicalAssistant.Persistance --startup-project MedicalAssistant.Web
 dotnet run --project MedicalAssistant.Web
 ```
 
-### 3. Mobile Client Application
-Install the required Node dependencies and start the Expo development server:
-```bash
-cd DoctorApp
+Default API URL: `http://localhost:5194`
+
+Swagger: `http://localhost:5194/swagger`
+
+### 3. Web Dashboard
+
+```powershell
+cd E:\AI\web
 npm install
-npx expo start
-npx expo start --web --port 8082
+npm run dev
 ```
 
-## Testing & Quality Assurance
+Default URL: `http://localhost:5173`
 
-The repository maintains a comprehensive testing suite to guarantee system stability and prevent regressions.
+### 4. Mobile App
 
-**Web Client Testing:**
-```bash
-cd web
-npm run test          # Execute Unit and Integration Tests via Vitest
-npx playwright test   # Execute End-to-End browser validation via Playwright
+```powershell
+cd E:\AI\DoctorApp
+npm install
+npm start
 ```
 
-## Administrative Credentials
+Use Expo Go, an emulator, or the Expo web target.
 
-Default system administrator access for development environments:
-*   **Email:** admin@medbook.com
-*   **Password:** 123456789
+## Useful Commands
 
----
-*Maintained by the MedBook Engineering Team*
+| Task | Command |
+| --- | --- |
+| Build backend | `dotnet build "E:\AI\backend\MedicalAssistant\MedicalAssistant.Web Solution.sln"` |
+| Run web tests | `cd E:\AI\web && npm run test` |
+| Run web e2e tests | `cd E:\AI\web && npm run e2e` |
+| Run mobile tests | `cd E:\AI\DoctorApp && npm test` |
+| Run mobile e2e tests | `cd E:\AI\DoctorApp && npm run e2e` |
+
+## Configuration Notes
+
+- Backend configuration lives in `backend/MedicalAssistant/MedicalAssistant.Web/appsettings.json` and `appsettings.Development.json`.
+- The backend calls the AI service through `AIService:Url`, defaulting to `http://localhost:8000`.
+- The backend sends `x-internal-token` to the AI service; keep this value consistent between `Program.cs` and `server.py`.
+- The mobile app derives the local API host from Expo runtime where possible.
+- Move real secrets such as database passwords, JWT keys, API keys, and Cloudinary credentials to environment variables or .NET user-secrets before publishing the repository.
+
+## Cleanup Policy
+
+This repository keeps source code, lockfiles for real Node apps, tests, and database migrations. Generated reports, logs, local virtual environments, build output, Playwright output, model files, and temporary patch/backup files are ignored so the project stays readable.

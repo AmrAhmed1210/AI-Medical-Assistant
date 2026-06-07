@@ -1021,12 +1021,12 @@ const styles = StyleSheet.create({
   emeraldWave: { position: 'absolute', bottom: -10, left: 0, right: 0, height: 40, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 100, transform: [{ scaleX: 2 }] },
   contentOverlap: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, minHeight: SCREEN_HEIGHT, paddingTop: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 30, elevation: 15, position: 'relative', overflow: 'hidden' },
 
-  profileCardWrap: { paddingHorizontal: 20, marginTop: 20, zIndex: 20, marginBottom: 15 },
+  profileCardWrap: { paddingHorizontal: 20, marginTop: 10, zIndex: 20, marginBottom: 15 },
 
   glassProfileCard: { backgroundColor: '#fff', borderRadius: 24, padding: 18, elevation: 15, shadowColor: '#064E3B', shadowOpacity: 0.15, shadowRadius: 25, position: 'relative', overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
   cardGlassOverlay: { ...StyleSheet.absoluteFillObject, opacity: 0.6 },
   goldHairline: { position: 'absolute', top: 0, left: '15%', right: '15%', height: 4, borderBottomLeftRadius: 10, borderBottomRightRadius: 10 },
-  profileMain: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  profileMain: { flexDirection: 'row', alignItems: 'flex-start', gap: 18 },
   avatarGlowContainer: { position: 'relative', width: 72, height: 72, justifyContent: 'center', alignItems: 'center' },
   avatarPulse: { position: 'absolute', width: 78, height: 78, borderRadius: 39, backgroundColor: '#059669', opacity: 0.12 },
   avatarGlow: { width: 64, height: 64, borderRadius: 32, borderWidth: 3, borderColor: '#fff', elevation: 12, shadowColor: '#059669', shadowOpacity: 0.35, shadowRadius: 15 },

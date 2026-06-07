@@ -1,5 +1,6 @@
 import { API, BASE_URL } from "../constants/api";
 import { apiFetch } from "./http";
+import { assessVitalReading, getVitalRangeText as getSharedVitalRangeText } from "./healthSafety";
 
 // ============================================
 // Types
@@ -136,19 +137,11 @@ export const deleteVitalReading = async (vitalId: number): Promise<void> => {
 };
 
 export function checkVitalNormal(type: string, value: number, value2?: number): boolean {
-  if (type === "Blood Pressure") {
-    const sysRange = NORMAL_RANGES["Blood Pressure Systolic"];
-    const diaRange = NORMAL_RANGES["Blood Pressure Diastolic"];
-    if (value < sysRange.min || value > sysRange.max) return false;
-    if (value2 != null && (value2 < diaRange.min || value2 > diaRange.max)) return false;
-    return true;
-  }
-  const range = NORMAL_RANGES[type];
-  if (!range) return true;
-  return value >= range.min && value <= range.max;
+  return assessVitalReading(type, value, value2).isNormal;
 }
 
 export function getVitalRangeText(type: string): string {
+  return getSharedVitalRangeText(type);
   if (type === "Blood Pressure") {
     return "90-140 / 60-90 mmHg";
   }

@@ -19,7 +19,9 @@ import {
   updateMedication, deleteMedication,
   type MedicationTracker, type MedicationScheduleItem, type CreateMedicationPayload,
 } from "../../services/medicationService";
-import { getAllergies } from "../../services/medicalRecordService";
+import { getAllergies, getChronicDiseases } from "../../services/medicalRecordService";
+import { assessMedicationSafety, type MedicationSafetyAssessment } from "../../services/healthSafety";
+import { addNotification } from "../../services/notificationService";
 import {
   requestNotificationPermissions, scheduleMedicationReminders, cancelMedicationReminders,
 } from "../../services/medicationReminderService";
@@ -48,6 +50,7 @@ export default function MedicationsScreen() {
   const [takingId, setTakingId] = useState<number | null>(null);
   const [expandedMedId, setExpandedMedId] = useState<number | null>(null);
   const [safetyReport, setSafetyReport] = useState<any>(null);
+  const [localSafety, setLocalSafety] = useState<MedicationSafetyAssessment | null>(null);
   const [isCheckingSafety, setIsCheckingSafety] = useState(false);
   const [reportLang, setReportLang] = useState<"en" | "ar">(isRTL ? "ar" : "en");
 
@@ -157,6 +160,14 @@ export default function MedicationsScreen() {
       computedDoseTimes = times.join(",");
       computedTimesPerDay = count;
     }
+    const chronicDiseases = patientId ? await getChronicDiseases(patientId).catch(() => []) : [];
+    const safety = assessMedicationSafety(medName.trim(), {
+      allergies: sosData?.allergies?.map((a) => a.allergenName) || [],
+      medications: medications.filter((m) => m.id !== editingId).map((m) => m.medicationName),
+      chronicDiseases: chronicDiseases.map((d) => d.diseaseName),
+    });
+    setLocalSafety(safety);
+    const safetyInstruction = safety.hasWarning ? `[Medication safety warning] ${safety.message}` : "";
     const payload: CreateMedicationPayload = {
       medicationName: medName.trim(), dosage: dosage.trim(), form,
       frequency: `${computedTimesPerDay}x daily`,
@@ -168,20 +179,32 @@ export default function MedicationsScreen() {
       pillsRemaining: pills ? Number(pills) : undefined,
       refillThreshold: 5,
       isChronic: durationMode === "chronic",
-      instructions: instructions.trim() || undefined,
+      instructions: [instructions.trim(), safetyInstruction].filter(Boolean).join("\n") || undefined,
     };
     try {
       setSaving(true);
       if (editingId) {
         await updateMedication(editingId, payload);
-        Toast.show({ type: "success", text1: "Medication updated!" });
       } else {
         const created = await createPatientMedication(patientId, payload);
         await scheduleMedicationReminders(
           created.id, created.medicationName, created.dosage,
           created.doseTimes, created.daysOfWeek, created.startDate, created.endDate
         );
-        Toast.show({ type: "success", text1: "Medication added!" });
+      }
+      if (safety.hasWarning) {
+        Toast.show({ type: "error", text1: safety.title, text2: "Medication saved with warning" });
+        Alert.alert(safety.title, safety.message);
+        await addNotification({
+          id: `med_safety_${Date.now()}`,
+          type: "update",
+          icon: "alert-circle",
+          title: safety.title,
+          message: safety.message,
+          timestamp: Date.now(),
+        });
+      } else {
+        Toast.show({ type: "success", text1: editingId ? "Medication updated!" : "Medication added!" });
       }
       resetForm(); setShowAddModal(false); await loadData();
     } catch (e: any) {
@@ -197,13 +220,19 @@ export default function MedicationsScreen() {
     try {
       setIsCheckingSafety(true);
       const { checkMedicationSafety } = await import("../../services/aiService");
-      const { getPatientVitals } = await import("../../services/vitalService");
-      const { getPatientMedications } = await import("../../services/medicationService");
+      const chronicDiseases = patientId ? await getChronicDiseases(patientId).catch(() => []) : [];
+      const local = assessMedicationSafety(medName, {
+        allergies: sosData?.allergies?.map((a) => a.allergenName) || [],
+        medications: medications.filter((m) => m.id !== editingId).map((m) => m.medicationName),
+        chronicDiseases: chronicDiseases.map((d) => d.diseaseName),
+      });
+      setLocalSafety(local);
 
       // Gather simplified history for AI
       const history = {
         allergies: sosData?.allergies?.map(a => a.allergenName) || [],
-        chronic_diseases: medications.map(m => m.medicationName) || [],
+        current_medications: medications.filter((m) => m.id !== editingId).map(m => m.medicationName) || [],
+        chronic_diseases: chronicDiseases.map((d) => d.diseaseName),
       };
 
       const report = await checkMedicationSafety(medName, history);
@@ -221,7 +250,7 @@ export default function MedicationsScreen() {
     setStartDate(new Date().toISOString().split("T")[0]);
     setDurationMode("days"); setDurationDays("7"); setEndDate("");
     setPills(""); setInstructions(""); setEditingId(null);
-    setSafetyReport(null);
+    setSafetyReport(null); setLocalSafety(null);
   };
 
   const handleEdit = (med: MedicationTracker) => {
@@ -737,6 +766,20 @@ export default function MedicationsScreen() {
                 </TouchableOpacity>
               </View>
 
+              {localSafety && (
+                <View style={[styles.safetyReportBox, localSafety.hasWarning && styles.safetyReportRisk]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <AlertTriangle size={18} color={localSafety.hasWarning ? "#EF4444" : "#059669"} />
+                    <Text style={[styles.safetyReportTitle, { color: localSafety.hasWarning ? "#991B1B" : "#065F46" }]}>
+                      {localSafety.title}
+                    </Text>
+                  </View>
+                  <Text style={[styles.safetyReportText, localSafety.hasWarning && { color: "#991B1B" }]}>
+                    {localSafety.message}
+                  </Text>
+                </View>
+              )}
+
               {safetyReport && (
                 <View style={[styles.safetyReportBox, (safetyReport?.safety_en || "").toLowerCase().includes("risk") && styles.safetyReportRisk]}>
                   <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -1008,6 +1051,7 @@ const styles = StyleSheet.create({
   saveBtnTxt: { color: "#fff", fontSize: 16, fontWeight: "900" },
   safetyReportBox: { padding: 15, backgroundColor: "#fff", borderRadius: 18, marginBottom: 20, borderWidth: 2, borderColor: "#BAE6FD" },
   safetyReportRisk: { backgroundColor: "#FEF2F2", borderColor: "#EF4444" },
+  safetyReportTitle: { fontSize: 14, fontWeight: "900", flex: 1 },
   safetyReportText: { fontSize: 13, color: "#1E293B", lineHeight: 20, fontWeight: "600", marginTop: 8 },
   cardLangToggle: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 10, padding: 2 },
   cardLangBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },

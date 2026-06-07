@@ -21,6 +21,8 @@ import {
   updateVitalReading, deleteVitalReading,
   type VitalReading, type CreateVitalPayload,
 } from "../../services/vitalService";
+import { assessVitalReading } from "../../services/healthSafety";
+import { addNotification } from "../../services/notificationService";
 import { getAllergies, getChronicDiseases, type ChronicDisease } from "../../services/medicalRecordService";
 import Toast from "react-native-toast-message";
 
@@ -58,6 +60,8 @@ export default function VitalsScreen() {
   const [aiAdvice, setAiAdvice] = useState<any>(null);
   const [isAnalyzingAdvice, setIsAnalyzingAdvice] = useState(false);
   const [adviceLang, setAdviceLang] = useState<"en" | "ar">(isRTL ? "ar" : "en");
+  const [healthReport, setHealthReport] = useState<any>(null);
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -108,11 +112,14 @@ export default function VitalsScreen() {
 
   const currentTypeInfo = VITAL_TYPES.find((t) => t.key === selectedType)!;
 
-  const validateAndSetNormal = () => {
-    const v = Number(value);
-    const v2 = currentTypeInfo.hasValue2 ? Number(value2) : undefined;
+  const validateAndSetNormal = (nextValue = value, nextValue2 = value2, nextType = selectedType) => {
+    const typeInfo = VITAL_TYPES.find((t) => t.key === nextType) ?? currentTypeInfo;
+    const v = Number(nextValue);
+    const v2 = typeInfo.hasValue2 ? Number(nextValue2) : undefined;
     if (!Number.isNaN(v) && v > 0) {
-      setIsNormal(checkVitalNormal(selectedType, v, v2));
+      setIsNormal(assessVitalReading(nextType, v, v2).isNormal);
+    } else {
+      setIsNormal(false);
     }
   };
 
@@ -129,14 +136,20 @@ export default function VitalsScreen() {
     const activeDisease = chronicDiseases.find((d) => d.isActive);
     const monitorId = activeDisease ? activeDisease.id : undefined;
 
+    const assessment = assessVitalReading(
+      selectedType,
+      numValue,
+      currentTypeInfo.hasValue2 && value2 ? Number(value2) : undefined
+    );
+    const warningNote = assessment.isNormal ? "" : `[Health warning] ${assessment.message}`;
     const payload: CreateVitalPayload = {
       chronicDiseaseMonitorId: monitorId,
       readingType: selectedType,
       value: numValue,
       value2: currentTypeInfo.hasValue2 && value2 ? Number(value2) : undefined,
       unit: currentTypeInfo.unit,
-      isNormal: isNormal,
-      notes: notes || undefined,
+      isNormal: assessment.isNormal,
+      notes: [notes.trim(), warningNote].filter(Boolean).join("\n") || undefined,
       sugarReadingContext: selectedType === "Blood Sugar" ? "random" : undefined,
     };
 
@@ -147,7 +160,20 @@ export default function VitalsScreen() {
         Toast.show({ type: "success", text1: "Vital updated successfully" });
       } else {
         await addVitalReading(patientId!, payload);
-        Toast.show({ type: "success", text1: "Vital recorded successfully" });
+        if (assessment.isNormal) {
+          Toast.show({ type: "success", text1: "Vital recorded successfully" });
+        } else {
+          Toast.show({ type: "error", text1: assessment.title, text2: "Saved with warning" });
+          Alert.alert(assessment.title, assessment.message);
+          await addNotification({
+            id: `vital_${Date.now()}`,
+            type: "update",
+            icon: "alert-circle",
+            title: assessment.title,
+            message: assessment.message,
+            timestamp: Date.now(),
+          });
+        }
 
         // Trigger AI Advice after save
         triggerAiAdvice(payload);
@@ -180,6 +206,24 @@ export default function VitalsScreen() {
       console.log("AI Advice failed", e);
     } finally {
       setIsAnalyzingAdvice(false);
+    }
+  };
+
+  const generateComprehensiveReport = async () => {
+    try {
+      setGeneratingReport(true);
+      const readings = VITAL_TYPES.map(t => latestVitals[t.key]).filter(Boolean);
+      if (readings.length === 0) {
+        Toast.show({ type: "info", text1: isRTL ? "لا توجد قياسات" : "No readings yet", text2: isRTL ? "سجل بعض القياسات أولاً" : "Record some vitals first" });
+        return;
+      }
+      const { analyzeVitalsAdvice } = await import("../../services/aiService");
+      const report = await analyzeVitalsAdvice(readings, { id: patientId });
+      setHealthReport(report);
+    } catch (e) {
+      console.log("Health report failed", e);
+    } finally {
+      setGeneratingReport(false);
     }
   };
 
@@ -358,6 +402,7 @@ export default function VitalsScreen() {
                       setSelectedType(t.key); 
                       setValue(""); 
                       setValue2(""); 
+                      setIsNormal(true);
                     }}
                   >
                     <View style={[styles.typeChipIconWrapper, selectedType === t.key && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
@@ -376,7 +421,7 @@ export default function VitalsScreen() {
                       style={[styles.premiumInputInner, { color: colors.text }]}
                       keyboardType="numeric"
                       value={value}
-                      onChangeText={(t) => { setValue(t); validateAndSetNormal(); }}
+                      onChangeText={(t) => { setValue(t); validateAndSetNormal(t, value2); }}
                       placeholder="0"
                       placeholderTextColor="#CBD5E1"
                     />
@@ -391,7 +436,7 @@ export default function VitalsScreen() {
                         style={[styles.premiumInputInner, { color: colors.text }]}
                         keyboardType="numeric"
                         value={value2}
-                        onChangeText={(t) => { setValue2(t); validateAndSetNormal(); }}
+                        onChangeText={(t) => { setValue2(t); validateAndSetNormal(value, t); }}
                         placeholder="0"
                         placeholderTextColor="#CBD5E1"
                       />
@@ -404,7 +449,9 @@ export default function VitalsScreen() {
               {!isNormal && value !== "" && (
                 <View style={styles.abnormalBanner}>
                   <AlertCircle size={18} color="#B91C1C" />
-                  <Text style={styles.abnormalText}>{isRTL ? "القياس خارج المعدل الطبيعي!" : "Warning: Outside normal range"}</Text>
+                  <Text style={styles.abnormalText}>
+                    {assessVitalReading(selectedType, Number(value), currentTypeInfo.hasValue2 ? Number(value2) : undefined).message}
+                  </Text>
                 </View>
               )}
 
@@ -484,7 +531,7 @@ export default function VitalsScreen() {
                         <Text style={styles.addPlaceholderText}>Record</Text>
                         <Plus size={10} color="#94A3B8" />
                       </TouchableOpacity>
-                    )}
+            )}
                   </View>
                 </View>
               );
@@ -548,6 +595,48 @@ export default function VitalsScreen() {
                   </View>
                 );
               })}
+            </View>
+          )}
+
+          {/* Health Report Section */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              {isRTL ? "تقرير الصحة الشامل" : "Comprehensive Health Report"}
+            </Text>
+            <TouchableOpacity style={styles.addBtnSmall} onPress={generateComprehensiveReport} disabled={generatingReport}>
+              <LinearGradient colors={["#7C3AED", "#6D28D9"]} style={styles.addBtnSmallGradient}>
+                {generatingReport ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Sparkles size={16} color="#fff" />
+                    <Text style={styles.addBtnSmallText}>{isRTL ? "تحليل" : "Analyze"}</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {healthReport ? (
+            <View style={[styles.reportCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.reportLangRow}>
+                <View style={styles.reportSection}>
+                  <Text style={styles.reportLangLabel}>EN</Text>
+                  <Text style={[styles.reportText, { color: colors.text }]}>{healthReport.advice_en}</Text>
+                </View>
+                <View style={styles.reportDivider} />
+                <View style={styles.reportSection}>
+                  <Text style={[styles.reportLangLabel, { textAlign: 'right' }]}>عربي</Text>
+                  <Text style={[styles.reportText, { color: colors.text, textAlign: 'right', writingDirection: 'rtl' }]}>{healthReport.advice_ar}</Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.reportEmpty, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Sparkles size={32} color={colors.textMuted} />
+              <Text style={[styles.reportEmptyText, { color: colors.textMuted }]}>
+                {isRTL ? "اضغط على تحليل لإنشاء تقرير صحي شامل" : "Tap Analyze to generate a comprehensive health report"}
+              </Text>
             </View>
           )}
         </View>
@@ -670,4 +759,12 @@ const styles = StyleSheet.create({
   cardLangBtnActive: { backgroundColor: '#fff', elevation: 2 },
   cardLangText: { fontSize: 10, fontWeight: '800', color: '#64748B' },
   cardLangTextActive: { color: '#0EA5E9' },
+  reportCard: { borderRadius: 24, padding: 20, marginHorizontal: 25, marginBottom: 30, borderWidth: 1, elevation: 4, shadowOpacity: 0.05 },
+  reportLangRow: { gap: 16 },
+  reportSection: { padding: 8 },
+  reportLangLabel: { fontSize: 10, fontWeight: '800', color: '#7C3AED', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
+  reportDivider: { height: 1, backgroundColor: '#E2E8F0', marginHorizontal: 4 },
+  reportText: { fontSize: 13, fontWeight: '500', lineHeight: 22 },
+  reportEmpty: { borderRadius: 24, padding: 30, marginHorizontal: 25, marginBottom: 30, borderWidth: 1, borderStyle: 'dashed', alignItems: 'center', gap: 12 },
+  reportEmptyText: { fontSize: 12, fontWeight: '600', textAlign: 'center' },
 });
