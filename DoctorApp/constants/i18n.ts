@@ -276,6 +276,49 @@ const translations = {
     onboarding_chronic_desc: "Do you have any chronic conditions? Enter the disease name.",
     onboarding_medication_desc: "Are you currently taking any medications? Enter the name and dosage.",
     onboarding_surgery_desc: "Have you had any surgeries? Enter the surgery name and date.",
+    
+    // ── Auth Flow ────────────────────────────
+    join_medbook:           "Join MedBook",
+    step_1:                 "Step 1 of 3",
+    step_2:                 "Step 2 of 3",
+    step_3:                 "Step 3 of 3",
+    step_1_subtitle:        "Let's start with your personal info",
+    step_2_subtitle:        "How can we reach you?",
+    step_3_subtitle:        "Secure your medical profile",
+    gender:                 "Gender",
+    male:                   "Male",
+    female:                 "Female",
+    continue_btn:           "Continue",
+    district_area:          "District / Area",
+    district_hint:          "Choose the city, then type your district or neighborhood.",
+    weight_kg:              "Weight (kg)",
+    height_cm:              "Height (cm)",
+    blood_type:             "Blood Type",
+    create_password:        "Create Password",
+    create_account:         "Create Account",
+    min_6_chars:            "Min. 6 characters",
+    already_have_account:   "Already have an account? ",
+    log_in:                 "Log In",
+    country:                "Country",
+    egypt:                  "Egypt",
+    other:                  "Other",
+    enter_city_district:    "Enter your city and district",
+    city:                   "City",
+    dob_hint:               "Tap to select your date of birth",
+    
+    // Welcome Screen
+    tagline:                "Your AI-Powered Medical Companion",
+    ai_diagnostics:         "AI Diagnostics",
+    secure_files:           "Secure Files",
+    sign_in:                "Sign In",
+    tos_disclaimer:         "By continuing you agree to our Terms of Service",
+
+    // Onboarding
+    patient_profile_not_found: "Patient profile not found. Please setup profile.",
+    saved:                  "Saved successfully!",
+    disease_name:           "Disease Name",
+    step:                   "Step",
+    of:                     "of",
   },
 
   ar: {
@@ -550,6 +593,49 @@ const translations = {
     onboarding_surgery_desc: "هل أجريت أي عمليات جراحية؟ أدخل اسم العملية والتاريخ.",
     disease_name:           "اسم المرض",
     patient_profile_not_found: "لم يتم العثور على ملف المريض.",
+    
+    // ── Auth Flow ────────────────────────────
+    join_medbook:           "انضم إلى ميدبوك",
+    step_1:                 "الخطوة 1 من 3",
+    step_2:                 "الخطوة 2 من 3",
+    step_3:                 "الخطوة 3 من 3",
+    step_1_subtitle:        "دعنا نبدأ بمعلوماتك الشخصية",
+    step_2_subtitle:        "كيف يمكننا التواصل معك؟",
+    step_3_subtitle:        "تأمين ملفك الطبي",
+    gender:                 "الجنس",
+    male:                   "ذكر",
+    female:                 "أنثى",
+    continue_btn:           "متابعة",
+    district_area:          "المدينة / الحي",
+    district_hint:          "اختر المحافظة، ثم اكتب الحي أو المنطقة.",
+    weight_kg:              "الوزن (كجم)",
+    height_cm:              "الطول (سم)",
+    blood_type:             "فصيلة الدم",
+    create_password:        "إنشاء كلمة مرور",
+    create_account:         "إنشاء حساب",
+    min_6_chars:            "6 أحرف كحد أدنى",
+    already_have_account:   "لديك حساب بالفعل؟ ",
+    log_in:                 "تسجيل الدخول",
+    country:                "الدولة",
+    egypt:                  "مصر",
+    other:                  "أخرى",
+    enter_city_district:    "أدخل مدينتك والحي",
+    city:                   "المحافظة",
+    dob_hint:               "اضغط لاختيار تاريخ ميلادك",
+    
+    // Welcome Screen
+    tagline:                "رفيقك الطبي الذكي",
+    ai_diagnostics:         "تشخيص ذكي",
+    secure_files:           "ملفات آمنة",
+    sign_in:                "تسجيل الدخول",
+    tos_disclaimer:         "بالمتابعة أنت توافق على شروط الخدمة",
+
+
+
+
+
+
+
   },
 } as const;
 

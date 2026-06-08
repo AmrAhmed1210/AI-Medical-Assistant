@@ -4,6 +4,10 @@ import {
   ActivityIndicator, Platform, StatusBar, Modal, TextInput,
   KeyboardAvoidingView, Animated, Alert, Dimensions
 } from "react-native";
+import {
+  Heart, MapPin, Phone, Star, ShieldCheck, Mail, Globe, Award, Sparkles, Clock, Calendar, CheckCircle2, XCircle
+} from "lucide-react-native";
+import PatientBackgroundBubbles from "@/components/PatientBackgroundBubbles";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,6 +21,7 @@ import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpd
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { addNotification } from "../../services/notificationService";
 import { checkIfFollowed, setFollowed, toggleFollowed, checkIfSubscribed, setSubscribed } from "../../services/followService";
+import Toast from "react-native-toast-message";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -184,8 +189,7 @@ export default function DoctorDetailsScreen() {
 
   const [selectedDay, setSelectedDay] = useState(() => {
     if (initialDate) {
-      // Try to find the day index for initialDate
-      return 0; // Defaulting to 0 for now as 'days' is memoized and might not be ready
+      return 0; 
     }
     return 0;
   });
@@ -250,14 +254,14 @@ export default function DoctorDetailsScreen() {
       const refreshThisDoctor = (payload: any) => {
         const updatedDoctorId = Number(payload?.doctorId ?? payload?.DoctorId ?? doctorId);
         if (updatedDoctorId === Number(doctorId)) {
-          fetchAll(); // Refresh EVERYTHING (Profile + Availability)
+          fetchAll(); 
           setSelectedTime(null);
         }
       };
 
       cleanupReady = onScheduleReady(refreshThisDoctor);
       cleanupUpdated = onScheduleUpdated(refreshThisDoctor);
-      cleanupDoctor = onDoctorUpdated(refreshThisDoctor); // Refresh on profile update too
+      cleanupDoctor = onDoctorUpdated(refreshThisDoctor); 
     };
 
     connectToScheduleUpdates().catch(() => undefined);
@@ -334,6 +338,38 @@ export default function DoctorDetailsScreen() {
     } catch { Alert.alert("Error", "Failed to update notification settings."); }
   };
 
+  const openReviewModal = () => {
+    const mine = reviews.find((review) => review.isMine);
+    setMyRating(mine?.rating || 0);
+    setMyComment(mine?.comment || "");
+    setShowAddReview(true);
+  };
+
+  const handleSaveReview = async () => {
+    if (!myRating) {
+      Alert.alert("Rating Required", "Please choose a star rating first.");
+      return;
+    }
+
+    setSavingReview(true);
+    try {
+      const mine = reviews.find((review) => review.isMine);
+      const saved = mine
+        ? await updateMyReview(Number(doctorId), myRating, myComment.trim(), mine.id)
+        : await addReview(Number(doctorId), myRating, myComment.trim());
+      setReviews((prev) => {
+        if (mine) return prev.map((review) => review.id === mine.id ? { ...saved, isMine: true } : review);
+        return [{ ...saved, isMine: true }, ...prev];
+      });
+      setShowAddReview(false);
+      Toast.show({ type: "success", text1: mine ? "Review updated" : "Review added" });
+    } catch (error: any) {
+      Toast.show({ type: "error", text1: "Review failed", text2: error?.message || "Could not save review" });
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
   const handleProceed = () => {
     if (!selectedTime) { Alert.alert("Select Time", "Please choose a preferred time slot first."); return; }
     setModalStep("payment");
@@ -376,10 +412,7 @@ export default function DoctorDetailsScreen() {
     }
   };
 
-  const calculatedRating = useMemo(() => {
-    if (reviews.length === 0) return doctor?.rating || 0;
-    return parseFloat((reviews.reduce((a, b) => a + b.rating, 0) / reviews.length).toFixed(1));
-  }, [reviews, doctor]);
+  const calculatedRating = doctor?.rating ? Number(doctor.rating).toFixed(1) : "0.0";
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -423,8 +456,7 @@ export default function DoctorDetailsScreen() {
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={16} color="#FBBF24" />
                 <Text style={styles.ratingText}>{calculatedRating}</Text>
-                <View style={styles.ratingDot} />
-                <Text style={styles.reviewCount}>{reviews.length} Reviews</Text>
+                <Text style={styles.reviewCount}>{doctor?.reviewCount || 0} Reviews</Text>
               </View>
             </View>
           </View>
@@ -434,8 +466,8 @@ export default function DoctorDetailsScreen() {
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: 280, paddingBottom: 120 }}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
       >
+        <PatientBackgroundBubbles isDark={isDark} scrollY={scrollY} />
         <View style={[styles.contentCard, { backgroundColor: colors.background }]}>
           {/* STATS */}
           <View style={[styles.statsBar, { backgroundColor: colors.surface, shadowColor: isDark ? '#fff' : '#000' }]}>
@@ -447,13 +479,13 @@ export default function DoctorDetailsScreen() {
             <View style={[styles.statLine, { backgroundColor: colors.border }]} />
             <View style={styles.statBox}>
               <Ionicons name="wallet" size={18} color="#2563EB" />
-              <Text style={[styles.statVal, { color: colors.text }]}>${doctor?.consultationFee}</Text>
+              <Text style={[styles.statVal, { color: colors.text }]}>{doctor?.consultationFee ?? doctor?.consultFee ?? 0} EGP</Text>
               <Text style={[styles.statLab, { color: colors.textMuted }]}>Fee</Text>
             </View>
             <View style={[styles.statLine, { backgroundColor: colors.border }]} />
             <View style={styles.statBox}>
               <Ionicons name="heart" size={18} color="#EF4444" />
-              <Text style={[styles.statVal, { color: colors.text }]}>{(doctor?.reviewCount || 0) + reviews.length}</Text>
+              <Text style={[styles.statVal, { color: colors.text }]}>{doctor?.reviewCount || 0}</Text>
               <Text style={[styles.statLab, { color: colors.textMuted }]}>Fans & Reviews</Text>
             </View>
           </View>
@@ -555,7 +587,7 @@ export default function DoctorDetailsScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Reviews</Text>
-              <TouchableOpacity onPress={() => setShowAddReview(true)}><Text style={styles.addRevTxt}>Add Review</Text></TouchableOpacity>
+              <TouchableOpacity onPress={openReviewModal}><Text style={styles.addRevTxt}>{reviews.some((r) => r.isMine) ? "Edit Review" : "Add Review"}</Text></TouchableOpacity>
             </View>
             <View style={styles.reviewList}>
               {reviews.slice(0, 3).map((r, i) => (
@@ -579,7 +611,7 @@ export default function DoctorDetailsScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={[styles.bookBtn, !selectedTime && { opacity: 0.6 }]} disabled={!selectedTime || booking} onPress={handleProceed}>
           <LinearGradient colors={["#059669", "#047857"]} style={styles.bookGradient}>
-            <Text style={styles.payBtnText}>
+            <Text style={styles.bookBtnText}>
               {booking ? "Processing..." : editAppointmentId ? "Update Appointment" : "Confirm Appointment"}
             </Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" />
@@ -606,6 +638,36 @@ export default function DoctorDetailsScreen() {
             <TouchableOpacity style={styles.closeModal} onPress={() => setModalStep(null)}><Text style={styles.closeModalText}>Cancel</Text></TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      <Modal visible={showAddReview} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.surface }]}>
+            <View style={[styles.modalIndicator, { backgroundColor: colors.border }]} />
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{reviews.some((r) => r.isMine) ? "Edit Review" : "Add Review"}</Text>
+            <View style={styles.reviewStarsPicker}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => setMyRating(star)} hitSlop={10}>
+                  <Ionicons name={star <= myRating ? "star" : "star-outline"} size={34} color={star <= myRating ? "#FBBF24" : "#CBD5E1"} />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              value={myComment}
+              onChangeText={setMyComment}
+              placeholder="Write your experience with this doctor..."
+              placeholderTextColor={isDark ? "#64748B" : "#94A3B8"}
+              multiline
+              style={[styles.reviewInput, { color: colors.text, backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border }]}
+            />
+            <TouchableOpacity style={[styles.saveReviewBtn, savingReview && { opacity: 0.6 }]} onPress={handleSaveReview} disabled={savingReview}>
+              <Text style={styles.saveReviewText}>{savingReview ? "Saving..." : "Save Review"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.closeModal} onPress={() => setShowAddReview(false)}>
+              <Text style={styles.closeModalText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={showSuccess} transparent animationType="fade">
@@ -707,6 +769,10 @@ const styles = StyleSheet.create({
   payOptionSub: { fontSize: 12, color: '#94A3B8' },
   closeModal: { padding: 15, alignItems: 'center' },
   closeModalText: { color: '#64748B', fontWeight: '700' },
+  reviewStarsPicker: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 18 },
+  reviewInput: { minHeight: 110, borderRadius: 18, borderWidth: 1, padding: 14, textAlignVertical: 'top', fontSize: 14, fontWeight: '600', marginBottom: 16 },
+  saveReviewBtn: { backgroundColor: '#059669', borderRadius: 18, paddingVertical: 15, alignItems: 'center' },
+  saveReviewText: { color: '#fff', fontSize: 15, fontWeight: '900' },
 
   successScreen: { flex: 1, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', padding: 30 },
   successIconBox: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center', marginBottom: 30 },

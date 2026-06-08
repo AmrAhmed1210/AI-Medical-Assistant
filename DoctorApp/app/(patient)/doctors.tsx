@@ -13,8 +13,10 @@ import DoctorCard from "@/components/DoctorCard";
 import PatientBackgroundBubbles from "@/components/PatientBackgroundBubbles";
 import { useLanguage } from "../../context/LanguageContext";
 import { useTheme } from "../../context/ThemeContext";
-import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor } from "../../services/doctorService";
+import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor, getRecommendedDoctorsForNeed, enrichDoctorsWithReviewStats, sortDoctorsFairly } from "../../services/doctorService";
 import { onDoctorCreated, onDoctorUpdated, startSignalRConnection } from "../../services/signalr";
+import { getMyPatientId } from "../../services/authService";
+import { getVitals, getChronicDiseases, getPatientDocuments } from "../../services/medicalRecordService";
 
 const SPECIALTIES = ["All", "Cardiology", "Dermatology", "Neurology", "Orthopedics", "Pediatrics", "Gynecology", "Ophthalmology", "ENT"];
 
@@ -33,6 +35,8 @@ export default function DoctorsScreen() {
   const [search, setSearch] = useState("");
   const [activeSpec, setActiveSpec] = useState("All");
   const [highlightedDoctorId, setHighlightedDoctorId] = useState<string | null>(null);
+  const [recommendedDoctorIds, setRecommendedDoctorIds] = useState<number[]>([]);
+  const [recommendedSpecialty, setRecommendedSpecialty] = useState<string | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   
@@ -79,7 +83,25 @@ export default function DoctorsScreen() {
           }
         })
       )
-      setDoctors(enriched)
+      const withStats = await enrichDoctorsWithReviewStats(enriched)
+      setDoctors(sortDoctorsFairly(withStats))
+
+      const pid = await getMyPatientId().catch(() => null)
+      if (pid) {
+        const [vitals, chronic, docs] = await Promise.all([
+          getVitals(pid).catch(() => []),
+          getChronicDiseases(pid).catch(() => []),
+          getPatientDocuments(pid).catch(() => []),
+        ])
+        const needText = [
+          ...chronic.map(c => c.diseaseName),
+          ...vitals.slice(0, 10).map(v => `${v.readingType} ${v.value}${v.value2 ? `/${v.value2}` : ""}`),
+          ...docs.map(d => `${d.title ?? (d as any).Title ?? ""} ${d.description ?? (d as any).Description ?? ""}`),
+        ].join(" ")
+        const recommendation = await getRecommendedDoctorsForNeed(needText, 3).catch(() => ({ specialty: null, doctors: [] }))
+        setRecommendedSpecialty(recommendation.specialty)
+        setRecommendedDoctorIds(recommendation.doctors.map(d => Number(d.id)))
+      }
     } catch (e: any) {
       console.error('Failed to fetch doctors:', e)
       setError("Failed to load doctors. Check your connection.")
@@ -184,9 +206,17 @@ export default function DoctorsScreen() {
       });
     }
     
-    setFiltered(res);
+    const recommendationRank = new Map(recommendedDoctorIds.map((id, index) => [id, index]));
+    const sorted = res.slice().sort((a, b) => {
+      const aRank = recommendationRank.get(Number(a.id));
+      const bRank = recommendationRank.get(Number(b.id));
+      if (aRank != null || bRank != null) return (aRank ?? 999) - (bRank ?? 999);
+      return 0;
+    });
+
+    setFiltered(sorted);
     setCurrentPage(1); // Reset page on filter change
-  }, [search, activeSpec, doctors, isNearby]);
+  }, [search, activeSpec, doctors, isNearby, recommendedDoctorIds]);
 
   const displayedDocs = filtered.slice(0, currentPage * docsPerPage);
   const hasMore = displayedDocs.length < filtered.length;
@@ -297,6 +327,14 @@ export default function DoctorsScreen() {
           ))}
         </ScrollView>
       </View>
+      {recommendedDoctorIds.length > 0 && activeSpec === "All" && !search.trim() && (
+        <View style={[styles.recommendationNotice, { backgroundColor: isDark ? "#0F172A" : "#ECFDF5", borderColor: colors.border }]}>
+          <Ionicons name="sparkles" size={16} color="#059669" />
+          <Text style={[styles.recommendationNoticeText, { color: colors.text }]}>
+            Top 3 are matched to your health profile{recommendedSpecialty ? `: ${recommendedSpecialty}` : ""}
+          </Text>
+        </View>
+      )}
 
       <Animated.FlatList
         data={displayedDocs}
@@ -378,6 +416,8 @@ const styles = StyleSheet.create({
   liquidBlob: { position: 'absolute', borderRadius: 100 },
   chipsWrapper: { marginTop: 15, marginBottom: 5 },
   chipsRow: { paddingHorizontal: 20, gap: 12 },
+  recommendationNotice: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 20, marginTop: 10, marginBottom: 4, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, borderWidth: 1 },
+  recommendationNoticeText: { flex: 1, fontSize: 12, fontWeight: '800' },
   chip: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 18, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#F1F5F9' },
   chipActive: { backgroundColor: '#064E3B', borderColor: '#064E3B', elevation: 5, shadowColor: '#064E3B', shadowOpacity: 0.3, shadowRadius: 10 },
   chipTxt: { fontSize: 12, color: '#64748B', fontWeight: '800' },

@@ -60,6 +60,8 @@ class PatientHistoryInput(BaseModel):
     allergies: Optional[List[Any]] = []
     chronic_diseases: Optional[List[Any]] = []
     documents_analysis: Optional[List[Any]] = []
+    recommended_doctors: Optional[List[Any]] = []
+    recommended_specialty: Optional[str] = None
 
 class MessageDto(BaseModel):
     role: str
@@ -127,6 +129,8 @@ async def ask_endpoint(data: AskRequest):
         4. DO NOT use markdown symbols like # or *. Return beautiful plain text with elegant spacing and emojis where appropriate.
         5. ACTIVE INQUIRY: If the user complains of pain, tiredness, or any symptoms, DO NOT just give a final diagnosis. Instead, ALWAYS end your response by asking 1 or 2 relevant follow-up questions to gather more details. Keep investigating until you have a clear picture.
         6. Once you have a clear picture, provide safe advice and ALWAYS conclude with a recommendation to see a doctor.
+        7. NEVER say or imply that you are a doctor. Say you are an AI medical assistant.
+        8. If the prompt includes platform doctor recommendations context, use ONLY those doctors when suggesting doctors, prioritize matching specialty and highest rating/review count, and do not invent doctors.
         """
         response = chat.send_message(prompt)
         return {
@@ -200,6 +204,39 @@ async def analyze_history(data: PatientHistoryInput):
     - The 'en' field must NOT contain any Arabic characters.
     - The 'ar' field must NOT contain any English sentences (except medical terms if necessary).
     - Do NOT use markdown symbols like # or *.
+    """
+
+    prompt = f"""
+    Analyze this patient medical history and return two plain-text reports as valid JSON only.
+
+    Patient data:
+    Vitals: {json.dumps(data.vitals)}
+    Surgeries: {json.dumps(data.surgeries)}
+    Medications: {json.dumps(data.medications)}
+    Allergies: {json.dumps(data.allergies)}
+    Chronic Diseases: {json.dumps(data.chronic_diseases)}
+    AI Analyzed Documents: {json.dumps(data.documents_analysis)}
+    Recommended Specialty: {data.recommended_specialty or "best available match"}
+    Platform Doctors Sorted By Rating/Reviews: {json.dumps(data.recommended_doctors)}
+
+    Instructions:
+    - Identify health risks, dangerous vitals, allergy conflicts, and medication interactions.
+    - If there is a serious risk, start that report with an explicit warning.
+    - Mention relevant uploaded document findings when present.
+    - Give safe, simple home-care tips only when appropriate, then recommend consulting a doctor.
+    - If platform doctors are provided, include a doctor recommendation section using only those doctors. Recommend the highest-rated relevant doctors by name, specialty, rating/review count, and why they fit the patient's likely specialty need.
+    - Do not claim you are a doctor. You are an AI medical assistant and your advice does not replace professional care.
+    - Do not use markdown symbols like # or *.
+
+    Return this JSON shape only:
+    {{
+      "en": "English report with sections: General Summary, Warnings, Medications & Interactions, Safe Advice, Recommended Doctors",
+      "ar": "تقرير عربي بأقسام: الملخص العام، التحذيرات، الأدوية والتداخلات، نصائح آمنة، الأطباء المقترحون من الموقع"
+    }}
+
+    Language rules:
+    - The en field must be English only.
+    - The ar field must be Arabic only except doctor names and necessary medical terms.
     """
     
     try:

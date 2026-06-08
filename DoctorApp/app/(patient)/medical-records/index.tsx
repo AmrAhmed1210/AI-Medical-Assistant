@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../../constants/colors";
 import { getMyPatientId } from "../../../services/authService";
@@ -35,9 +35,11 @@ export default function MedicalRecordsHub() {
     allergies: 0, chronic: 0, medications: 0, vitals: 0, surgeries: 0, documents: 0,
   });
 
-  useEffect(() => {
-    loadCounts();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadCounts();
+    }, [])
+  );
 
   const loadCounts = async () => {
     try {

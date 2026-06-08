@@ -104,6 +104,10 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const ratingValue = Number(doctor.rating || 0);
+  const reviewCount = Number(doctor.reviewCount || 0);
+  const ratingLabel = reviewCount > 0 && ratingValue > 0 ? ratingValue.toFixed(1) : "New";
+  const reviewLabel = reviewCount > 0 ? `(${reviewCount})` : "";
 
   useEffect(() => {
     Animated.spring(fadeAnim, {
@@ -176,7 +180,7 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
                 <View style={styles.metaRow}>
                   <View style={styles.metaItem}>
                     <Star size={10} color="#FFB300" fill="#FFB300" />
-                    <Text style={styles.metaTxt}>{doctor.rating || "5.0"}</Text>
+                    <Text style={styles.metaTxt}>{ratingLabel} {reviewLabel}</Text>
                   </View>
                   <View style={styles.dotSeparator} />
                   <View style={styles.metaItem}>
@@ -203,7 +207,7 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
                   <Heart size={14} stroke={isFollowed ? "#fff" : "#EF4444"} fill={isFollowed ? "#fff" : "transparent"} />
                 </TouchableOpacity>
                 <View style={styles.feeBadge}>
-                   <Text style={styles.feeVal}>${doctor.consultationFee}</Text>
+                   <Text style={styles.feeVal}>{doctor.consultationFee ?? 0} EGP</Text>
                 </View>
               </View>
             </View>

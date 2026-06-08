@@ -24,8 +24,7 @@ namespace MedicalAssistant.Persistance.Data.Configurations
                    .HasMaxLength(20);
 
             builder.Property(m => m.Content)
-                   .IsRequired()
-                   .HasColumnType("text");
+                   .IsRequired();
 
             builder.Property(m => m.SenderName)
                    .IsRequired()

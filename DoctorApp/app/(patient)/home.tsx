@@ -28,7 +28,7 @@ import Animated, {
   withSequence,
   withDelay
 } from 'react-native-reanimated';
-import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor } from "../../services/doctorService";
+import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor, getRecommendedDoctorsForNeed, formatDoctorRecommendationsForAi, enrichDoctorsWithReviewStats, sortDoctorsFairly } from "../../services/doctorService";
 import { getMyProfile, Profile } from "../../services/profileService";
 import { getMyAppointments, Appointment } from "../../services/appointmentService";
 import { getMedicationSchedule, type MedicationScheduleItem } from "../../services/medicationService";
@@ -70,6 +70,8 @@ export default function HomeScreen() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [reportLang, setReportLang] = useState<'en' | 'ar'>(isRTL ? 'ar' : 'en');
   const [showAiModal, setShowAiModal] = useState(false);
+  const [recommendedDoctors, setRecommendedDoctors] = useState<Doctor[]>([]);
+  const [recommendedSpecialty, setRecommendedSpecialty] = useState<string | null>(null);
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
   // Animation values
@@ -153,6 +155,7 @@ export default function HomeScreen() {
       setNextDose(pending[0] || null);
       setLastBP(bp);
       setLastSugar(sugar);
+      refreshDoctorRecommendations().catch(() => undefined);
     } finally {
       setLoadingHealth(false);
     }
@@ -195,9 +198,35 @@ export default function HomeScreen() {
     try {
       setLoadingDocs(true);
       const data = await getAllDoctors();
-      setPopularDocs(data.slice(0, 10));
+      const enriched = await enrichDoctorsWithReviewStats(data);
+      setPopularDocs(sortDoctorsFairly(enriched).slice(0, 10));
     } finally {
       setLoadingDocs(false);
+    }
+  };
+
+  const refreshDoctorRecommendations = async () => {
+    try {
+      const pid = await getMyPatientId();
+      if (!pid) return;
+
+      const [vitals, chronic, docs] = await Promise.all([
+        getVitals(pid).catch(() => []),
+        getChronicDiseases(pid).catch(() => []),
+        getPatientDocuments(pid).catch(() => []),
+      ]);
+
+      const needText = [
+        ...chronic.map(c => c.diseaseName),
+        ...vitals.slice(0, 10).map(v => `${v.readingType} ${v.value}${v.value2 ? `/${v.value2}` : ""}`),
+        ...docs.map(d => `${d.title ?? (d as any).Title ?? ""} ${d.description ?? (d as any).Description ?? ""}`),
+      ].join(" ");
+
+      const recommendation = await getRecommendedDoctorsForNeed(needText, 3);
+      setRecommendedSpecialty(recommendation.specialty);
+      setRecommendedDoctors(recommendation.doctors);
+    } catch {
+      setRecommendedSpecialty(null);
     }
   };
 
@@ -257,6 +286,14 @@ export default function HomeScreen() {
       ]);
 
       console.log("DEBUG: Patient docs fetched in Home:", JSON.stringify(docs));
+      const needText = [
+        ...chronic.map(c => c.diseaseName),
+        ...vitals.map(v => `${v.readingType} ${v.value}${v.value2 ? `/${v.value2}` : ""}`),
+        ...docs.map(d => `${d.title ?? (d as any).Title ?? ""} ${d.description ?? (d as any).Description ?? ""}`),
+      ].join(" ");
+      const doctorRecommendations = await getRecommendedDoctorsForNeed(needText, 5).catch(() => ({ specialty: null, doctors: [] }));
+      setRecommendedDoctors(doctorRecommendations.doctors);
+      setRecommendedSpecialty(doctorRecommendations.specialty);
       const analysis = await analyzePatientHistory({
         vitals: vitals.map(v => ({ type: v.readingType, value: v.value, recordedAt: v.recordedAt })),
         surgeries: surgeries.map(s => s.surgeryName),
@@ -266,7 +303,9 @@ export default function HomeScreen() {
         documents_analysis: docs.map(d => ({ 
           title: d.title ?? (d as any).Title ?? "", 
           ai_analysis: d.description ?? (d as any).Description ?? "" 
-        }))
+        })),
+        recommended_doctors: formatDoctorRecommendationsForAi(doctorRecommendations.doctors),
+        recommended_specialty: doctorRecommendations.specialty,
       });
 
       await updateAiDiagnosis(pid, JSON.stringify(analysis));
@@ -436,6 +475,24 @@ export default function HomeScreen() {
                     } catch { return profile.aiDiagnosisSummary; }
                   })()}
                 </Text>
+                {recommendedDoctors.length > 0 && (
+                  <View style={styles.docRecommendSection}>
+                    <Text style={[styles.docRecommendLabel, { color: colors.textMuted }]}>{isRTL ? "الأطباء المقترحون" : "Recommended Doctors"}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.docRecommendScroll}>
+                      {recommendedDoctors.map((doc) => (
+                        <TouchableOpacity
+                          key={doc.id}
+                          style={[styles.docRecommendChip, { backgroundColor: colors.background, borderColor: colors.border }]}
+                          onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { id: doc.id } } as any)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[styles.docRecommendName, { color: colors.text }]} numberOfLines={1}>{doc.name}</Text>
+                          <Text style={[styles.docRecommendSpecialty, { color: colors.primary }]} numberOfLines={1}>{doc.specialty}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
                 <TouchableOpacity
                   style={styles.fullReportBtnRefined}
                   onPress={() => setShowAiModal(true)}
@@ -451,6 +508,28 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
+
+        {/* MEDICATION DUE REMINDER CARD */}
+        {nextDose && (
+          <View style={styles.medTaskContainer}>
+            <LinearGradient colors={isDark ? ["#042F2E", "#134E4A"] : ["#F0FDFA", "#CCFBF1"]} style={[styles.medTaskCard, { borderColor: isDark ? '#0D9488' : '#99F6E4' }]}>
+              <View style={[styles.medTaskIconBox, { backgroundColor: isDark ? 'rgba(20, 184, 166, 0.2)' : '#fff' }]}>
+                <Pill size={20} color="#14B8A6" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 15 }}>
+                <Text style={[styles.medTaskTitle, { color: isDark ? '#5EEAD4' : '#0F766E' }]}>Medication Due</Text>
+                <Text style={[styles.medTaskName, { color: isDark ? '#fff' : '#134E4A' }]}>{nextDose.medicationName} • {nextDose.dosage}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.medTaskBtn}
+                onPress={() => router.push("/(patient)/medications")}
+              >
+                <Text style={styles.medTaskBtnText}>Take</Text>
+                <ArrowRight size={14} color="#fff" />
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        )}
 
         {nextBooking && (
           <View style={styles.reminderContainer}>
@@ -572,28 +651,6 @@ export default function HomeScreen() {
           </LinearGradient>
         </Animated.View>
 
-        {/* MEDICATION DUE REMINDER CARD */}
-        {nextDose && (
-          <View style={styles.medTaskContainer}>
-            <LinearGradient colors={isDark ? ["#042F2E", "#134E4A"] : ["#F0FDFA", "#CCFBF1"]} style={[styles.medTaskCard, { borderColor: isDark ? '#0D9488' : '#99F6E4' }]}>
-              <View style={[styles.medTaskIconBox, { backgroundColor: isDark ? 'rgba(20, 184, 166, 0.2)' : '#fff' }]}>
-                <Pill size={20} color="#14B8A6" />
-              </View>
-              <View style={{ flex: 1, marginLeft: 15 }}>
-                <Text style={[styles.medTaskTitle, { color: isDark ? '#5EEAD4' : '#0F766E' }]}>Medication Due</Text>
-                <Text style={[styles.medTaskName, { color: isDark ? '#fff' : '#134E4A' }]}>{nextDose.medicationName} • {nextDose.dosage}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.medTaskBtn}
-                onPress={() => router.push("/(patient)/medications")}
-              >
-                <Text style={styles.medTaskBtnText}>Take</Text>
-                <ArrowRight size={14} color="#fff" />
-              </TouchableOpacity>
-            </LinearGradient>
-          </View>
-        )}
-
         <View style={styles.metricsArea}>
           <View style={styles.metricsRow}>
             <TouchableOpacity
@@ -658,15 +715,22 @@ export default function HomeScreen() {
         </ScrollView>
 
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Top Rated Doctors</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {recommendedDoctors.length > 0 ? "Recommended For You" : "Top Rated Doctors"}
+          </Text>
           <TouchableOpacity onPress={() => router.push("/(patient)/doctors")}><Text style={styles.seeMore}>View All</Text></TouchableOpacity>
         </View>
+        {recommendedSpecialty && recommendedDoctors.length > 0 && (
+          <Text style={[styles.docRecommendLabel, { color: colors.textMuted, paddingHorizontal: 20, marginBottom: 10 }]}>
+            Best match: {recommendedSpecialty}
+          </Text>
+        )}
 
         <View style={styles.docList}>
           {loadingDocs ? (
             <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
           ) : (
-            popularDocs.map((doc) => (
+            (recommendedDoctors.length > 0 ? recommendedDoctors : popularDocs).slice(0, 3).map((doc) => (
               <DoctorCard
                 key={doc.id}
                 doctor={{
@@ -699,6 +763,26 @@ export default function HomeScreen() {
                   } catch { return profile?.aiDiagnosisSummary; }
                 })()}
               </Text>
+              {recommendedDoctors.length > 0 && (
+                <View style={[styles.modalDocSection, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.modalDocLabel, { color: colors.text }]}>{isRTL ? "الأطباء المقترحون" : "Recommended Doctors"}</Text>
+                  {recommendedDoctors.map((doc) => (
+                    <TouchableOpacity
+                      key={doc.id}
+                      style={[styles.modalDocCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+                      onPress={() => { setShowAiModal(false); router.push({ pathname: "/(patient)/doctor-details", params: { id: doc.id } } as any); }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.modalDocInfo}>
+                        <Text style={[styles.modalDocName, { color: colors.text }]}>{doc.name}</Text>
+                        <Text style={[styles.modalDocSpecialty, { color: colors.primary }]}>{doc.specialty}</Text>
+                        <Text style={[styles.modalDocMeta, { color: colors.textMuted }]}>{doc.location} · {doc.rating?.toFixed(1)} ⭐</Text>
+                      </View>
+                      <ChevronRight size={18} color={colors.textMuted} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </ScrollView>
           </View>
         </View>
@@ -886,4 +970,17 @@ const styles = StyleSheet.create({
   modalTitleRefined: { flex: 1, marginLeft: 12, fontSize: 18, fontWeight: '900', color: '#1E293B' },
   modalBodyRefined: {},
   modalTextRefined: { fontSize: 15, color: '#475569', lineHeight: 26, fontWeight: '500' },
+  docRecommendSection: { marginTop: 12 },
+  docRecommendLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  docRecommendScroll: { gap: 10, paddingRight: 20 },
+  docRecommendChip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, borderWidth: 1, minWidth: 120 },
+  docRecommendName: { fontSize: 13, fontWeight: '700' },
+  docRecommendSpecialty: { fontSize: 10, fontWeight: '600', marginTop: 2 },
+  modalDocSection: { marginTop: 20, paddingTop: 16, borderTopWidth: 1, gap: 10 },
+  modalDocLabel: { fontSize: 14, fontWeight: '800', marginBottom: 4 },
+  modalDocCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 16, borderWidth: 1 },
+  modalDocInfo: { flex: 1 },
+  modalDocName: { fontSize: 14, fontWeight: '700' },
+  modalDocSpecialty: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+  modalDocMeta: { fontSize: 11, fontWeight: '500', marginTop: 4 },
 });

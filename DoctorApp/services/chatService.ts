@@ -34,12 +34,19 @@ export const chatService = {
     })) as ChatMessage[];
   },
 
-  ask: async (question: string, sessionId?: number) => {
+  ask: async (question: string, sessionId?: number, history?: ChatMessage[]) => {
     return apiFetch<{ reply: string; sessionId?: number }>(
       API.chat.ask,
       {
         method: "POST",
-        body: JSON.stringify({ question, sessionId }),
+        body: JSON.stringify({
+          question,
+          sessionId,
+          history: history?.map((message) => ({
+            role: message.role === "assistant" ? "assistant" : "user",
+            content: message.content,
+          })),
+        }),
       },
       true
     );

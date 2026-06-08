@@ -228,6 +228,57 @@ const MED_KEYWORDS: [string, string][] = [
   ["التروكسين", "Eltroxin (Thyroxine)"],
 ];
 
+const AR_DISEASE_KEYWORDS: [string, string, string][] = [
+  ["سكر", "Diabetes", "سكر"],
+  ["سكري", "Diabetes", "سكري"],
+  ["ضغط", "Hypertension", "ضغط عالي"],
+  ["ربو", "Asthma", "ربو"],
+  ["حساسية صدر", "Asthma", "حساسية صدرية"],
+  ["قلب", "Heart Disease", "مرض قلبي"],
+  ["كوليسترول", "High Cholesterol", "كوليسترول عالي"],
+  ["دهون", "High Cholesterol", "دهون عالية"],
+  ["غدة", "Thyroid Disorder", "غدة درقية"],
+  ["درقية", "Thyroid Disorder", "غدة درقية"],
+  ["كلى", "Kidney Disease", "مرض كلوي"],
+  ["كبد", "Liver Disease", "مرض كبدي"],
+  ["انيميا", "Anemia", "أنيميا"],
+  ["أنيميا", "Anemia", "أنيميا"],
+  ["روماتيزم", "Rheumatism", "روماتيزم"],
+  ["مفاصل", "Arthritis", "التهاب مفاصل"],
+  ["اكتئاب", "Depression", "اكتئاب"],
+  ["صرع", "Epilepsy", "صرع"],
+];
+
+const AR_ALLERGY_KEYWORDS: [string, string, string][] = [
+  ["بنسلين", "Penicillin", "بنسلين"],
+  ["اسبرين", "Aspirin", "أسبرين"],
+  ["أسبرين", "Aspirin", "أسبرين"],
+  ["سلفا", "Sulfa drugs", "سلفا"],
+  ["بروفين", "Ibuprofen", "بروفين"],
+  ["ايبوبروفين", "Ibuprofen", "ايبوبروفين"],
+  ["حساسية", "General Allergy", "حساسية"],
+  ["بيض", "Eggs", "بيض"],
+  ["لبن", "Milk/Dairy", "لبن"],
+  ["فول سوداني", "Peanuts", "فول سوداني"],
+  ["جلوتين", "Gluten", "جلوتين"],
+];
+
+const AR_MED_KEYWORDS: [string, string][] = [
+  ["جلوكوفاج", "Glucophage (Metformin)"],
+  ["ميتفورمين", "Metformin"],
+  ["كونكور", "Concor (Bisoprolol)"],
+  ["اميلور", "Amilor"],
+  ["لازكس", "Lasix (Furosemide)"],
+  ["انسولين", "Insulin"],
+  ["اسبرين", "Aspirin"],
+  ["أسبرين", "Aspirin"],
+  ["بنادول", "Panadol (Paracetamol)"],
+  ["ليبيتور", "Lipitor (Atorvastatin)"],
+  ["اوميبرازول", "Omeprazole"],
+  ["ثيروكسين", "Thyroxine"],
+  ["التروكسين", "Eltroxin (Thyroxine)"],
+];
+
 const uniqueByName = <T extends Record<string, unknown>>(items: T[], key: keyof T) => {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -328,4 +379,3 @@ function parseMedicalProfileLocally(text: string): ParsedMedicalProfile {
     follow_up_en: hasArabic ? "" : follow_up,
   };
 }
-

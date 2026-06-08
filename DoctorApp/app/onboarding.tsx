@@ -62,13 +62,13 @@ export default function OnboardingScreen() {
 
       const promises = [];
       if (allergyName.trim()) {
-        promises.push(addAllergy({ patientId: pid, allergenName: allergyName, severity: allergySeverity, notes: "" }));
+        promises.push(createAllergy(pid, { allergenName: allergyName, severity: allergySeverity, notes: "" }));
       }
       if (chronicName.trim()) {
         // Note: addChronicDisease might not exist in the service; skipping for now
       }
       if (surgeryName.trim()) {
-        promises.push(addSurgery({ patientId: pid, surgeryName, hospitalName: "", doctorName: "", surgeryDate, complications: "", notes: "" }));
+        promises.push(createSurgery(pid, { surgeryName, hospitalName: "", doctorName: "", surgeryDate, complications: "", notes: "" }));
       }
 
       if (promises.length > 0) await Promise.all(promises);

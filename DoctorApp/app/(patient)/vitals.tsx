@@ -9,7 +9,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import {
-  Activity, Droplets, Heart as HeartIcon, Thermometer, Wind, Beaker, Plus, Info, Timer, Sparkles, AlertCircle, Trash2, Edit
+  Activity, Droplets, Heart as HeartIcon, Thermometer, Wind, Beaker, Plus, Info, Timer, Sparkles, AlertCircle, Trash2, Edit, ChevronUp, ChevronDown
 } from "lucide-react-native";
 import { COLORS } from "../../constants/colors";
 import { SosBar } from "../../components/SosBar";
@@ -24,6 +24,7 @@ import {
 import { assessVitalReading } from "../../services/healthSafety";
 import { addNotification } from "../../services/notificationService";
 import { getAllergies, getChronicDiseases, type ChronicDisease } from "../../services/medicalRecordService";
+import { getAllDoctors, enrichDoctorsWithReviewStats, sortDoctorsFairly, type Doctor } from "../../services/doctorService";
 import Toast from "react-native-toast-message";
 
 const { width } = Dimensions.get("window");
@@ -36,6 +37,33 @@ const VITAL_TYPES = [
   { key: "SpO2", unit: "%", hasValue2: false, icon: Wind, color: "#10B981", bg: "#ECFDF5" },
   { key: "Respiratory Rate", unit: "breaths/min", hasValue2: false, icon: Beaker, color: "#0D9488", bg: "#F0FDFA" },
 ];
+
+const VITAL_TYPE_AR: Record<string, string> = {
+  "Blood Pressure": "ضغط الدم",
+  "Blood Sugar": "سكر الدم",
+  "Heart Rate": "معدل ضربات القلب",
+  "Temperature": "درجة الحرارة",
+  "SpO2": "نسبة الأكسجين",
+  "Respiratory Rate": "معدل التنفس",
+};
+
+const getVitalReadingText = (reading: Pick<VitalReading, "value" | "value2" | "unit">) =>
+  `${reading.value}${reading.value2 != null ? `/${reading.value2}` : ""} ${reading.unit || ""}`.trim();
+
+const buildVitalMiniReport = (reading: VitalReading) => {
+  const assessment = assessVitalReading(reading.readingType, reading.value, reading.value2);
+  const readingText = getVitalReadingText(reading);
+  const typeAr = VITAL_TYPE_AR[reading.readingType] || reading.readingType;
+
+  return {
+    en: assessment.isNormal
+      ? `${reading.readingType}: ${readingText}. This reading is within the expected range (${assessment.rangeText}). Keep monitoring regularly.`
+      : `${reading.readingType}: ${readingText}. This reading is outside the expected range (${assessment.rangeText}). ${assessment.message} Please consult a doctor if symptoms appear or readings remain abnormal.`,
+    ar: assessment.isNormal
+      ? `${typeAr}: ${readingText}. هذه القراءة ضمن النطاق المتوقع (${assessment.rangeText}). استمر في المتابعة بانتظام.`
+      : `${typeAr}: ${readingText}. هذه القراءة خارج النطاق المتوقع (${assessment.rangeText}). يُنصح بالمتابعة واستشارة الطبيب إذا ظهرت أعراض أو استمرت القراءات غير الطبيعية.`,
+  };
+};
 
 export default function VitalsScreen() {
   const router = useRouter();
@@ -60,6 +88,12 @@ export default function VitalsScreen() {
   const [aiAdvice, setAiAdvice] = useState<any>(null);
   const [isAnalyzingAdvice, setIsAnalyzingAdvice] = useState(false);
   const [adviceLang, setAdviceLang] = useState<"en" | "ar">(isRTL ? "ar" : "en");
+  const [recommendedDoctors, setRecommendedDoctors] = useState<Doctor[]>([]);
+  const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({});
+
+  const toggleType = (type: string) => {
+    setExpandedTypes(prev => ({ ...prev, [type]: !prev[type] }));
+  };
 
   useEffect(() => {
     loadData();
@@ -216,11 +250,36 @@ export default function VitalsScreen() {
       "High blood pressure warning": "تحذير: ارتفاع ضغط الدم",
       "Invalid reading": "قراءة غير صالحة",
     };
+    const msgAr = assessment.title.includes("Low") || assessment.message.includes("below") 
+      ? `القراءة أقل من المعدل الطبيعي. يرجى المتابعة واستشارة الطبيب إذا شعرت بأعراض مثل الدوخة أو التعب.`
+      : assessment.title.includes("High") || assessment.message.includes("above")
+      ? `القراءة أعلى من المعدل الطبيعي. يرجى المتابعة واستشارة الطبيب إذا شعرت بأعراض مثل الصداع أو ألم في الصدر.`
+      : `قراءة غير صالحة. يرجى إعادة الإدخال.`;
+
     const advice_ar = assessment.isNormal
       ? `قراءة ${nameAr} (${readingStr}) ضمن المعدل الطبيعي (${assessment.rangeText}). حافظ على صحتك!`
-      : `${titleAr[assessment.title] || "تنبيه صحي"}: قراءة ${nameAr} ${readingStr} خارج المعدل الطبيعي (${assessment.rangeText}). يرجى مراجعة الطبيب.`;
+      : `${titleAr[assessment.title] || "تنبيه صحي"}: قراءة ${nameAr} ${readingStr} خارج المعدل الطبيعي (${assessment.rangeText}). ${msgAr}`;
 
     setAiAdvice({ advice_en, advice_ar });
+
+    const VITAL_SPECIALTY: Record<string, string> = {
+      "Blood Pressure": "Cardiology",
+      "Blood Sugar": "Endocrinology",
+      "Heart Rate": "Cardiology",
+      "Temperature": "Internal Medicine",
+      "SpO2": "Pulmonology",
+      "Respiratory Rate": "Pulmonology",
+    };
+    const specialty = VITAL_SPECIALTY[reading.readingType];
+    if (specialty) {
+      setRecommendedDoctors([]);
+      getAllDoctors().then(enrichDoctorsWithReviewStats).then(all => {
+        const filtered = sortDoctorsFairly(all.filter(d =>
+          d.specialty?.toLowerCase() === specialty.toLowerCase()
+        )).slice(0, 3);
+        setRecommendedDoctors(filtered);
+      }).catch(() => {});
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -333,29 +392,48 @@ export default function VitalsScreen() {
 
           {/* AI ADVICE CARD */}
           {(aiAdvice || isAnalyzingAdvice) && (
-            <View style={styles.aiAdviceWrapper}>
-              <LinearGradient colors={isDark ? ["#1E293B", "#121B2E"] : ["#F5F3FF", "#EDE9FE"]} style={[styles.aiAdviceCard, { borderColor: colors.border }]}>
-                <View style={styles.aiAdviceHeader}>
-                  <View style={styles.aiSparkleBg}>
-                    <Sparkles size={18} color="#7C3AED" />
+            <View>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{tr('ai_diagnostics') ?? 'AI Report'}</Text>
+              </View>
+              <View style={styles.aiAdviceWrapper}>
+                <LinearGradient colors={isDark ? ["#1E293B", "#121B2E"] : ["#F5F3FF", "#EDE9FE"]} style={[styles.aiAdviceCard, { borderColor: colors.border }]}>
+                  <View style={styles.aiAdviceHeader}>
+                    <View style={styles.aiSparkleBg}>
+                      <Sparkles size={18} color="#7C3AED" />
+                    </View>
+                    <Text style={[styles.aiAdviceTitle, { color: colors.text }]}>{isRTL ? "التقرير العام للقياسات" : "Overall Vitals Report"}</Text>
+                    <View style={styles.cardLangToggle}>
+                      <TouchableOpacity onPress={() => setAdviceLang("en")} style={[styles.cardLangBtn, adviceLang === "en" && styles.cardLangBtnActive]}>
+                        <Text style={[styles.cardLangText, adviceLang === "en" && styles.cardLangTextActive]}>EN</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setAdviceLang("ar")} style={[styles.cardLangBtn, adviceLang === "ar" && styles.cardLangBtnActive]}>
+                        <Text style={[styles.cardLangText, adviceLang === "ar" && styles.cardLangTextActive]}>عربي</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {isAnalyzingAdvice && <ActivityIndicator size="small" color="#7C3AED" />}
                   </View>
-                  <Text style={[styles.aiAdviceTitle, { color: colors.text }]}>{isRTL ? "نصيحة ذكية من AI" : "Smart AI Insights"}</Text>
-                  <View style={styles.cardLangToggle}>
-                    <TouchableOpacity onPress={() => setAdviceLang("en")} style={[styles.cardLangBtn, adviceLang === "en" && styles.cardLangBtnActive]}>
-                      <Text style={[styles.cardLangText, adviceLang === "en" && styles.cardLangTextActive]}>EN</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setAdviceLang("ar")} style={[styles.cardLangBtn, adviceLang === "ar" && styles.cardLangBtnActive]}>
-                      <Text style={[styles.cardLangText, adviceLang === "ar" && styles.cardLangTextActive]}>عربي</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {isAnalyzingAdvice && <ActivityIndicator size="small" color="#7C3AED" />}
-                </View>
-                {aiAdvice && (
-                  <Text style={[styles.aiAdviceText, { color: colors.textMuted }, adviceLang === 'ar' && { textAlign: 'right' }]}>
-                    {adviceLang === 'ar' ? aiAdvice.advice_ar : aiAdvice.advice_en}
-                  </Text>
-                )}
-              </LinearGradient>
+                  {aiAdvice && (
+                    <Text style={[styles.aiAdviceText, { color: colors.textMuted }, adviceLang === 'ar' && { textAlign: 'right' }]}>
+                      {adviceLang === 'ar' ? aiAdvice.advice_ar : aiAdvice.advice_en}
+                    </Text>
+                  )}
+                  {recommendedDoctors.length > 0 && (
+                    <View style={styles.vitalDoctorList}>
+                      {recommendedDoctors.map((doctor) => (
+                        <TouchableOpacity
+                          key={doctor.id}
+                          style={[styles.vitalDoctorChip, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF", borderColor: colors.border }]}
+                          onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { id: doctor.id } } as any)}
+                        >
+                          <Text style={styles.vitalDoctorName} numberOfLines={1}>Dr. {doctor.name}</Text>
+                          <Text style={styles.vitalDoctorMeta} numberOfLines={1}>{doctor.specialty} • {doctor.reviewCount ? `${doctor.rating.toFixed(1)} ★ (${doctor.reviewCount})` : "New"}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </LinearGradient>
+              </View>
             </View>
           )}
 
@@ -534,60 +612,84 @@ export default function VitalsScreen() {
             })}
           </View>
 
-          {/* History Section */}
+          {/* History Section by Type Accordion */}
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Medical Timeline</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{isRTL ? "سجل القياسات السابقة" : "Medical Timeline"}</Text>
             <View style={styles.historyBadgeCount}><Text style={styles.historyBadgeCountText}>{vitals.length}</Text></View>
           </View>
 
           {vitals.length === 0 ? (
             <View style={styles.emptyCard}>
               <Activity size={48} color="#E2E8F0" />
-              <Text style={styles.emptyTitle}>No History Yet</Text>
-              <Text style={styles.emptyDesc}>Your biometric timeline will appear here once you log your first measurement.</Text>
+              <Text style={styles.emptyTitle}>{isRTL ? "لا يوجد سجل بعد" : "No History Yet"}</Text>
+              <Text style={styles.emptyDesc}>{isRTL ? "سيظهر سجل قياساتك هنا بمجرد تسجيل أول قراءة." : "Your biometric timeline will appear here once you log your first measurement."}</Text>
             </View>
           ) : (
             <View style={styles.timeline}>
-              {vitals.map((v, i) => {
-                const isAbnormal = !v.isNormal;
-                const typeInfo = VITAL_TYPES.find(t => t.key === v.readingType);
+              {VITAL_TYPES.map(t => {
+                const typeVitals = vitals.filter(v => v.readingType === t.key);
+                if (typeVitals.length === 0) return null;
+                const isExpanded = expandedTypes[t.key];
                 return (
-                  <View key={i} style={styles.timelineItem}>
-                    <View style={styles.timelineLeft}>
-                      <View style={[styles.timelineDot, { backgroundColor: typeInfo?.color || '#CBD5E1' }]} />
-                      {i !== vitals.length - 1 && <View style={styles.timelineLine} />}
-                    </View>
-                    <View style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border }, isAbnormal && styles.historyCardAbnormal]}>
-                      <View style={styles.historyTopRow}>
-                        <Text style={[styles.historyType, { color: colors.text }]}>{v.readingType}</Text>
-                        <View style={[styles.statusBadge, isAbnormal ? styles.statusBadgeError : styles.statusBadgeSuccess]}>
-                          <Text style={[styles.statusText, isAbnormal ? styles.statusTextError : styles.statusTextSuccess]}>
-                            {isAbnormal ? "High Alert" : "Normal"}
-                          </Text>
+                  <View key={t.key} style={{ marginBottom: 12 }}>
+                    <TouchableOpacity 
+                      onPress={() => toggleType(t.key)}
+                      style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <View style={[styles.iconCircle, { backgroundColor: t.bg, width: 32, height: 32 }]}>
+                          <t.icon size={16} color={t.color} />
                         </View>
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                          <TouchableOpacity onPress={() => handleEditInit(v)}>
-                            <Edit size={16} color="#64748B" />
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={() => handleDelete(v.id)}>
-                            <Trash2 size={16} color="#EF4444" />
-                          </TouchableOpacity>
-                        </View>
+                        <Text style={[styles.historyType, { color: colors.text }]}>{t.key} ({typeVitals.length})</Text>
                       </View>
-                      <View style={styles.historyValueRow}>
-                        <Text style={[styles.historyValue, { color: colors.text }, isAbnormal && styles.historyValueAbnormal]}>
-                          {v.value}{v.value2 != null ? ` / ${v.value2}` : ""}
-                        </Text>
-                        <Text style={styles.historyUnit}>{v.unit}</Text>
+                      {isExpanded ? <ChevronUp size={20} color={colors.textMuted} /> : <ChevronDown size={20} color={colors.textMuted} />}
+                    </TouchableOpacity>
+                    
+                    {isExpanded && (
+                      <View style={{ paddingLeft: 16, paddingTop: 8, borderLeftWidth: 2, borderLeftColor: t.color, marginLeft: 16 }}>
+                        {typeVitals.map((v, i) => {
+                          const isAbnormal = !v.isNormal;
+                          const miniReport = buildVitalMiniReport(v);
+                          return (
+                            <View key={v.id || i} style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 8 }, isAbnormal && styles.historyCardAbnormal]}>
+                              <View style={styles.historyTopRow}>
+                                <Text style={[styles.historyDate, { color: colors.textMuted, fontSize: 13 }]}>{new Date(v.recordedAt).toLocaleString()}</Text>
+                                <View style={[styles.statusBadge, isAbnormal ? styles.statusBadgeError : styles.statusBadgeSuccess]}>
+                                  <Text style={[styles.statusText, isAbnormal ? styles.statusTextError : styles.statusTextSuccess]}>
+                                    {isAbnormal ? "High Alert" : "Normal"}
+                                  </Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                  <TouchableOpacity onPress={() => handleEditInit(v)}>
+                                    <Edit size={16} color="#64748B" />
+                                  </TouchableOpacity>
+                                  <TouchableOpacity onPress={() => handleDelete(v.id)}>
+                                    <Trash2 size={16} color="#EF4444" />
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                              <View style={styles.historyValueRow}>
+                                <Text style={[styles.historyValue, { color: colors.text, fontSize: 18 }, isAbnormal && styles.historyValueAbnormal]}>
+                                  {v.value}{v.value2 != null ? ` / ${v.value2}` : ""}
+                                </Text>
+                                <Text style={styles.historyUnit}>{v.unit}</Text>
+                              </View>
+                              {v.notes && (
+                                <View style={styles.historyNotesBox}>
+                                  <Info size={12} color="#64748B" />
+                                  <Text style={styles.historyNotes}>{v.notes}</Text>
+                                </View>
+                              )}
+                              <View style={[styles.vitalMiniReportBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border }]}>
+                                <Text style={styles.vitalMiniReportLabel}>Report / التقرير</Text>
+                                <Text style={[styles.vitalMiniReportText, { color: colors.textMuted }]}>{miniReport.en}</Text>
+                                <Text style={[styles.vitalMiniReportText, { color: colors.textMuted, textAlign: "right" }]}>{miniReport.ar}</Text>
+                              </View>
+                            </View>
+                          );
+                        })}
                       </View>
-                      {v.notes && (
-                        <View style={styles.historyNotesBox}>
-                          <Info size={12} color="#64748B" />
-                          <Text style={styles.historyNotes}>{v.notes}</Text>
-                        </View>
-                      )}
-                      <Text style={[styles.historyDate, { color: colors.textMuted }]}>{new Date(v.recordedAt).toLocaleString()}</Text>
-                    </View>
+                    )}
                   </View>
                 );
               })}
@@ -708,6 +810,13 @@ const styles = StyleSheet.create({
   aiSparkleBg: { width: 36, height: 36, borderRadius: 12, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 2 },
   aiAdviceTitle: { fontSize: 15, fontWeight: '900', color: '#1E293B', flex: 1, letterSpacing: -0.3 },
   aiAdviceText: { fontSize: 13, color: '#475569', lineHeight: 20, fontWeight: '600' },
+  vitalDoctorList: { marginTop: 14, gap: 8 },
+  vitalDoctorChip: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 },
+  vitalDoctorName: { color: '#059669', fontSize: 12, fontWeight: '900' },
+  vitalDoctorMeta: { color: '#047857', fontSize: 11, fontWeight: '700', marginTop: 2 },
+  vitalMiniReportBox: { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 12, gap: 6 },
+  vitalMiniReportLabel: { color: '#059669', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
+  vitalMiniReportText: { fontSize: 12, lineHeight: 18, fontWeight: '600' },
   cardLangToggle: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 10, padding: 2, marginRight: 10 },
   cardLangBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   cardLangBtnActive: { backgroundColor: '#fff', elevation: 2 },

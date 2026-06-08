@@ -1019,9 +1019,9 @@ const styles = StyleSheet.create({
   goldDustContainer: { ...StyleSheet.absoluteFillObject },
   goldParticle: { position: 'absolute', width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#FBBF24', opacity: 0.4 },
   emeraldWave: { position: 'absolute', bottom: -10, left: 0, right: 0, height: 40, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 100, transform: [{ scaleX: 2 }] },
-  contentOverlap: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, minHeight: SCREEN_HEIGHT, paddingTop: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 30, elevation: 15, position: 'relative', overflow: 'hidden' },
+  contentOverlap: { backgroundColor: '#fff', borderTopLeftRadius: 40, borderTopRightRadius: 40, minHeight: SCREEN_HEIGHT, paddingTop: 20, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 30, elevation: 15, position: 'relative' },
 
-  profileCardWrap: { paddingHorizontal: 20, marginTop: 10, zIndex: 20, marginBottom: 15 },
+  profileCardWrap: { paddingHorizontal: 20, marginTop: -60, zIndex: 20, marginBottom: 15 },
 
   glassProfileCard: { backgroundColor: '#fff', borderRadius: 24, padding: 18, elevation: 15, shadowColor: '#064E3B', shadowOpacity: 0.15, shadowRadius: 25, position: 'relative', overflow: 'hidden', borderWidth: 1, borderColor: '#F1F5F9' },
   cardGlassOverlay: { ...StyleSheet.absoluteFillObject, opacity: 0.6 },

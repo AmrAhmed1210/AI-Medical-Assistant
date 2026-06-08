@@ -10,6 +10,7 @@ export interface Doctor {
   specialty: string;
   rating: number;
   reviewCount: number;
+  fairScore?: number;
   location: string;
   consultationFee: number;
   isAvailable: boolean;
@@ -63,6 +64,122 @@ export const getAllDoctors = async (specialtyId?: number): Promise<Doctor[]> => 
     : API.doctors.getAll;
   return apiFetch<Doctor[]>(url, { method: "GET" }, false);
 };
+
+const SPECIALTY_KEYWORDS: Array<{ specialty: string; keywords: string[] }> = [
+  { specialty: "Cardiology", keywords: ["cardio", "heart", "قلب", "صدر", "ضغط", "blood pressure", "hypertension"] },
+  { specialty: "Endocrinology", keywords: ["diabetes", "sugar", "سكر", "غدة", "thyroid", "endocrine"] },
+  { specialty: "Neurology", keywords: ["neuro", "brain", "headache", "migraine", "اعصاب", "عصب", "مخ", "صداع", "دوخة"] },
+  { specialty: "Orthopedics", keywords: ["ortho", "bone", "joint", "back", "عظام", "مفاصل", "ظهر", "ركبة"] },
+  { specialty: "Dermatology", keywords: ["derma", "skin", "rash", "جلد", "حساسية جلد", "طفح"] },
+  { specialty: "Ophthalmology", keywords: ["eye", "vision", "عين", "نظر"] },
+  { specialty: "Pulmonology", keywords: ["lung", "asthma", "breath", "صدر", "ربو", "تنفس"] },
+  { specialty: "Gastroenterology", keywords: ["stomach", "colon", "liver", "معدة", "قولون", "كبد", "هضم"] },
+  { specialty: "Nephrology", keywords: ["kidney", "renal", "كلى", "كلوي"] },
+];
+
+const normalize = (value?: string | null) => (value || "").toLowerCase();
+
+const inferSpecialtyFromText = (text: string): string | null => {
+  const source = normalize(text);
+  const match = SPECIALTY_KEYWORDS.find((item) =>
+    item.keywords.some((keyword) => source.includes(keyword.toLowerCase()))
+  );
+  return match?.specialty ?? null;
+};
+
+export const getFairDoctorScore = (doctor: Pick<Doctor, "rating" | "reviewCount">) => {
+  const rating = Math.max(0, Math.min(5, Number(doctor.rating) || 0));
+  const reviewCount = Math.max(0, Number(doctor.reviewCount) || 0);
+  if (reviewCount <= 0) return 0;
+
+  const platformAverage = 3.8;
+  const minimumConfidenceReviews = 5;
+  const bayesianRating =
+    (platformAverage * minimumConfidenceReviews + rating * reviewCount) /
+    (minimumConfidenceReviews + reviewCount);
+  const confidenceBoost = Math.min(0.35, Math.log10(reviewCount + 1) * 0.12);
+  return bayesianRating + confidenceBoost;
+};
+
+export const sortDoctorsFairly = (items: Doctor[]) =>
+  items.slice().sort((a, b) => {
+    const scoreDiff = getFairDoctorScore(b) - getFairDoctorScore(a);
+    if (Math.abs(scoreDiff) > 0.0001) return scoreDiff;
+    return (Number(b.reviewCount) || 0) - (Number(a.reviewCount) || 0);
+  });
+
+export const enrichDoctorsWithReviewStats = async (items: Doctor[]): Promise<Doctor[]> => {
+  return Promise.all(
+    items.map(async (doctor) => {
+      try {
+        const reviews = await getReviewsByDoctor(doctor.id);
+        if (reviews.length === 0) {
+          return {
+            ...doctor,
+            rating: 0,
+            reviewCount: 0,
+            fairScore: 0,
+          };
+        }
+
+        const average =
+          reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length;
+        const enriched = {
+          ...doctor,
+          rating: Number(average.toFixed(1)),
+          reviewCount: reviews.length,
+        };
+
+        return {
+          ...enriched,
+          fairScore: getFairDoctorScore(enriched),
+        };
+      } catch {
+        const safeDoctor = {
+          ...doctor,
+          rating: Number(doctor.rating || 0),
+          reviewCount: Number(doctor.reviewCount || 0),
+        };
+        return {
+          ...safeDoctor,
+          fairScore: getFairDoctorScore(safeDoctor),
+        };
+      }
+    })
+  );
+};
+
+export const getRecommendedDoctorsForNeed = async (
+  needText: string,
+  limit = 5
+): Promise<{ specialty: string | null; doctors: Doctor[] }> => {
+  const specialty = inferSpecialtyFromText(needText);
+  // If we can't infer a specialty, don't recommend random doctors
+  if (!specialty) return { specialty: null, doctors: [] };
+
+  const doctors = await enrichDoctorsWithReviewStats(await getAllDoctors());
+  const filtered = doctors.filter((doctor) =>
+    normalize(doctor.specialty).includes(specialty.toLowerCase())
+  );
+
+  // If no doctors match this specialty, return specialty with empty array
+  // so the chatbot can tell the user what specialty they need
+  if (filtered.length === 0) return { specialty, doctors: [] };
+
+  const ranked = sortDoctorsFairly(filtered).slice(0, limit);
+  return { specialty, doctors: ranked };
+};
+
+export const formatDoctorRecommendationsForAi = (items: Doctor[]) =>
+  items.map((doctor) => ({
+    id: doctor.id,
+    name: doctor.name,
+    specialty: doctor.specialty,
+    rating: Number(doctor.rating || 0),
+    reviewCount: Number(doctor.reviewCount || 0),
+    consultationFee: doctor.consultationFee ?? doctor.consultFee ?? null,
+    location: doctor.location,
+  }));
 
 // ============================================
 // Get Doctor by ID

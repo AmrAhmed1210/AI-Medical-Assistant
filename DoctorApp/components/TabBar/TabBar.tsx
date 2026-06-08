@@ -160,7 +160,7 @@ const TabItem = React.memo(({ tab, isFocused, onPress }: TabItemProps) => {
         <Animated.View style={[styles.iconWrapper, animatedIconStyle]}>
           <tab.Icon
             size={22}
-            stroke={isFocused ? ACTIVE_COLOR : INACTIVE_COLOR}
+            color={isFocused ? ACTIVE_COLOR : INACTIVE_COLOR}
             strokeWidth={isFocused ? 2.5 : 1.8}
           />
 

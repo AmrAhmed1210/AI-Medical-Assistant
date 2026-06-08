@@ -56,7 +56,7 @@ export async function apiFetch<T>(
     const headers: Record<string, string> = {
       // Don't set Content-Type for FormData - fetch needs to set it automatically
       // with the correct multipart boundary. For everything else, default to JSON.
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(isFormData ? {} : { 'Content-Type': 'application/json; charset=utf-8' }),
       ...(options.headers as Record<string, string>),
     }
 
