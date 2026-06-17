@@ -68,3 +68,8 @@ Thumbs.db
 .vscode/
 .cursor/
 .dotnet/
+
+#documentation
+.technical_documentation/
+docs/
+.agents/

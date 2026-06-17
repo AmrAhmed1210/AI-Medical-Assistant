@@ -197,6 +197,52 @@ public sealed class ChatController : ControllerBase
             : Ok(result);
     }
 
+    [HttpPost("pre-visit-summary")]
+    public async Task<IActionResult> GeneratePreVisitSummary([FromBody] PreVisitRequestDto body, CancellationToken ct)
+    {
+        var result = await _medical.GeneratePreVisitSummaryAsync(body, ct);
+        return result is null
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable, new ErrorResponse("AI service unavailable."))
+            : Ok(result);
+    }
+
+    [HttpGet("daily-tip")]
+    public async Task<IActionResult> GetDailyTip(CancellationToken ct)
+    {
+        // STRICT ANONYMIZATION: Patient ID is extracted directly from the secure JWT token claims.
+        // It cannot be forged or injected via request body or query parameters.
+        var patientId = GetPatientIdFromClaims();
+        if (patientId == 0)
+        {
+            _log.LogWarning("[ChatController] GetDailyTip — Missing or invalid PatientId in claims.");
+            return Unauthorized(new ErrorResponse("Unauthorized access."));
+        }
+
+        _log.LogInformation("[ChatController] GetDailyTip — Extracting diseases for PatientId: {PatientId}", patientId);
+
+        var chronicDiseases = new List<string>();
+        try
+        {
+            // Only chronic diseases are fetched and passed to the AI to preserve maximum privacy.
+            var history = await _recordService.GetPatientCompleteHistoryAsync(patientId);
+            chronicDiseases = history.ChronicDiseases.Select(d => d.DiseaseName).ToList();
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "[ChatController] GetDailyTip — Failed to fetch patient history for PatientId: {PatientId}", patientId);
+        }
+
+        var payload = new {
+            patient_id = patientId.ToString(),
+            chronic_diseases = chronicDiseases
+        };
+
+        var result = await _medical.GetPersonalizedTipAsync(payload, ct);
+        return result is null
+            ? StatusCode(StatusCodes.Status503ServiceUnavailable, new ErrorResponse("AI service unavailable."))
+            : Ok(result);
+    }
+
     // ─────────────────────────────────────────────────────────────
     // POST api/chat/parse-medical-profile
     // AI-powered medical profile data extraction + auto-save
@@ -349,9 +395,9 @@ public sealed class ChatController : ControllerBase
             return false;
         }
 
-        if (req.Question.Length > 500)
+        if (req.Question.Length > 10000)
         {
-            error = "السؤال طويل جداً. الحد الأقصى 500 حرف.";
+            error = "السؤال طويل جداً. الحد الأقصى 10000 حرف.";
             return false;
         }
 
@@ -396,4 +442,15 @@ public sealed record MedicalItemSummaryRequest(
 public sealed record ParseMedicalProfileRequest(
     [property: JsonPropertyName("text")] string Text,
     [property: JsonPropertyName("saveToProfile")] bool SaveToProfile = false
+);
+
+public sealed record PreVisitRequestDto(
+    [property: JsonPropertyName("patient_id")] string PatientId,
+    [property: JsonPropertyName("age")] int Age,
+    [property: JsonPropertyName("gender")] string Gender,
+    [property: JsonPropertyName("chief_complaint")] string ChiefComplaint,
+    [property: JsonPropertyName("chronic_diseases")] List<string>? ChronicDiseases = null,
+    [property: JsonPropertyName("medications")] List<string>? Medications = null,
+    [property: JsonPropertyName("allergies")] List<string>? Allergies = null,
+    [property: JsonPropertyName("vitals")] List<string>? Vitals = null
 );

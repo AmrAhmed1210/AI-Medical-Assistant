@@ -63,6 +63,20 @@ class PatientHistoryInput(BaseModel):
     recommended_doctors: Optional[List[Any]] = []
     recommended_specialty: Optional[str] = None
 
+class PreVisitInput(BaseModel):
+    patient_id: str
+    age: int
+    gender: str
+    chief_complaint: str
+    chronic_diseases: Optional[List[Any]] = []
+    medications: Optional[List[Any]] = []
+    allergies: Optional[List[Any]] = []
+    vitals: Optional[List[Any]] = []
+
+class PersonalizedTipInput(BaseModel):
+    patient_id: str
+    chronic_diseases: Optional[List[str]] = []
+
 class MessageDto(BaseModel):
     role: str
     content: str
@@ -130,7 +144,8 @@ async def ask_endpoint(data: AskRequest):
         5. ACTIVE INQUIRY: If the user complains of pain, tiredness, or any symptoms, DO NOT just give a final diagnosis. Instead, ALWAYS end your response by asking 1 or 2 relevant follow-up questions to gather more details. Keep investigating until you have a clear picture.
         6. Once you have a clear picture, provide safe advice and ALWAYS conclude with a recommendation to see a doctor.
         7. NEVER say or imply that you are a doctor. Say you are an AI medical assistant.
-        8. If the prompt includes platform doctor recommendations context, use ONLY those doctors when suggesting doctors, prioritize matching specialty and highest rating/review count, and do not invent doctors.
+        8. If the user's message indicates they are perfectly healthy with no problems, do NOT recommend any doctors or specialties, just encourage a healthy lifestyle.
+        9. If the prompt includes platform doctor recommendations context AND the user has a medical issue, use ONLY those doctors when suggesting doctors, prioritize matching specialty and highest rating/review count, and do not invent doctors.
         """
         response = chat.send_message(prompt)
         return {
@@ -224,14 +239,17 @@ async def analyze_history(data: PatientHistoryInput):
     - If there is a serious risk, start that report with an explicit warning.
     - Mention relevant uploaded document findings when present.
     - Give safe, simple home-care tips only when appropriate, then recommend consulting a doctor.
-    - If platform doctors are provided, include a doctor recommendation section using only those doctors. Recommend the highest-rated relevant doctors by name, specialty, rating/review count, and why they fit the patient's likely specialty need.
+    - CRITICAL: If the patient is healthy and has no medical problems, abnormalities, or concerning symptoms, do NOT recommend any specialty or doctors. Instead, state that their health profile looks good and encourage maintaining a healthy lifestyle.
+    - If platform doctors are provided AND the patient actually has a medical issue, include a doctor recommendation section using only those doctors. Recommend the highest-rated relevant doctors by name, specialty, rating/review count, and why they fit the patient's likely specialty need.
+    - If a Recommended Specialty is provided but Platform Doctors is empty AND the patient has a medical issue, you MUST explicitly state in the report that there are no doctors available currently on our platform for this specialty, and politely advise the patient to seek an external consultation with a <Recommended Specialty> doctor. Do NOT hallucinate any doctor names.
     - Do not claim you are a doctor. You are an AI medical assistant and your advice does not replace professional care.
     - Do not use markdown symbols like # or *.
 
     Return this JSON shape only:
     {{
-      "en": "English report with sections: General Summary, Warnings, Medications & Interactions, Safe Advice, Recommended Doctors",
-      "ar": "تقرير عربي بأقسام: الملخص العام، التحذيرات، الأدوية والتداخلات، نصائح آمنة، الأطباء المقترحون من الموقع"
+      "en": "English report with sections separated by double newlines (\\n\\n). Sections: General Summary, Warnings, Medications & Interactions, Safe Advice, Recommended Doctors (if any).",
+      "ar": "تقرير عربي بأقسام مفصولة بأسطر جديدة (\\n\\n): الملخص العام، التحذيرات، الأدوية والتداخلات، نصائح آمنة، الأطباء المقترحون من الموقع (إن وجد).",
+      "needsDoctor": true // set to false ONLY if the patient is completely healthy and has no medical problems.
     }}
 
     Language rules:
@@ -253,7 +271,8 @@ async def analyze_history(data: PatientHistoryInput):
             result = json.loads(json_match.group())
             return {
                 "analysis_en": strip_markdown(result.get("en", "No English report generated.")),
-                "analysis_ar": strip_markdown(result.get("ar", "لم يتم إنشاء تقرير بالعربية."))
+                "analysis_ar": strip_markdown(result.get("ar", "لم يتم إنشاء تقرير بالعربية.")),
+                "needsDoctor": result.get("needsDoctor", True)
             }
         
         # Fallback split logic if AI fails JSON but returns both
@@ -606,6 +625,89 @@ async def parse_medical_profile(data: MedicalProfileInput):
     except Exception as e:
         print(f"DEBUG: Error in parse_medical_profile: {e}")
         raise HTTPException(status_code=500, detail=f"AI parsing error: {str(e)}")
+
+@app.post("/pre-visit-summary", dependencies=[Depends(verify_internal_token)])
+async def pre_visit_summary(data: PreVisitInput):
+    """Generates a 30-second AI summary for the doctor before the patient enters."""
+    if not GOOGLE_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured")
+        
+    prompt = f"""
+    You are an expert AI clinical assistant. Your task is to read the patient's data and generate a highly concise "Pre-visit Summary" (الملخص الاستباقي) for the doctor to read in 30 seconds before the patient enters the clinic.
+    
+    Patient ID: {data.patient_id}, {data.age} years old, {data.gender}
+    Chief Complaint / Reason for visit: {data.chief_complaint}
+    Chronic Diseases: {json.dumps(data.chronic_diseases)}
+    Medications: {json.dumps(data.medications)}
+    Allergies: {json.dumps(data.allergies)}
+    Recent Vitals: {json.dumps(data.vitals)}
+    
+    RETURN ONLY A VALID JSON OBJECT with these keys:
+    {{
+      "summary_en": "A highly concise, bulleted summary in English. Include: 1) Main reason for visit, 2) Relevant history/vitals, 3) AI Alerts (e.g. drug interactions, abnormal vitals). Use plain text and emojis, NO MARKDOWN.",
+      "summary_ar": "ملخص مركز جداً بالعربية في نقاط. يحتوي على: 1) سبب الزيارة الأساسي، 2) التاريخ المرضي/العلامات الحيوية ذات الصلة، 3) تنبيهات الذكاء الاصطناعي (مثل تعارض أدوية أو قراءات غير طبيعية). استخدم نص عادي وإيموجي، بدون مارك داون."
+    }}
+    """
+    
+    try:
+        response = model.generate_content(prompt)
+        content = response.text.strip()
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+            
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            return {
+                "summary_en": strip_markdown(result.get("summary_en", "Patient is ready.")),
+                "summary_ar": strip_markdown(result.get("summary_ar", "المريض جاهز للزيارة."))
+            }
+        return {"summary_en": "Patient is ready.", "summary_ar": "المريض جاهز للزيارة."}
+    except Exception as e:
+        print(f"DEBUG: Error in pre_visit_summary: {e}")
+        return {"summary_en": "Error generating summary.", "summary_ar": "حدث خطأ أثناء توليد الملخص."}
+
+@app.post("/personalized-tip", dependencies=[Depends(verify_internal_token)])
+async def personalized_tip(data: PersonalizedTipInput):
+    if not GOOGLE_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured")
+        
+    diseases_context = ", ".join(data.chronic_diseases) if data.chronic_diseases else "No chronic diseases"
+    
+    prompt = f"""
+    You are a professional health and wellness coach. Generate ONE highly practical, safe, and motivating daily health tip (max 2 sentences) customized for a patient with the following chronic diseases: {diseases_context}.
+    If there are no chronic diseases, provide a general excellent wellness tip (e.g. hydration, posture, sleep).
+    If they have diabetes, mention something relevant like checking feet or balancing carbs safely. If hypertension, mention salt intake or stress reduction. Make it warm and encouraging.
+    
+    RETURN ONLY A VALID JSON OBJECT:
+    {{
+      "tip_en": "English tip here",
+      "tip_ar": "نصيحة طبية ودودة بالعربية هنا"
+    }}
+    """
+    try:
+        response = model.generate_content(prompt)
+        content = response.text.strip()
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+            
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            return {
+                "tip_en": strip_markdown(result.get("tip_en", "Stay hydrated and take short walks throughout your day.")),
+                "tip_ar": strip_markdown(result.get("tip_ar", "حافظ على شرب الماء وامشِ قليلاً خلال يومك."))
+            }
+        return {"tip_en": "Stay healthy and active.", "tip_ar": "حافظ على صحتك ونشاطك."}
+    except Exception as e:
+        print(f"DEBUG: Error in personalized_tip: {e}")
+        return {"tip_en": "Stay hydrated.", "tip_ar": "حافظ على شرب الماء."}
+
+
 
 
 if __name__ == "__main__":

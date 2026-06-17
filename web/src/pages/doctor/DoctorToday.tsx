@@ -16,6 +16,7 @@ import { visitApi } from '@/api/visitApi'
 import { doctorApi } from '@/api/doctorApi'
 import { Card, Button, SkeletonCard } from '@/components/ui'
 import type { AppointmentDto } from '@/lib/types'
+import PreVisitSummaryCard from '@/components/doctor/PreVisitSummaryCard'
 
 const container = {
   hidden: { opacity: 0 },
@@ -234,6 +235,9 @@ export default function DoctorToday() {
                           )}
                         </div>
                       </div>
+                      
+                      {/* AI Pre-Visit Summary Card */}
+                      <PreVisitSummaryCard appointment={appt} />
                     </Card>
                   </motion.div>
                 ))}

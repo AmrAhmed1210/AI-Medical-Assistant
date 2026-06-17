@@ -30,7 +30,7 @@ export function DashboardLayout() {
           // Deduplicate: check if message already exists in current session
           const sessionId = payload?.sessionId ?? payload?.SessionId
           const messageId = payload?.messageId ?? payload?.id ?? payload?.Id
-          
+
           if (sessionId && messageId) {
             const dedupKey = `msg_${sessionId}_${messageId}`
             if (sessionStorage.getItem(dedupKey)) return // Already processed
@@ -45,13 +45,13 @@ export function DashboardLayout() {
             incrementSessionMessage(sessionId)
           }
         }
-        
+
         const onNewBooking = (data: any) => {
           incrementAppointments()
           handleNewBooking(data)
           toast.success(`📅 New booking: ${data?.patientName ?? 'Patient'}`, { duration: 5000 })
         }
-        
+
         const onBookingCancelled = (data: any) => {
           handleAppointmentUpdated({ appointmentId: data?.appointmentId ?? data?.id, status: 'Cancelled' })
           toast.error(`❌ Cancelled: ${data?.patientName ?? 'Patient'}`, { duration: 5000 })
@@ -63,18 +63,18 @@ export function DashboardLayout() {
           const message = String(payload?.message ?? payload?.Message ?? '')
           const level =
             category.includes('cancel') ? 'warning' :
-            category.includes('confirm') || category.includes('booking') ? 'success' :
-            category.includes('error') ? 'error' : 'info'
+              category.includes('confirm') || category.includes('booking') ? 'success' :
+                category.includes('error') ? 'error' : 'info'
 
           addNotification(level, title, message)
-          
+
           if (category === 'new_doctor_application') {
             incrementDoctorApplications()
           }
 
           // Don't toast duplicates if we already show NewBooking or BookingCancelled
           if (!category.includes('new_booking') && !category.includes('cancel')) {
-             toast(message)
+            toast(message)
           }
         }
 
@@ -88,7 +88,7 @@ export function DashboardLayout() {
           const status = String(payload?.status ?? '').toLowerCase()
           const type =
             status === 'confirmed' ? 'success' :
-            status === 'cancelled' ? 'warning' : 'info'
+              status === 'cancelled' ? 'warning' : 'info'
           addNotification(type, 'Appointment Update', String(payload?.message ?? 'Appointment updated'))
           const message = String(payload?.message ?? 'Appointment updated')
           toast.success(message)
@@ -98,10 +98,10 @@ export function DashboardLayout() {
         const onNewConsultation = (payload: any) => {
           const doctorName = String(payload?.doctorName ?? payload?.DoctorName ?? 'Doctor')
           const title = String(payload?.title ?? payload?.Title ?? 'Consultation')
-          
+
           addNotification('info', 'New Consultation', `Dr. ${doctorName} scheduled: ${title}`)
           toast.success(`🩺 Dr. ${doctorName} scheduled a consultation: ${title}`, { duration: 6000 })
-          
+
           // If patient is on appointments page, refresh appointments
           if (window.location.pathname.includes('/appointments') || window.location.pathname.includes('/profile')) {
             // The page will auto-refresh via its own useEffect
@@ -114,7 +114,7 @@ export function DashboardLayout() {
         conn.on('NotificationReceived', onNotificationReceived)
         conn.on('AppointmentUpdated', onAppointmentUpdated)
         conn.on('NewDoctorApplication', onNewDoctorApplication)
-        
+
         // Patient-specific events
         if (role === 'Patient') {
           conn.on('NewConsultation', onNewConsultation)
@@ -124,7 +124,7 @@ export function DashboardLayout() {
         conn.onreconnecting(() => {
           console.log('[SignalR] Reconnecting...')
         })
-        
+
         conn.onreconnected(() => {
           console.log('[SignalR] Reconnected')
           toast.success('Connection restored')
@@ -182,7 +182,7 @@ export function DashboardLayout() {
 
   return (
     <div
-      className="min-h-screen font-outfit"
+      className="min-h-screen font-outfit relative overflow-hidden"
       dir="ltr"
       style={{
         background: isDark
@@ -191,11 +191,39 @@ export function DashboardLayout() {
         transition: 'background 0.4s ease',
       }}
     >
-      <Sidebar />
-      <TopBar />
-      <main className="ml-64 mt-16 p-6 min-h-[calc(100vh-4rem)]">
-        <Outlet />
-      </main>
+      {/* Background Aesthetic Bubbles (Like Mobile App) */}
+      <div
+        className="fixed pointer-events-none"
+        style={{
+          width: 350, height: 350, top: -100, left: -100, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #10B981, #059669)',
+          filter: 'blur(80px)', opacity: isDark ? 0.15 : 0.4, zIndex: 0
+        }}
+      />
+      <div
+        className="fixed pointer-events-none"
+        style={{
+          width: 400, height: 400, bottom: -150, right: -150, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #34D399, #10B981)',
+          filter: 'blur(80px)', opacity: isDark ? 0.1 : 0.3, zIndex: 0
+        }}
+      />
+      <div
+        className="fixed pointer-events-none"
+        style={{
+          width: 250, height: 250, top: '40%', left: '20%', borderRadius: '50%',
+          background: 'linear-gradient(135deg, #6EE7B7, #059669)',
+          filter: 'blur(100px)', opacity: isDark ? 0.05 : 0.15, zIndex: 0
+        }}
+      />
+
+      <div className="relative z-10">
+        <Sidebar />
+        <TopBar />
+        <main className="ml-64 mt-16 p-6 min-h-[calc(100vh-4rem)]">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

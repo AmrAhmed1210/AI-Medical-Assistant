@@ -1,12 +1,12 @@
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image, Dimensions, Modal
+  TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image, Dimensions, Modal, TextInput, PanResponder
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Heart, Droplets, Calendar, Pill, Search,
   ChevronRight, Star, Bell, LayoutGrid, Stethoscope,
-  ArrowRight, HeartPulse, Thermometer, Activity, User, Sparkles, Clock, CheckCircle2
+  ArrowRight, HeartPulse, Thermometer, Activity, User, Sparkles, Clock, CheckCircle2, EyeOff, Eye
 } from "lucide-react-native";
 import { COLORS } from "../../constants/colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -32,14 +32,14 @@ import { getAllDoctors, getDoctorById, getReviewsByDoctor, Doctor, getRecommende
 import { getMyProfile, Profile } from "../../services/profileService";
 import { getMyAppointments, Appointment } from "../../services/appointmentService";
 import { getMedicationSchedule, type MedicationScheduleItem } from "../../services/medicationService";
-import { getLatestVital, getPatientVitals, type VitalReading } from "../../services/vitalService";
 import { getMyPatientId } from "../../services/authService";
+import { getLatestVital, getPatientVitals, type VitalReading, addVitalReading, checkVitalNormal } from "../../services/vitalService";
 import { NotificationBell } from "../../components/NotificationBell";
 import DoctorCard from "../../components/DoctorCard";
 import { addNotification } from "../../services/notificationService";
 import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpdated, onNewConsultation, onNewMedication } from "../../services/signalr";
 import { scheduleAppointmentReminders } from "../../services/appointmentReminders";
-import { analyzePatientHistory } from "../../services/aiService";
+import { analyzePatientHistory, getDailyHealthTip } from "../../services/aiService";
 import { updateAiDiagnosis, getVitals, getSurgeries, getMedications, getAllergies, getChronicDiseases, getPatientDocuments } from "../../services/medicalRecordService";
 
 const { width } = Dimensions.get("window");
@@ -74,6 +74,45 @@ export default function HomeScreen() {
   const [recommendedSpecialty, setRecommendedSpecialty] = useState<string | null>(null);
   const scrollY = useRef(new RNAnimated.Value(0)).current;
 
+  const [dailySysBp, setDailySysBp] = useState("");
+  const [dailyDiaBp, setDailyDiaBp] = useState("");
+  const [dailySugar, setDailySugar] = useState("");
+  const [dailyHeartRate, setDailyHeartRate] = useState("");
+  const [dailyTemp, setDailyTemp] = useState("");
+  const [dailyWeight, setDailyWeight] = useState("");
+  const [isSavingDaily, setIsSavingDaily] = useState(false);
+  const [showDailySuccess, setShowDailySuccess] = useState(false);
+  const [showDailyVitalsModal, setShowDailyVitalsModal] = useState(false);
+  const [dailyTip, setDailyTip] = useState<{ tip_en: string; tip_ar: string }>({
+    tip_en: "Small steps lead to great health. Stay active and hydrated.",
+    tip_ar: "خطوات صغيرة تقود لصحة عظيمة. ابقَ نشيطاً واشرب الماء."
+  });
+
+  const [isFabHidden, setIsFabHidden] = useState(false);
+  const pan = useRef(new RNAnimated.ValueXY()).current;
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only start dragging if the user moves a bit, to not interfere with simple taps
+        return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderGrant: () => {
+        pan.setOffset({
+          x: (pan.x as any)._value,
+          y: (pan.y as any)._value
+        });
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: RNAnimated.event(
+        [null, { dx: pan.x, dy: pan.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: () => {
+        pan.flattenOffset();
+      }
+    })
+  ).current;
+
   // Animation values
   const pulseScale = useSharedValue(1);
 
@@ -106,6 +145,7 @@ export default function HomeScreen() {
     fetchProfile();
     fetchHealthData();
     checkDailyReminder();
+    getDailyHealthTip().then(setDailyTip).catch(() => {});
 
     // Real-time updates
     const unsubMed = onNewMedication(() => {
@@ -173,6 +213,13 @@ export default function HomeScreen() {
 
       if (!recordedToday) {
         setShowVitalReminder(true);
+        // Automatically open the daily vitals modal once a day
+        const lastModalDate = await AsyncStorage.getItem("last_vital_modal_date");
+        if (lastModalDate !== today) {
+          setShowDailyVitalsModal(true);
+          await AsyncStorage.setItem("last_vital_modal_date", today);
+        }
+
         // Only send notification if not already notified today to avoid spamming
         const lastNotified = await AsyncStorage.getItem("last_vital_notification_date");
         if (lastNotified !== today) {
@@ -320,6 +367,83 @@ export default function HomeScreen() {
     }
   };
 
+  const handleSaveDailyVitals = async () => {
+    if ((!dailySysBp || !dailyDiaBp) && !dailySugar) {
+      Alert.alert(isRTL ? "تنبيه" : "Alert", isRTL ? "يرجى إدخال الضغط أو السكر" : "Please enter BP or Sugar");
+      return;
+    }
+    const pid = await getMyPatientId();
+    if (!pid) return;
+
+    setIsSavingDaily(true);
+    try {
+      if (dailySysBp && dailyDiaBp) {
+        await addVitalReading(pid, {
+          readingType: "Blood Pressure",
+          value: parseFloat(dailySysBp),
+          value2: parseFloat(dailyDiaBp),
+          unit: "mmHg",
+          isNormal: checkVitalNormal("Blood Pressure", parseFloat(dailySysBp), parseFloat(dailyDiaBp))
+        });
+      }
+      if (dailySugar) {
+        await addVitalReading(pid, {
+          readingType: "Blood Sugar",
+          value: parseFloat(dailySugar),
+          unit: "mg/dL",
+          isNormal: checkVitalNormal("Blood Sugar", parseFloat(dailySugar))
+        });
+      }
+      if (dailyHeartRate) {
+        await addVitalReading(pid, {
+          readingType: "Heart Rate",
+          value: parseFloat(dailyHeartRate),
+          unit: "bpm",
+          isNormal: checkVitalNormal("Heart Rate", parseFloat(dailyHeartRate))
+        });
+      }
+      if (dailyTemp) {
+        await addVitalReading(pid, {
+          readingType: "Temperature",
+          value: parseFloat(dailyTemp),
+          unit: "C",
+          isNormal: checkVitalNormal("Temperature", parseFloat(dailyTemp))
+        });
+      }
+      if (dailyWeight) {
+        await addVitalReading(pid, {
+          readingType: "Weight",
+          value: parseFloat(dailyWeight),
+          unit: "kg",
+          isNormal: checkVitalNormal("Weight", parseFloat(dailyWeight))
+        });
+      }
+
+      // Refresh latest vitals
+      const bp = await getLatestVital(pid, "Blood Pressure");
+      const sugar = await getLatestVital(pid, "Blood Sugar");
+      if (bp) setLastBP(bp);
+      if (sugar) setLastSugar(sugar);
+
+      setShowDailySuccess(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setTimeout(() => {
+        setShowDailyVitalsModal(false);
+        setShowDailySuccess(false);
+        setDailySysBp("");
+        setDailyDiaBp("");
+        setDailySugar("");
+        setDailyHeartRate("");
+        setDailyTemp("");
+        setDailyWeight("");
+      }, 1500);
+    } catch (error) {
+      Alert.alert("Error", "Could not save vitals.");
+    } finally {
+      setIsSavingDaily(false);
+    }
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
@@ -417,7 +541,7 @@ export default function HomeScreen() {
           </LinearGradient>
         </RNAnimated.View>
 
-        {/* FLOATING GLASS TIP CARD */}
+        {/* FLOATING GLASS TIP CARD — AI-generated, refreshes every 6h */}
         <View style={styles.tipWrapper}>
           <LinearGradient
             colors={isDark ? ["rgba(30, 41, 59, 0.95)", "rgba(15, 23, 42, 0.9)"] : ["rgba(255, 255, 255, 0.95)", "rgba(240, 253, 244, 0.9)"]}
@@ -428,12 +552,20 @@ export default function HomeScreen() {
                 <Ionicons name="bulb" size={22} color={isDark ? "#fff" : "#059669"} />
               </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.tipTitle, { color: isDark ? '#6EE7B7' : '#064E3B' }]}>Daily Wellness</Text>
-              <Text style={[styles.tipDesc, { color: isDark ? '#34D399' : '#047857' }]}>"Small steps lead to great health. Stay active and hydrated."</Text>
+            <View style={{ flex: 1, marginHorizontal: 12 }}>
+              <Text style={[styles.tipTitle, { color: isDark ? '#6EE7B7' : '#064E3B' }]}>{isRTL ? "نصيحة اليوم ✨" : "Daily Wellness ✨"}</Text>
+              <Text style={[styles.tipDesc, { color: isDark ? '#34D399' : '#047857' }, isRTL && { textAlign: 'right' }]}>
+                {isRTL ? dailyTip.tip_ar : dailyTip.tip_en}
+              </Text>
             </View>
-            <TouchableOpacity style={styles.tipArrow}>
-              <ChevronRight size={18} color="#059669" />
+            <TouchableOpacity 
+              style={styles.tipArrow}
+              onPress={() => {
+                AsyncStorage.removeItem("daily_health_tip");
+                getDailyHealthTip().then(setDailyTip).catch(() => {});
+              }}
+            >
+              <Ionicons name="refresh" size={16} color="#059669" />
             </TouchableOpacity>
           </LinearGradient>
         </View>
@@ -475,24 +607,53 @@ export default function HomeScreen() {
                     } catch { return profile.aiDiagnosisSummary; }
                   })()}
                 </Text>
-                {recommendedDoctors.length > 0 && (
-                  <View style={styles.docRecommendSection}>
-                    <Text style={[styles.docRecommendLabel, { color: colors.textMuted }]}>{isRTL ? "الأطباء المقترحون" : "Recommended Doctors"}</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.docRecommendScroll}>
-                      {recommendedDoctors.map((doc) => (
-                        <TouchableOpacity
-                          key={doc.id}
-                          style={[styles.docRecommendChip, { backgroundColor: colors.background, borderColor: colors.border }]}
-                          onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { id: doc.id } } as any)}
-                          activeOpacity={0.7}
+                {(() => {
+                  let needsDoc = true;
+                  try {
+                    const parsed = JSON.parse(profile.aiDiagnosisSummary);
+                    needsDoc = parsed.needsDoctor !== false;
+                  } catch {}
+                  if (!needsDoc) return null;
+                  if (recommendedDoctors.length > 0) {
+                    return (
+                      <View style={styles.docRecommendSection}>
+                        <Text style={[styles.docRecommendLabel, { color: colors.textMuted }]}>{isRTL ? "الأطباء المقترحون" : "Recommended Doctors"}</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.docRecommendScroll}>
+                          {recommendedDoctors.map((doc) => (
+                            <TouchableOpacity
+                              key={doc.id}
+                              style={[styles.docRecommendChip, { backgroundColor: colors.background, borderColor: colors.border }]}
+                              onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { id: doc.id } } as any)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.docRecommendName, { color: colors.text }]} numberOfLines={1}>{doc.name}</Text>
+                              <Text style={[styles.docRecommendSpecialty, { color: colors.primary }]} numberOfLines={1}>{doc.specialty}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    );
+                  }
+                  if (recommendedSpecialty) {
+                    return (
+                      <View style={styles.docRecommendSection}>
+                        <Text style={[styles.docRecommendLabel, { color: colors.textMuted }]}>{isRTL ? "التخصص المقترح" : "Recommended Specialty"}</Text>
+                        <TouchableOpacity 
+                          style={[styles.docRecommendChip, { backgroundColor: isDark ? 'rgba(234,179,8,0.1)' : '#FEF9C3', borderColor: isDark ? 'rgba(234,179,8,0.2)' : '#FEF08A', marginTop: 8, padding: 12, width: '100%', alignItems: 'center' }]}
+                          onPress={() => router.push({ pathname: "/(patient)/doctors", params: { specialty: recommendedSpecialty } } as any)}
                         >
-                          <Text style={[styles.docRecommendName, { color: colors.text }]} numberOfLines={1}>{doc.name}</Text>
-                          <Text style={[styles.docRecommendSpecialty, { color: colors.primary }]} numberOfLines={1}>{doc.specialty}</Text>
+                          <Text style={[styles.docRecommendName, { color: isDark ? '#FDE047' : '#854D0E', textAlign: 'center', marginBottom: 4 }]} numberOfLines={2}>
+                            {isRTL ? `لا يوجد أطباء متاحين حالياً في تخصص (${recommendedSpecialty}).` : `No doctors available right now in ${recommendedSpecialty}.`}
+                          </Text>
+                          <Text style={[styles.docRecommendSpecialty, { color: isDark ? '#FEF08A' : '#A16207', textAlign: 'center' }]} numberOfLines={2}>
+                            {isRTL ? "انقر هنا للبحث عن أطباء في هذا المجال." : "Tap here to search for a specialist in this field."}
+                          </Text>
                         </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
+                      </View>
+                    );
+                  }
+                  return null;
+                })()}
                 <TouchableOpacity
                   style={styles.fullReportBtnRefined}
                   onPress={() => setShowAiModal(true)}
@@ -763,41 +924,235 @@ export default function HomeScreen() {
                   } catch { return profile?.aiDiagnosisSummary; }
                 })()}
               </Text>
-              {recommendedDoctors.length > 0 && (
-                <View style={[styles.modalDocSection, { borderTopColor: colors.border }]}>
-                  <Text style={[styles.modalDocLabel, { color: colors.text }]}>{isRTL ? "الأطباء المقترحون" : "Recommended Doctors"}</Text>
-                  {recommendedDoctors.map((doc) => (
-                    <TouchableOpacity
-                      key={doc.id}
-                      style={[styles.modalDocCard, { backgroundColor: colors.background, borderColor: colors.border }]}
-                      onPress={() => { setShowAiModal(false); router.push({ pathname: "/(patient)/doctor-details", params: { id: doc.id } } as any); }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.modalDocInfo}>
-                        <Text style={[styles.modalDocName, { color: colors.text }]}>{doc.name}</Text>
-                        <Text style={[styles.modalDocSpecialty, { color: colors.primary }]}>{doc.specialty}</Text>
-                        <Text style={[styles.modalDocMeta, { color: colors.textMuted }]}>{doc.location} · {doc.rating?.toFixed(1)} ⭐</Text>
-                      </View>
-                      <ChevronRight size={18} color={colors.textMuted} />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
+              {(() => {
+                let needsDoc = true;
+                try {
+                  const parsed = JSON.parse(profile?.aiDiagnosisSummary || "{}");
+                  needsDoc = parsed.needsDoctor !== false;
+                } catch {}
+                if (!needsDoc) return null;
+                if (recommendedDoctors.length > 0) {
+                  return (
+                    <View style={[styles.modalDocSection, { borderTopColor: colors.border }]}>
+                      <Text style={[styles.modalDocLabel, { color: colors.text }]}>{isRTL ? "الأطباء المقترحون" : "Recommended Doctors"}</Text>
+                      {recommendedDoctors.map((doc) => (
+                        <TouchableOpacity
+                          key={doc.id}
+                          style={[styles.modalDocCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+                          onPress={() => { setShowAiModal(false); router.push({ pathname: "/(patient)/doctor-details", params: { id: doc.id } } as any); }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.modalDocInfo}>
+                            <Text style={[styles.modalDocName, { color: colors.text }]}>{doc.name}</Text>
+                            <Text style={[styles.modalDocSpecialty, { color: colors.primary }]}>{doc.specialty}</Text>
+                            <Text style={[styles.modalDocMeta, { color: colors.textMuted }]}>{doc.location} · {doc.rating?.toFixed(1)} ⭐</Text>
+                          </View>
+                          <ChevronRight size={18} color={colors.textMuted} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  );
+                }
+                if (recommendedSpecialty) {
+                  return (
+                    <View style={[styles.modalDocSection, { borderTopColor: colors.border }]}>
+                      <Text style={[styles.modalDocLabel, { color: colors.text }]}>{isRTL ? "التخصص المقترح" : "Recommended Specialty"}</Text>
+                      <TouchableOpacity 
+                        style={[styles.modalDocCard, { backgroundColor: isDark ? 'rgba(234,179,8,0.1)' : '#FEF9C3', borderColor: isDark ? 'rgba(234,179,8,0.2)' : '#FEF08A', alignItems: 'center', paddingVertical: 16 }]}
+                        onPress={() => { setShowAiModal(false); router.push({ pathname: "/(patient)/doctors", params: { specialty: recommendedSpecialty } } as any); }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.modalDocName, { color: isDark ? '#FDE047' : '#854D0E', textAlign: 'center' }]}>
+                          {isRTL ? `لا يوجد أطباء متاحين في تخصص (${recommendedSpecialty})` : `No doctors available in ${recommendedSpecialty}`}
+                        </Text>
+                        <Text style={[styles.modalDocMeta, { color: isDark ? '#FEF08A' : '#A16207', textAlign: 'center', marginTop: 4 }]}>
+                          {isRTL ? "انقر للبحث عن أطباء في هذا التخصص" : "Tap to search for doctors in this specialty"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
+              
+              {/* Disclaimer */}
+              <Text style={{ marginTop: 24, fontSize: 11, color: colors.textMuted, textAlign: 'center', fontStyle: 'italic', paddingHorizontal: 16 }}>
+                {isRTL 
+                  ? "ملاحظة: الذكاء الاصطناعي قد يخطئ في التحليل والترشيحات. يجب دائمًا استشارة طبيب متخصص وتأكيد المعلومات الطبية بنفسك." 
+                  : "Note: AI can make mistakes in analysis and recommendations. Always consult a specialist doctor and verify medical information yourself."}
+              </Text>
             </ScrollView>
           </View>
         </View>
       </Modal>
 
-      {/* ULTRA-LUXURY FLOATING SEARCH */}
-      <TouchableOpacity
-        style={styles.floatingSearch}
-        activeOpacity={0.95}
-        onPress={() => router.push("/(patient)/doctors")}
+      {/* DRAGGABLE & HIDEABLE STACKED FABs */}
+      <RNAnimated.View 
+        {...panResponder.panHandlers}
+        style={[
+          styles.stackedFabContainer,
+          { transform: [{ translateX: pan.x }, { translateY: pan.y }] }
+        ]}
       >
-        <LinearGradient colors={["#10B981", "#059669"]} style={styles.fabGradient}>
-          <Search size={28} color="#fff" />
-        </LinearGradient>
-      </TouchableOpacity>
+        {isFabHidden ? (
+          <TouchableOpacity 
+            style={styles.fabHiddenHandle} 
+            activeOpacity={0.8}
+            onPress={() => setIsFabHidden(false)}
+          >
+            <Eye size={20} color="rgba(255,255,255,0.8)" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.fabVisibleContainer}>
+            {/* Hide Button */}
+            <TouchableOpacity 
+              style={styles.fabHideBtn} 
+              activeOpacity={0.8}
+              onPress={() => setIsFabHidden(true)}
+            >
+              <EyeOff size={16} color="rgba(255,255,255,0.9)" />
+            </TouchableOpacity>
+
+            {/* Search FAB */}
+            <TouchableOpacity
+              style={[styles.fabItem, { backgroundColor: '#10B981' }]}
+              activeOpacity={0.9}
+              onPress={() => router.push("/(patient)/doctors")}
+            >
+              <Search size={22} color="#fff" />
+            </TouchableOpacity>
+
+            {/* Vitals FAB */}
+            <TouchableOpacity 
+              style={[styles.fabItem, { backgroundColor: '#059669', marginTop: 12 }]}
+              activeOpacity={0.9}
+              onPress={() => setShowDailyVitalsModal(true)}
+            >
+              <Activity size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </RNAnimated.View>
+
+      {/* DAILY VITALS BOTTOM SHEET MODAL */}
+      <Modal visible={showDailyVitalsModal} animationType="slide" transparent={true}>
+        <View style={styles.dailyModalOverlay}>
+          <TouchableOpacity style={styles.dailyModalBg} onPress={() => setShowDailyVitalsModal(false)} />
+          <View style={[styles.dailyModalContent, { backgroundColor: colors.card }]}>
+            <View style={styles.dailyModalHandle} />
+            <Text style={[styles.dailyModalTitle, { color: colors.text }]}>
+              {isRTL ? "الفحص اليومي 🩺" : "Daily Check-in 🩺"}
+            </Text>
+            
+            {!showDailySuccess ? (
+              <ScrollView style={styles.dailyModalForm} contentContainerStyle={{ paddingBottom: 20 }}>
+                <Text style={{ color: colors.textMuted, marginBottom: 12, textAlign: 'center' }}>
+                  {isRTL ? "سجل قياساتك اليومية لمتابعة صحتك" : "Record your daily vitals to track your health"}
+                </Text>
+
+                {/* Blood Pressure Input */}
+                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12 }]}>
+                  <Activity size={20} color="#059669" style={styles.dailyIcon} />
+                  <TextInput
+                    style={[styles.modalInput, { color: colors.text }]}
+                    placeholder="Sys"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    value={dailySysBp}
+                    onChangeText={setDailySysBp}
+                  />
+                  <Text style={{ color: colors.textMuted, fontSize: 18 }}>/</Text>
+                  <TextInput
+                    style={[styles.modalInput, { color: colors.text }]}
+                    placeholder="Dia"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    value={dailyDiaBp}
+                    onChangeText={setDailyDiaBp}
+                  />
+                  <Text style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>mmHg</Text>
+                </View>
+
+                {/* Blood Sugar Input */}
+                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12 }]}>
+                  <Droplets size={20} color="#3B82F6" style={styles.dailyIcon} />
+                  <TextInput
+                    style={[styles.modalInput, { color: colors.text }]}
+                    placeholder={isRTL ? "السكر" : "Blood Sugar"}
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    value={dailySugar}
+                    onChangeText={setDailySugar}
+                  />
+                  <Text style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>mg/dL</Text>
+                </View>
+
+                {/* Heart Rate Input */}
+                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12 }]}>
+                  <HeartPulse size={20} color="#EF4444" style={styles.dailyIcon} />
+                  <TextInput
+                    style={[styles.modalInput, { color: colors.text }]}
+                    placeholder={isRTL ? "معدل النبض" : "Heart Rate"}
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    value={dailyHeartRate}
+                    onChangeText={setDailyHeartRate}
+                  />
+                  <Text style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>bpm</Text>
+                </View>
+
+                {/* Temperature Input */}
+                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12 }]}>
+                  <Thermometer size={20} color="#F59E0B" style={styles.dailyIcon} />
+                  <TextInput
+                    style={[styles.modalInput, { color: colors.text }]}
+                    placeholder={isRTL ? "درجة الحرارة" : "Temperature"}
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    value={dailyTemp}
+                    onChangeText={setDailyTemp}
+                  />
+                  <Text style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>C°</Text>
+                </View>
+
+                {/* Weight Input */}
+                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12 }]}>
+                  <User size={20} color="#8B5CF6" style={styles.dailyIcon} />
+                  <TextInput
+                    style={[styles.modalInput, { color: colors.text }]}
+                    placeholder={isRTL ? "الوزن" : "Weight"}
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="numeric"
+                    value={dailyWeight}
+                    onChangeText={setDailyWeight}
+                  />
+                  <Text style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>kg</Text>
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.modalSaveBtn, (!dailySysBp && !dailyDiaBp && !dailySugar && !dailyHeartRate && !dailyTemp && !dailyWeight) && { opacity: 0.5 }]}
+                  onPress={handleSaveDailyVitals}
+                  disabled={isSavingDaily || (!dailySysBp && !dailyDiaBp && !dailySugar && !dailyHeartRate && !dailyTemp && !dailyWeight)}
+                >
+                  {isSavingDaily ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.modalSaveBtnText}>{isRTL ? "حفظ القياسات" : "Save Vitals"}</Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            ) : (
+              <View style={styles.dailySuccessState}>
+                <CheckCircle2 size={50} color="#059669" style={{ marginBottom: 16 }} />
+                <Text style={{ color: '#059669', fontWeight: 'bold', fontSize: 18, textAlign: 'center' }}>
+                  {isRTL ? "تم تسجيل قياسات اليوم بنجاح! 🌟" : "Today's vitals saved successfully! 🌟"}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -838,7 +1193,29 @@ const styles = StyleSheet.create({
   },
   findDoctorContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   findDoctorText: { color: '#064E3B', fontSize: 15, fontWeight: '800' },
-  findDoctorArrow: { width: 34, height: 34, borderRadius: 12, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center' },
+  findDoctorArrow: {
+    width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  fabContainer: {
+    position: 'absolute', bottom: 30, left: 25, width: 60, height: 60, borderRadius: 30,
+    justifyContent: 'center', alignItems: 'center', elevation: 8, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, zIndex: 100
+  },
+  dailyModalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  dailyModalBg: { ...StyleSheet.absoluteFillObject },
+  dailyModalContent: { padding: 24, borderTopLeftRadius: 30, borderTopRightRadius: 30, minHeight: 300, elevation: 10 },
+  dailyModalHandle: { width: 40, height: 5, backgroundColor: 'rgba(150,150,150,0.3)', borderRadius: 3, alignSelf: 'center', marginBottom: 20 },
+  dailyModalTitle: { fontSize: 20, fontWeight: '800', textAlign: 'center', marginBottom: 16 },
+  dailyModalForm: { gap: 16 },
+  modalInputGroup: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, paddingHorizontal: 16, height: 56, borderWidth: 1 },
+  dailyIcon: { marginRight: 12 },
+  modalInput: { flex: 1, fontSize: 16, textAlign: 'center', minWidth: 40 },
+  modalSaveBtn: { height: 56, borderRadius: 16, backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center', marginTop: 10, shadowColor: '#059669', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  modalSaveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  dailySuccessState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 },
+  tipWrapper: { paddingHorizontal: 16, marginTop: -12, marginBottom: 20, zIndex: 10 },
+  magicTipCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 20, borderWidth: 1, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12 },
   greetText: { fontSize: 13, color: "rgba(255,255,255,0.8)", fontWeight: '500' },
   nameRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
   userName: { fontSize: 19, fontWeight: "700", color: "#fff" },
@@ -850,12 +1227,6 @@ const styles = StyleSheet.create({
   headerDecor1: { position: 'absolute', width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.1)', top: -50, right: -30 },
   headerDecor2: { position: 'absolute', width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.05)', bottom: -20, left: 20 },
 
-  tipWrapper: { paddingHorizontal: 20, marginTop: -30, zIndex: 20 },
-  magicTipCard: {
-    flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 28,
-    elevation: 8, shadowColor: COLORS.primary, shadowOpacity: 0.15, shadowRadius: 15,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)'
-  },
   tipIconBox: { width: 50, height: 50, borderRadius: 18, backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' },
   innerIconBox: { width: 38, height: 38, borderRadius: 14, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
   tipTitle: { fontSize: 14, fontWeight: '800', color: '#92400E', marginBottom: 2 },
@@ -876,12 +1247,27 @@ const styles = StyleSheet.create({
   catIconBox: { width: 56, height: 56, borderRadius: 20, justifyContent: 'center', alignItems: 'center', elevation: 5, shadowOpacity: 0.05, backgroundColor: '#fff', borderWidth: 1, borderColor: '#F1F5F9' },
   catText: { fontSize: 10, fontWeight: '700', color: '#475569', marginTop: 6 },
   docList: { paddingHorizontal: 16, gap: 0, paddingBottom: 15 },
-  floatingSearch: {
-    position: 'absolute', bottom: 30, right: 25,
-    width: 64, height: 64, borderRadius: 32,
+  stackedFabContainer: {
+    position: 'absolute', bottom: 30, right: 25, zIndex: 100,
     elevation: 12, shadowColor: '#059669', shadowOpacity: 0.4, shadowRadius: 15
   },
-  fabGradient: { width: '100%', height: '100%', borderRadius: 32, justifyContent: 'center', alignItems: 'center' },
+  fabVisibleContainer: {
+    alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.9)', 
+    padding: 8, borderRadius: 30, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)'
+  },
+  fabItem: {
+    width: 50, height: 50, borderRadius: 25, 
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4
+  },
+  fabHideBtn: {
+    width: 30, height: 30, borderRadius: 15, backgroundColor: '#94A3B8',
+    justifyContent: 'center', alignItems: 'center', marginBottom: 12
+  },
+  fabHiddenHandle: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(16, 185, 129, 0.6)',
+    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff'
+  },
 
   reminderContainer: { paddingHorizontal: 20, marginTop: 15 },
   reminderCard: { borderRadius: 24, padding: 16, elevation: 8, shadowColor: '#064E3B', shadowOpacity: 0.25, shadowRadius: 15, overflow: 'hidden' },

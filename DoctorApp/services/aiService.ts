@@ -1,5 +1,61 @@
 import { API } from "../constants/api";
 import { apiFetch } from "./http";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const TIP_CACHE_KEY = "daily_health_tip";
+const TIP_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+interface DailyTip {
+  tip_en: string;
+  tip_ar: string;
+  cachedAt: number;
+}
+
+export const getDailyHealthTip = async (): Promise<{ tip_en: string; tip_ar: string }> => {
+  try {
+    // Check cache first
+    const cached = await AsyncStorage.getItem(TIP_CACHE_KEY);
+    if (cached) {
+      const parsed: DailyTip = JSON.parse(cached);
+      if (Date.now() - parsed.cachedAt < TIP_CACHE_DURATION) {
+        return { tip_en: parsed.tip_en, tip_ar: parsed.tip_ar };
+      }
+    }
+
+    // Fetch new personalized tip from C# Backend (which securely gets PatientId and diseases)
+    const response = await apiFetch<{ tip_en?: string; tip_ar?: string }>(
+      `${API.chat.ask.replace("/ask", "/daily-tip")}`,
+      {
+        method: "GET",
+      },
+      true
+    );
+
+    if (response && response.tip_en && response.tip_ar) {
+      const tip = {
+        tip_en: response.tip_en,
+        tip_ar: response.tip_ar,
+      };
+      // Cache it
+      await AsyncStorage.setItem(TIP_CACHE_KEY, JSON.stringify({ ...tip, cachedAt: Date.now() }));
+      return tip;
+    }
+
+    throw new Error("Invalid response format from daily-tip endpoint");
+  } catch (err) {
+    console.log("getDailyHealthTip fallback:", err);
+    // Return a nice fallback
+    const fallbacks = [
+      { tip_en: "A glass of water first thing in the morning kickstarts your metabolism.", tip_ar: "كوب ماء في الصباح ينشط عملية الأيض لديك." },
+      { tip_en: "Take a 5-minute stretch break every hour — your body will thank you.", tip_ar: "خذ استراحة تمدد لـ 5 دقائق كل ساعة — جسمك سيشكرك." },
+      { tip_en: "Deep breathing for 2 minutes can reduce stress and lower blood pressure.", tip_ar: "التنفس العميق لمدة دقيقتين يقلل التوتر ويخفض ضغط الدم." },
+      { tip_en: "Walking 30 minutes daily reduces the risk of heart disease by 35%.", tip_ar: "المشي 30 دقيقة يومياً يقلل خطر أمراض القلب بنسبة 35%." },
+      { tip_en: "Good sleep is medicine — aim for 7-8 hours every night.", tip_ar: "النوم الجيد دواء — حاول النوم 7-8 ساعات كل ليلة." },
+    ];
+    const idx = Math.floor(Date.now() / TIP_CACHE_DURATION) % fallbacks.length;
+    return fallbacks[idx];
+  }
+};
 
 export const analyzePatientHistory = async (history: unknown) => {
   return apiFetch<Record<string, string>>(

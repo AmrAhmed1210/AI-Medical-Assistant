@@ -255,6 +255,16 @@ public sealed class MedicalAiService : IMedicalAiService
         CancellationToken ct = default) =>
         await PostJsonAsync<object>("/parse-medical-profile", new { text }, ct);
 
+    public async Task<object?> GeneratePreVisitSummaryAsync(
+        object payload,
+        CancellationToken ct = default) =>
+        await PostJsonAsync<object>("/pre-visit-summary", payload, ct);
+
+    public async Task<object?> GetPersonalizedTipAsync(
+        object payload,
+        CancellationToken ct = default) =>
+        await PostJsonAsync<object>("/personalized-tip", payload, ct);
+
     private async Task<T?> PostJsonAsync<T>(
         string path,
         object payload,

@@ -45,4 +45,12 @@ public interface IMedicalAiService
     Task<object?> ParseMedicalProfileAsync(
         string text,
         CancellationToken ct = default);
+
+    Task<object?> GeneratePreVisitSummaryAsync(
+        object payload,
+        CancellationToken ct = default);
+
+    Task<object?> GetPersonalizedTipAsync(
+        object payload,
+        CancellationToken ct = default);
 }

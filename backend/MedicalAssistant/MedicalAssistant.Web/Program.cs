@@ -202,7 +202,7 @@ public class Program
                     
                     var newAdmin = new MedicalAssistant.Domain.Entities.UserModule.User
                     {
-                        FullName = "Hassan Mohamed",
+                        FullName = "Admin",
                         Email = "admin@admin.com",
                         PasswordHash = hashedPassword,
                         Role = "Admin",
@@ -214,6 +214,13 @@ public class Program
                     context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().Add(newAdmin);
                     context.SaveChanges();
                     logger.LogInformation("Admin user seeded successfully.");
+                }
+                else if (adminUser.FullName == "Hassan Mohamed")
+                {
+                    // Update existing seeded user to "Admin"
+                    adminUser.FullName = "Admin";
+                    context.SaveChanges();
+                    logger.LogInformation("Admin user name updated from Hassan Mohamed to Admin.");
                 }
             }
             catch (Exception ex)

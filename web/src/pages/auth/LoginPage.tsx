@@ -62,17 +62,37 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden" dir="ltr">
-      {/* Animated background orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Animated Aesthetic Bubbles (Matching Mobile App) */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-[0]">
         <motion.div
           animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-1/4 -left-20 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl"
+          className="absolute"
+          style={{ 
+            width: 500, height: 500, top: -150, left: -150, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #10B981, #059669)',
+            filter: 'blur(100px)', opacity: 0.5
+          }}
         />
         <motion.div
           animate={{ x: [0, -25, 0], y: [0, 25, 0] }}
           transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute bottom-1/4 -right-20 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl"
+          className="absolute"
+          style={{ 
+            width: 600, height: 600, bottom: -200, right: -200, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #34D399, #10B981)',
+            filter: 'blur(120px)', opacity: 0.4 
+          }}
+        />
+        <motion.div
+          animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute"
+          style={{ 
+            width: 400, height: 400, top: '30%', left: '30%', borderRadius: '50%',
+            background: 'linear-gradient(135deg, #6EE7B7, #059669)',
+            filter: 'blur(100px)', opacity: 0.3 
+          }}
         />
       </div>
 

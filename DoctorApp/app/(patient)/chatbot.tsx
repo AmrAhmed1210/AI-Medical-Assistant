@@ -23,6 +23,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from "../../context/ThemeContext";
 import { getRecommendedDoctorsForNeed, formatDoctorRecommendationsForAi } from "../../services/doctorService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getMyPatientId } from "../../services/authService";
+import { getMyProfile } from "../../services/profileService";
 
 type ChatUiMessage = ChatMessage & { suggestedDoctors?: any[]; suggestedSpecialty?: string };
 type LocalChatSession = {
@@ -32,8 +34,8 @@ type LocalChatSession = {
   messages: ChatUiMessage[];
 };
 
-const CHAT_SESSIONS_KEY = "ai_chatbot_saved_sessions_v1";
-const CURRENT_CHAT_SESSION_KEY = "ai_chatbot_current_session_v1";
+const getSessionsKey = (patientId: number) => `ai_chatbot_saved_sessions_v1_${patientId}`;
+const getCurrentSessionKey = (patientId: number) => `ai_chatbot_current_session_v1_${patientId}`;
 
 export default function ChatBotScreen() {
   const router = useRouter();
@@ -46,19 +48,37 @@ export default function ChatBotScreen() {
   const [historyVisible, setHistoryVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
+  const [patientId, setPatientId] = useState<number | null>(null);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+
   // AI medical chat is stateless on the server — no session restore needed.
 
   useEffect(() => {
-    restoreSavedChats().catch(() => undefined);
+    const init = async () => {
+      const pid = await getMyPatientId();
+      if (pid) {
+        setPatientId(pid);
+        await restoreSavedChats(pid);
+        try {
+          const profile = await getMyProfile();
+          if (profile?.aiDiagnosisSummary) {
+            setAiSummary(profile.aiDiagnosisSummary);
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+    init().catch(() => undefined);
   }, []);
 
-  const restoreSavedChats = async () => {
-    const raw = await AsyncStorage.getItem(CHAT_SESSIONS_KEY);
+  const restoreSavedChats = async (pid: number) => {
+    const raw = await AsyncStorage.getItem(getSessionsKey(pid));
     const sessions: LocalChatSession[] = raw ? JSON.parse(raw) : [];
     const sorted = sessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     setSavedSessions(sorted);
 
-    const currentRaw = await AsyncStorage.getItem(CURRENT_CHAT_SESSION_KEY);
+    const currentRaw = await AsyncStorage.getItem(getCurrentSessionKey(pid));
     const currentId = currentRaw ? Number(currentRaw) : sorted[0]?.id;
     const current = sorted.find((session) => session.id === currentId) ?? sorted[0];
     if (current) {
@@ -68,7 +88,7 @@ export default function ChatBotScreen() {
     }
   };
 
-  const persistLocalChat = async (sessionId: number, nextMessages: ChatUiMessage[]) => {
+  const persistLocalChat = async (pid: number, sessionId: number, nextMessages: ChatUiMessage[]) => {
     if (nextMessages.length === 0) return;
     const firstUserMessage = nextMessages.find((message) => message.role === "user")?.content ?? "Medical chat";
     const session: LocalChatSession = {
@@ -80,15 +100,17 @@ export default function ChatBotScreen() {
 
     const nextSessions = [session, ...savedSessions.filter((item) => item.id !== sessionId)].slice(0, 20);
     setSavedSessions(nextSessions);
-    await AsyncStorage.setItem(CHAT_SESSIONS_KEY, JSON.stringify(nextSessions));
-    await AsyncStorage.setItem(CURRENT_CHAT_SESSION_KEY, String(sessionId));
+    await AsyncStorage.setItem(getSessionsKey(pid), JSON.stringify(nextSessions));
+    await AsyncStorage.setItem(getCurrentSessionKey(pid), String(sessionId));
   };
 
   const openSavedSession = async (session: LocalChatSession) => {
     setCurrentSessionId(session.id);
     setMessages(session.messages);
     setHistoryVisible(false);
-    await AsyncStorage.setItem(CURRENT_CHAT_SESSION_KEY, String(session.id));
+    if (patientId) {
+      await AsyncStorage.setItem(getCurrentSessionKey(patientId), String(session.id));
+    }
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 100);
   };
 
@@ -123,7 +145,9 @@ export default function ChatBotScreen() {
     
     const optimisticMessages = [...messages, tempUserMsg];
     setMessages(optimisticMessages);
-    persistLocalChat(localSessionId, optimisticMessages).catch(() => undefined);
+    if (patientId) {
+      persistLocalChat(patientId, localSessionId, optimisticMessages).catch(() => undefined);
+    }
     setIsLoading(true);
 
     try {
@@ -135,9 +159,14 @@ export default function ChatBotScreen() {
         contextPrompt = `${userMsg}\n\n[Platform doctor recommendations context - use only if relevant]\nRecommended specialty: ${doctorRecommendations.specialty}\nAvailable doctors from our platform sorted by highest reviews/rating:\n${JSON.stringify(formatDoctorRecommendationsForAi(doctorRecommendations.doctors))}\nIf the patient needs a specialist, recommend these doctors by name and specialty.`;
       } else if (doctorRecommendations.specialty && doctorRecommendations.doctors.length === 0) {
         // Case 2: Specialty inferred BUT no matching doctors on platform → tell the user what specialty they need
-        contextPrompt = `${userMsg}\n\n[Context: Based on the patient's message, the recommended medical specialty is "${doctorRecommendations.specialty}". However, there are currently no ${doctorRecommendations.specialty} doctors registered on our platform. Tell the patient that they should look for a "${doctorRecommendations.specialty}" specialist. Do NOT recommend any specific doctor names.]`;
+        contextPrompt = `${userMsg}\n\n[Context: Based on the patient's message, the recommended medical specialty is "${doctorRecommendations.specialty}". However, there are currently no doctors available in the "${doctorRecommendations.specialty}" specialty on our platform. You MUST explicitly state in a simple and polite sentence that there are currently no doctors available on our platform for this specialty, and advise the patient to seek an external consultation with a "${doctorRecommendations.specialty}" doctor. DO NOT hallucinate doctor names.]`;
       }
       // Case 3: No specialty inferred → just send the raw message, no doctor context
+
+      // Inject the AI Diagnosis Summary from the Home Report if available
+      if (aiSummary) {
+        contextPrompt += `\n\n[System Context: The patient has a comprehensive AI medical profile/report. Please consider this background when giving advice to make it personalized and highly relevant:\n${aiSummary}]`;
+      }
 
       const history = messages.slice(-8).map((m) => ({
         id: m.id,
@@ -160,7 +189,9 @@ export default function ChatBotScreen() {
 
       const savedMessages = [...optimisticMessages, assistantMsg];
       setMessages(savedMessages);
-      persistLocalChat(localSessionId, savedMessages).catch(() => undefined);
+      if (patientId) {
+        persistLocalChat(patientId, localSessionId, savedMessages).catch(() => undefined);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       Toast.show({
@@ -206,7 +237,9 @@ export default function ChatBotScreen() {
     };
     const optimisticMessages = [...messages, tempMsg];
     setMessages(optimisticMessages);
-    persistLocalChat(localSessionId, optimisticMessages).catch(() => undefined);
+    if (patientId) {
+      persistLocalChat(patientId, localSessionId, optimisticMessages).catch(() => undefined);
+    }
 
     try {
       const result = await chatService.analyzeImage(uri, currentSessionId);
@@ -227,7 +260,9 @@ export default function ChatBotScreen() {
         assistantMsg
       ];
       setMessages(savedMessages);
-      persistLocalChat(localSessionId, savedMessages).catch(() => undefined);
+      if (patientId) {
+        persistLocalChat(patientId, localSessionId, savedMessages).catch(() => undefined);
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       Toast.show({ type: "error", text1: "Analysis failed" });
@@ -314,7 +349,9 @@ export default function ChatBotScreen() {
             onPress={() => {
               setCurrentSessionId(undefined);
               setMessages([]);
-              AsyncStorage.removeItem(CURRENT_CHAT_SESSION_KEY).catch(() => undefined);
+              if (patientId) {
+                AsyncStorage.removeItem(getCurrentSessionKey(patientId)).catch(() => undefined);
+              }
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
           >
@@ -363,6 +400,9 @@ export default function ChatBotScreen() {
             <Text style={styles.emptySubtitle}>
               Ask me about your symptoms, medications,{'\n'}
               or general health advice.
+            </Text>
+            <Text style={{ marginTop: 24, fontSize: 11, color: colors.textMuted, textAlign: 'center', fontStyle: 'italic', paddingHorizontal: 16 }}>
+                Note: AI can make mistakes in analysis and recommendations. Always consult a specialist doctor and verify medical information yourself.
             </Text>
           </View>
         }
