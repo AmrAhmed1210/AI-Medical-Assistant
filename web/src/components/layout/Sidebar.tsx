@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import {
   LayoutDashboard, Calendar, Users, FileText, MessageSquare,
   Clock, User, BarChart2, Settings, LogOut, Shield,
-  Cpu, TrendingUp, Star, LifeBuoy, Stethoscope,
+  Cpu, TrendingUp, Star, LifeBuoy, Stethoscope, CheckSquare
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/authStore'
@@ -22,6 +22,7 @@ interface NavItem {
 
 const doctorNav: NavItem[] = [
   { to: ROUTES.DOCTOR_DASHBOARD, icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
+  { to: ROUTES.DOCTOR_TODAY, icon: <CheckSquare size={18} />, label: "Today's Visits" },
   { to: ROUTES.DOCTOR_APPOINTMENTS, icon: <Calendar size={18} />, label: 'Appointments' },
   { to: ROUTES.DOCTOR_PATIENTS, icon: <Users size={18} />, label: 'Patients' },
   { to: ROUTES.DOCTOR_REVIEWS, icon: <Star size={18} />, label: 'Reviews' },
@@ -61,19 +62,6 @@ export function Sidebar() {
   const lowerRole = role?.toLowerCase()
   const navItems = lowerRole === 'admin' ? adminNav : (lowerRole === 'secretary' ? secretaryNav : doctorNav)
 
-  // Theme tokens for sidebar
-  const bg = isDark ? 'rgba(10,15,35,0.98)' : '#ffffff'
-  const border = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'
-  const logoText = isDark ? '#ffffff' : '#111827'
-  const logoSub = isDark ? 'rgba(148,163,184,0.7)' : '#9ca3af'
-  const navTextDefault = isDark ? 'rgba(148,163,184,0.85)' : '#4b5563'
-  const navHoverBg = isDark ? 'rgba(99,102,241,0.1)' : '#f3f4f6'
-  const navHoverText = isDark ? '#ffffff' : '#111827'
-  const userNameColor = isDark ? '#ffffff' : '#111827'
-  const userEmailColor = isDark ? 'rgba(148,163,184,0.7)' : '#9ca3af'
-  const avatarBg = isDark ? 'rgba(99,102,241,0.25)' : '#eef2ff'
-  const avatarText = isDark ? '#818cf8' : '#6366f1'
-
   const handleLogout = async () => {
     try {
       await authApi.logout()
@@ -98,118 +86,88 @@ export function Sidebar() {
       initial={{ x: -256 }}
       animate={{ x: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="fixed top-0 left-0 h-screen w-64 flex flex-col z-30"
-      style={{
-        background: bg,
-        borderRight: `1px solid ${border}`,
-        backdropFilter: isDark ? 'blur(24px)' : 'none',
-        boxShadow: isDark ? '4px 0 24px rgba(0,0,0,0.4)' : '2px 0 12px rgba(0,0,0,0.06)',
-      }}
+      className="fixed top-4 left-4 h-[calc(100vh-2rem)] w-64 flex flex-col z-30 rounded-3xl overflow-hidden glass-card dark:bg-slate-900/80 dark:border-slate-800 shadow-xl"
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5" style={{ borderBottom: `1px solid ${border}` }}>
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
-          style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 4px 16px rgba(99,102,241,0.4)' }}
-        >
-          <span className="text-white text-base font-black">M</span>
+      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-100 dark:border-slate-800/80">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-glow-primary bg-gradient-primary">
+          <span className="text-white text-lg font-black font-outfit">M</span>
         </div>
         <div>
-          <p className="text-base font-black" style={{ color: logoText }}>MedBook</p>
-          <p className="text-xs" style={{ color: logoSub }}>Smart Medical Platform</p>
+          <p className="text-lg font-black text-slate-900 dark:text-white font-outfit tracking-tight">MedBook</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Smart Medical</p>
         </div>
       </div>
 
       {/* Role badge */}
-      <div className="px-4 py-3">
-        <div
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold"
-          style={{
-            background: isDark ? 'rgba(99,102,241,0.12)' : '#eef2ff',
-            color: isDark ? '#818cf8' : '#6366f1',
-            border: `1px solid ${isDark ? 'rgba(99,102,241,0.25)' : 'rgba(99,102,241,0.2)'}`,
-          }}
-        >
+      <div className="px-5 py-4">
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold bg-primary-50 text-primary-600 dark:bg-primary-950/30 dark:text-primary-400 border border-primary-100 dark:border-primary-900/50">
           {lowerRole === 'admin' ? <Shield size={14} /> : lowerRole === 'secretary' ? <Users size={14} /> : <Stethoscope size={14} />}
           {lowerRole === 'admin' ? 'System Administrator' : lowerRole === 'secretary' ? 'Secretary' : 'Doctor'}
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-2 overflow-y-auto space-y-0.5">
+      <nav className="flex-1 px-4 py-2 overflow-y-auto space-y-1 scrollbar-hide">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
-            style={({ isActive }) => isActive
-              ? {
-                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                  color: '#ffffff',
-                  boxShadow: '0 4px 16px rgba(99,102,241,0.35)',
-                }
-              : { color: navTextDefault }
-            }
-            onMouseEnter={e => {
-              const el = e.currentTarget as HTMLElement
-              if (!el.style.boxShadow) {
-                el.style.background = navHoverBg
-                el.style.color = navHoverText
-              }
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget as HTMLElement
-              if (!el.style.boxShadow) {
-                el.style.background = 'transparent'
-                el.style.color = navTextDefault
-              }
-            }}
+            className={({ isActive }) => cn(
+              "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-300 relative group",
+              isActive 
+                ? "bg-gradient-primary text-white shadow-lg shadow-primary-500/30" 
+                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
+            )}
           >
-            <div className="relative">
-              {item.icon}
-              {item.to === ROUTES.DOCTOR_CHAT && unreadMessages > 0 && (
-                <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-green-500 rounded-full text-white text-[10px] font-bold shadow-sm">
-                  {unreadMessages > 9 ? '9+' : unreadMessages}
-                </span>
-              )}
-              {item.to === ROUTES.DOCTOR_APPOINTMENTS && unreadAppointments > 0 && (
-                <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 rounded-full text-white text-[10px] font-bold shadow-sm animate-pulse">
-                  {unreadAppointments > 9 ? '9+' : unreadAppointments}
-                </span>
-              )}
-              {item.to === ROUTES.ADMIN_APPLICATIONS && unreadDoctorApplications > 0 && (
-                <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-amber-500 rounded-full text-white text-[10px] font-bold shadow-sm animate-pulse">
-                  {unreadDoctorApplications > 9 ? '9+' : unreadDoctorApplications}
-                </span>
-              )}
-            </div>
-            {item.label}
+            {({ isActive }) => (
+              <>
+                <div className="relative z-10">
+                  {item.icon}
+                  {item.to === ROUTES.DOCTOR_CHAT && unreadMessages > 0 && (
+                    <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-emerald-500 rounded-full text-white text-[10px] font-bold shadow-sm ring-2 ring-white dark:ring-slate-900">
+                      {unreadMessages > 9 ? '9+' : unreadMessages}
+                    </span>
+                  )}
+                  {item.to === ROUTES.DOCTOR_APPOINTMENTS && unreadAppointments > 0 && (
+                    <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 rounded-full text-white text-[10px] font-bold shadow-sm animate-pulse ring-2 ring-white dark:ring-slate-900">
+                      {unreadAppointments > 9 ? '9+' : unreadAppointments}
+                    </span>
+                  )}
+                  {item.to === ROUTES.ADMIN_APPLICATIONS && unreadDoctorApplications > 0 && (
+                    <span className="absolute -top-1 -right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-amber-500 rounded-full text-white text-[10px] font-bold shadow-sm animate-pulse ring-2 ring-white dark:ring-slate-900">
+                      {unreadDoctorApplications > 9 ? '9+' : unreadDoctorApplications}
+                    </span>
+                  )}
+                </div>
+                <span className="z-10">{item.label}</span>
+                
+                {/* Hover Effect Background */}
+                {!isActive && (
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-primary-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                )}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
 
       {/* User info + logout */}
-      <div className="p-3" style={{ borderTop: `1px solid ${border}` }}>
-        <div className="flex items-center gap-3 px-2 py-2 mb-1">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ background: avatarBg }}
-          >
-            <span className="text-xs font-bold" style={{ color: avatarText }}>
+      <div className="p-4 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="flex items-center gap-3 px-2 py-2 mb-2 rounded-xl">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-primary-100 dark:bg-primary-900/40">
+            <span className="text-sm font-bold text-primary-600 dark:text-primary-400">
               {user?.name?.charAt(0) || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate" style={{ color: userNameColor }}>{user?.name}</p>
-            <p className="text-xs truncate" style={{ color: userEmailColor }}>{user?.email}</p>
+            <p className="text-sm font-bold truncate text-slate-800 dark:text-slate-200">{user?.name}</p>
+            <p className="text-xs truncate text-slate-500 dark:text-slate-400 font-medium">{user?.email}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-colors"
-          style={{ color: '#ef4444' }}
-          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = isDark ? 'rgba(239,68,68,0.1)' : '#fef2f2'}
-          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
         >
           <LogOut size={16} />
           Log Out

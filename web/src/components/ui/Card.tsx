@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  glass?: boolean
   children: ReactNode
 }
 
-export const Card = ({ className = '', children, ...props }: CardProps) => (
-  <div className={`rounded-3xl border border-white/20 bg-white/80 backdrop-blur-xl shadow-xl dark:bg-slate-950/65 dark:border-slate-800/80 dark:shadow-2xl dark:shadow-black/20 text-gray-900 dark:text-slate-100 transition-all duration-300 ${className}`} {...props}>
+export const Card = ({ className = '', children, glass = true, ...props }: CardProps) => (
+  <div className={`rounded-3xl border ${glass ? 'border-white/30 bg-white/30 backdrop-blur-xl' : 'border-white/40 bg-white/70 backdrop-blur-2xl'} shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:bg-slate-900/60 dark:border-slate-700/50 dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] text-gray-900 dark:text-slate-100 transition-all duration-300 ${className}`} {...props}>
     {children}
   </div>
 )

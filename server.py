@@ -2,6 +2,7 @@ import os
 import io
 import json
 import re
+import time
 import google.generativeai as genai
 from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,8 +19,8 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
 if GOOGLE_API_KEY:
     print(f"DEBUG: API Key found (starts with: {GOOGLE_API_KEY[:5]}...)")
     genai.configure(api_key=GOOGLE_API_KEY)
-    # Using gemini-flash-latest for stable and higher quota limits
-    model = genai.GenerativeModel('gemini-flash-latest')
+    # Using gemini-2.5-flash to avoid rate limits of gemini-3.5-flash
+    model = genai.GenerativeModel('gemini-2.5-flash')
 else:
     print("WARNING: GOOGLE_API_KEY not found in environment variables.")
 
@@ -38,6 +39,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Retry wrapper for Gemini API calls ---
+import asyncio
+
+async def generate_with_retry(prompt_or_parts, max_retries=3, initial_wait=15):
+    """Calls model.generate_content with automatic retry on 429 rate limit errors."""
+    for attempt in range(max_retries + 1):
+        try:
+            # Run the synchronous API call in a thread to avoid blocking
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(None, model.generate_content, prompt_or_parts)
+            return response
+        except Exception as e:
+            error_str = str(e)
+            if "429" in error_str and attempt < max_retries:
+                # Extract retry delay from error message if available
+                wait_time = initial_wait * (2 ** attempt)  # exponential backoff: 15s, 30s, 60s
+                # Try to parse the suggested retry time from the error
+                retry_match = re.search(r'retry in (\d+(?:\.\d+)?)', error_str, re.IGNORECASE)
+                if retry_match:
+                    wait_time = max(float(retry_match.group(1)) + 2, wait_time)  # add 2s buffer
+                print(f"DEBUG: Rate limited (429). Waiting {wait_time:.0f}s before retry {attempt + 1}/{max_retries}...")
+                await asyncio.sleep(wait_time)
+            else:
+                raise  # Re-raise non-429 errors or if max retries exhausted
 
 def strip_markdown(text: str) -> str:
     """Remove markdown formatting characters from AI responses."""
@@ -104,7 +130,7 @@ async def summarize_surgery(data: SurgeryInput):
     """
     
     try:
-        response = model.generate_content(prompt)
+        response = await generate_with_retry(prompt)
         content = response.text.strip()
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
@@ -132,6 +158,8 @@ async def ask_endpoint(data: AskRequest):
             
     try:
         chat = model.start_chat(history=chat_history)
+        # Note: chat.send_message doesn't go through our retry wrapper,
+        # but /ask is user-initiated so a single retry is acceptable
         prompt = f"""
         You are an advanced, professional medical AI assistant.
         The user is asking: {data.question}
@@ -243,12 +271,12 @@ async def analyze_history(data: PatientHistoryInput):
     - If platform doctors are provided AND the patient actually has a medical issue, include a doctor recommendation section using only those doctors. Recommend the highest-rated relevant doctors by name, specialty, rating/review count, and why they fit the patient's likely specialty need.
     - If a Recommended Specialty is provided but Platform Doctors is empty AND the patient has a medical issue, you MUST explicitly state in the report that there are no doctors available currently on our platform for this specialty, and politely advise the patient to seek an external consultation with a <Recommended Specialty> doctor. Do NOT hallucinate any doctor names.
     - Do not claim you are a doctor. You are an AI medical assistant and your advice does not replace professional care.
-    - Do not use markdown symbols like # or *.
+    - Do NOT use any emojis or markdown symbols under any circumstances. Emojis and markdown formatting are strictly forbidden.
 
     Return this JSON shape only:
     {{
-      "en": "English report with sections separated by double newlines (\\n\\n). Sections: General Summary, Warnings, Medications & Interactions, Safe Advice, Recommended Doctors (if any).",
-      "ar": "تقرير عربي بأقسام مفصولة بأسطر جديدة (\\n\\n): الملخص العام، التحذيرات، الأدوية والتداخلات، نصائح آمنة، الأطباء المقترحون من الموقع (إن وجد).",
+      "en": "English report with sections separated by double newlines (\\n\\n). Sections: General Summary, Warnings, Medications & Interactions, Safe Advice, Recommended Doctors (if any). DO NOT USE EMOJIS.",
+      "ar": "تقرير عربي بأقسام مفصولة بأسطر جديدة (\\n\\n): الملخص العام، التحذيرات، الأدوية والتداخلات، نصائح آمنة، الأطباء المقترحون من الموقع (إن وجد). لا تستخدم أي إيموجي على الإطلاق.",
       "needsDoctor": true // set to false ONLY if the patient is completely healthy and has no medical problems.
     }}
 
@@ -258,7 +286,7 @@ async def analyze_history(data: PatientHistoryInput):
     """
     
     try:
-        response = model.generate_content(prompt)
+        response = await generate_with_retry(prompt)
         # Robust JSON extraction
         content = response.text.strip()
         if "```json" in content:
@@ -346,14 +374,14 @@ async def analyze_image(
     
     try:
         # For multimodal, we pass the image and the prompt
-        response = model.generate_content([prompt, img])
+        response = await generate_with_retry([prompt, img])
         
         # Get the text from the response
         text = response.text
         
         # We also ask for technical details (extracted JSON)
         tech_prompt = f"Based on this extracted text, provide the raw medical data (test names, values, or medication list) as a plain text summary or JSON: {text}"
-        tech_response = model.generate_content(tech_prompt)
+        tech_response = await generate_with_retry(tech_prompt)
         tech_details = tech_response.text.strip()
         
         return {
@@ -383,7 +411,7 @@ async def summarize_item(data: dict):
     """
     
     try:
-        response = model.generate_content(prompt)
+        response = await generate_with_retry(prompt)
         content = response.text.strip()
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
@@ -422,7 +450,7 @@ async def analyze_vitals(data: dict):
     """
     
     try:
-        response = model.generate_content(prompt)
+        response = await generate_with_retry(prompt)
         content = response.text.strip()
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
@@ -458,7 +486,7 @@ async def check_medication(data: dict):
     """
     
     try:
-        response = model.generate_content(prompt)
+        response = await generate_with_retry(prompt)
         content = response.text.strip()
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
@@ -509,7 +537,7 @@ async def doctor_ai_assist(data: dict):
     """
     
     try:
-        response = model.generate_content(prompt)
+        response = await generate_with_retry(prompt)
         content = response.text.strip()
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
@@ -593,7 +621,7 @@ async def parse_medical_profile(data: MedicalProfileInput):
     """
 
     try:
-        response = model.generate_content(prompt)
+        response = await generate_with_retry(prompt)
         content = response.text.strip()
 
         # Robust JSON extraction
@@ -644,13 +672,13 @@ async def pre_visit_summary(data: PreVisitInput):
     
     RETURN ONLY A VALID JSON OBJECT with these keys:
     {{
-      "summary_en": "A highly concise, bulleted summary in English. Include: 1) Main reason for visit, 2) Relevant history/vitals, 3) AI Alerts (e.g. drug interactions, abnormal vitals). Use plain text and emojis, NO MARKDOWN.",
-      "summary_ar": "ملخص مركز جداً بالعربية في نقاط. يحتوي على: 1) سبب الزيارة الأساسي، 2) التاريخ المرضي/العلامات الحيوية ذات الصلة، 3) تنبيهات الذكاء الاصطناعي (مثل تعارض أدوية أو قراءات غير طبيعية). استخدم نص عادي وإيموجي، بدون مارك داون."
+      "summary_en": "A highly concise, bulleted summary in English. Include: 1) Main reason for visit, 2) Relevant history/vitals, 3) AI Alerts (e.g. drug interactions, abnormal vitals). Use clean plain text only. Do NOT use any emojis or markdown symbols under any circumstances.",
+      "summary_ar": "ملخص مركز جداً بالعربية في نقاط. يحتوي على: 1) سبب الزيارة الأساسي، 2) التاريخ المرضي/العلامات الحيوية ذات الصلة، 3) تنبيهات الذكاء الاصطناعي (مثل تعارض أدوية أو قراءات غير طبيعية). استخدم نصاً عادياً ونظيفاً فقط. لا تستخدم أي إيموجي (رموز تعبيرية) أو مارك داون تحت أي ظرف من الظروف."
     }}
     """
     
     try:
-        response = model.generate_content(prompt)
+        response = await generate_with_retry(prompt)
         content = response.text.strip()
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0].strip()
@@ -688,7 +716,7 @@ async def personalized_tip(data: PersonalizedTipInput):
     }}
     """
     try:
-        response = model.generate_content(prompt)
+        response = await generate_with_retry(prompt)
         content = response.text.strip()
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0].strip()
@@ -709,6 +737,32 @@ async def personalized_tip(data: PersonalizedTipInput):
 
 
 
+@app.post("/summarize-booking-reason", dependencies=[Depends(verify_internal_token)])
+async def summarize_booking_reason(data: AskRequest):
+    if not GOOGLE_API_KEY:
+        raise HTTPException(status_code=500, detail="Gemini API Key not configured")
+        
+    chat_logs = [{"role": msg.role, "content": msg.content} for msg in (data.history or [])]
+    
+    prompt = f"""
+    You are an expert medical AI assistant.
+    Review the following chat history between a patient and the AI assistant during an appointment booking process:
+    {json.dumps(chat_logs)}
+    
+    The patient was asked: "{data.question}"
+    
+    Extract and summarize the primary 'Reason for Visit' (Chief Complaint) and any relevant symptoms mentioned.
+    Keep it extremely concise (1-3 sentences) and professional. Do NOT use markdown or emojis.
+    If they didn't provide enough info, just say "General Consultation".
+    """
+    
+    try:
+        response = await generate_with_retry(prompt)
+        summary = strip_markdown(response.text)
+        return {"summary": summary}
+    except Exception as e:
+        print(f"DEBUG: Error in summarize_booking_reason: {e}")
+        return {"summary": "General Consultation"}
 
 if __name__ == "__main__":
     import uvicorn

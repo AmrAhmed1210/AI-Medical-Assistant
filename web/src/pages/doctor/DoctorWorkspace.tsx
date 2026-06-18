@@ -106,7 +106,10 @@ export default function DoctorWorkspace() {
       const aiServerUrl = import.meta.env.VITE_AI_SERVER_URL || 'http://localhost:8000'
       const response = await fetch(`${aiServerUrl}/doctor-ai-assist`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-token': 'LuxuryMedicalAiSecretKey2026'
+        },
         body: JSON.stringify({
           chief_complaint: form.chiefComplaint,
           history_of_illness: form.historyOfIllness,
@@ -235,20 +238,20 @@ export default function DoctorWorkspace() {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
-      {/* Top bar */}
-      <div className="bg-white border-b px-6 py-3 flex items-center justify-between">
+    <div className="h-[calc(100vh-8rem)] flex flex-col gap-6">
+      {/* Header Card */}
+      <div className="glass-card rounded-2xl px-6 py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/doctor/today')}>
             <ChevronLeft className="w-4 h-4" />
             Back
           </Button>
           <div>
-            <h1 className="font-bold text-gray-900 flex items-center gap-2">
-              <Stethoscope className="w-5 h-5 text-primary-600" />
+            <h1 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Stethoscope className="w-5 h-5 text-primary-500" />
               Visit: {visit?.patientName}
             </h1>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-slate-400 font-medium">
               {visit?.status === 'open' ? 'In Progress — Editable' : 'Closed'}
             </p>
           </div>
@@ -284,9 +287,9 @@ export default function DoctorWorkspace() {
       </AnimatePresence>
 
       {/* Split View */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex gap-6 min-h-0">
         {/* Left Panel — Patient History (40%) */}
-        <div className="w-2/5 border-l overflow-y-auto bg-gray-50 p-4 space-y-4">
+        <div className="w-[35%] overflow-y-auto space-y-5 pr-2 custom-scrollbar pb-6">
           {/* AI Health Report */}
           {patientHistory?.aiDiagnosisSummary && (
             <Card className="border-purple-200 bg-purple-50/50">
@@ -296,11 +299,11 @@ export default function DoctorWorkspace() {
                   AI Health Report
                 </h3>
                 <div className="flex bg-white rounded-lg p-1 border border-purple-100">
-                  <button 
+                  <button
                     onClick={() => setAiLang('ar')}
                     className={`px-2 py-0.5 text-[10px] rounded-md transition-all ${aiLang === 'ar' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 hover:bg-purple-50'}`}
                   >AR</button>
-                  <button 
+                  <button
                     onClick={() => setAiLang('en')}
                     className={`px-2 py-0.5 text-[10px] rounded-md transition-all ${aiLang === 'en' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 hover:bg-purple-50'}`}
                   >EN</button>
@@ -320,9 +323,9 @@ export default function DoctorWorkspace() {
           )}
 
           {/* SOS Bar */}
-          <Card className="bg-red-50 border-red-200">
-            <div className="flex items-center gap-2 text-red-700 font-bold mb-2">
-              <Heart className="w-4 h-4 fill-red-600" />
+          <Card className="!bg-red-50/80 dark:!bg-red-950/20 !border-red-200 dark:!border-red-900/30">
+            <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold mb-3">
+              <Heart className="w-5 h-5 fill-red-600 dark:fill-red-500" />
               Emergency Info
             </div>
             <div className="space-y-1 text-sm">
@@ -345,8 +348,8 @@ export default function DoctorWorkspace() {
           {/* Chronic Diseases */}
           {(patientHistory?.chronicDiseases?.length ?? 0) > 0 && (
             <Card>
-              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-primary-600" />
+              <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-primary-500" />
                 Chronic Diseases
               </h3>
               <div className="space-y-2">
@@ -363,8 +366,8 @@ export default function DoctorWorkspace() {
           {/* Current Medications */}
           {(patientHistory?.medications?.length ?? 0) > 0 && (
             <Card>
-              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <Pill className="w-4 h-4 text-primary-600" />
+              <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Pill className="w-5 h-5 text-primary-500" />
                 Current Medications
               </h3>
               <div className="space-y-2">
@@ -381,7 +384,10 @@ export default function DoctorWorkspace() {
           {/* Latest Vitals */}
           {patientHistory?.latestVitals && (
             <Card>
-              <h3 className="font-bold text-gray-900 mb-3">Latest Readings</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-emerald-500" />
+                Latest Readings
+              </h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {Object.entries(patientHistory.latestVitals).map(([key, val]: [string, unknown]) => (
                   <div key={key} className="p-2 bg-gray-50 rounded">
@@ -396,7 +402,7 @@ export default function DoctorWorkspace() {
           {/* Last Visits */}
           {(patientHistory?.lastVisits?.length ?? 0) > 0 && (
             <Card>
-              <h3 className="font-bold text-gray-900 mb-3">Recent Visits</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white mb-4">Recent Visits</h3>
               <div className="space-y-2">
                 {patientHistory?.lastVisits?.slice(0, 3).map((v: Record<string, string>) => (
                   <div key={v.id} className="p-2 bg-gray-50 rounded-lg text-sm">
@@ -409,13 +415,13 @@ export default function DoctorWorkspace() {
           )}
         </div>
 
-        {/* Right Panel — Current Visit (60%) */}
-        <div className="w-3/5 overflow-y-auto p-6 space-y-6">
+        {/* Right Panel — Current Visit (65%) */}
+        <div className="w-[65%] overflow-y-auto space-y-6 pr-2 custom-scrollbar pb-6">
           {/* Chief Complaint */}
           <Card>
-            <label className="block font-bold text-gray-900 mb-2">Chief Complaint *</label>
+            <label className="block font-bold text-gray-900 dark:text-slate-100 mb-3">Chief Complaint *</label>
             <textarea
-              className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
               rows={2}
               value={form.chiefComplaint}
               onChange={(e) => setForm((f) => ({ ...f, chiefComplaint: e.target.value }))}
@@ -425,9 +431,9 @@ export default function DoctorWorkspace() {
 
           {/* History of Present Illness */}
           <Card>
-            <label className="block font-bold text-gray-900 mb-2">History of Present Illness</label>
+            <label className="block font-bold text-gray-900 dark:text-slate-100 mb-3">History of Present Illness</label>
             <textarea
-              className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
               rows={3}
               value={form.historyOfIllness}
               onChange={(e) => setForm((f) => ({ ...f, historyOfIllness: e.target.value }))}
@@ -437,9 +443,9 @@ export default function DoctorWorkspace() {
 
           {/* Examination Findings */}
           <Card>
-            <label className="block font-bold text-gray-900 mb-2">Examination Findings</label>
+            <label className="block font-bold text-gray-900 dark:text-slate-100 mb-3">Examination Findings</label>
             <textarea
-              className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
               rows={3}
               value={form.examinationFindings}
               onChange={(e) => setForm((f) => ({ ...f, examinationFindings: e.target.value }))}
@@ -449,11 +455,11 @@ export default function DoctorWorkspace() {
 
           {/* Vital Signs */}
           <Card>
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-primary-600" />
+            <h3 className="font-bold text-gray-900 dark:text-slate-100 mb-5 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-primary-500" />
               Vital Signs
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
               {[
                 { key: 'bpSystolic' as const, label: 'Systolic BP', icon: Gauge, type: 'bp_systolic', placeholder: '120' },
                 { key: 'bpDiastolic' as const, label: 'Diastolic BP', icon: Gauge, type: 'bp_diastolic', placeholder: '80' },
@@ -475,13 +481,12 @@ export default function DoctorWorkspace() {
                       <input
                         type="text"
                         inputMode="decimal"
-                        className={`w-full border rounded-lg p-2 text-sm outline-none transition-colors ${
-                          status === 'abnormal'
-                            ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                        className={`w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-3 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 ${status === 'abnormal'
+                            ? 'border-red-400 bg-red-50/50 dark:bg-red-900/20 focus:border-red-500 focus:ring-red-500/30'
                             : status === 'normal'
-                            ? 'border-green-400 bg-green-50'
-                            : 'focus:border-primary-500 focus:ring-1 focus:ring-primary-500'
-                        }`}
+                              ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10'
+                              : 'focus:border-primary-500 focus:ring-primary-500/30'
+                          }`}
                         placeholder={field.placeholder}
                         value={form[field.key]}
                         onChange={(e) => setForm((f) => ({ ...f, [field.key]: e.target.value }))}
@@ -507,7 +512,7 @@ export default function DoctorWorkspace() {
           {/* Symptoms */}
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900">Symptoms</h3>
+              <h3 className="font-bold text-gray-900 dark:text-slate-100">Symptoms</h3>
               <Button size="sm" variant="outline" onClick={handleAddSymptom}>
                 <Plus className="w-4 h-4 ml-1" />
                 Add Symptom
@@ -515,9 +520,9 @@ export default function DoctorWorkspace() {
             </div>
             <div className="space-y-3">
               {form.symptoms.map((sym, idx) => (
-                <div key={idx} className="p-3 bg-gray-50 rounded-lg grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div key={idx} className="p-4 bg-gray-50/80 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-700/50 rounded-xl grid grid-cols-2 md:grid-cols-4 gap-4">
                   <input
-                    className="border rounded p-2 text-sm"
+                    className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
                     placeholder="Symptom name"
                     value={sym.name}
                     onChange={(e) => {
@@ -527,7 +532,7 @@ export default function DoctorWorkspace() {
                     }}
                   />
                   <select
-                    className="border rounded p-2 text-sm"
+                    className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all"
                     value={sym.severity}
                     onChange={(e) => {
                       const s = [...form.symptoms]
@@ -540,7 +545,7 @@ export default function DoctorWorkspace() {
                     <option value="severe">Severe</option>
                   </select>
                   <input
-                    className="border rounded p-2 text-sm"
+                    className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
                     placeholder="Location"
                     value={sym.location}
                     onChange={(e) => {
@@ -549,15 +554,17 @@ export default function DoctorWorkspace() {
                       setForm((f) => ({ ...f, symptoms: s }))
                     }}
                   />
-                  <button
-                    className="text-red-400 hover:text-red-600 text-sm"
-                    onClick={() => {
-                      const s = form.symptoms.filter((_, i) => i !== idx)
-                      setForm((f) => ({ ...f, symptoms: s }))
-                    }}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="flex justify-end items-center pr-2">
+                    <button
+                      className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400 text-sm p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                      onClick={() => {
+                        const s = form.symptoms.filter((_, i) => i !== idx)
+                        setForm((f) => ({ ...f, symptoms: s }))
+                      }}
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               ))}
               {form.symptoms.length === 0 && (
@@ -568,12 +575,12 @@ export default function DoctorWorkspace() {
 
           {/* Assessment */}
           <Card>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block font-bold text-gray-900">Assessment / Diagnosis</label>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="text-purple-600 border-purple-200 bg-purple-50 hover:bg-purple-100"
+            <div className="flex items-center justify-between mb-3">
+              <label className="block font-bold text-gray-900 dark:text-slate-100">Assessment / Diagnosis</label>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-purple-600 border-purple-200 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:border-purple-800/50 dark:text-purple-400 dark:hover:bg-purple-900/40"
                 onClick={handleAiAssist}
                 disabled={isAssisting}
               >
@@ -582,7 +589,7 @@ export default function DoctorWorkspace() {
               </Button>
             </div>
             <textarea
-              className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
               rows={2}
               value={form.assessment}
               onChange={(e) => setForm((f) => ({ ...f, assessment: e.target.value }))}
@@ -592,9 +599,9 @@ export default function DoctorWorkspace() {
 
           {/* Plan */}
           <Card>
-            <label className="block font-bold text-gray-900 mb-2">Treatment Plan</label>
+            <label className="block font-bold text-gray-900 dark:text-slate-100 mb-3">Treatment Plan</label>
             <textarea
-              className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
               rows={2}
               value={form.plan}
               onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value }))}
@@ -605,18 +612,18 @@ export default function DoctorWorkspace() {
           {/* Prescriptions */}
           <Card>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900">Prescription</h3>
+              <h3 className="font-bold text-gray-900 dark:text-slate-100">Prescription</h3>
               <Button size="sm" variant="outline" onClick={handleAddPrescription}>
                 <Plus className="w-4 h-4 ml-1" />
                 Add Medication
               </Button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {form.prescriptions.map((pres, idx) => (
-                <div key={idx} className="p-3 bg-gray-50 rounded-lg space-y-2">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div key={idx} className="p-4 bg-gray-50/80 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-700/50 rounded-xl space-y-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <input
-                      className="border rounded p-2 text-sm"
+                      className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
                       placeholder="Medication name"
                       value={pres.medicationName}
                       onChange={(e) => {
@@ -626,7 +633,7 @@ export default function DoctorWorkspace() {
                       }}
                     />
                     <input
-                      className="border rounded p-2 text-sm"
+                      className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
                       placeholder="Dosage"
                       value={pres.dosage}
                       onChange={(e) => {
@@ -636,7 +643,7 @@ export default function DoctorWorkspace() {
                       }}
                     />
                     <input
-                      className="border rounded p-2 text-sm"
+                      className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
                       placeholder="Frequency"
                       value={pres.frequency}
                       onChange={(e) => {
@@ -646,7 +653,7 @@ export default function DoctorWorkspace() {
                       }}
                     />
                     <input
-                      className="border rounded p-2 text-sm"
+                      className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
                       placeholder="Duration"
                       value={pres.duration}
                       onChange={(e) => {
@@ -656,10 +663,11 @@ export default function DoctorWorkspace() {
                       }}
                     />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200/50 dark:border-slate-700/50">
+                    <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
                       <input
                         type="checkbox"
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                         checked={pres.isChronic}
                         onChange={(e) => {
                           const p = [...form.prescriptions]
@@ -670,13 +678,13 @@ export default function DoctorWorkspace() {
                       <span>Chronic medication (tracked)</span>
                     </label>
                     <button
-                      className="text-red-400 hover:text-red-600 text-sm"
+                      className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400 text-sm p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
                       onClick={() => {
                         const p = form.prescriptions.filter((_, i) => i !== idx)
                         setForm((f) => ({ ...f, prescriptions: p }))
                       }}
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
@@ -689,30 +697,31 @@ export default function DoctorWorkspace() {
 
           {/* Follow-up */}
           <Card>
-            <h3 className="font-bold text-gray-900 mb-4">Follow-up</h3>
-            <label className="flex items-center gap-2 mb-3">
+            <h3 className="font-bold text-gray-900 dark:text-slate-100 mb-4">Follow-up</h3>
+            <label className="flex items-center gap-2 mb-4 text-sm text-gray-700 dark:text-slate-300">
               <input
                 type="checkbox"
+                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 checked={form.followUpRequired}
                 onChange={(e) => setForm((f) => ({ ...f, followUpRequired: e.target.checked }))}
               />
-              <span>Follow-up required</span>
+              <span className="font-medium">Follow-up required</span>
             </label>
             {form.followUpRequired && (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <label className="text-sm text-gray-500">After (days)</label>
+                  <label className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1 block">After (days)</label>
                   <input
                     type="number"
-                    className="w-full border rounded-lg p-2 text-sm mt-1"
+                    className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-3 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
                     value={form.followUpAfterDays}
                     onChange={(e) => setForm((f) => ({ ...f, followUpAfterDays: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-gray-500">Notes for patient</label>
+                  <label className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1 block">Notes for patient</label>
                   <textarea
-                    className="w-full border rounded-lg p-2 text-sm mt-1"
+                    className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-3 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
                     rows={2}
                     value={form.followUpNotes}
                     onChange={(e) => setForm((f) => ({ ...f, followUpNotes: e.target.value }))}
@@ -724,9 +733,9 @@ export default function DoctorWorkspace() {
 
           {/* Notes */}
           <Card>
-            <label className="block font-bold text-gray-900 mb-2">Additional Notes</label>
+            <label className="block font-bold text-gray-900 dark:text-slate-100 mb-3">Additional Notes</label>
             <textarea
-              className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
               rows={2}
               value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}

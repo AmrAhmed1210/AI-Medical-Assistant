@@ -21,10 +21,10 @@ export default function DoctorPatients() {
   const [messageText, setMessageText] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
 
-  // Fetch all appointments for grouping by day
   const [appointments, setAppointments] = useState<AppointmentDto[]>([])
   const [loadingAppts, setLoadingAppts] = useState(true)
   const [viewMode, setViewMode] = useState<'byDay' | 'allPatients'>('byDay')
+  const [selectedDayKey, setSelectedDayKey] = useState<string>('')
 
   useEffect(() => {
     const fetchAppts = async () => {
@@ -66,11 +66,14 @@ export default function DoctorPatients() {
   }
 
   const filteredAppointments = useMemo(() => {
-    if (!search) return appointments
-    const q = search.toLowerCase()
-    return appointments.filter(a =>
-      a.patientName?.toLowerCase().includes(q)
-    )
+    // Only show Confirmed appointments
+    let result = appointments.filter(a => a.status === 'Confirmed')
+    
+    if (search) {
+      const q = search.toLowerCase()
+      result = result.filter(a => a.patientName?.toLowerCase().includes(q))
+    }
+    return result
   }, [appointments, search])
 
   const groupedByDay = useMemo(() => {
@@ -89,6 +92,12 @@ export default function DoctorPatients() {
         isToday: key === toDayKey(new Date().toISOString()),
       }))
   }, [filteredAppointments])
+
+  useEffect(() => {
+    if (groupedByDay.length > 0 && (!selectedDayKey || !groupedByDay.some(g => g.key === selectedDayKey))) {
+      setSelectedDayKey(groupedByDay[0].key)
+    }
+  }, [groupedByDay, selectedDayKey])
 
   const handleSendMessage = async () => {
     if (!targetPatient?.email || !messageText.trim()) return
@@ -119,6 +128,14 @@ export default function DoctorPatients() {
       case 'Pending': return 'bg-amber-100 text-amber-700'
       default: return 'bg-gray-100 text-gray-600'
     }
+  }
+
+  const hasAppointmentToday = (patientId: string | number) => {
+    const today = new Date().toISOString().split('T')[0]
+    return appointments.some(a => 
+      String(a.patientId) === String(patientId) && 
+      a.scheduledAt.startsWith(today)
+    )
   }
 
   return (
@@ -178,88 +195,106 @@ export default function DoctorPatients() {
                 <p className="text-gray-400 font-medium">No appointments scheduled</p>
               </div>
             ) : (
-              groupedByDay.map((section) => (
-                <div key={section.key}>
-                  {/* Day Header */}
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${section.isToday
-                      ? 'bg-primary-600 text-white shadow-md shadow-primary-500/10'
-                      : 'bg-gray-200 text-gray-600 dark:bg-slate-800 dark:text-slate-400'
-                      }`}>
-                      {section.label}
-                    </span>
-                    <span className="text-[10px] text-gray-400 dark:text-slate-500 font-medium">
-                      {section.appointments.length} appointment{section.appointments.length > 1 ? 's' : ''}
-                    </span>
-                    <div className="h-px bg-gray-100 dark:bg-slate-800 flex-1" />
-                  </div>
+              <div className="space-y-6">
+                {/* Horizontal Tabs */}
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  {groupedByDay.map(section => (
+                    <button
+                      key={section.key}
+                      onClick={() => setSelectedDayKey(section.key)}
+                      className={`whitespace-nowrap px-4 py-2 text-sm font-medium rounded-xl transition-all border ${
+                        selectedDayKey === section.key
+                          ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/30 border-primary-500'
+                          : 'bg-white/50 dark:bg-slate-800/50 border-gray-200/50 dark:border-slate-700/50 text-gray-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{section.label}</span>
+                        <span className={`px-2 py-0.5 text-[10px] rounded-full ${
+                          selectedDayKey === section.key
+                            ? 'bg-white/20 text-white'
+                            : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400'
+                        }`}>
+                          {section.appointments.length}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
 
-                  {/* Appointments in this day */}
-                  <div className="space-y-2">
-                    {section.appointments.map((appt) => (
-                      <div
-                        key={appt.id}
-                        className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:shadow-md cursor-pointer ${section.isToday 
-                          ? 'bg-white dark:bg-slate-900/60 border-gray-100 dark:border-slate-800/80' 
-                          : 'bg-gray-50/50 dark:bg-slate-950/20 border-gray-100 dark:border-slate-800/50'
-                          }`}
-                        onClick={() => {
-                          const p = patients.find(pt => String(pt.id) === String(appt.patientId))
-                          if (p) setSelected(p)
-                        }}
-                      >
-                        {/* Avatar */}
-                        <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
-                          <User size={18} className="text-primary-600" />
-                        </div>
+                {/* Appointments for selected tab */}
+                {groupedByDay.filter(s => s.key === selectedDayKey).map((section) => (
+                  <div key={section.key}>
+                    <div className="space-y-3">
+                      {section.appointments.map((appt) => (
+                        <div
+                          key={appt.id}
+                          className={`flex items-center gap-4 p-4 rounded-2xl border transition-all hover:shadow-xl cursor-pointer ${section.isToday 
+                            ? 'bg-white/80 dark:bg-slate-800/80 border-primary-100 dark:border-primary-900/30 shadow-sm' 
+                            : 'bg-gray-50/50 dark:bg-slate-900/30 border-gray-100 dark:border-slate-800/50'
+                            }`}
+                          onClick={() => {
+                            const p = patients.find(pt => String(pt.id) === String(appt.patientId))
+                            if (p) setSelected(p)
+                          }}
+                        >
+                          {/* Avatar */}
+                          <div className="w-11 h-11 rounded-xl bg-primary-50 flex items-center justify-center shrink-0">
+                            <User size={20} className="text-primary-600" />
+                          </div>
 
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-800 dark:text-slate-200 truncate">{appt.patientName}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
-                              <Clock className="w-3 h-3" />
-                              {new Date(appt.scheduledAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor(appt.status)}`}>
-                              {appt.status}
-                            </span>
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-800 dark:text-slate-200 truncate">{appt.patientName}</p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400">
+                                <Clock className="w-3.5 h-3.5" />
+                                {new Date(appt.scheduledAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor(appt.status)}`}>
+                                {appt.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (hasAppointmentToday(appt.patientId)) {
+                                  navigate(`/doctor/patients/${appt.patientId}/records`)
+                                } else {
+                                  toast.error('Profile access is restricted to the day of visit.')
+                                }
+                              }}
+                              className={`p-2 rounded-xl transition ${hasAppointmentToday(appt.patientId) ? 'bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-950/30 dark:text-primary-400 dark:hover:bg-primary-900/40' : 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'}`}
+                              title={hasAppointmentToday(appt.patientId) ? "View Records" : "Records Locked (No appointment today)"}
+                            >
+                              <FileText size={16} />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                const p = patients.find(pt => String(pt.id) === String(appt.patientId))
+                                if (p) {
+                                  setTargetPatient(p)
+                                  setMessageText('')
+                                }
+                              }}
+                              className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-900/40 transition"
+                              title="Send Message"
+                            >
+                              <MessageSquare size={16} />
+                            </button>
+                            <ChevronRight size={16} className="text-gray-300 dark:text-slate-600 ml-1" />
                           </div>
                         </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              navigate(`/doctor/patients/${appt.patientId}/records`)
-                            }}
-                            className="p-2 rounded-xl bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-950/30 dark:text-primary-400 dark:hover:bg-primary-900/40 transition"
-                            title="View Records"
-                          >
-                            <FileText size={14} />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              const p = patients.find(pt => String(pt.id) === String(appt.patientId))
-                              if (p) {
-                                setTargetPatient(p)
-                                setMessageText('')
-                              }
-                            }}
-                            className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-900/40 transition"
-                            title="Send Message"
-                          >
-                            <MessageSquare size={14} />
-                          </button>
-                          <ChevronRight size={14} className="text-gray-300 dark:text-slate-600" />
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         ) : (
@@ -267,12 +302,12 @@ export default function DoctorPatients() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left" dir="ltr">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-100 dark:bg-slate-900/40 dark:border-slate-800/80">
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-slate-400">Patient name</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-slate-400">Gender and age</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-slate-400">Last visit</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-slate-400">Appointments</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-slate-400">Actions</th>
+                <tr className="bg-gray-50/80 border-b border-gray-100 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur-md">
+                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">Patient name</th>
+                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">Gender and age</th>
+                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">Last visit</th>
+                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">Appointments</th>
+                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-slate-800/50">
@@ -294,7 +329,7 @@ export default function DoctorPatients() {
                     <tr
                       key={p.id}
                       onClick={() => setSelected(p)}
-                      className="hover:bg-gray-50/80 dark:hover:bg-slate-900/40 cursor-pointer transition-colors"
+                      className="hover:bg-gray-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
@@ -324,13 +359,19 @@ export default function DoctorPatients() {
                         <div className="flex gap-2">
                           <button
                             type="button"
+                            disabled={!hasAppointmentToday(p.id)}
                             onClick={(e) => {
                               e.stopPropagation()
                               navigate(`/doctor/patients/${p.id}/records`)
                             }}
-                            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 shadow-md shadow-primary-500/10"
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg shadow-md transition-all ${
+                              hasAppointmentToday(p.id) 
+                                ? 'bg-primary-600 text-white hover:bg-primary-700 shadow-primary-500/10' 
+                                : 'bg-gray-200 text-gray-400 dark:bg-slate-800 dark:text-slate-500 cursor-not-allowed opacity-60'
+                            }`}
+                            title={!hasAppointmentToday(p.id) ? "Access restricted to visit day" : ""}
                           >
-                            Records
+                            {hasAppointmentToday(p.id) ? 'Records' : 'Locked'}
                           </button>
                           <button
                             type="button"
@@ -425,13 +466,14 @@ export default function DoctorPatients() {
               <Button
                 size="sm"
                 className="flex-1 bg-primary-600 hover:bg-primary-700 text-white"
+                disabled={!hasAppointmentToday(selected.id)}
                 onClick={() => {
                   setSelected(null)
                   navigate(`/doctor/patients/${selected.id}/records`)
                 }}
               >
                 <FileText className="w-4 h-4 mr-1" />
-                View Full Records
+                {hasAppointmentToday(selected.id) ? 'View Full Records' : 'Records Locked'}
               </Button>
               <Button
                 size="sm"

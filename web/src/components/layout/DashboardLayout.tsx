@@ -1,5 +1,6 @@
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useEffect } from 'react'
+import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -182,47 +183,54 @@ export function DashboardLayout() {
 
   return (
     <div
-      className="min-h-screen font-outfit relative overflow-hidden"
+      className="min-h-screen font-outfit relative overflow-hidden transition-colors duration-500"
       dir="ltr"
       style={{
         background: isDark
           ? 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%)'
           : 'linear-gradient(135deg, #f0f4ff 0%, #ffffff 50%, #f5f3ff 100%)',
-        transition: 'background 0.4s ease',
       }}
     >
-      {/* Background Aesthetic Bubbles (Like Mobile App) */}
-      <div
+      {/* Animated Aesthetic Bubbles */}
+      <motion.div
         className="fixed pointer-events-none"
+        animate={{ y: [0, 15, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
         style={{
           width: 350, height: 350, top: -100, left: -100, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #10B981, #059669)',
-          filter: 'blur(80px)', opacity: isDark ? 0.15 : 0.4, zIndex: 0
+          background: isDark ? 'rgba(16, 185, 129, 0.16)' : 'rgba(16, 185, 129, 0.09)',
+          filter: 'blur(80px)', zIndex: 0
         }}
       />
-      <div
+      <motion.div
         className="fixed pointer-events-none"
+        animate={{ y: [0, -20, 0] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
         style={{
           width: 400, height: 400, bottom: -150, right: -150, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #34D399, #10B981)',
-          filter: 'blur(80px)', opacity: isDark ? 0.1 : 0.3, zIndex: 0
+          background: isDark ? 'rgba(14, 165, 233, 0.15)' : 'rgba(14, 165, 233, 0.08)',
+          filter: 'blur(80px)', zIndex: 0
         }}
       />
-      <div
+      <motion.div
         className="fixed pointer-events-none"
+        animate={{ y: [0, -10, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
         style={{
           width: 250, height: 250, top: '40%', left: '20%', borderRadius: '50%',
-          background: 'linear-gradient(135deg, #6EE7B7, #059669)',
-          filter: 'blur(100px)', opacity: isDark ? 0.05 : 0.15, zIndex: 0
+          background: isDark ? 'rgba(20, 184, 166, 0.10)' : 'rgba(20, 184, 166, 0.06)',
+          filter: 'blur(100px)', zIndex: 0
         }}
       />
 
-      <div className="relative z-10">
+      <div className="relative z-10 flex">
         <Sidebar />
-        <TopBar />
-        <main className="ml-64 mt-16 p-6 min-h-[calc(100vh-4rem)]">
-          <Outlet />
-        </main>
+        <div className="flex-1 flex flex-col min-w-0 ml-[280px]">
+          <TopBar />
+          <main className="p-6 min-h-[calc(100vh-4rem)]">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   )

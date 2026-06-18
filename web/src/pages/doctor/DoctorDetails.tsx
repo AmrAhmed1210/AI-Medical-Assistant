@@ -10,6 +10,7 @@ import { doctorApi } from '@/api/doctorApi'
 import { appointmentApi } from '@/api/appointmentApi'
 import axiosInstance from '@/api/axiosInstance'
 import type { DoctorDetailDto } from '@/lib/types'
+import { ReasonForVisitModal } from '@/components/doctor/ReasonForVisitModal'
 
 interface DoctorDetails extends DoctorDetailDto {
   rating?: number
@@ -25,6 +26,7 @@ export default function DoctorDetails() {
   const [isLoadingSlots, setIsLoadingSlots] = useState(false)
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
+  const [showReasonModal, setShowReasonModal] = useState(false)
 
   const fetchDoctorDetails = async () => {
     if (!id) return
@@ -73,9 +75,14 @@ export default function DoctorDetails() {
     fetchSlots()
   }, [selectedDate, id])
 
-  const handleBookAppointment = async () => {
+  const handleBookAppointment = async (reason?: string) => {
     if (!doctor || !selectedDate || !selectedTime) {
       toast.error('Please select a date and time')
+      return
+    }
+
+    if (!reason) {
+      setShowReasonModal(true)
       return
     }
 
@@ -83,10 +90,12 @@ export default function DoctorDetails() {
       const appointmentData = {
         doctorId: doctor.id,
         scheduledAt: `${selectedDate}T${selectedTime}:00`,
+        notes: `AI Reason Summary: ${reason}`
       }
       
       await axiosInstance.post('/api/appointments', appointmentData)
       toast.success('Appointment booked successfully!')
+      setShowReasonModal(false)
       navigate('/appointments')
     } catch (error: any) {
       console.error('Error booking appointment:', error)
@@ -139,8 +148,12 @@ export default function DoctorDetails() {
               animate={{ scale: 1, opacity: 1 }}
               className="flex-shrink-0"
             >
-              <div className="w-32 h-32 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white font-bold text-4xl">
-                {doctor.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              <div className="w-32 h-32 glass-panel rounded-full flex items-center justify-center text-white font-bold text-4xl overflow-hidden shadow-2xl shadow-emerald-900/20">
+                {doctor.photoUrl ? (
+                  <img src={doctor.photoUrl} alt="Doctor" className="w-full h-full object-cover" />
+                ) : (
+                  doctor.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)
+                )}
               </div>
             </motion.div>
 
@@ -205,7 +218,7 @@ export default function DoctorDetails() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.3 }}
-              className="bg-white dark:bg-slate-900/60 dark:border dark:border-slate-800/80 rounded-2xl shadow-sm p-6"
+              className="glass-card dark:bg-slate-900/60 dark:border dark:border-slate-800/80 rounded-2xl shadow-sm p-6"
             >
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
                 <BookOpen size={18} className="text-emerald-600 dark:text-emerald-400" />
@@ -223,7 +236,7 @@ export default function DoctorDetails() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="bg-white dark:bg-slate-950/65 rounded-2xl border border-slate-100 dark:border-slate-800/80 shadow-sm p-6"
+              className="glass-card dark:bg-slate-950/65 rounded-2xl border border-slate-100 dark:border-slate-800/80 shadow-sm p-6"
             >
               <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
                 <Calendar size={18} className="text-emerald-600" />
@@ -264,9 +277,9 @@ export default function DoctorDetails() {
               </div>
 
               <button
-                onClick={handleBookAppointment}
+                onClick={() => handleBookAppointment()}
                 disabled={!selectedDate || !selectedTime}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-colors"
+                className="w-full bg-gradient-primary hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-emerald-500/20"
               >
                 Confirm Appointment
               </button>
@@ -340,6 +353,12 @@ export default function DoctorDetails() {
           </div>
         </div>
       </div>
+      
+      <ReasonForVisitModal 
+        open={showReasonModal} 
+        onClose={() => setShowReasonModal(false)} 
+        onComplete={(reason) => handleBookAppointment(reason)} 
+      />
     </div>
   )
 }

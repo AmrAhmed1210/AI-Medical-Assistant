@@ -4,6 +4,8 @@ import { Sparkles, Loader2, AlertTriangle } from 'lucide-react';
 import axiosInstance from '@/api/axiosInstance';
 import type { AppointmentDto } from '@/lib/types';
 import { Button } from '@/components/ui';
+import { doctorApi } from '@/api/doctorApi';
+import { patientRecordsApi } from '@/api/patientRecordsApi';
 
 interface PreVisitSummaryCardProps {
   appointment: AppointmentDto;
@@ -18,17 +20,67 @@ export default function PreVisitSummaryCard({ appointment }: PreVisitSummaryCard
     setLoading(true);
     setError('');
     try {
-      // Mocked detailed info to simulate what the C# backend would aggregate
-      // STRICT ANONYMIZATION: We only send the patient ID, not the name, to the AI.
+      let chronicDiseases: any[] = [];
+      let medications: any[] = [];
+      let allergies: any[] = [];
+      let vitals: any[] = [];
+      let patient: any = null;
+
+      try {
+        const patients = await doctorApi.getPatients();
+        patient = patients.find((p: any) => String(p.id) === String(appointment.patientId));
+      } catch (e) {
+        console.error("Failed to load patient summary info", e);
+      }
+
+      try {
+        [chronicDiseases, medications, allergies, vitals] = await Promise.all([
+          patientRecordsApi.getChronicDiseases(appointment.patientId).catch(() => []),
+          patientRecordsApi.getMedications(appointment.patientId).catch(() => []),
+          patientRecordsApi.getAllergies(appointment.patientId).catch(() => []),
+          patientRecordsApi.getVitals(appointment.patientId).catch(() => []),
+        ]);
+      } catch (e) {
+        console.error("Failed to load patient record lists", e);
+      }
+
+      let age = 35; // Default fallback
+      let gender = "Male"; // Default fallback
+      if (patient) {
+        gender = patient.gender || "Male";
+        if (patient.dateOfBirth) {
+          const birthDate = new Date(patient.dateOfBirth);
+          const ageDifMs = Date.now() - birthDate.getTime();
+          const ageDate = new Date(ageDifMs);
+          age = Math.abs(ageDate.getUTCFullYear() - 1970);
+        }
+      }
+
+      const diseases = chronicDiseases
+        .filter((d: any) => d.isActive)
+        .map((d: any) => d.diseaseName);
+
+      const meds = medications
+        .filter((m: any) => m.isActive)
+        .map((m: any) => `${m.medicationName} ${m.dosage || ''}`);
+
+      const allergyNames = allergies
+        .filter((a: any) => a.isActive)
+        .map((a: any) => a.allergenName);
+
+      const vitalsList = vitals
+        .slice(0, 5) // latest 5 vitals
+        .map((v: any) => `${v.readingType}: ${v.value}${v.value2 ? '/' + v.value2 : ''} ${v.unit}`);
+
       const payload = {
         patient_id: String(appointment.patientId || "ANON-1234"),
-        age: Math.floor(Math.random() * (65 - 25 + 1) + 25), // Mocked age
-        gender: "Male", // Mocked gender (clinically relevant but anonymous)
-        chief_complaint: "Routine checkup and follow up on blood pressure.",
-        chronic_diseases: ["Hypertension"], // Mocked
-        medications: ["Concor 5mg"], // Mocked
-        allergies: ["Penicillin"], // Mocked
-        vitals: ["BP 145/95", "HR 82"] // Mocked abnormal vitals
+        age,
+        gender,
+        chief_complaint: appointment.notes || "Routine checkup and follow up.",
+        chronic_diseases: diseases.length > 0 ? diseases : ["None reported"],
+        medications: meds.length > 0 ? meds : ["None reported"],
+        allergies: allergyNames.length > 0 ? allergyNames : ["None reported"],
+        vitals: vitalsList.length > 0 ? vitalsList : ["None reported"]
       };
 
       const { data } = await axiosInstance.post('/api/chat/pre-visit-summary', payload);

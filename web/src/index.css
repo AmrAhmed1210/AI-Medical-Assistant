@@ -1,46 +1,111 @@
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --glass-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.05);
+    --primary-gradient: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+    --secondary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  }
+
+  .dark {
+    --glass-bg: rgba(15, 23, 42, 0.75);
+    --glass-border: rgba(51, 65, 85, 0.5);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  }
+
   * {
     box-sizing: border-box;
   }
 
   html {
     direction: rtl;
-    font-family: 'Tajawal', sans-serif;
+    font-family: 'Tajawal', 'Outfit', sans-serif;
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
-    font-family: 'Tajawal', sans-serif;
+    @apply bg-slate-50 text-slate-800 antialiased transition-colors duration-300;
+    font-family: 'Tajawal', 'Outfit', sans-serif;
+  }
+  
+  .dark body {
+    @apply bg-slate-950 text-slate-200;
   }
 
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-slate-100/60 rounded-full;
+    @apply bg-slate-100/50 dark:bg-slate-900/50 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-emerald-300/60 rounded-full border-2 border-transparent bg-clip-padding;
+    @apply bg-emerald-400/50 dark:bg-emerald-600/50 rounded-full transition-colors duration-300;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-emerald-400/80;
+    @apply bg-emerald-500/80 dark:bg-emerald-500/80;
   }
 }
 
 @layer utilities {
   .font-tajawal {
     font-family: 'Tajawal', sans-serif;
+  }
+  .font-outfit {
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+  
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+    transition: all 0.3s ease;
+  }
+  
+  .glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+  }
+  
+  .text-gradient-primary {
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-secondary {
+    background: var(--secondary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-primary {
+    background: var(--primary-gradient);
+  }
+
+  .bg-gradient-secondary {
+    background: var(--secondary-gradient);
   }
 
   .line-clamp-2 {
@@ -72,7 +137,7 @@
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #111827 !important;
+  -webkit-text-fill-color: inherit !important;
   transition: background-color 9999s ease-in-out 0s;
-  box-shadow: 0 0 0px 1000px white inset !important;
+  box-shadow: 0 0 0px 1000px transparent inset !important;
 }

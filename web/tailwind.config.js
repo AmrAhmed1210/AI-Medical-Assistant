@@ -10,22 +10,32 @@ export default {
       },
       colors: {
         primary: {
-          50: '#F0F9F6',
-          100: '#DDF0EB',
-          200: '#BFE2D8',
-          300: '#94CFC1',
-          400: '#64B5A3',
-          500: '#1E9E84',
-          600: '#198570',
-          700: '#156B5A',
-          800: '#125245',
-          900: '#10453A',
-          950: '#082620',
+          50: '#f0fdfa',
+          100: '#ccfbf1',
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6', // Teal 500
+          600: '#0d9488',
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
+          950: '#042f2e',
+        },
+        dark: {
+          surface: '#0f172a', // Slate 900
+          panel: '#1e293b',   // Slate 800
+          border: '#334155',  // Slate 700
         },
         success: '#22c55e',
         warning: '#f59e0b',
         danger: '#ef4444',
         emergency: '#7f1d1d',
+      },
+      boxShadow: {
+        'glow-primary': '0 0 20px rgba(20, 184, 166, 0.3)',
+        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.05)',
+        'glass-dark': '0 8px 32px 0 rgba(0, 0, 0, 0.3)',
       },
       animation: {
         pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',

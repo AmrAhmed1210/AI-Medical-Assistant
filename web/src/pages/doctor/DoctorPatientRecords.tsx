@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { PageLoader } from '@/components/ui/LoadingSpinner'
 import { patientRecordsApi, type AllergyRecord, type ChronicDiseaseRecord, type MedicationRecord, type VitalRecord, type SurgeryRecord, type PatientDocument } from '@/api/patientRecordsApi'
+import { doctorApi } from '@/api/doctorApi'
 import { useDoctorPatients } from '@/hooks/useDoctor'
+import { Lock } from 'lucide-react'
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -34,6 +36,7 @@ export default function DoctorPatientRecords() {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [hasAccessToday, setHasAccessToday] = useState<boolean | null>(null)
 
   const [allergies, setAllergies] = useState<AllergyRecord[]>([])
   const [chronic, setChronic] = useState<ChronicDiseaseRecord[]>([])
@@ -46,7 +49,7 @@ export default function DoctorPatientRecords() {
   const fetchAll = async () => {
     setLoading(true)
     try {
-      const [a, c, m, v, s, d, mp] = await Promise.all([
+      const [a, c, m, v, s, d, mp, appts] = await Promise.all([
         patientRecordsApi.getAllergies(pid).catch(() => []),
         patientRecordsApi.getChronicDiseases(pid).catch(() => []),
         patientRecordsApi.getMedications(pid).catch(() => []),
@@ -54,9 +57,16 @@ export default function DoctorPatientRecords() {
         patientRecordsApi.getSurgeries(pid).catch(() => []),
         patientRecordsApi.getDocuments(pid).catch(() => []),
         patientRecordsApi.getMedicalProfile(pid).catch(() => null),
+        doctorApi.getAppointments().catch(() => [])
       ])
       setAllergies(a); setChronic(c); setMedications(m)
       setVitals(v); setSurgeries(s); setDocuments(d); setMedProfile(mp)
+      
+      const today = new Date().toISOString().split('T')[0]
+      const hasApptToday = appts.some((appt: any) => 
+        String(appt.patientId) === pid && appt.scheduledAt.startsWith(today)
+      )
+      setHasAccessToday(hasApptToday)
     } finally { setLoading(false) }
   }
 
@@ -76,7 +86,10 @@ export default function DoctorPatientRecords() {
       const aiServerUrl = import.meta.env.VITE_AI_SERVER_URL || 'http://localhost:8000'
       const response = await fetch(`${aiServerUrl}/analyze-history`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-internal-token': 'LuxuryMedicalAiSecretKey2026'
+        },
         body: JSON.stringify(payload),
       })
 
@@ -180,7 +193,26 @@ export default function DoctorPatientRecords() {
 
   const canAdd = !['profile', 'scans'].includes(activeTab) || activeTab === 'scans'
 
-  if (loading) return <PageLoader />
+  if (loading || hasAccessToday === null) return <PageLoader />
+
+  if (!hasAccessToday) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6">
+        <div className="max-w-md w-full glass-card bg-white/50 dark:bg-slate-900/50 p-8 rounded-3xl text-center shadow-xl">
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Access Restricted</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
+            For privacy and security reasons, you can only access and modify a patient's medical profile on the actual day of their scheduled appointment.
+          </p>
+          <Button onClick={() => navigate(-1)} className="w-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-700 hover:to-gray-800 text-white py-3 rounded-xl font-bold">
+            Return to Patients List
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   const renderEmpty = (msg: string) => (
     <div className="flex flex-col items-center py-16 text-center">
