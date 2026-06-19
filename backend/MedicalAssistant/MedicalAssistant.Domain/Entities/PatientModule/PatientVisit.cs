@@ -1,4 +1,5 @@
-﻿using MedicalAssistant.Domain.Entities.DoctorsModule;
+using MedicalAssistant.Domain.Entities.DoctorsModule;
+using MedicalAssistant.Domain.Entities.AppointmentsModule;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,7 @@ namespace MedicalAssistant.Domain.Entities.PatientModule
         public int DoctorId { get; set; }
         public Doctor? Doctor { get; set; }
         public int? AppointmentId { get; set; }
+        public Appointment? Appointment { get; set; }
 
         public string ChiefComplaint { get; set; } = string.Empty;
         public string? PresentIllnessHistory { get; set; }
@@ -23,7 +25,8 @@ namespace MedicalAssistant.Domain.Entities.PatientModule
         public string? Notes { get; set; }
         public string? SummarySnapshot { get; set; }
         public bool? FollowUpRequired { get; set; }
-        public int? FollowUpAfterDays { get; set; }
+        public string? FollowUpDate { get; set; }
+        public string? FollowUpTime { get; set; }
         public string? FollowUpNotes { get; set; }
 
         public DateOnly VisitDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);

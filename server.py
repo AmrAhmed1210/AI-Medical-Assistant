@@ -86,6 +86,7 @@ class PatientHistoryInput(BaseModel):
     allergies: Optional[List[Any]] = []
     chronic_diseases: Optional[List[Any]] = []
     documents_analysis: Optional[List[Any]] = []
+    recent_visits: Optional[List[Any]] = []
     recommended_doctors: Optional[List[Any]] = []
     recommended_specialty: Optional[str] = None
 
@@ -259,24 +260,25 @@ async def analyze_history(data: PatientHistoryInput):
     Allergies: {json.dumps(data.allergies)}
     Chronic Diseases: {json.dumps(data.chronic_diseases)}
     AI Analyzed Documents: {json.dumps(data.documents_analysis)}
+    Recent Visits (Last 8 Months): {json.dumps(data.recent_visits)}
     Recommended Specialty: {data.recommended_specialty or "best available match"}
     Platform Doctors Sorted By Rating/Reviews: {json.dumps(data.recommended_doctors)}
 
     Instructions:
-    - Identify health risks, dangerous vitals, allergy conflicts, and medication interactions.
-    - If there is a serious risk, start that report with an explicit warning.
+    - CAREFULLY SUMMARIZE the patient's existing history, vitals, surgeries, medications, and recent visits from the last 8 months.
+    - Include a dedicated section that summarizes the patient's visit history over the last 8 months. Mention dates, complaints, doctors, and outcomes when available.
+    - Do NOT invent new diagnoses, do NOT hallucinate medical conditions, and do NOT act like a diagnosing doctor.
+    - Identify ONLY clear health risks (like high blood pressure) or allergy conflicts based strictly on the provided data.
     - Mention relevant uploaded document findings when present.
-    - Give safe, simple home-care tips only when appropriate, then recommend consulting a doctor.
-    - CRITICAL: If the patient is healthy and has no medical problems, abnormalities, or concerning symptoms, do NOT recommend any specialty or doctors. Instead, state that their health profile looks good and encourage maintaining a healthy lifestyle.
-    - If platform doctors are provided AND the patient actually has a medical issue, include a doctor recommendation section using only those doctors. Recommend the highest-rated relevant doctors by name, specialty, rating/review count, and why they fit the patient's likely specialty need.
-    - If a Recommended Specialty is provided but Platform Doctors is empty AND the patient has a medical issue, you MUST explicitly state in the report that there are no doctors available currently on our platform for this specialty, and politely advise the patient to seek an external consultation with a <Recommended Specialty> doctor. Do NOT hallucinate any doctor names.
-    - Do not claim you are a doctor. You are an AI medical assistant and your advice does not replace professional care.
-    - Do NOT use any emojis or markdown symbols under any circumstances. Emojis and markdown formatting are strictly forbidden.
+    - Give safe, simple wellness tips (hydration, sleep) but avoid complex medical prescriptions.
+    - CRITICAL: If the patient is completely healthy, just say their health profile looks good and encourage a healthy lifestyle. Do NOT recommend any specialty or doctors.
+    - If platform doctors are provided AND the patient has a clear medical issue, you MUST recommend the highest-rated relevant doctors from the provided list. Briefly explain exactly why that doctor's specialty matches the patient's existing recorded condition. Do NOT hallucinate any doctor names.
+    - Do NOT use emojis. Do NOT use markdown symbols. Format strictly as clear plain text.
 
     Return this JSON shape only:
     {{
-      "en": "English report with sections separated by double newlines (\\n\\n). Sections: General Summary, Warnings, Medications & Interactions, Safe Advice, Recommended Doctors (if any). DO NOT USE EMOJIS.",
-      "ar": "تقرير عربي بأقسام مفصولة بأسطر جديدة (\\n\\n): الملخص العام، التحذيرات، الأدوية والتداخلات، نصائح آمنة، الأطباء المقترحون من الموقع (إن وجد). لا تستخدم أي إيموجي على الإطلاق.",
+      "en": "English report with sections separated by double newlines (\\n\\n). Sections: General Summary, Recent Visits Summary (Last 8 Months), Warnings, Medications & Interactions, Safe Advice, Recommended Doctors (if any). DO NOT USE EMOJIS.",
+      "ar": "تقرير عربي بأقسام مفصولة بأسطر جديدة (\\n\\n): الملخص العام، ملخص الزيارات (آخر 8 أشهر)، التحذيرات، الأدوية والتداخلات، نصائح آمنة، الأطباء المقترحون من الموقع (إن وجد). لا تستخدم أي إيموجي على الإطلاق.",
       "needsDoctor": true // set to false ONLY if the patient is completely healthy and has no medical problems.
     }}
 
@@ -297,15 +299,22 @@ async def analyze_history(data: PatientHistoryInput):
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
             result = json.loads(json_match.group())
+            analysis_en = strip_markdown(result.get("en", "No English report generated."))
+            analysis_ar = strip_markdown(result.get("ar", "لم يتم إنشاء تقرير بالعربية."))
+            if not analysis_ar.strip() or analysis_ar.strip() == analysis_en.strip():
+                analysis_ar = "لم يتم إنشاء التقرير بالعربية بشكل كامل. يرجى إعادة التحليل."
             return {
-                "analysis_en": strip_markdown(result.get("en", "No English report generated.")),
-                "analysis_ar": strip_markdown(result.get("ar", "لم يتم إنشاء تقرير بالعربية.")),
+                "analysis_en": analysis_en,
+                "analysis_ar": analysis_ar,
                 "needsDoctor": result.get("needsDoctor", True)
             }
         
         # Fallback split logic if AI fails JSON but returns both
         text = strip_markdown(response.text)
-        return {"analysis_en": text, "analysis_ar": text}
+        return {
+            "analysis_en": text,
+            "analysis_ar": "تعذّر إنشاء التقرير العربي تلقائياً. يرجى إعادة المحاولة."
+        }
         
     except Exception as e:
         print(f"DEBUG: Error in analyze_history: {str(e)}")
@@ -425,6 +434,40 @@ async def summarize_item(data: dict):
         print(f"DEBUG: Error in summarize_item: {e}")
         return {"summary_en": description, "summary_ar": description}
 
+@app.post("/summarize-visit", dependencies=[Depends(verify_internal_token)])
+async def summarize_visit(data: dict):
+    """Generates a bilingual summary of a medical visit."""
+    complaint = data.get("complaint", "None")
+    diagnosis = data.get("diagnosis", "None")
+    treatment = data.get("treatment", "None")
+    
+    prompt = f"""
+    You are an expert AI medical assistant. Summarize this medical visit concisely for the patient.
+    Complaint: {complaint}
+    Diagnosis: {diagnosis}
+    Treatment Plan: {treatment}
+    
+    RETURN ONLY A VALID JSON OBJECT exactly like this:
+    {{
+      "summary_en": "A concise, patient-friendly summary in English",
+      "summary_ar": "ملخص موجز ومبسط للمريض باللغة العربية"
+    }}
+    """
+    
+    try:
+        response = await generate_with_retry(prompt)
+        content = response.text.strip()
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            en_text = strip_markdown(result.get("summary_en", "Summary not available."))
+            ar_text = strip_markdown(result.get("summary_ar", "الملخص غير متاح."))
+            return {"summary_en": en_text, "summary_ar": ar_text}
+        return {"summary_en": "Summary not available.", "summary_ar": "الملخص غير متاح."}
+    except Exception as e:
+        print(f"DEBUG: Error in summarize_visit: {e}")
+        return {"summary_en": "Error generating summary.", "summary_ar": "حدث خطأ أثناء إنشاء الملخص."}
+
 @app.post("/analyze-vitals", dependencies=[Depends(verify_internal_token)])
 async def analyze_vitals(data: dict):
     """Analyzes vital signs and gives immediate advice."""
@@ -524,6 +567,12 @@ async def doctor_ai_assist(data: dict):
     2. A suggested treatment plan (Plan).
     
     CRITICAL: Take the Medical Background (allergies, chronic diseases) into account for the treatment plan!
+    
+    CRITICAL QUALITY RULE: If the Chief Complaint or History of Present Illness contains gibberish, letters, typos, or nonsensical terms with no real medical meaning (e.g. 'ni', 'بالل', 'بتاال', 'اتلنت', 'انم', 'asd', 'xyz'), do NOT generate speculative differential diagnoses (like Gastroenteritis, GERD, etc.) or standard treatment plans. Instead, return a clean, polite response asking the user to enter clear medical symptoms:
+    - "assessment_en" should be "The entered complaint is unclear or contains typographical errors. Please provide clear clinical symptoms to proceed."
+    - "assessment_ar" should be "الشكوى المدخلة غير واضحة أو تحتوي على أخطاء إملائية. يرجى إدخال أعراض سريرية واضحة للمتابعة."
+    - "plan_en" should be "N/A"
+    - "plan_ar" should be "غير متاح"
     
     RETURN ONLY A VALID JSON OBJECT:
     {{
@@ -670,6 +719,10 @@ async def pre_visit_summary(data: PreVisitInput):
     Allergies: {json.dumps(data.allergies)}
     Recent Vitals: {json.dumps(data.vitals)}
     
+    CRITICAL QUALITY RULE: If the Chief Complaint contains gibberish, typos, or nonsense words with no clear medical meaning (e.g., 'ni', 'بالل', 'بتاال', 'اتلنت', 'انم'), do NOT hypothesize about it or suggest irrelevant specialties/warnings. Instead, return:
+    - "summary_en": "Reason for visit is unclear or contains typos. Please verify symptoms."
+    - "summary_ar": "سبب الزيارة غير واضح أو يحتوي على أخطاء إملائية. يرجى التحقق من الأعراض."
+    
     RETURN ONLY A VALID JSON OBJECT with these keys:
     {{
       "summary_en": "A highly concise, bulleted summary in English. Include: 1) Main reason for visit, 2) Relevant history/vitals, 3) AI Alerts (e.g. drug interactions, abnormal vitals). Use clean plain text only. Do NOT use any emojis or markdown symbols under any circumstances.",
@@ -754,6 +807,8 @@ async def summarize_booking_reason(data: AskRequest):
     Extract and summarize the primary 'Reason for Visit' (Chief Complaint) and any relevant symptoms mentioned.
     Keep it extremely concise (1-3 sentences) and professional. Do NOT use markdown or emojis.
     If they didn't provide enough info, just say "General Consultation".
+    
+    CRITICAL: If the patient's answers contain only gibberish, typos, or nonsense words with no clear medical meaning (e.g., 'ni', 'بالل', 'بتاال', 'اتلنت', 'انم'), you MUST summarize it simply as "General Consultation". Do NOT try to interpret or explain the gibberish.
     """
     
     try:

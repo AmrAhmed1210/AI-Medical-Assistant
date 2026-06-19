@@ -592,6 +592,9 @@ const translations = {
     onboarding_medication_desc: "هل تتناول أي أدوية حالياً؟ أدخل الاسم والجرعة.",
     onboarding_surgery_desc: "هل أجريت أي عمليات جراحية؟ أدخل اسم العملية والتاريخ.",
     disease_name:           "اسم المرض",
+    saved:                  "تم الحفظ بنجاح",
+    step:                   "خطوة",
+    of:                     "من",
     patient_profile_not_found: "لم يتم العثور على ملف المريض.",
     
     // ── Auth Flow ────────────────────────────

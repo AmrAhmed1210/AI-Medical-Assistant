@@ -55,5 +55,8 @@ namespace MedicalAssistant.Shared.DTOs.AppointmentsDTOs
         public string? Notes { get; set; }
         public bool IsFreeRebook { get; set; }
         public bool CanRebook { get; set; }
+        
+        public bool IsFollowUp { get; set; }
+        public int? FollowUpVisitId { get; set; }
     }
 }

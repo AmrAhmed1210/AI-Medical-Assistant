@@ -93,45 +93,54 @@ export default function PreVisitSummaryCard({ appointment }: PreVisitSummaryCard
   };
 
   return (
-    <div className="mt-4 bg-primary-50/50 rounded-xl p-4 border border-primary-100">
-      <div className="flex items-center justify-between">
-        <h4 className="flex items-center gap-2 text-primary-800 font-bold text-sm">
+    <div className="py-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h4 className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-bold text-sm">
           <Sparkles className="w-4 h-4 text-primary-500" />
           AI Pre-Visit Summary
         </h4>
         {!summary && !loading && (
-          <Button variant="outline" size="sm" onClick={generateSummary} className="h-8 text-xs bg-white border-primary-200 hover:bg-primary-50 text-primary-700">
+          <button 
+            onClick={generateSummary} 
+            className="self-start sm:self-auto text-xs font-bold text-primary-600 bg-primary-50 hover:bg-primary-100 dark:text-primary-400 dark:bg-primary-900/20 dark:hover:bg-primary-900/40 px-4 py-2 rounded-xl transition-colors"
+          >
             Generate Summary
-          </Button>
+          </button>
         )}
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 text-primary-600 text-sm mt-3">
+        <div className="flex items-center gap-2 text-primary-500 text-sm mt-4 font-medium bg-primary-50/50 dark:bg-primary-900/10 p-3 rounded-xl border border-primary-100 dark:border-primary-800/30 w-fit">
           <Loader2 className="w-4 h-4 animate-spin" />
           Analyzing patient history...
         </div>
       )}
 
       {error && (
-        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg mt-3">
-          <AlertTriangle className="w-4 h-4" />
+        <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm bg-red-50 dark:bg-red-900/20 p-3 rounded-xl mt-4 border border-red-100 dark:border-red-900/30">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
           {error}
         </div>
       )}
 
       {summary && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 mt-4">
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100" dir="ltr">
-            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">English Summary</h5>
-            <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid md:grid-cols-2 gap-4 mt-5">
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-700/50" dir="ltr">
+            <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+              English Summary
+            </h5>
+            <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed font-medium">
               {summary.summary_en}
             </p>
           </div>
           
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100" dir="rtl">
-            <h5 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2" dir="ltr">Arabic Summary</h5>
-            <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-700/50" dir="rtl">
+            <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2" dir="ltr">
+              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              Arabic Summary
+            </h5>
+            <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed font-medium font-tajawal">
               {summary.summary_ar}
             </p>
           </div>

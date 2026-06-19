@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  LayoutAnimation, Platform, UIManager 
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  LayoutAnimation, Platform, UIManager
 } from "react-native";
 import { Brain, ChevronDown, ChevronUp, FileText } from "lucide-react-native";
 import { COLORS } from "../../constants/colors";
@@ -58,7 +58,7 @@ function ReportCard({ report }: { report: any }) {
       {expanded && (
         <View style={styles.expandedContent}>
           <View style={styles.divider} />
-          
+
           <View style={styles.badgeRow}>
             <View style={[styles.detailBadge, { backgroundColor: sev.bg }]}>
               <Text style={[styles.detailBadgeText, { color: sev.text }]}>Severity: {report.severity}</Text>

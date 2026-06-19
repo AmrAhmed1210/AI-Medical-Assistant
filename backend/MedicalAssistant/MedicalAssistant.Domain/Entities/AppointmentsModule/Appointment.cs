@@ -21,6 +21,10 @@ namespace MedicalAssistant.Domain.Entities.AppointmentsModule
 
         public string? Notes { get; set; }
 
+        public bool IsFollowUp { get; set; } = false;
+
+        public int? FollowUpVisitId { get; set; }
+
         public DateTime CreatedAt { get; set; }
     }
 }

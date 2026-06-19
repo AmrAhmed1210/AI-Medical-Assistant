@@ -360,8 +360,25 @@ namespace MedicalAssistant.Services.Services
                 Status = appointment.Status,
                 Notes = CleanNotes(appointment.Notes),
                 IsFreeRebook = isFreeRebook,
-                CanRebook = string.Equals(appointment.Status, "Missed", StringComparison.OrdinalIgnoreCase)
+                CanRebook = string.Equals(appointment.Status, "Missed", StringComparison.OrdinalIgnoreCase),
+                IsFollowUp = appointment.IsFollowUp,
+                FollowUpVisitId = appointment.FollowUpVisitId
             };
+        }
+
+        private static DateTime? ParseAppointmentDateTimeLocal(string date, string time)
+        {
+            if (DateTime.TryParse($"{date} {time}", CultureInfo.InvariantCulture, DateTimeStyles.None, out var combined))
+            {
+                return combined;
+            }
+
+            if (DateTime.TryParse(date, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly))
+            {
+                return dateOnly;
+            }
+
+            return null;
         }
 
         private static DateTime? ParseAppointmentDateTime(string date, string time)
@@ -381,7 +398,7 @@ namespace MedicalAssistant.Services.Services
 
         private static string BuildScheduledAt(Appointment appointment)
         {
-            return ParseAppointmentDateTime(appointment.Date, appointment.Time)?.ToString("O")
+            return ParseAppointmentDateTimeLocal(appointment.Date, appointment.Time)?.ToString("yyyy-MM-ddTHH:mm:ss.fff")
                 ?? $"{appointment.Date} {appointment.Time}";
         }
 

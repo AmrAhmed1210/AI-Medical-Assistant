@@ -1,4 +1,5 @@
 using MedicalAssistant.Domain.Contracts;
+using MedicalAssistant.Domain.Entities.AppointmentsModule;
 using MedicalAssistant.Domain.Entities.DoctorsModule;
 using MedicalAssistant.Domain.Entities.PatientModule;
 using MedicalAssistant.Domain.Entities.UserModule;
@@ -8,6 +9,9 @@ using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace MedicalAssistant.Services.Services
@@ -29,7 +33,7 @@ namespace MedicalAssistant.Services.Services
             return docs.FirstOrDefault();
         }
 
-        private static PatientVisitDto MapVisit(PatientVisit v) => new(
+        private static PatientVisitDto MapVisit(PatientVisit v, string? doctorName = null, string? doctorSpecialty = null, bool isFollowUp = false, int? followUpVisitId = null) => new(
             v.Id,
             v.PatientId,
             v.DoctorId,
@@ -43,7 +47,15 @@ namespace MedicalAssistant.Services.Services
             v.Status,
             v.VisitDate,
             v.CreatedAt,
-            v.ClosedAt
+            v.ClosedAt,
+            v.FollowUpRequired,
+            v.FollowUpDate,
+            v.FollowUpTime,
+            v.FollowUpNotes,
+            doctorName,
+            doctorSpecialty,
+            isFollowUp,
+            followUpVisitId
         );
 
         private static VisitSymptomDto MapSymptom(Symptom s) => new(
@@ -131,8 +143,9 @@ namespace MedicalAssistant.Services.Services
 
         public async Task<PatientVisitDto?> GetVisitAsync(int visitId)
         {
-            var visit = await _unitOfWork.Repository<PatientVisit>().GetByIdAsync(visitId);
-            return visit == null ? null : MapVisit(visit);
+            var visit = (await _unitOfWork.Repository<PatientVisit>().FindAsync(v => v.Id == visitId, v => v.Appointment)).FirstOrDefault();
+            if (visit == null) return null;
+            return MapVisit(visit, isFollowUp: visit.Appointment?.IsFollowUp ?? false, followUpVisitId: visit.Appointment?.FollowUpVisitId);
         }
 
         public async Task<PatientVisitDto?> UpdateVisitAsync(int doctorUserId, int visitId, UpdateVisitDto dto)
@@ -149,7 +162,8 @@ namespace MedicalAssistant.Services.Services
             if (dto.Plan != null) visit.Plan = dto.Plan;
             if (dto.Notes != null) visit.Notes = dto.Notes;
             if (dto.FollowUpRequired.HasValue) visit.FollowUpRequired = dto.FollowUpRequired.Value;
-            if (dto.FollowUpAfterDays.HasValue) visit.FollowUpAfterDays = dto.FollowUpAfterDays.Value;
+            if (dto.FollowUpDate != null) visit.FollowUpDate = dto.FollowUpDate;
+            if (dto.FollowUpTime != null) visit.FollowUpTime = dto.FollowUpTime;
             if (dto.FollowUpNotes != null) visit.FollowUpNotes = dto.FollowUpNotes;
 
             // Update Symptoms
@@ -232,6 +246,55 @@ namespace MedicalAssistant.Services.Services
 
             visit.Status = "closed";
             visit.ClosedAt = DateTime.UtcNow;
+
+            // Generate AI Summary
+            try
+            {
+                using var http = new HttpClient();
+                http.DefaultRequestHeaders.Add("x-internal-token", "AntiGravity123");
+                
+                var payload = new {
+                    complaint = visit.ChiefComplaint ?? "",
+                    diagnosis = visit.Assessment ?? "",
+                    treatment = visit.Plan ?? ""
+                };
+                
+                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                var response = await http.PostAsync("http://localhost:8000/summarize-visit", content);
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseStr = await response.Content.ReadAsStringAsync();
+                    var resObj = JsonSerializer.Deserialize<JsonElement>(responseStr);
+                    if (resObj.TryGetProperty("summary_en", out var enProp) && resObj.TryGetProperty("summary_ar", out var arProp))
+                    {
+                        var sumEn = enProp.GetString();
+                        var sumAr = arProp.GetString();
+                        visit.SummarySnapshot = $"EN: {sumEn}\n\nAR: {sumAr}";
+                    }
+                }
+            }
+            catch { /* Ignore AI errors so it doesn't block closing */ }
+
+            // Auto-create follow-up appointment if follow-up is required
+            if (visit.FollowUpRequired == true && !string.IsNullOrWhiteSpace(visit.FollowUpDate))
+            {
+                var followUpAppointment = new Appointment
+                {
+                    PatientId = visit.PatientId,
+                    DoctorId = visit.DoctorId,
+                    Date = visit.FollowUpDate,
+                    Time = visit.FollowUpTime ?? "09:00",
+                    PaymentMethod = "cash",
+                    Status = "Confirmed",
+                    IsFollowUp = true,
+                    FollowUpVisitId = visit.Id,
+                    Notes = $"Follow-up from visit #{visit.Id}. {visit.FollowUpNotes}".Trim(),
+                    CreatedAt = DateTime.UtcNow
+                };
+                await _unitOfWork.Repository<Appointment>().AddAsync(followUpAppointment);
+            }
+
             _unitOfWork.Repository<PatientVisit>().Update(visit);
             await _unitOfWork.SaveChangesAsync();
             return true;
@@ -239,16 +302,36 @@ namespace MedicalAssistant.Services.Services
 
         public async Task<IEnumerable<PatientVisitDto>> GetVisitsForPatientAsync(int patientId)
         {
-            var items = await _unitOfWork.Repository<PatientVisit>().FindAsync(v => v.PatientId == patientId);
-            return items.OrderByDescending(v => v.CreatedAt).Select(MapVisit).ToList();
+            var items = await _unitOfWork.Repository<PatientVisit>().FindAsync(v => v.PatientId == patientId && v.Status == "closed");
+            
+            var docIds = items.Select(v => v.DoctorId).Distinct().ToList();
+            var doctors = await _unitOfWork.Repository<Doctor>().FindAsync(d => docIds.Contains(d.Id));
+            var userIds = doctors.Select(d => d.UserId).Distinct().ToList();
+            var users = await _unitOfWork.Repository<User>().FindAsync(u => userIds.Contains(u.Id));
+
+            var docMap = doctors.ToDictionary(
+                d => d.Id,
+                d => new { 
+                    Name = users.FirstOrDefault(u => u.Id == d.UserId)?.FullName ?? "Unknown Doctor",
+                    Specialty = d.Specialty?.Name ?? "Specialist"
+                }
+            );
+
+            return items.OrderByDescending(v => v.CreatedAt).Select(v => MapVisit(v, 
+                docMap.ContainsKey(v.DoctorId) ? docMap[v.DoctorId].Name : null,
+                docMap.ContainsKey(v.DoctorId) ? docMap[v.DoctorId].Specialty : null
+            )).ToList();
         }
 
         public async Task<IEnumerable<PatientVisitDto>> GetTodayVisitsForDoctorAsync(int doctorUserId)
         {
             var doctor = await GetDoctorByUserIdAsync(doctorUserId) ?? throw new UnauthorizedAccessException("Doctor profile not found.");
+            var user = await _unitOfWork.Repository<User>().GetByIdAsync(doctorUserId);
+            var doctorName = user?.FullName ?? "Unknown Doctor";
+            var doctorSpecialty = doctor.Specialty?.Name ?? "Specialist";
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             var items = await _unitOfWork.Repository<PatientVisit>().FindAsync(v => v.DoctorId == doctor.Id && v.VisitDate == today);
-            return items.OrderByDescending(v => v.CreatedAt).Select(MapVisit).ToList();
+            return items.OrderByDescending(v => v.CreatedAt).Select(v => MapVisit(v, doctorName, doctorSpecialty)).ToList();
         }
 
         public async Task<IEnumerable<PatientVisitDto>> GetMyVisitsAsync(int patientUserId)
@@ -261,10 +344,131 @@ namespace MedicalAssistant.Services.Services
             if (patient == null) throw new UnauthorizedAccessException("Patient record not found.");
 
             var items = await _unitOfWork.Repository<PatientVisit>().FindAsync(v => v.PatientId == patient.Id);
-            return items.OrderByDescending(v => v.CreatedAt).Select(MapVisit).ToList();
+            
+            var docIds = items.Select(v => v.DoctorId).Distinct().ToList();
+            var doctors = await _unitOfWork.Repository<Doctor>().FindAsync(d => docIds.Contains(d.Id));
+            var userIds = doctors.Select(d => d.UserId).Distinct().ToList();
+            var users = await _unitOfWork.Repository<User>().FindAsync(u => userIds.Contains(u.Id));
+
+            var docMap = doctors.ToDictionary(
+                d => d.Id,
+                d => new { 
+                    Name = users.FirstOrDefault(u => u.Id == d.UserId)?.FullName ?? "Unknown Doctor",
+                    Specialty = d.Specialty?.Name ?? "Specialist"
+                }
+            );
+
+            return items.OrderByDescending(v => v.CreatedAt).Select(v => MapVisit(v, 
+                docMap.ContainsKey(v.DoctorId) ? docMap[v.DoctorId].Name : null,
+                docMap.ContainsKey(v.DoctorId) ? docMap[v.DoctorId].Specialty : null
+            )).ToList();
         }
 
-        private VisitSummaryDto BuildVisitSummary(PatientVisit visit, Patient? patient)
+        private static (string? En, string? Ar) ParseSummarySnapshot(string? snapshot)
+        {
+            if (string.IsNullOrWhiteSpace(snapshot)) return (null, null);
+
+            if (snapshot.StartsWith("EN:", StringComparison.OrdinalIgnoreCase))
+            {
+                var parts = snapshot.Split("\n\nAR:", StringSplitOptions.None);
+                if (parts.Length >= 2)
+                {
+                    var en = parts[0].Replace("EN:", "", StringComparison.OrdinalIgnoreCase).Trim();
+                    var ar = parts[1].Trim();
+                    return (en, ar);
+                }
+            }
+
+            return (snapshot, snapshot);
+        }
+
+        private static string? BuildFallbackVisitSummary(PatientVisit visit)
+        {
+            if (string.IsNullOrWhiteSpace(visit.Assessment) && string.IsNullOrWhiteSpace(visit.Plan))
+                return null;
+            return $"{visit.Assessment}\n{visit.Plan}".Trim();
+        }
+
+        private LastVisitSummaryDto MapToLastVisitSummary(
+            PatientVisit visit,
+            Dictionary<int, (string Name, string Specialty)> docMap)
+        {
+            var (sumEn, sumAr) = ParseSummarySnapshot(visit.SummarySnapshot);
+            var fallback = BuildFallbackVisitSummary(visit);
+            docMap.TryGetValue(visit.DoctorId, out var doc);
+
+            return new LastVisitSummaryDto(
+                visit.Id.ToString(),
+                visit.VisitDate.ToString("yyyy-MM-dd"),
+                visit.ChiefComplaint,
+                doc.Name ?? "Unknown Doctor",
+                doc.Specialty ?? "Specialist",
+                sumEn ?? sumAr ?? fallback,
+                sumEn,
+                sumAr
+            );
+        }
+
+        private async Task<Dictionary<int, (string Name, string Specialty)>> GetDoctorMapAsync(IEnumerable<int> doctorIds)
+        {
+            var ids = doctorIds.Distinct().ToList();
+            if (ids.Count == 0) return new Dictionary<int, (string Name, string Specialty)>();
+
+            var doctors = (await _unitOfWork.Repository<Doctor>().FindAsync(d => ids.Contains(d.Id))).ToList();
+            var userIds = doctors.Select(d => d.UserId).Distinct().ToList();
+            var users = (await _unitOfWork.Repository<User>().FindAsync(u => userIds.Contains(u.Id))).ToList();
+
+            return doctors.ToDictionary(
+                d => d.Id,
+                d => (
+                    Name: users.FirstOrDefault(u => u.Id == d.UserId)?.FullName ?? "Unknown Doctor",
+                    Specialty: d.Specialty?.Name ?? "Specialist"
+                )
+            );
+        }
+
+        private async Task<List<LastVisitSummaryDto>> GetRecentVisitsAsync(int patientId, int? excludeVisitId = null)
+        {
+            var cutoff = DateTime.UtcNow.AddMonths(-8);
+            var visits = (await _unitOfWork.Repository<PatientVisit>().FindAsync(
+                v => v.PatientId == patientId && v.Status == "closed" && v.CreatedAt >= cutoff)).ToList();
+
+            if (excludeVisitId.HasValue)
+                visits = visits.Where(v => v.Id != excludeVisitId.Value).ToList();
+
+            var docMap = await GetDoctorMapAsync(visits.Select(v => v.DoctorId));
+
+            return visits
+                .OrderByDescending(v => v.CreatedAt)
+                .Select(v => MapToLastVisitSummary(v, docMap))
+                .ToList();
+        }
+
+        private static string BuildVisitsTimelineSummary(IEnumerable<LastVisitSummaryDto> visits, bool english)
+        {
+            var list = visits.ToList();
+            if (list.Count == 0)
+                return english ? "No visits recorded in the last 8 months." : "لا توجد زيارات مسجلة في آخر 8 أشهر.";
+
+            var sb = new StringBuilder();
+            foreach (var visit in list)
+            {
+                var summary = english
+                    ? (visit.SummaryEn ?? visit.Summary)
+                    : (visit.SummaryAr ?? visit.Summary);
+                var doctorLabel = english ? "Doctor" : "الطبيب";
+                sb.AppendLine($"- {visit.VisitDate}: {visit.ChiefComplaint}");
+                if (!string.IsNullOrWhiteSpace(visit.DoctorName))
+                    sb.AppendLine($"  {doctorLabel}: {visit.DoctorName}");
+                if (!string.IsNullOrWhiteSpace(summary))
+                    sb.AppendLine($"  {summary}");
+                sb.AppendLine();
+            }
+
+            return sb.ToString().Trim();
+        }
+
+        private VisitSummaryDto BuildVisitSummary(PatientVisit visit, Patient? patient, List<LastVisitSummaryDto> recentVisits)
         {
             var age = patient != null && patient.DateOfBirth > DateTime.MinValue
                 ? DateTime.UtcNow.Year - patient.DateOfBirth.Year
@@ -319,8 +523,12 @@ namespace MedicalAssistant.Services.Services
                 symptoms,
                 visit.Notes,
                 visit.FollowUpRequired,
-                visit.FollowUpAfterDays,
-                visit.FollowUpNotes
+                visit.FollowUpDate,
+                visit.FollowUpTime,
+                visit.FollowUpNotes,
+                recentVisits,
+                BuildVisitsTimelineSummary(recentVisits, english: true),
+                BuildVisitsTimelineSummary(recentVisits, english: false)
             );
         }
 
@@ -332,7 +540,8 @@ namespace MedicalAssistant.Services.Services
             if (visit.DoctorId != doctor.Id) throw new UnauthorizedAccessException("Not allowed.");
 
             var patient = visit.Patient ?? await _unitOfWork.Repository<Patient>().GetByIdAsync(visit.PatientId);
-            return BuildVisitSummary(visit, patient);
+            var recentVisits = await GetRecentVisitsAsync(visit.PatientId, visit.Id);
+            return BuildVisitSummary(visit, patient, recentVisits);
         }
 
         public async Task<VisitSummaryDto?> GetVisitSummaryForPatientAsync(int patientUserId, int visitId)
@@ -349,7 +558,8 @@ namespace MedicalAssistant.Services.Services
             if (visit.PatientId != patient.Id) throw new UnauthorizedAccessException("Not allowed.");
 
             var patientWithRecords = patient;
-            return BuildVisitSummary(visit, patientWithRecords);
+            var recentVisits = await GetRecentVisitsAsync(visit.PatientId, visit.Id);
+            return BuildVisitSummary(visit, patientWithRecords, recentVisits);
         }
 
         // Symptoms
@@ -562,12 +772,16 @@ namespace MedicalAssistant.Services.Services
             var patient = await _unitOfWork.Repository<Patient>().GetByIdAsync(patientId);
             if (patient == null) return null;
 
-            var visits = await _unitOfWork.Repository<PatientVisit>().FindAsync(v => v.PatientId == patientId);
-            var lastVisits = visits.OrderByDescending(v => v.CreatedAt).Take(5).Select(v => new LastVisitSummaryDto(
-                v.Id.ToString(),
-                v.VisitDate.ToString("yyyy-MM-dd"),
-                v.ChiefComplaint
-            )).ToList();
+            var visits = await _unitOfWork.Repository<PatientVisit>().FindAsync(v => v.PatientId == patientId && v.Status == "closed");
+            var cutoff = DateTime.UtcNow.AddMonths(-8);
+            var recentClosedVisits = visits.Where(v => v.CreatedAt >= cutoff).ToList();
+
+            var docMap = await GetDoctorMapAsync(recentClosedVisits.Select(v => v.DoctorId));
+
+            var lastVisits = recentClosedVisits
+                .OrderByDescending(v => v.CreatedAt)
+                .Select(v => MapToLastVisitSummary(v, docMap))
+                .ToList();
 
             var allergies = patient.AllergyRecords?.Select(a => new AllergySummaryDto(
                 a.AllergenName,

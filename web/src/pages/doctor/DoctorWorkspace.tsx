@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
+  User,
   Stethoscope,
   Heart,
   AlertTriangle,
@@ -26,6 +27,7 @@ import {
 import toast from 'react-hot-toast'
 import { visitApi, type VitalSignDto, type SymptomDto, type PrescriptionDto } from '@/api/visitApi'
 import { useVisit, usePatientHistory } from '@/hooks/useVisits'
+import { getAiReportText, parseAiDiagnosisSummary } from '@/lib/aiReport'
 import { Card, Button, SkeletonCard } from '@/components/ui'
 
 const normalRanges: Record<string, { min: number; max: number; unit: string }> = {
@@ -54,7 +56,8 @@ interface WorkspaceFormData {
   symptoms: SymptomDto[]
   prescriptions: PrescriptionDto[]
   followUpRequired: boolean
-  followUpAfterDays: string
+  followUpDate: string
+  followUpTime: string
   followUpNotes: string
 }
 
@@ -84,7 +87,8 @@ export default function DoctorWorkspace() {
     symptoms: [],
     prescriptions: [],
     followUpRequired: false,
-    followUpAfterDays: '',
+    followUpDate: '',
+    followUpTime: '',
     followUpNotes: '',
   })
 
@@ -93,6 +97,7 @@ export default function DoctorWorkspace() {
 
   const [isSaving, setIsSaving] = useState(false)
   const [aiLang, setAiLang] = useState<'ar' | 'en'>('ar')
+  const [visitLang, setVisitLang] = useState<'ar' | 'en'>('ar')
   const [isAssisting, setIsAssisting] = useState(false)
 
   const handleAiAssist = async () => {
@@ -156,7 +161,8 @@ export default function DoctorWorkspace() {
         symptoms: form.symptoms,
         prescriptions: form.prescriptions,
         followUpRequired: form.followUpRequired,
-        followUpAfterDays: form.followUpAfterDays ? Number(form.followUpAfterDays) : undefined,
+        followUpDate: form.followUpDate,
+        followUpTime: form.followUpTime,
         followUpNotes: form.followUpNotes,
       })
       toast.success('Draft saved successfully')
@@ -238,37 +244,56 @@ export default function DoctorWorkspace() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col gap-6">
+    <div className="h-[calc(100vh-8rem)] flex flex-col gap-6 relative">
+      {/* Decorative background */}
+      <div className="absolute top-0 right-0 w-96 h-96 bg-primary-400/5 rounded-full blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl -z-10 pointer-events-none" />
+
       {/* Header Card */}
-      <div className="glass-card rounded-2xl px-6 py-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/doctor/today')}>
-            <ChevronLeft className="w-4 h-4" />
-            Back
-          </Button>
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl px-6 py-5 flex items-center justify-between shrink-0 border border-white/50 dark:border-slate-800/80 shadow-sm">
+        <div className="flex items-center gap-5">
+          <button 
+            onClick={() => navigate('/doctor/today')}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-100/80 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
           <div>
-            <h1 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Stethoscope className="w-5 h-5 text-primary-500" />
-              Visit: {visit?.patientName}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-slate-400 font-medium">
-              {visit?.status === 'open' ? 'In Progress — Editable' : 'Closed'}
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                {visit?.patientName}
+              </h1>
+              <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                visit?.status === 'open' 
+                  ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' 
+                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+              }`}>
+                {visit?.status === 'open' ? 'In Progress' : 'Closed'}
+              </span>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2 mt-0.5">
+              <Stethoscope className="w-3.5 h-3.5" />
+              Visit Workspace
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={handleSaveDraft} disabled={isSaving}>
-            <Save className="w-4 h-4 ml-2" />
-            Save Draft
-          </Button>
-          <Button
-            onClick={() => setShowConfirmClose(true)}
-            className="bg-primary-600 hover:bg-primary-700"
-            disabled={!form.chiefComplaint}
+          <button 
+            onClick={handleSaveDraft} 
+            disabled={isSaving}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-slate-700 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
           >
-            <Lock className="w-4 h-4 ml-2" />
+            <Save className="w-4 h-4 text-slate-400" />
+            {isSaving ? 'Saving...' : 'Save Draft'}
+          </button>
+          <button
+            onClick={() => setShowConfirmClose(true)}
+            disabled={!form.chiefComplaint}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-2xl font-bold text-white bg-gradient-primary shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0"
+          >
+            <Lock className="w-4 h-4" />
             Finish & Close
-          </Button>
+          </button>
         </div>
       </div>
 
@@ -276,487 +301,470 @@ export default function DoctorWorkspace() {
       <AnimatePresence>
         {criticalAlert && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="bg-red-600 text-white px-6 py-3 text-center font-bold text-sm"
+            initial={{ height: 0, opacity: 0, scale: 0.95 }}
+            animate={{ height: 'auto', opacity: 1, scale: 1 }}
+            exit={{ height: 0, opacity: 0, scale: 0.95 }}
+            className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-2xl px-6 py-4 flex items-center gap-3 shadow-sm"
           >
-            {criticalAlert}
+            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <h4 className="text-red-800 dark:text-red-400 font-bold text-sm">CRITICAL ALERT</h4>
+              <p className="text-red-600 dark:text-red-300 text-sm font-medium">{criticalAlert}</p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Split View */}
-      <div className="flex-1 flex gap-6 min-h-0">
-        {/* Left Panel — Patient History (40%) */}
-        <div className="w-[35%] overflow-y-auto space-y-5 pr-2 custom-scrollbar pb-6">
-          {/* AI Health Report */}
-          {patientHistory?.aiDiagnosisSummary && (
-            <Card className="border-purple-200 bg-purple-50/50">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-purple-900 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-purple-600" />
-                  AI Health Report
-                </h3>
-                <div className="flex bg-white rounded-lg p-1 border border-purple-100">
-                  <button
-                    onClick={() => setAiLang('ar')}
-                    className={`px-2 py-0.5 text-[10px] rounded-md transition-all ${aiLang === 'ar' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 hover:bg-purple-50'}`}
-                  >AR</button>
-                  <button
-                    onClick={() => setAiLang('en')}
-                    className={`px-2 py-0.5 text-[10px] rounded-md transition-all ${aiLang === 'en' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-600 hover:bg-purple-50'}`}
-                  >EN</button>
+      <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+        
+        {/* Left Panel — Patient History (35%) */}
+        <div className="w-full lg:w-[35%] bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-white/50 dark:border-slate-800/80 shadow-sm overflow-hidden flex flex-col">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/50 shrink-0">
+            <h2 className="font-extrabold text-lg text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <User className="w-5 h-5 text-slate-400" />
+              Patient Profile
+            </h2>
+          </div>
+          
+          <div className="overflow-y-auto p-6 space-y-8 custom-scrollbar">
+            
+            {/* AI Health Report */}
+            {patientHistory?.aiDiagnosisSummary && (
+              <div className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-2xl p-5 border border-purple-100/50 dark:border-purple-800/30 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                  <Sparkles className="w-24 h-24 text-purple-600" />
                 </div>
-              </div>
-              <div className="text-sm text-purple-900 leading-relaxed max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                {(() => {
-                  try {
-                    const parsed = JSON.parse(patientHistory.aiDiagnosisSummary);
-                    return aiLang === 'ar' ? parsed.analysis_ar : parsed.analysis_en;
-                  } catch {
-                    return patientHistory.aiDiagnosisSummary;
-                  }
-                })()}
-              </div>
-            </Card>
-          )}
-
-          {/* SOS Bar */}
-          <Card className="!bg-red-50/80 dark:!bg-red-950/20 !border-red-200 dark:!border-red-900/30">
-            <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold mb-3">
-              <Heart className="w-5 h-5 fill-red-600 dark:fill-red-500" />
-              Emergency Info
-            </div>
-            <div className="space-y-1 text-sm">
-              <p><span className="text-gray-500">Blood Type:</span> {patientHistory?.bloodType || '—'}</p>
-              {(patientHistory?.allergies?.filter((a: Record<string, string>) => a.severity === 'life_threatening').length ?? 0) > 0 && (
-                <div className="flex items-start gap-1 text-red-600">
-                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                  <span>
-                    Life-threatening allergy:{' '}
-                    {patientHistory?.allergies
-                      ?.filter((a: Record<string, string>) => a.severity === 'life_threatening')
-                      .map((a: Record<string, string>) => `${a.allergenName} (${a.reaction})`)
-                      .join(', ')}
-                  </span>
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {/* Chronic Diseases */}
-          {(patientHistory?.chronicDiseases?.length ?? 0) > 0 && (
-            <Card>
-              <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary-500" />
-                Chronic Diseases
-              </h3>
-              <div className="space-y-2">
-                {patientHistory?.chronicDiseases?.map((d: Record<string, string>) => (
-                  <div key={d.id} className="p-2 bg-gray-50 rounded-lg text-sm">
-                    <p className="font-medium">{d.diseaseName}</p>
-                    <p className="text-gray-500">Target: {d.targetValues}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Current Medications */}
-          {(patientHistory?.medications?.length ?? 0) > 0 && (
-            <Card>
-              <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <Pill className="w-5 h-5 text-primary-500" />
-                Current Medications
-              </h3>
-              <div className="space-y-2">
-                {patientHistory?.medications?.map((m: Record<string, string>) => (
-                  <div key={m.id} className="p-2 bg-gray-50 rounded-lg text-sm">
-                    <p className="font-medium">{m.medicationName}</p>
-                    <p className="text-gray-500">{m.dosage} — {m.frequency}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Latest Vitals */}
-          {patientHistory?.latestVitals && (
-            <Card>
-              <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-emerald-500" />
-                Latest Readings
-              </h3>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                {Object.entries(patientHistory.latestVitals).map(([key, val]: [string, unknown]) => (
-                  <div key={key} className="p-2 bg-gray-50 rounded">
-                    <p className="text-gray-500">{key}</p>
-                    <p className="font-medium">{val as string}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Last Visits */}
-          {(patientHistory?.lastVisits?.length ?? 0) > 0 && (
-            <Card>
-              <h3 className="font-bold text-gray-900 dark:text-white mb-4">Recent Visits</h3>
-              <div className="space-y-2">
-                {patientHistory?.lastVisits?.slice(0, 3).map((v: Record<string, string>) => (
-                  <div key={v.id} className="p-2 bg-gray-50 rounded-lg text-sm">
-                    <p className="font-medium">{v.visitDate}</p>
-                    <p className="text-gray-500 line-clamp-2">{v.chiefComplaint}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-        </div>
-
-        {/* Right Panel — Current Visit (65%) */}
-        <div className="w-[65%] overflow-y-auto space-y-6 pr-2 custom-scrollbar pb-6">
-          {/* Chief Complaint */}
-          <Card>
-            <label className="block font-bold text-gray-900 dark:text-slate-100 mb-3">Chief Complaint *</label>
-            <textarea
-              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
-              rows={2}
-              value={form.chiefComplaint}
-              onChange={(e) => setForm((f) => ({ ...f, chiefComplaint: e.target.value }))}
-              placeholder="e.g. Chest pain, difficulty breathing"
-            />
-          </Card>
-
-          {/* History of Present Illness */}
-          <Card>
-            <label className="block font-bold text-gray-900 dark:text-slate-100 mb-3">History of Present Illness</label>
-            <textarea
-              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
-              rows={3}
-              value={form.historyOfIllness}
-              onChange={(e) => setForm((f) => ({ ...f, historyOfIllness: e.target.value }))}
-              placeholder="Onset, progression, aggravating/relieving factors..."
-            />
-          </Card>
-
-          {/* Examination Findings */}
-          <Card>
-            <label className="block font-bold text-gray-900 dark:text-slate-100 mb-3">Examination Findings</label>
-            <textarea
-              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
-              rows={3}
-              value={form.examinationFindings}
-              onChange={(e) => setForm((f) => ({ ...f, examinationFindings: e.target.value }))}
-              placeholder="Physical exam, vital signs, findings..."
-            />
-          </Card>
-
-          {/* Vital Signs */}
-          <Card>
-            <h3 className="font-bold text-gray-900 dark:text-slate-100 mb-5 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-primary-500" />
-              Vital Signs
-            </h3>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
-              {[
-                { key: 'bpSystolic' as const, label: 'Systolic BP', icon: Gauge, type: 'bp_systolic', placeholder: '120' },
-                { key: 'bpDiastolic' as const, label: 'Diastolic BP', icon: Gauge, type: 'bp_diastolic', placeholder: '80' },
-                { key: 'heartRate' as const, label: 'Heart Rate', icon: Heart, type: 'heart_rate', placeholder: '72' },
-                { key: 'temperature' as const, label: 'Temperature', icon: Thermometer, type: 'temperature', placeholder: '37.0' },
-                { key: 'bloodSugar' as const, label: 'Blood Sugar', icon: Droplets, type: 'blood_sugar', placeholder: '90' },
-                { key: 'weight' as const, label: 'Weight (kg)', icon: Weight, type: '', placeholder: '70' },
-                { key: 'spo2' as const, label: 'SpO2', icon: Wind, type: 'spo2', placeholder: '98' },
-              ].map((field) => {
-                const status = field.type ? getVitalStatus(field.type, form[field.key]) : 'neutral'
-                const Icon = field.icon
-                return (
-                  <div key={field.key} className="relative">
-                    <label className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                      <Icon className="w-3 h-3" />
-                      {field.label}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className={`w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-3 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 ${status === 'abnormal'
-                            ? 'border-red-400 bg-red-50/50 dark:bg-red-900/20 focus:border-red-500 focus:ring-red-500/30'
-                            : status === 'normal'
-                              ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/10'
-                              : 'focus:border-primary-500 focus:ring-primary-500/30'
-                          }`}
-                        placeholder={field.placeholder}
-                        value={form[field.key]}
-                        onChange={(e) => setForm((f) => ({ ...f, [field.key]: e.target.value }))}
-                      />
-                      {status === 'normal' && (
-                        <CheckCircle2 className="w-4 h-4 text-green-500 absolute left-2 top-2.5" />
-                      )}
-                      {status === 'abnormal' && (
-                        <AlertCircle className="w-4 h-4 text-red-500 absolute left-2 top-2.5" />
-                      )}
-                    </div>
-                    {status === 'abnormal' && field.type && (
-                      <p className="text-xs text-red-500 mt-1">
-                        Normal range: {normalRanges[field.type].min}–{normalRanges[field.type].max} {normalRanges[field.type].unit}
-                      </p>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </Card>
-
-          {/* Symptoms */}
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900 dark:text-slate-100">Symptoms</h3>
-              <Button size="sm" variant="outline" onClick={handleAddSymptom}>
-                <Plus className="w-4 h-4 ml-1" />
-                Add Symptom
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {form.symptoms.map((sym, idx) => (
-                <div key={idx} className="p-4 bg-gray-50/80 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-700/50 rounded-xl grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <input
-                    className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
-                    placeholder="Symptom name"
-                    value={sym.name}
-                    onChange={(e) => {
-                      const s = [...form.symptoms]
-                      s[idx].name = e.target.value
-                      setForm((f) => ({ ...f, symptoms: s }))
-                    }}
-                  />
-                  <select
-                    className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all"
-                    value={sym.severity}
-                    onChange={(e) => {
-                      const s = [...form.symptoms]
-                      s[idx].severity = e.target.value
-                      setForm((f) => ({ ...f, symptoms: s }))
-                    }}
-                  >
-                    <option value="mild">Mild</option>
-                    <option value="moderate">Moderate</option>
-                    <option value="severe">Severe</option>
-                  </select>
-                  <input
-                    className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
-                    placeholder="Location"
-                    value={sym.location}
-                    onChange={(e) => {
-                      const s = [...form.symptoms]
-                      s[idx].location = e.target.value
-                      setForm((f) => ({ ...f, symptoms: s }))
-                    }}
-                  />
-                  <div className="flex justify-end items-center pr-2">
+                <div className="flex items-center justify-between mb-3 relative z-10">
+                  <h3 className="font-bold text-purple-900 dark:text-purple-300 flex items-center gap-2 text-sm uppercase tracking-wider">
+                    <Wand2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    AI Health Report
+                  </h3>
+                  <div className="flex bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg p-1 shadow-sm">
                     <button
-                      className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400 text-sm p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                      onClick={() => {
-                        const s = form.symptoms.filter((_, i) => i !== idx)
-                        setForm((f) => ({ ...f, symptoms: s }))
-                      }}
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {form.symptoms.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">No symptoms recorded</p>
-              )}
-            </div>
-          </Card>
-
-          {/* Assessment */}
-          <Card>
-            <div className="flex items-center justify-between mb-3">
-              <label className="block font-bold text-gray-900 dark:text-slate-100">Assessment / Diagnosis</label>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-purple-600 border-purple-200 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:border-purple-800/50 dark:text-purple-400 dark:hover:bg-purple-900/40"
-                onClick={handleAiAssist}
-                disabled={isAssisting}
-              >
-                {isAssisting ? <Loader2 className="w-3 h-3 animate-spin ml-1" /> : <Wand2 className="w-3 h-3 ml-1" />}
-                AI Assist
-              </Button>
-            </div>
-            <textarea
-              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
-              rows={2}
-              value={form.assessment}
-              onChange={(e) => setForm((f) => ({ ...f, assessment: e.target.value }))}
-              placeholder="Differential diagnosis..."
-            />
-          </Card>
-
-          {/* Plan */}
-          <Card>
-            <label className="block font-bold text-gray-900 dark:text-slate-100 mb-3">Treatment Plan</label>
-            <textarea
-              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
-              rows={2}
-              value={form.plan}
-              onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value }))}
-              placeholder="Treatment steps, recommendations..."
-            />
-          </Card>
-
-          {/* Prescriptions */}
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900 dark:text-slate-100">Prescription</h3>
-              <Button size="sm" variant="outline" onClick={handleAddPrescription}>
-                <Plus className="w-4 h-4 ml-1" />
-                Add Medication
-              </Button>
-            </div>
-            <div className="space-y-4">
-              {form.prescriptions.map((pres, idx) => (
-                <div key={idx} className="p-4 bg-gray-50/80 dark:bg-slate-800/40 border border-gray-100 dark:border-slate-700/50 rounded-xl space-y-3">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <input
-                      className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
-                      placeholder="Medication name"
-                      value={pres.medicationName}
-                      onChange={(e) => {
-                        const p = [...form.prescriptions]
-                        p[idx].medicationName = e.target.value
-                        setForm((f) => ({ ...f, prescriptions: p }))
-                      }}
-                    />
-                    <input
-                      className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
-                      placeholder="Dosage"
-                      value={pres.dosage}
-                      onChange={(e) => {
-                        const p = [...form.prescriptions]
-                        p[idx].dosage = e.target.value
-                        setForm((f) => ({ ...f, prescriptions: p }))
-                      }}
-                    />
-                    <input
-                      className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
-                      placeholder="Frequency"
-                      value={pres.frequency}
-                      onChange={(e) => {
-                        const p = [...form.prescriptions]
-                        p[idx].frequency = e.target.value
-                        setForm((f) => ({ ...f, prescriptions: p }))
-                      }}
-                    />
-                    <input
-                      className="bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-lg p-2 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
-                      placeholder="Duration"
-                      value={pres.duration}
-                      onChange={(e) => {
-                        const p = [...form.prescriptions]
-                        p[idx].duration = e.target.value
-                        setForm((f) => ({ ...f, prescriptions: p }))
-                      }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200/50 dark:border-slate-700/50">
-                    <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
-                      <input
-                        type="checkbox"
-                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                        checked={pres.isChronic}
-                        onChange={(e) => {
-                          const p = [...form.prescriptions]
-                          p[idx].isChronic = e.target.checked
-                          setForm((f) => ({ ...f, prescriptions: p }))
-                        }}
-                      />
-                      <span>Chronic medication (tracked)</span>
-                    </label>
+                      onClick={() => setAiLang('ar')}
+                      className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${aiLang === 'ar' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30'}`}
+                    >AR</button>
                     <button
-                      className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400 text-sm p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                      onClick={() => {
-                        const p = form.prescriptions.filter((_, i) => i !== idx)
-                        setForm((f) => ({ ...f, prescriptions: p }))
-                      }}
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+                      onClick={() => setAiLang('en')}
+                      className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition-all ${aiLang === 'en' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30'}`}
+                    >EN</button>
                   </div>
                 </div>
-              ))}
-              {form.prescriptions.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">No medications added</p>
-              )}
-            </div>
-          </Card>
-
-          {/* Follow-up */}
-          <Card>
-            <h3 className="font-bold text-gray-900 dark:text-slate-100 mb-4">Follow-up</h3>
-            <label className="flex items-center gap-2 mb-4 text-sm text-gray-700 dark:text-slate-300">
-              <input
-                type="checkbox"
-                className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                checked={form.followUpRequired}
-                onChange={(e) => setForm((f) => ({ ...f, followUpRequired: e.target.checked }))}
-              />
-              <span className="font-medium">Follow-up required</span>
-            </label>
-            {form.followUpRequired && (
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1 block">After (days)</label>
-                  <input
-                    type="number"
-                    className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-3 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500"
-                    value={form.followUpAfterDays}
-                    onChange={(e) => setForm((f) => ({ ...f, followUpAfterDays: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-1 block">Notes for patient</label>
-                  <textarea
-                    className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-3 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
-                    rows={2}
-                    value={form.followUpNotes}
-                    onChange={(e) => setForm((f) => ({ ...f, followUpNotes: e.target.value }))}
-                  />
+                <div className="text-sm text-purple-800 dark:text-purple-200 leading-relaxed font-medium relative z-10" dir={aiLang === 'ar' ? 'rtl' : 'ltr'}>
+                  {(() => {
+                    const parsed = parseAiDiagnosisSummary(patientHistory.aiDiagnosisSummary)
+                    if (!parsed) return patientHistory.aiDiagnosisSummary
+                    return getAiReportText(parsed, aiLang)
+                  })()}
                 </div>
               </div>
             )}
-          </Card>
 
-          {/* Notes */}
-          <Card>
-            <label className="block font-bold text-gray-900 dark:text-slate-100 mb-3">Additional Notes</label>
-            <textarea
-              className="w-full bg-white/50 dark:bg-slate-900/50 border border-gray-200/60 dark:border-slate-700/50 rounded-xl p-4 text-sm text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all placeholder-gray-400 dark:placeholder-slate-500 resize-none"
-              rows={2}
-              value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              placeholder="Any additional notes..."
-            />
-          </Card>
+            {/* Emergency Info */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                <Heart className="w-3.5 h-3.5 text-red-400" />
+                Vital Details
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700/50">
+                  <p className="text-xs text-slate-500 font-medium mb-1">Blood Type</p>
+                  <p className="font-extrabold text-red-600 dark:text-red-400 text-lg">{patientHistory?.bloodType || 'Unknown'}</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700/50">
+                  <p className="text-xs text-slate-500 font-medium mb-1">Allergies</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-200">
+                    {patientHistory?.allergies?.length ? `${patientHistory.allergies.length} Recorded` : 'None'}
+                  </p>
+                </div>
+              </div>
+              {(patientHistory?.allergies?.filter((a: Record<string, string>) => a.severity === 'life_threatening').length ?? 0) > 0 && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 rounded-xl p-3 flex gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-700 dark:text-red-300 font-medium">
+                    Life-threatening: {patientHistory?.allergies
+                      ?.filter((a: Record<string, string>) => a.severity === 'life_threatening')
+                      .map((a: Record<string, string>) => a.allergenName)
+                      .join(', ')}
+                  </p>
+                </div>
+              )}
+            </div>
 
-          {/* Bottom actions */}
-          <div className="flex gap-3 pb-6">
-            <Button variant="outline" className="flex-1" onClick={handleSaveDraft} disabled={isSaving}>
-              <Save className="w-4 h-4 ml-2" />
-              Save Draft
-            </Button>
-            <Button
-              className="flex-1 bg-primary-600 hover:bg-primary-700"
-              onClick={() => setShowConfirmClose(true)}
-              disabled={!form.chiefComplaint}
-            >
-              <Lock className="w-4 h-4 ml-2" />
-              Finish & Close Visit
-            </Button>
+            {/* Medical Context Lists */}
+            <div className="space-y-6">
+              {/* Chronic Diseases */}
+              {(patientHistory?.chronicDiseases?.length ?? 0) > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-3">
+                    <Activity className="w-3.5 h-3.5" />
+                    Chronic Conditions
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {patientHistory?.chronicDiseases?.map((d: Record<string, string>) => (
+                      <div key={d.id} className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-100/50 dark:border-orange-800/30">
+                        {d.diseaseName}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Current Medications */}
+              {(patientHistory?.medications?.length ?? 0) > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-3">
+                    <Pill className="w-3.5 h-3.5" />
+                    Active Medications
+                  </h3>
+                  <div className="space-y-2">
+                    {patientHistory?.medications?.map((m: Record<string, string>) => (
+                      <div key={m.id} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                        <span className="font-bold text-sm text-slate-700 dark:text-slate-300">{m.medicationName}</span>
+                        <span className="text-xs text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded-md shadow-sm border border-slate-100 dark:border-slate-700">{m.dosage}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recent Visits Timeline */}
+              {(patientHistory?.lastVisits?.length ?? 0) > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3 gap-2">
+                    <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                      {visitLang === 'ar' ? 'ملخص الزيارات (آخر 8 أشهر)' : 'Recent Visits (Last 8 Months)'}
+                    </h3>
+                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+                      <button
+                        type="button"
+                        onClick={() => setVisitLang('ar')}
+                        className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${visitLang === 'ar' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+                      >
+                        AR
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setVisitLang('en')}
+                        className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${visitLang === 'en' ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-500'}`}
+                      >
+                        EN
+                      </button>
+                    </div>
+                  </div>
+                  <div className="relative pl-3 space-y-4 before:absolute before:inset-y-0 before:left-[5px] before:w-px before:bg-slate-200 dark:before:bg-slate-700">
+                    {patientHistory?.lastVisits?.map((v: Record<string, string>, i: number) => (
+                      <div 
+                        key={v.id} 
+                        className="relative pl-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 p-2 -ml-1 rounded-lg transition-colors"
+                        onClick={() => window.open(`/doctor/visits/${v.id}/summary`, '_blank')}
+                      >
+                        <div className="absolute left-[-1px] top-3 w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 ring-4 ring-white dark:ring-slate-900" />
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-0.5 hover:underline">{v.visitDate} <span className="text-[10px] text-slate-400 font-normal ml-1">(Click for summary)</span></p>
+                        {v.doctorName && (
+                          <p className="text-[11px] font-semibold text-primary-600 dark:text-primary-400">
+                            Dr. {v.doctorName}
+                            {v.doctorSpecialty && <span className="text-slate-400 font-normal ml-1">· {v.doctorSpecialty}</span>}
+                          </p>
+                        )}
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 line-clamp-2" dir="auto">{v.chiefComplaint}</p>
+                        {(visitLang === 'ar' ? (v.summaryAr || v.summary) : (v.summaryEn || v.summary)) && (
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 line-clamp-3 italic" dir={visitLang === 'ar' ? 'rtl' : 'ltr'}>
+                            {visitLang === 'ar' ? (v.summaryAr || v.summary) : (v.summaryEn || v.summary)}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+
+        {/* Right Panel — Current Visit Document (65%) */}
+        <div className="w-full lg:w-[65%] bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-3xl border border-white/50 dark:border-slate-800/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col relative">
+          
+          <div className="overflow-y-auto p-6 md:p-8 space-y-10 custom-scrollbar">
+            
+            {/* Subjective Section */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/60 pb-2">
+                <div className="w-8 h-8 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 font-black text-sm">S</div>
+                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">Subjective</h2>
+              </div>
+              
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Chief Complaint <span className="text-red-500">*</span></label>
+                  <textarea
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl p-4 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all placeholder:text-slate-400 resize-none shadow-inner"
+                    rows={2}
+                    value={form.chiefComplaint}
+                    onChange={(e) => setForm((f) => ({ ...f, chiefComplaint: e.target.value }))}
+                    placeholder="E.g., Patient presents with chest pain and shortness of breath..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">History of Present Illness</label>
+                  <textarea
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl p-4 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all placeholder:text-slate-400 resize-none shadow-inner"
+                    rows={3}
+                    value={form.historyOfIllness}
+                    onChange={(e) => setForm((f) => ({ ...f, historyOfIllness: e.target.value }))}
+                    placeholder="Details about onset, duration, character, aggravating/relieving factors..."
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Objective Section */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/60 pb-2">
+                <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-black text-sm">O</div>
+                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">Objective & Vitals</h2>
+              </div>
+
+              <div className="bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/50 rounded-3xl p-5">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { key: 'bpSystolic' as const, label: 'Sys BP', icon: Gauge, type: 'bp_systolic', placeholder: '120' },
+                    { key: 'bpDiastolic' as const, label: 'Dia BP', icon: Gauge, type: 'bp_diastolic', placeholder: '80' },
+                    { key: 'heartRate' as const, label: 'Heart Rate', icon: Heart, type: 'heart_rate', placeholder: '72' },
+                    { key: 'temperature' as const, label: 'Temp', icon: Thermometer, type: 'temperature', placeholder: '37.0' },
+                    { key: 'bloodSugar' as const, label: 'Sugar', icon: Droplets, type: 'blood_sugar', placeholder: '90' },
+                    { key: 'weight' as const, label: 'Weight', icon: Weight, type: '', placeholder: '70' },
+                    { key: 'spo2' as const, label: 'SpO2', icon: Wind, type: 'spo2', placeholder: '98' },
+                  ].map((field) => {
+                    const status = field.type ? getVitalStatus(field.type, form[field.key]) : 'neutral'
+                    const Icon = field.icon
+                    return (
+                      <div key={field.key} className="relative group">
+                        <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                          <Icon className="w-3 h-3" />
+                          {field.label}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className={`w-full bg-white dark:bg-slate-900 border rounded-xl p-2.5 text-sm font-bold text-slate-800 dark:text-slate-200 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600 shadow-sm ${
+                              status === 'abnormal'
+                                ? 'border-red-300 dark:border-red-800 focus:ring-2 focus:ring-red-500/20 focus:border-red-500'
+                                : status === 'normal'
+                                  ? 'border-emerald-200 dark:border-emerald-800 focus:border-emerald-400'
+                                  : 'border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500'
+                            }`}
+                            placeholder={field.placeholder}
+                            value={form[field.key]}
+                            onChange={(e) => setForm((f) => ({ ...f, [field.key]: e.target.value }))}
+                          />
+                          {status === 'normal' && <CheckCircle2 className="w-4 h-4 text-emerald-500 absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity" />}
+                          {status === 'abnormal' && <AlertCircle className="w-4 h-4 text-red-500 absolute right-3 top-3" />}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Examination Findings</label>
+                <textarea
+                  className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl p-4 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all placeholder:text-slate-400 resize-none shadow-inner"
+                  rows={3}
+                  value={form.examinationFindings}
+                  onChange={(e) => setForm((f) => ({ ...f, examinationFindings: e.target.value }))}
+                  placeholder="Clinical observations, palpation, auscultation results..."
+                />
+              </div>
+            </section>
+
+            {/* Assessment Section */}
+            <section className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-black text-sm">A</div>
+                  <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">Assessment</h2>
+                </div>
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-purple-600 bg-purple-50 hover:bg-purple-100 dark:text-purple-400 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 transition-colors disabled:opacity-50"
+                  onClick={handleAiAssist}
+                  disabled={isAssisting}
+                >
+                  {isAssisting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+                  AI Analyze
+                </button>
+              </div>
+
+              <div>
+                <textarea
+                  className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl p-4 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all placeholder:text-slate-400 resize-none shadow-inner"
+                  rows={3}
+                  value={form.assessment}
+                  onChange={(e) => setForm((f) => ({ ...f, assessment: e.target.value }))}
+                  placeholder="Primary diagnosis and differential diagnosis..."
+                />
+              </div>
+            </section>
+
+            {/* Plan Section */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/60 pb-2">
+                <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-sm">P</div>
+                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">Plan & Prescriptions</h2>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Treatment Plan</label>
+                <textarea
+                  className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl p-4 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all placeholder:text-slate-400 resize-none shadow-inner"
+                  rows={3}
+                  value={form.plan}
+                  onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value }))}
+                  placeholder="Patient instructions, lifestyle advice, next steps..."
+                />
+              </div>
+
+              <div className="bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/50 rounded-3xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm flex items-center gap-2">
+                    <Pill className="w-4 h-4 text-blue-500" />
+                    Medications Rx
+                  </h3>
+                  <button onClick={handleAddPrescription} className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                    <Plus className="w-3.5 h-3.5" /> Add Drug
+                  </button>
+                </div>
+                
+                <div className="space-y-3">
+                  {form.prescriptions.map((pres, idx) => (
+                    <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm relative group">
+                      <button
+                        className="absolute -right-2 -top-2 w-6 h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full flex items-center justify-center text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-50"
+                        onClick={() => {
+                          const p = form.prescriptions.filter((_, i) => i !== idx)
+                          setForm((f) => ({ ...f, prescriptions: p }))
+                        }}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <input
+                          className="bg-transparent text-sm font-bold text-slate-800 dark:text-slate-200 outline-none placeholder:font-medium placeholder:text-slate-400"
+                          placeholder="Drug name"
+                          value={pres.medicationName}
+                          onChange={(e) => {
+                            const p = [...form.prescriptions]
+                            p[idx].medicationName = e.target.value
+                            setForm((f) => ({ ...f, prescriptions: p }))
+                          }}
+                        />
+                        <input
+                          className="bg-transparent text-sm text-slate-600 dark:text-slate-400 outline-none placeholder:text-slate-400"
+                          placeholder="Dosage (e.g. 500mg)"
+                          value={pres.dosage}
+                          onChange={(e) => {
+                            const p = [...form.prescriptions]
+                            p[idx].dosage = e.target.value
+                            setForm((f) => ({ ...f, prescriptions: p }))
+                          }}
+                        />
+                        <input
+                          className="bg-transparent text-sm text-slate-600 dark:text-slate-400 outline-none placeholder:text-slate-400"
+                          placeholder="Frequency (e.g. 1x12h)"
+                          value={pres.frequency}
+                          onChange={(e) => {
+                            const p = [...form.prescriptions]
+                            p[idx].frequency = e.target.value
+                            setForm((f) => ({ ...f, prescriptions: p }))
+                          }}
+                        />
+                        <input
+                          className="bg-transparent text-sm text-slate-600 dark:text-slate-400 outline-none placeholder:text-slate-400"
+                          placeholder="Duration (e.g. 5 days)"
+                          value={pres.duration}
+                          onChange={(e) => {
+                            const p = [...form.prescriptions]
+                            p[idx].duration = e.target.value
+                            setForm((f) => ({ ...f, prescriptions: p }))
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {form.prescriptions.length === 0 && (
+                    <div className="text-center py-6 text-sm text-slate-400 font-medium border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
+                      No medications prescribed yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Follow-up & Wrap up */}
+            <section className="space-y-6 pt-4">
+              <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-3xl p-5 flex flex-col md:flex-row gap-6">
+                <div className="flex-1">
+                  <label className="flex items-center gap-3 mb-4 cursor-pointer">
+                    <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
+                      form.followUpRequired 
+                        ? 'bg-blue-500 border-blue-500 text-white' 
+                        : 'bg-white border-slate-300 dark:bg-slate-800 dark:border-slate-600'
+                    }`}>
+                      {form.followUpRequired && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="hidden"
+                      checked={form.followUpRequired}
+                      onChange={(e) => setForm((f) => ({ ...f, followUpRequired: e.target.checked }))}
+                    />
+                    <span className="font-bold text-slate-800 dark:text-slate-200">Schedule Follow-up</span>
+                  </label>
+                  
+                  <AnimatePresence>
+                    {form.followUpRequired && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-3 overflow-hidden">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Date</span>
+                            <input
+                              type="date"
+                              min={new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0]}
+                              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2 text-sm font-bold text-slate-800 dark:text-slate-200 outline-none"
+                              value={form.followUpDate}
+                              onChange={(e) => setForm((f) => ({ ...f, followUpDate: e.target.value }))}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Time</span>
+                            <input
+                              type="time"
+                              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2 text-sm font-bold text-slate-800 dark:text-slate-200 outline-none"
+                              value={form.followUpTime}
+                              onChange={(e) => setForm((f) => ({ ...f, followUpTime: e.target.value }))}
+                            />
+                          </div>
+                        </div>
+                        <textarea
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm text-slate-800 dark:text-slate-200 outline-none resize-none"
+                          rows={2}
+                          placeholder="Notes for the receptionist/patient..."
+                          value={form.followUpNotes}
+                          onChange={(e) => setForm((f) => ({ ...f, followUpNotes: e.target.value }))}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </section>
+
           </div>
         </div>
       </div>
@@ -768,32 +776,38 @@ export default function DoctorWorkspace() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-xl p-6 max-w-md w-full"
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-slate-100 dark:border-slate-800"
             >
-              <h3 className="font-bold text-lg text-gray-900 mb-2">Confirm Close Visit</h3>
-              <p className="text-gray-500 text-sm mb-6">
-                Once closed, the visit cannot be edited. Are you sure?
+              <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-5">
+                <Lock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 className="font-extrabold text-xl text-slate-900 dark:text-white mb-2">Lock & Close Visit</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 leading-relaxed">
+                This will finalize the medical record. You won't be able to edit these notes afterwards.
               </p>
               <div className="flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={() => setShowConfirmClose(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  className="flex-1 bg-primary-600 hover:bg-primary-700"
+                <button 
+                  className="flex-1 px-4 py-3 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
+                  onClick={() => setShowConfirmClose(false)}
+                >
+                  Go Back
+                </button>
+                <button
+                  className="flex-1 px-4 py-3 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"
                   onClick={() => {
                     setShowConfirmClose(false)
                     handleCloseVisit()
                   }}
                   disabled={isClosing}
                 >
-                  {isClosing ? 'Closing...' : 'Confirm Close'}
-                </Button>
+                  {isClosing ? 'Closing...' : 'Confirm'}
+                </button>
               </div>
             </motion.div>
           </motion.div>

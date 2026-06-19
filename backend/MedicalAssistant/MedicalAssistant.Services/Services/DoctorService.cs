@@ -137,7 +137,7 @@ public class DoctorService : IDoctorService
             .FindAsync(a => a.DoctorId == doctor.Id, a => a.Patient))
             .ToList();
 
-        var today = DateTime.UtcNow.Date;
+        var today = DateTime.Today;
         var weekStart = today.AddDays(-7);
 
         var appointmentTimes = appointments
@@ -174,6 +174,10 @@ public class DoctorService : IDoctorService
             })
             .ToList();
 
+        var reports = (await GetReportsAsync(doctorId, null)).ToList();
+        var recentReports = reports.Take(5).ToList();
+        var unreadReports = reports.Count;
+
         return new DoctorDashboardDto
         {
             TodayAppointments = todayAppointments.Count,
@@ -182,7 +186,8 @@ public class DoctorService : IDoctorService
             WeekAppointments = weekAppointments,
             TodayAppointmentsList = todayAppointments.Select(MapAppointment).ToList(),
             WeeklySessionsChart = weeklyChart,
-            RecentReports = new List<AIReportDto>()
+            RecentReports = recentReports,
+            UnreadReports = unreadReports
         };
     }
 
@@ -322,9 +327,83 @@ public class DoctorService : IDoctorService
         return summaries.ToList();
     }
 
-    public Task<IEnumerable<AIReportDto>> GetReportsAsync(int doctorId, string? urgency)
+    public async Task<IEnumerable<AIReportDto>> GetReportsAsync(int doctorId, string? urgency)
     {
-        return Task.FromResult<IEnumerable<AIReportDto>>(new List<AIReportDto>());
+        var doctor = await GetDoctorByUserIdAsync(doctorId);
+        if (doctor is null) return Enumerable.Empty<AIReportDto>();
+
+        // Get all patient IDs linked to this doctor via appointments
+        var appointments = (await _unitOfWork.Repository<Appointment>()
+            .FindAsync(a => a.DoctorId == doctor.Id))
+            .ToList();
+        var patientIds = appointments.Select(a => a.PatientId).Distinct().ToList();
+        if (patientIds.Count == 0) return Enumerable.Empty<AIReportDto>();
+
+        // Fetch AnalysisResult records for those patients, including Patient nav
+        var analysisResults = (await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.AnalysisModule.AnalysisResult>()
+            .FindAsync(ar => patientIds.Contains(ar.PatientId), ar => ar.Patient))
+            .OrderByDescending(ar => ar.CreatedAt)
+            .ToList();
+
+        if (!string.IsNullOrWhiteSpace(urgency))
+            analysisResults = analysisResults
+                .Where(ar => string.Equals(ar.UrgencyLevel, urgency, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        var reports = new List<AIReportDto>();
+        foreach (var ar in analysisResults)
+        {
+            var symptoms = new List<SymptomDto>();
+            if (!string.IsNullOrWhiteSpace(ar.SymptomsJson))
+            {
+                try
+                {
+                    var raw = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(ar.SymptomsJson);
+                    if (raw != null)
+                    {
+                        foreach (var el in raw)
+                        {
+                            var s = new SymptomDto
+                            {
+                                Term    = el.TryGetProperty("term",     out var t)   ? t.GetString() ?? string.Empty : string.Empty,
+                                TermAr  = el.TryGetProperty("term_ar",  out var tar) ? tar.GetString() : null,
+                                Icd11   = el.TryGetProperty("icd11",    out var i)   ? i.GetString() ?? string.Empty : string.Empty,
+                                Severity = el.TryGetProperty("severity", out var sev) && sev.ValueKind == System.Text.Json.JsonValueKind.Number
+                                           ? sev.GetInt32() : null
+                            };
+                            symptoms.Add(s);
+                        }
+                    }
+                }
+                catch { /* malformed JSON – skip */ }
+            }
+
+            // Resolve patient name
+            var patientName = ar.Patient?.FullName ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(patientName))
+            {
+                var user = ar.Patient?.UserId.HasValue == true
+                    ? await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.UserModule.User>()
+                          .GetByIdAsync(ar.Patient.UserId!.Value)
+                    : null;
+                patientName = user?.FullName ?? $"Patient #{ar.PatientId}";
+            }
+
+            reports.Add(new AIReportDto
+            {
+                Id           = ar.Id,
+                PatientId    = ar.PatientId,
+                PatientName  = patientName,
+                SessionId    = ar.SessionId,
+                UrgencyLevel = ar.UrgencyLevel ?? "MEDIUM",
+                Symptoms     = symptoms,
+                Disclaimer   = ar.Disclaimer,
+                DisclaimerAr = "هذا التقرير ناتج عن تحليل ذكاء اصطناعي وليس تشخيصًا طبيًا رسميًا. يُرجى استشارة طبيب مختص.",
+                CreatedAt    = ar.CreatedAt
+            });
+        }
+
+        return reports;
     }
 
     public async Task<IEnumerable<AvailabilityDto>> GetAvailabilityAsync(int doctorId)
@@ -498,6 +577,8 @@ public class DoctorService : IDoctorService
             return;
         }
 
+        doctor.IsScheduleVisible = isVisible;
+        _unitOfWork.Repository<Doctor>().Update(doctor);
         await _unitOfWork.SaveChangesAsync();
     }
 
@@ -510,7 +591,7 @@ public class DoctorService : IDoctorService
             .FindAsync(a => a.DoctorId == doctor.Id))
             .ToList();
 
-        var today = DateTime.UtcNow.Date;
+        var today = DateTime.Today;
         var history = appointments.Where(a => 
         {
             var parsedDate = ParseAppointmentDateTime(a.Date, a.Time);
@@ -692,9 +773,16 @@ public class DoctorService : IDoctorService
         // Ensure duration is valid to avoid infinite loop
         if (durationMinutes <= 0) durationMinutes = 30;
 
-        while (current <= end)
+        var actualEnd = end;
+        if (actualEnd <= start)
         {
-            slots.Add(current.ToString(@"hh\:mm"));
+            actualEnd = actualEnd.Add(TimeSpan.FromDays(1));
+        }
+
+        while (current <= actualEnd)
+        {
+            var timeOfDay = TimeSpan.FromMinutes(current.TotalMinutes % 1440);
+            slots.Add(timeOfDay.ToString(@"hh\:mm"));
             current = current.Add(TimeSpan.FromMinutes(durationMinutes));
         }
 

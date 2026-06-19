@@ -14,6 +14,7 @@ export default function VisitSummaryScreen() {
   const { visitId } = useLocalSearchParams<{ visitId: string }>();
   const [summary, setSummary] = useState<VisitSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reportLang, setReportLang] = useState<"en" | "ar">("en");
 
   useEffect(() => {
     if (!visitId) return;
@@ -71,6 +72,49 @@ export default function VisitSummaryScreen() {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        {/* Past Visits Summary (Last 8 Months) */}
+        {((summary.recentVisits?.length ?? 0) > 0 || summary.visitsTimelineSummaryEn || summary.visitsTimelineSummaryAr) && (
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle}>
+                {reportLang === "ar" ? "ملخص الزيارات (آخر 8 أشهر)" : "Past Visits (Last 8 Months)"}
+              </Text>
+              <View style={styles.langToggle}>
+                <TouchableOpacity
+                  onPress={() => setReportLang("en")}
+                  style={[styles.langBtn, reportLang === "en" && styles.langBtnActive]}
+                >
+                  <Text style={[styles.langBtnText, reportLang === "en" && styles.langBtnTextActive]}>EN</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setReportLang("ar")}
+                  style={[styles.langBtn, reportLang === "ar" && styles.langBtnActive]}
+                >
+                  <Text style={[styles.langBtnText, reportLang === "ar" && styles.langBtnTextActive]}>AR</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <Text style={[styles.cardText, reportLang === "ar" && { textAlign: "right" }]}>
+              {reportLang === "ar"
+                ? (summary.visitsTimelineSummaryAr || "لا توجد زيارات مسجلة في آخر 8 أشهر.")
+                : (summary.visitsTimelineSummaryEn || "No visits recorded in the last 8 months.")}
+            </Text>
+            {(summary.recentVisits || []).map((visit) => (
+              <View key={visit.id} style={styles.visitItem}>
+                <Text style={styles.rowName}>{visit.visitDate} · {visit.chiefComplaint}</Text>
+                {!!visit.doctorName && (
+                  <Text style={styles.rowMeta}>Dr. {visit.doctorName}{visit.doctorSpecialty ? ` · ${visit.doctorSpecialty}` : ""}</Text>
+                )}
+                {(reportLang === "ar" ? (visit.summaryAr || visit.summary) : (visit.summaryEn || visit.summary)) ? (
+                  <Text style={[styles.rowMeta, reportLang === "ar" && { textAlign: "right" }]}>
+                    {reportLang === "ar" ? (visit.summaryAr || visit.summary) : (visit.summaryEn || visit.summary)}
+                  </Text>
+                ) : null}
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Chief Complaint */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Chief Complaint</Text>
@@ -159,7 +203,12 @@ export default function VisitSummaryScreen() {
         {summary.followUpRequired && (
           <View style={[styles.card, styles.followUpCard]}>
             <Text style={styles.cardTitle}>Follow Up Required</Text>
-            <Text style={styles.cardText}>After {summary.followUpAfterDays} days</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <Ionicons name="calendar-outline" size={18} color="#9333EA" />
+              <Text style={{ fontSize: 16, fontWeight: "800", color: "#1E293B" }}>
+                {summary.followUpDate}{summary.followUpTime ? ` at ${summary.followUpTime}` : ""}
+              </Text>
+            </View>
             {summary.followUpNotes && <Text style={styles.cardText}>{summary.followUpNotes}</Text>}
           </View>
         )}
@@ -193,6 +242,13 @@ const styles = StyleSheet.create({
   card: { backgroundColor: "#fff", borderRadius: 20, padding: 18, marginBottom: 14, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 3 },
   followUpCard: { backgroundColor: "#FFF7ED", borderWidth: 1, borderColor: "#FDBA74" },
   cardTitle: { fontSize: 13, fontWeight: "700", color: "#64748B", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 },
+  cardHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 8 },
+  langToggle: { flexDirection: "row", backgroundColor: "#F1F5F9", borderRadius: 10, padding: 2 },
+  langBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  langBtnActive: { backgroundColor: "#fff" },
+  langBtnText: { fontSize: 11, fontWeight: "700", color: "#64748B" },
+  langBtnTextActive: { color: COLORS.primary },
+  visitItem: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#F1F5F9" },
   cardText: { fontSize: 15, color: "#1E293B", lineHeight: 22 },
   rowItem: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
   rowName: { fontSize: 15, fontWeight: "600", color: "#1E293B" },

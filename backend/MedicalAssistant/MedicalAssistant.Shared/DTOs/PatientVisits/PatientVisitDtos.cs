@@ -16,7 +16,15 @@ namespace MedicalAssistant.Shared.DTOs.PatientVisits
         string Status,
         DateOnly VisitDate,
         DateTime CreatedAt,
-        DateTime? ClosedAt
+        DateTime? ClosedAt,
+        bool? FollowUpRequired,
+        string? FollowUpDate,
+        string? FollowUpTime,
+        string? FollowUpNotes = null,
+        string? DoctorName = null,
+        string? DoctorSpecialty = null,
+        bool IsFollowUp = false,
+        int? FollowUpVisitId = null
     );
 
     public record CreateVisitDto(
@@ -37,7 +45,8 @@ namespace MedicalAssistant.Shared.DTOs.PatientVisits
         List<UpdatePrescriptionDto>? Prescriptions,
         List<UpdateVitalDto>? VitalSigns,
         bool? FollowUpRequired,
-        int? FollowUpAfterDays,
+        string? FollowUpDate,
+        string? FollowUpTime,
         string? FollowUpNotes
     );
 
@@ -84,8 +93,12 @@ namespace MedicalAssistant.Shared.DTOs.PatientVisits
         List<SymptomSummaryDto> Symptoms,
         string? Notes,
         bool? FollowUpRequired,
-        int? FollowUpAfterDays,
-        string? FollowUpNotes
+        string? FollowUpDate,
+        string? FollowUpTime,
+        string? FollowUpNotes,
+        List<LastVisitSummaryDto> RecentVisits,
+        string? VisitsTimelineSummaryEn,
+        string? VisitsTimelineSummaryAr
     );
 
     public record AllergySummaryDto(
@@ -138,7 +151,12 @@ namespace MedicalAssistant.Shared.DTOs.PatientVisits
     public record LastVisitSummaryDto(
         string Id,
         string VisitDate,
-        string ChiefComplaint
+        string ChiefComplaint,
+        string? DoctorName = null,
+        string? DoctorSpecialty = null,
+        string? Summary = null,
+        string? SummaryEn = null,
+        string? SummaryAr = null
     );
 
     public record SymptomSummaryDto(

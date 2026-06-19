@@ -62,7 +62,7 @@ export default function OnboardingScreen() {
 
       const promises = [];
       if (allergyName.trim()) {
-        promises.push(createAllergy(pid, { allergenName: allergyName, severity: allergySeverity, notes: "" }));
+        promises.push(createAllergy(pid, { allergenName: allergyName, severity: allergySeverity, reactionDescription: "", allergyType: "General", isActive: true }));
       }
       if (chronicName.trim()) {
         // Note: addChronicDisease might not exist in the service; skipping for now

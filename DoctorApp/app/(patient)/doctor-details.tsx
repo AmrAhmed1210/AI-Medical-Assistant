@@ -114,20 +114,23 @@ const getTimeSlotsForDay = (date: string, availability: any[], bookedSlots: any[
   }
 
   const start = parseTimeToMinutes(dayAvail.startTime ?? dayAvail.StartTime ?? '09:00')
-  const end = parseTimeToMinutes(dayAvail.endTime ?? dayAvail.EndTime ?? '17:00')
+  let end = parseTimeToMinutes(dayAvail.endTime ?? dayAvail.EndTime ?? '17:00')
   const dur = Number(dayAvail.slotDurationMinutes ?? dayAvail.SlotDurationMinutes ?? 30)
 
   if (start == null || end == null) return []
+  if (end <= start) {
+    end += 1440;
+  }
   const slots: string[] = []
-  for (let m = start; m < end; m += dur) {
-    const s = toDisplaySlot(`${Math.floor(m / 60)}:${m % 60}`)
+  for (let m = start; m <= end; m += dur) {
+    const s = toDisplaySlot(`${Math.floor(m / 60) % 24}:${m % 60}`)
     if (!isBooked(s)) {
       const isToday = date === toLocalIsoDate(new Date())
       const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
       if (!isToday || m > nowMins + 15) slots.push(s)
     }
   }
-  return slots
+  return slots;
 }
 
 function getNextAvailableDays(availability: any[], count: number) {

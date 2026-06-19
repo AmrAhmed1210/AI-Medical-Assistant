@@ -41,6 +41,7 @@ import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpd
 import { scheduleAppointmentReminders } from "../../services/appointmentReminders";
 import { analyzePatientHistory, getDailyHealthTip } from "../../services/aiService";
 import { updateAiDiagnosis, getVitals, getSurgeries, getMedications, getAllergies, getChronicDiseases, getPatientDocuments } from "../../services/medicalRecordService";
+import { getMyVisits, type PatientVisit } from "../../services/visitService";
 
 const { width } = Dimensions.get("window");
 
@@ -51,6 +52,21 @@ function resolvePhotoUrl(url?: string | null): string {
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   const separator = url.startsWith('/') ? '' : '/';
   return `${BASE_URL}${separator}${url}`;
+}
+
+function formatRecentVisitsForAi(visits: PatientVisit[]) {
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - 8);
+  return visits
+    .filter((v) => v.status === "closed" && new Date(v.visitDate || v.createdAt) >= cutoff)
+    .map((v) => ({
+      date: v.visitDate,
+      doctor: v.doctorName,
+      specialty: v.doctorSpecialty,
+      complaint: v.chiefComplaint,
+      assessment: v.assessment,
+      plan: v.plan,
+    }));
 }
 
 export default function HomeScreen() {
@@ -277,6 +293,68 @@ export default function HomeScreen() {
     }
   };
 
+  const parseApptDate = (dateStr: string) => {
+    if (!dateStr) return null;
+    const cleaned = dateStr.trim();
+    
+    // Try YYYY-MM-DD
+    const isoMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]));
+    }
+    
+    // Try "D MMM YYYY" or "DD MMM YYYY" (e.g., "21 Jun 2026" or "7 Mar 2026")
+    const mmmMatch = cleaned.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/);
+    if (mmmMatch) {
+      const day = Number(mmmMatch[1]);
+      const mmm = mmmMatch[2].toLowerCase().slice(0, 3);
+      const year = Number(mmmMatch[3]);
+      
+      const months: Record<string, number> = {
+        jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+        jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+      };
+      
+      const month = months[mmm];
+      if (month !== undefined) {
+        return new Date(year, month, day);
+      }
+    }
+    
+    // Fallback to native parsing
+    const parsed = new Date(cleaned);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const getAppointmentDateTime = (dateStr: string, timeStr: string) => {
+    const baseDate = parseApptDate(dateStr);
+    if (!baseDate) return null;
+    
+    let hours = 0;
+    let minutes = 0;
+    if (timeStr) {
+      const timeMatch = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+      if (timeMatch) {
+        hours = Number(timeMatch[1]);
+        minutes = Number(timeMatch[2]);
+        const ampm = timeMatch[3];
+        if (ampm) {
+          if (ampm.toUpperCase() === "PM" && hours !== 12) hours += 12;
+          if (ampm.toUpperCase() === "AM" && hours === 12) hours = 0;
+        }
+      }
+    }
+    
+    baseDate.setHours(hours, minutes, 0, 0);
+    return baseDate;
+  };
+
+  const formatReminderDate = (dateStr: string) => {
+    const dateObj = parseApptDate(dateStr);
+    if (!dateObj) return dateStr;
+    return dateObj.toLocaleDateString(isRTL ? "ar-EG" : "en-US", { day: "numeric", month: "short", year: "numeric" });
+  };
+
   const fetchNextBooking = async () => {
     try {
       const appts = await getMyAppointments();
@@ -289,20 +367,19 @@ export default function HomeScreen() {
           const status = a.status?.toLowerCase() || "";
           const isRelevant = status === "pending" || status === "confirmed";
 
-          const apptDate = new Date(a.date);
-          let [h, m] = (a.time || "0:0").split(':').map(val => parseInt(val, 10));
-          if (a.time?.toLowerCase().includes("pm") && h < 12) h += 12;
-          if (a.time?.toLowerCase().includes("am") && h === 12) h = 0;
-
-          if (!isNaN(apptDate.getTime())) {
-            apptDate.setHours(h, isNaN(m) ? 0 : m, 0, 0);
-            const isFuture = apptDate > now;
+          const apptDateTime = getAppointmentDateTime(a.date, a.time);
+          if (apptDateTime) {
+            const isFuture = apptDateTime > now;
             console.log(`Checking Appt: Dr.${a.doctorName}, Date:${a.date}, Time:${a.time}, Status:${status}, isFuture:${isFuture}`);
             return isRelevant && isFuture;
           }
           return false;
         })
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .sort((a, b) => {
+          const da = getAppointmentDateTime(a.date, a.time);
+          const db = getAppointmentDateTime(b.date, b.time);
+          return (da?.getTime() || 0) - (db?.getTime() || 0);
+        });
 
       const active = futureAppts[0] || null;
       console.log("FINAL Next Appointment Detected:", active ? active.doctorName : "NONE");
@@ -323,13 +400,14 @@ export default function HomeScreen() {
       const pid = await getMyPatientId();
       if (!pid) return;
 
-      const [vitals, surgeries, meds, allergies, chronic, docs] = await Promise.all([
+      const [vitals, surgeries, meds, allergies, chronic, docs, visits] = await Promise.all([
         getVitals(pid),
         getSurgeries(pid),
         getMedications(pid),
         getAllergies(pid),
         getChronicDiseases(pid),
         getPatientDocuments(pid).catch(() => []),
+        getMyVisits().catch(() => []),
       ]);
 
       console.log("DEBUG: Patient docs fetched in Home:", JSON.stringify(docs));
@@ -351,6 +429,7 @@ export default function HomeScreen() {
           title: d.title ?? (d as any).Title ?? "", 
           ai_analysis: d.description ?? (d as any).Description ?? "" 
         })),
+        recent_visits: formatRecentVisitsForAi(visits),
         recommended_doctors: formatDoctorRecommendationsForAi(doctorRecommendations.doctors),
         recommended_specialty: doctorRecommendations.specialty,
       });
@@ -707,8 +786,8 @@ export default function HomeScreen() {
                     <Calendar size={18} color="#059669" />
                   </View>
                   <View style={{ flex: 1, marginLeft: 15 }}>
-                    <Text style={[styles.reminderTitleCalm, { color: isDark ? '#34D399' : '#059669' }]}>Upcoming Appointment</Text>
-                    <Text style={[styles.reminderDoctorCalm, { color: isDark ? '#fff' : '#064E3B' }]}>Dr. {nextBooking.doctorName} • {nextBooking.time}</Text>
+                    <Text style={[styles.reminderTitleCalm, { color: isDark ? '#34D399' : '#059669' }, isRTL && { textAlign: 'right' }]}>{tr("upcoming_appointment")}</Text>
+                    <Text style={[styles.reminderDoctorCalm, { color: isDark ? '#fff' : '#064E3B' }, isRTL && { textAlign: 'right' }]}>{isRTL ? `د. ${nextBooking.doctorName}` : `Dr. ${nextBooking.doctorName}`} • {formatReminderDate(nextBooking.date)} • {nextBooking.time}</Text>
                   </View>
                   <ChevronRight size={20} color="#059669" />
                 </View>

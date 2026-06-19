@@ -1,5 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Domain.Contracts;
+using MedicalAssistant.Domain.Entities.AppointmentsModule;
 using MedicalAssistant.Domain.Entities.DoctorsModule;
 using MedicalAssistant.Shared.DTOs.AppointmentsDTOs;
 using Microsoft.AspNetCore.Authorization;
@@ -242,6 +247,100 @@ namespace MedicalAssistant.Presentation.Controllers
                 return NotFound(new { message = "Appointment not found or cannot be rebooked." });
 
             return Ok(appointment);
+        }
+
+        // GET /api/appointments/available-slots
+        [HttpGet("available-slots")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetAvailableSlots([FromQuery] string date, [FromQuery] int doctorId)
+        {
+            if (string.IsNullOrWhiteSpace(date) || doctorId <= 0)
+                return BadRequest(new { message = "Date and DoctorId are required." });
+
+            if (!DateTime.TryParse(date, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsedDate))
+                return BadRequest(new { message = "Invalid date format." });
+
+            // 1. Get Doctor's Availability for this day of week
+            var dayOfWeek = (byte)parsedDate.DayOfWeek;
+            var availability = (await _unitOfWork.Repository<DoctorAvailability>()
+                .FindAsync(a => a.DoctorId == doctorId && a.DayOfWeek == dayOfWeek && a.IsAvailable))
+                .FirstOrDefault();
+
+            if (availability == null)
+            {
+                return Ok(new List<object>());
+            }
+
+            // 2. Generate time slots
+            var duration = availability.SlotDurationMinutes > 0 ? availability.SlotDurationMinutes : 30;
+            var slots = new List<string>();
+            var current = availability.StartTime;
+            var actualEnd = availability.EndTime;
+            if (actualEnd <= current)
+            {
+                actualEnd = actualEnd.Add(TimeSpan.FromDays(1));
+            }
+            while (current <= actualEnd)
+            {
+                var timeOfDay = TimeSpan.FromMinutes(current.TotalMinutes % 1440);
+                slots.Add(timeOfDay.ToString(@"hh\:mm"));
+                current = current.Add(TimeSpan.FromMinutes(duration));
+            }
+
+            // 3. Get all active appointments for this doctor on this day
+            var requestedDateStr = NormalizeDateKey(date);
+            var appointments = (await _unitOfWork.Repository<Appointment>()
+                .FindAsync(a => a.DoctorId == doctorId && (a.Status == "Pending" || a.Status == "Confirmed")))
+                .ToList();
+
+            var bookedTimes = appointments
+                .Where(a => NormalizeDateKey(a.Date) == requestedDateStr)
+                .Select(a => NormalizeTimeKey(a.Time))
+                .ToHashSet();
+
+            // 4. Map to slot list
+            var result = slots.Select(slot => new
+            {
+                time = slot,
+                available = !bookedTimes.Contains(NormalizeTimeKey(slot))
+            }).ToList();
+
+            return Ok(result);
+        }
+
+        private static string NormalizeDateKey(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+
+            if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var parsed))
+            {
+                return parsed.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            }
+
+            return value.Trim().ToUpperInvariant();
+        }
+
+        private static string NormalizeTimeKey(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+
+            var formats = new[] { "h:mm tt", "hh:mm tt", "H:mm", "HH:mm", "H:mm:ss", "HH:mm:ss" };
+            if (DateTime.TryParseExact(value.Trim(), formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var exact))
+            {
+                return exact.ToString("HH:mm", CultureInfo.InvariantCulture);
+            }
+
+            if (TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out var span))
+            {
+                return span.ToString(@"hh\:mm", CultureInfo.InvariantCulture);
+            }
+
+            if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.NoCurrentDateDefault, out var parsed))
+            {
+                return parsed.ToString("HH:mm", CultureInfo.InvariantCulture);
+            }
+
+            return value.Trim().ToUpperInvariant();
         }
 
         private async Task<AppointmentDto?> UpdateStatusAsync(int id, string status, string? notes)

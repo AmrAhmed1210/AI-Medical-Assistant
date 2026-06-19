@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using MedicalAssistant.Domain.Contracts;
+using MedicalAssistant.Domain.Entities.DoctorsModule;
+using MedicalAssistant.Domain.Entities.AppointmentsModule;
 
 namespace MedicalAssistant.Presentation.Controllers;
 
@@ -9,6 +12,32 @@ namespace MedicalAssistant.Presentation.Controllers;
 [Authorize] // MUST be authorized to access JWT claims
 public class TestController : ControllerBase
 {
+    private readonly IUnitOfWork _unitOfWork;
+
+    public TestController(IUnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+
+    [HttpGet("availabilities")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAvailabilities()
+    {
+        var doctors = (await _unitOfWork.Repository<Doctor>().GetAllAsync()).ToList();
+        var availabilities = (await _unitOfWork.Repository<DoctorAvailability>().GetAllAsync()).ToList();
+        var appointments = (await _unitOfWork.Repository<Appointment>().GetAllAsync()).ToList();
+
+        return Ok(new
+        {
+            DoctorsCount = doctors.Count,
+            Doctors = doctors.Select(d => new { d.Id, d.Name, d.UserId, d.IsAvailable, d.IsScheduleVisible }),
+            AvailabilitiesCount = availabilities.Count,
+            Availabilities = availabilities.Select(a => new { a.Id, a.DoctorId, a.DayOfWeek, a.StartTime, a.EndTime, a.IsAvailable }),
+            AppointmentsCount = appointments.Count,
+            Appointments = appointments.Select(a => new { a.Id, a.DoctorId, a.Date, a.Time, a.Status })
+        });
+    }
+
     [HttpGet("patient-summary")]
     public IActionResult GetPatientSummary()
     {

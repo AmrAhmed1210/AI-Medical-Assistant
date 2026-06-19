@@ -135,6 +135,7 @@ export type MessageRole = 'user' | 'assistant' | 'doctor' | 'admin'
 
 export interface SymptomDto {
   term: string
+  termAr?: string
   icd11: string
   severity?: number
 }
@@ -256,6 +257,7 @@ export interface AIReportDto {
   urgencyLevel: UrgencyLevel
   symptoms: SymptomDto[]
   disclaimer: string
+  disclaimerAr?: string
   createdAt: string
 }
 

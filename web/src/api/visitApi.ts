@@ -16,7 +16,8 @@ export interface VisitDto {
   status: 'open' | 'closed' | 'cancelled'
   summarySnapshot?: string
   followUpRequired?: boolean
-  followUpAfterDays?: number
+  followUpDate?: string
+  followUpTime?: string
   followUpNotes?: string
   createdAt: string
 }
@@ -65,7 +66,8 @@ export interface UpdateVisitRequest {
   prescriptions?: PrescriptionDto[]
   vitalSigns?: VitalSignDto[]
   followUpRequired?: boolean
-  followUpAfterDays?: number
+  followUpDate?: string
+  followUpTime?: string
   followUpNotes?: string
 }
 
@@ -85,8 +87,23 @@ export interface VisitSummaryDto {
   symptoms: SymptomDto[]
   notes?: string
   followUpRequired?: boolean
-  followUpAfterDays?: number
+  followUpDate?: string
+  followUpTime?: string
   followUpNotes?: string
+  recentVisits?: LastVisitSummaryDto[]
+  visitsTimelineSummaryEn?: string
+  visitsTimelineSummaryAr?: string
+}
+
+export interface LastVisitSummaryDto {
+  id: string
+  visitDate: string
+  chiefComplaint: string
+  doctorName?: string
+  doctorSpecialty?: string
+  summary?: string
+  summaryEn?: string
+  summaryAr?: string
 }
 
 export const visitApi = {

@@ -19,6 +19,12 @@ export interface PatientVisit {
   visitDate: string;
   createdAt: string;
   closedAt?: string;
+  followUpRequired?: boolean;
+  followUpDate?: string;
+  followUpTime?: string;
+  followUpNotes?: string;
+  doctorName?: string;
+  doctorSpecialty?: string;
 }
 
 export interface VisitSummary {
@@ -37,8 +43,23 @@ export interface VisitSummary {
   symptoms: SymptomSummary[];
   notes?: string;
   followUpRequired?: boolean;
-  followUpAfterDays?: number;
+  followUpDate?: string;
+  followUpTime?: string;
   followUpNotes?: string;
+  recentVisits?: LastVisitSummary[];
+  visitsTimelineSummaryEn?: string;
+  visitsTimelineSummaryAr?: string;
+}
+
+export interface LastVisitSummary {
+  id: string;
+  visitDate: string;
+  chiefComplaint: string;
+  doctorName?: string;
+  doctorSpecialty?: string;
+  summary?: string;
+  summaryEn?: string;
+  summaryAr?: string;
 }
 
 export interface AllergySummary {
@@ -122,7 +143,8 @@ export interface UpdateVisitPayload {
   prescriptions?: UpdatePrescriptionPayload[];
   vitalSigns?: UpdateVitalPayload[];
   followUpRequired?: boolean;
-  followUpAfterDays?: number;
+  followUpDate?: string;
+  followUpTime?: string;
   followUpNotes?: string;
 }
 
@@ -132,7 +154,8 @@ export interface PatientHistory {
   chronicDiseases: Array<{ id: string; diseaseName: string; targetValues: string }>;
   medications: Array<{ id: string; medicationName: string; dosage: string; form: string }>;
   latestVitals: Record<string, string>;
-  lastVisits: Array<{ id: string; visitDate: string; chiefComplaint: string }>;
+  lastVisits: LastVisitSummary[];
+  aiDiagnosisSummary?: string;
 }
 
 // ============================================

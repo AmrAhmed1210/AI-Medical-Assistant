@@ -9,7 +9,7 @@ export interface PatientHistoryDto {
   chronicDiseases?: { id: string; diseaseName: string; targetValues: string }[]
   medications?: { id: string; medicationName: string; dosage: string; frequency: string }[]
   latestVitals?: Record<string, string>
-  lastVisits?: { id: string; visitDate: string; chiefComplaint: string }[]
+  lastVisits?: { id: string; visitDate: string; chiefComplaint: string; doctorName?: string; doctorSpecialty?: string; summary?: string; summaryEn?: string; summaryAr?: string }[]
   aiDiagnosisSummary?: string
 }
 

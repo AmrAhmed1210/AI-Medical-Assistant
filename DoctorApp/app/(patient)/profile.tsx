@@ -11,7 +11,7 @@ import {
   HeartPulse, Pill, Edit3, Headphones,
   Activity, Sparkles, ShieldCheck, CreditCard, Bell, MapPin, Star,
   ClipboardList, Plus, PlusCircle, AlertCircle, History, FileText, XCircle, Trash2, Camera, FolderOpen, Clock, CheckCircle2,
-  Users, Droplet, Scale, Ruler, Cigarette
+  Users, Droplet, Scale, Ruler, Cigarette, Stethoscope
 } from "lucide-react-native";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -51,8 +51,27 @@ const { width, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const normalizeStatus = (status?: string) => (status || "").trim().toLowerCase();
 
 const getAppointmentDateTime = (appt: Appointment) => {
-  const raw = `${appt.date || ""} ${appt.time || ""}`.trim();
-  const parsed = new Date(raw);
+  if (!appt.date) return null;
+  const dateParts = appt.date.split("-").map(Number);
+  if (dateParts.length !== 3 || dateParts.some(isNaN)) return null;
+  const [year, month, day] = dateParts;
+
+  let hours = 0;
+  let minutes = 0;
+  if (appt.time) {
+    const timeMatch = appt.time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+    if (timeMatch) {
+      hours = Number(timeMatch[1]);
+      minutes = Number(timeMatch[2]);
+      const ampm = timeMatch[3];
+      if (ampm) {
+        if (ampm.toUpperCase() === "PM" && hours !== 12) hours += 12;
+        if (ampm.toUpperCase() === "AM" && hours === 12) hours = 0;
+      }
+    }
+  }
+
+  const parsed = new Date(year, month - 1, day, hours, minutes);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
@@ -89,7 +108,7 @@ export default function ProfileScreen() {
   const [allergies, setAllergies] = useState<AllergyRecord[]>([]);
 
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"info" | "activity" | "history" | "visits">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "activity" | "history" | "visits" | "following">("info");
   const [refreshing, setRefreshing] = useState(false);
 
   const [isEditModalVisible, setEditModalVisible] = useState(false);
@@ -489,7 +508,8 @@ export default function ProfileScreen() {
               <TabItem label={tr("info")} active={activeTab === "info"} onPress={() => setActiveTab("info")} icon={User} />
               <TabItem label={tr("active_bookings")} active={activeTab === "activity"} onPress={() => setActiveTab("activity")} icon={Calendar} />
               <TabItem label={tr("history")} active={activeTab === "history"} onPress={() => setActiveTab("history")} icon={History} />
-              <TabItem label={tr("my_visits")} active={activeTab === "visits"} onPress={() => setActiveTab("visits")} icon={FileText} />
+              <TabItem label="Visits" active={activeTab === "visits"} onPress={() => setActiveTab("visits")} icon={FileText} />
+              <TabItem label={tr("following")} active={activeTab === "following"} onPress={() => setActiveTab("following")} icon={Users} />
             </ScrollView>
           </View>
 
@@ -614,14 +634,69 @@ export default function ProfileScreen() {
             {activeTab === "visits" && (
               <View style={styles.section}>
                 <View style={styles.activitySubHeader}>
-                  <HeartPulse size={18} color="#059669" />
-                  <Text style={styles.activitySubTitle}>Followed Doctors</Text>
+                  <FileText size={18} color="#059669" />
+                  <Text style={styles.activitySubTitle}>Visit History & Summaries</Text>
+                </View>
+                {visits.filter(v => (v.status || "").toLowerCase() === "closed").length === 0 ? (
+                  <EmptyState icon={FileText} text="No past visits found" />
+                ) : (
+                  visits.filter(v => (v.status || "").toLowerCase() === "closed").map((visit) => (
+                    <TouchableOpacity
+                      key={visit.id}
+                      style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                      onPress={() => router.push({ pathname: "/(patient)/visit-summary", params: { visitId: visit.id } } as any)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.historyHeader}>
+                        <View style={[styles.historyIconCircle, { backgroundColor: isDark ? 'rgba(5, 150, 105, 0.2)' : '#ECFDF5' }]}>
+                          <Stethoscope size={18} color="#059669" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.historyTitle, { color: colors.text }]}>
+                            {visit.doctorName ? `Dr. ${visit.doctorName}` : `Visit on ${visit.visitDate}`}
+                          </Text>
+                          {visit.doctorName && (
+                            <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 2 }}>
+                              {visit.doctorSpecialty ? `${visit.doctorSpecialty} · ` : ''}{visit.visitDate}
+                            </Text>
+                          )}
+                        </View>
+                        <ChevronRight size={18} color={colors.textLight} />
+                      </View>
+                      
+                      <View style={{ marginTop: 12, paddingLeft: 46 }}>
+                        <Text style={{ color: colors.textMuted, fontSize: 14, marginBottom: 4 }}>
+                          <Text style={{ fontWeight: "700" }}>Complaint:</Text> {visit.chiefComplaint}
+                        </Text>
+                        {visit.status === "closed" ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                            <CheckCircle2 size={14} color="#10B981" />
+                            <Text style={{ color: "#10B981", fontSize: 13, fontWeight: "600", marginLeft: 4 }}>Summary Available</Text>
+                          </View>
+                        ) : (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                            <Clock size={14} color="#F59E0B" />
+                            <Text style={{ color: "#F59E0B", fontSize: 13, fontWeight: "600", marginLeft: 4 }}>In Progress</Text>
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                )}
+              </View>
+            )}
+
+            {activeTab === "following" && (
+              <View style={styles.section}>
+                <View style={styles.activitySubHeader}>
+                  <Users size={18} color="#059669" />
+                  <Text style={styles.activitySubTitle}>{tr("following")}</Text>
                 </View>
                 {followedDoctors.length === 0 ? (
-                  <EmptyState icon={FileText} text="No followed doctors yet" />
+                  <EmptyState icon={Users} text={tr("keep_track_doctors")} />
                 ) : (
-                  followedDoctors.map((doctor) => (
-                    <FollowedDoctorCard key={doctor.id} doctor={doctor} />
+                  followedDoctors.map((doc) => (
+                    <FollowedDoctorCard key={doc.id} doctor={doc} />
                   ))
                 )}
               </View>

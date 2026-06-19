@@ -46,6 +46,7 @@ export default function DoctorWorkspaceScreen() {
   const [history, setHistory] = useState<PatientHistory | null>(null);
   const [schedule, setSchedule] = useState<MedicationScheduleItem[]>([]);
   const [isClosed, setIsClosed] = useState(false);
+  const [visitLang, setVisitLang] = useState<"en" | "ar">("en");
 
   const [chiefComplaint, setChiefComplaint] = useState("");
   const [hpi, setHpi] = useState("");
@@ -54,8 +55,22 @@ export default function DoctorWorkspaceScreen() {
   const [plan, setPlan] = useState("");
   const [notes, setNotes] = useState("");
   const [followUpRequired, setFollowUpRequired] = useState(false);
-  const [followUpAfterDays, setFollowUpAfterDays] = useState("");
+  const [followUpDay, setFollowUpDay] = useState("");
+  const [followUpTime, setFollowUpTime] = useState("");
   const [followUpNotes, setFollowUpNotes] = useState("");
+  const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  const calculateNextDateForDay = (dayName: string) => {
+    if (!dayName) return "";
+    const dayIndex = DAYS_OF_WEEK.indexOf(dayName);
+    if (dayIndex === -1) return "";
+    const today = new Date();
+    let diff = dayIndex - today.getDay();
+    if (diff <= 0) diff += 7; // Always next occurrence
+    const nextDate = new Date(today);
+    nextDate.setDate(today.getDate() + diff);
+    return nextDate.toISOString().split('T')[0];
+  };
 
   const [bpSys, setBpSys] = useState("");
   const [bpDia, setBpDia] = useState("");
@@ -82,6 +97,14 @@ export default function DoctorWorkspaceScreen() {
       setSchedule(medsSchedule);
       setChiefComplaint(visit.chiefComplaint || "");
       setHpi(visit.presentIllnessHistory || "");
+      setFollowUpRequired(visit.followUpRequired || false);
+      if (visit.followUpDate) {
+         // Try to map back to day of week, or leave followUpDay empty if it's already a past date
+         const d = new Date(visit.followUpDate);
+         if (!isNaN(d.getTime())) setFollowUpDay(DAYS_OF_WEEK[d.getDay()]);
+      }
+      setFollowUpTime(visit.followUpTime || "");
+      setFollowUpNotes(visit.followUpNotes || "");
       setExam(visit.examinationFindings || "");
       setAssessment(visit.assessment || "");
       setPlan(visit.plan || "");
@@ -176,7 +199,8 @@ export default function DoctorWorkspaceScreen() {
         plan,
         notes,
         followUpRequired,
-        followUpAfterDays: followUpAfterDays ? Number(followUpAfterDays) : undefined,
+        followUpDate: followUpRequired ? calculateNextDateForDay(followUpDay) : undefined,
+        followUpTime: followUpTime || undefined,
         followUpNotes,
         vitalSigns: buildVitalPayload(),
       });
@@ -251,6 +275,48 @@ export default function DoctorWorkspaceScreen() {
       </View>
 
       <View style={styles.card}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Past Visits Summary (Last 8 Months)</Text>
+          <View style={styles.langToggle}>
+            <TouchableOpacity onPress={() => setVisitLang("en")} style={[styles.langBtn, visitLang === "en" && styles.langBtnActive]}>
+              <Text style={[styles.langBtnText, visitLang === "en" && styles.langBtnTextActive]}>EN</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setVisitLang("ar")} style={[styles.langBtn, visitLang === "ar" && styles.langBtnActive]}>
+              <Text style={[styles.langBtnText, visitLang === "ar" && styles.langBtnTextActive]}>AR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        {(history?.lastVisits || []).length === 0 ? (
+          <Text style={styles.metaMuted}>
+            {visitLang === "ar" ? "لا توجد زيارات في آخر 8 أشهر." : "No previous visits found in the last 8 months."}
+          </Text>
+        ) : (
+          (history?.lastVisits || []).map((v: any, idx: number) => (
+            <View key={v.id || idx} style={{ marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                <Text style={{ fontWeight: '700', fontSize: 14, color: '#1E293B' }}>{v.visitDate}</Text>
+                <Text style={{ fontSize: 12, color: '#059669', fontWeight: '600' }}>
+                  {v.doctorName ? `Dr. ${v.doctorName}` : 'Unknown'}
+                </Text>
+              </View>
+              {v.doctorSpecialty && (
+                <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }}>{v.doctorSpecialty}</Text>
+              )}
+              <Text style={{ fontSize: 13, color: '#475569', marginBottom: 4 }}>
+                <Text style={{ fontWeight: '600' }}>{visitLang === "ar" ? "الشكوى: " : "Complaint: "}</Text>{v.chiefComplaint}
+              </Text>
+              {(visitLang === "ar" ? (v.summaryAr || v.summary) : (v.summaryEn || v.summary)) && (
+                <Text style={{ fontSize: 13, color: '#475569', textAlign: visitLang === "ar" ? "right" : "left" }}>
+                  <Text style={{ fontWeight: '600' }}>{visitLang === "ar" ? "الملخص: " : "Summary: "}</Text>
+                  {visitLang === "ar" ? (v.summaryAr || v.summary) : (v.summaryEn || v.summary)}
+                </Text>
+              )}
+            </View>
+          ))
+        )}
+      </View>
+
+      <View style={styles.card}>
         <Text style={styles.sectionTitle}>Today Medications</Text>
         {schedule.length === 0 ? (
           <Text style={styles.metaMuted}>No schedule for this patient today.</Text>
@@ -308,7 +374,29 @@ export default function DoctorWorkspaceScreen() {
         </View>
         {followUpRequired && (
           <>
-            <TextInput editable={!isClosed} value={followUpAfterDays} onChangeText={setFollowUpAfterDays} placeholder="After days" style={styles.input} />
+            <Text style={[styles.meta, { marginTop: 10, marginBottom: 5 }]}>Select Day</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+              {DAYS_OF_WEEK.map(d => (
+                <TouchableOpacity
+                  key={d}
+                  disabled={isClosed}
+                  onPress={() => setFollowUpDay(d)}
+                  style={{
+                    paddingHorizontal: 16, paddingVertical: 8,
+                    backgroundColor: followUpDay === d ? '#10B981' : '#E2E8F0',
+                    borderRadius: 20, marginRight: 8
+                  }}
+                >
+                  <Text style={{ color: followUpDay === d ? '#fff' : '#475569', fontWeight: '600' }}>{d.substring(0,3)}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {followUpDay ? (
+              <Text style={{ color: '#059669', fontSize: 13, marginBottom: 10, fontWeight: '600' }}>
+                Will schedule for: {calculateNextDateForDay(followUpDay)}
+              </Text>
+            ) : null}
+            <TextInput editable={!isClosed} value={followUpTime} onChangeText={setFollowUpTime} placeholder="Time (HH:MM)" style={styles.input} />
             <TextInput editable={!isClosed} value={followUpNotes} onChangeText={setFollowUpNotes} placeholder="Notes for patient" style={styles.input} />
           </>
         )}
@@ -350,6 +438,12 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1C1C1E", marginBottom: 8 },
+  sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8 },
+  langToggle: { flexDirection: "row", backgroundColor: "#F1F5F9", borderRadius: 10, padding: 2 },
+  langBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  langBtnActive: { backgroundColor: "#fff" },
+  langBtnText: { fontSize: 11, fontWeight: "700", color: "#64748B" },
+  langBtnTextActive: { color: COLORS.primary },
   stepTitle: { fontSize: 16, fontWeight: "800", color: "#1A237E", marginBottom: 8 },
   meta: { fontSize: 13, color: "#6B7280", marginBottom: 4 },
   metaMuted: { fontSize: 12, color: "#94A3B8", marginBottom: 6 },

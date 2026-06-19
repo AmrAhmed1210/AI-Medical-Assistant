@@ -52,10 +52,11 @@ export default function DoctorPatients() {
   }
 
   const toDayLabel = (key: string) => {
-    if (key === 'unknown') return 'Without Day'
+    if (key === 'unknown') return 'No Scheduled Date'
     const d = new Date(`${key}T00:00:00`)
-    const today = toDayKey(new Date().toISOString())
-    if (key === today) return 'Day'
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    if (key === today) return 'Today'
 
     return d.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -83,19 +84,29 @@ export default function DoctorPatients() {
       if (!grouped[key]) grouped[key] = []
       grouped[key].push(appt)
     }
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
     return Object.entries(grouped)
-      .sort(([a], [b]) => b.localeCompare(a)) // newest first
+      .sort(([a], [b]) => a.localeCompare(b)) // sort chronologically ascending
       .map(([key, appts]) => ({
         key,
         label: toDayLabel(key),
         appointments: appts,
-        isToday: key === toDayKey(new Date().toISOString()),
+        isToday: key === today,
       }))
   }, [filteredAppointments])
 
   useEffect(() => {
-    if (groupedByDay.length > 0 && (!selectedDayKey || !groupedByDay.some(g => g.key === selectedDayKey))) {
-      setSelectedDayKey(groupedByDay[0].key)
+    if (groupedByDay.length === 0) {
+      setSelectedDayKey('')
+      return
+    }
+    const d = new Date()
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const hasToday = groupedByDay.some(g => g.key === today)
+    const nextSelected = hasToday ? today : groupedByDay[0].key
+    if (!selectedDayKey || !groupedByDay.some(g => g.key === selectedDayKey)) {
+      setSelectedDayKey(nextSelected)
     }
   }, [groupedByDay, selectedDayKey])
 
@@ -131,10 +142,11 @@ export default function DoctorPatients() {
   }
 
   const hasAppointmentToday = (patientId: string | number) => {
-    const today = new Date().toISOString().split('T')[0]
+    const d = new Date()
+    const todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     return appointments.some(a => 
       String(a.patientId) === String(patientId) && 
-      a.scheduledAt.startsWith(today)
+      toDayKey(a.scheduledAt) === todayKey
     )
   }
 

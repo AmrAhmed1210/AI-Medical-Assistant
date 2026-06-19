@@ -8,12 +8,16 @@ import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { PageLoader } from '@/components/ui/LoadingSpinner'
 import { patientRecordsApi, type AllergyRecord, type ChronicDiseaseRecord, type MedicationRecord, type VitalRecord, type SurgeryRecord, type PatientDocument } from '@/api/patientRecordsApi'
+import axiosInstance from '@/api/axiosInstance'
 import { doctorApi } from '@/api/doctorApi'
 import { useDoctorPatients } from '@/hooks/useDoctor'
-import { Lock } from 'lucide-react'
+import { usePatientHistory } from '@/hooks/useVisits'
+import { getAiReportText, hasDistinctArabicReport, parseAiDiagnosisSummary } from '@/lib/aiReport'
+import { Lock, Clock } from 'lucide-react'
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: User },
+  { id: 'visits', label: 'Visits', icon: Clock },
   { id: 'allergies', label: 'Allergies', icon: Shield },
   { id: 'chronic', label: 'Chronic', icon: Activity },
   { id: 'medications', label: 'Medications', icon: Pill },
@@ -30,6 +34,8 @@ export default function DoctorPatientRecords() {
   const pid = patientId ?? '0'
   const { patients = [] } = useDoctorPatients('')
   const patient = patients.find(p => String(p.id) === pid)
+  const { history: patientHistory } = usePatientHistory(Number(pid))
+  const [expandedVisits, setExpandedVisits] = useState<Record<string, boolean>>({})
 
   const [activeTab, setActiveTab] = useState<TabId>('profile')
   const [loading, setLoading] = useState(true)
@@ -37,6 +43,7 @@ export default function DoctorPatientRecords() {
   const [saving, setSaving] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [hasAccessToday, setHasAccessToday] = useState<boolean | null>(null)
+  const [aiLang, setAiLang] = useState<'en' | 'ar'>('ar')
 
   const [allergies, setAllergies] = useState<AllergyRecord[]>([])
   const [chronic, setChronic] = useState<ChronicDiseaseRecord[]>([])
@@ -62,9 +69,20 @@ export default function DoctorPatientRecords() {
       setAllergies(a); setChronic(c); setMedications(m)
       setVitals(v); setSurgeries(s); setDocuments(d); setMedProfile(mp)
       
-      const today = new Date().toISOString().split('T')[0]
+      const now = new Date()
+      const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
+      const toDayKey = (dateStr: string) => {
+        const date = new Date(dateStr)
+        if (isNaN(date.getTime())) return 'unknown'
+        const y = date.getFullYear()
+        const m = `${date.getMonth() + 1}`.padStart(2, '0')
+        const day = `${date.getDate()}`.padStart(2, '0')
+        return `${y}-${m}-${day}`
+      }
+
       const hasApptToday = appts.some((appt: any) => 
-        String(appt.patientId) === pid && appt.scheduledAt.startsWith(today)
+        String(appt.patientId) === pid && toDayKey(appt.scheduledAt) === todayKey
       )
       setHasAccessToday(hasApptToday)
     } finally { setLoading(false) }
@@ -75,29 +93,50 @@ export default function DoctorPatientRecords() {
   const runAiAnalysis = async () => {
     setAnalyzing(true)
     try {
+      const cutoff = new Date()
+      cutoff.setMonth(cutoff.getMonth() - 8)
+
+      const recentVisits = (patientHistory?.lastVisits || [])
+        .filter((v) => new Date(v.visitDate) >= cutoff)
+        .map((v) => ({
+          date: v.visitDate,
+          doctor: v.doctorName,
+          specialty: v.doctorSpecialty,
+          complaint: v.chiefComplaint,
+          summary_en: v.summaryEn || v.summary,
+          summary_ar: v.summaryAr || v.summary,
+        }))
+
       const payload = {
         vitals: vitals.map(v => ({ type: v.readingType, value: v.value, recordedAt: v.recordedAt })),
         surgeries: surgeries.map(s => s.surgeryName),
         medications: medications.map(m => m.medicationName),
         allergies: allergies.map(a => a.allergenName),
         chronic_diseases: chronic.map(c => ({ diseaseName: c.diseaseName })),
+        documents_analysis: documents.map(d => ({
+          title: d.title,
+          ai_analysis: d.description || '',
+        })),
+        recent_visits: recentVisits,
       }
 
-      const aiServerUrl = import.meta.env.VITE_AI_SERVER_URL || 'http://localhost:8000'
-      const response = await fetch(`${aiServerUrl}/analyze-history`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-internal-token': 'LuxuryMedicalAiSecretKey2026'
-        },
-        body: JSON.stringify(payload),
-      })
+      const { data: analysis } = await axiosInstance.post<Record<string, unknown>>('/api/chat/analyze-history', payload)
 
-      if (!response.ok) throw new Error('AI Analysis failed')
-      const analysis = await response.json()
+      const normalized = {
+        analysis_en: String(analysis.analysis_en ?? analysis.en ?? ''),
+        analysis_ar: String(analysis.analysis_ar ?? analysis.ar ?? ''),
+        needsDoctor: analysis.needsDoctor,
+      }
+
+      if (!normalized.analysis_ar.trim()) {
+        normalized.analysis_ar = 'لم يتم إنشاء التقرير بالعربية. يرجى إعادة التحليل.'
+      }
+      if (!normalized.analysis_en.trim()) {
+        normalized.analysis_en = normalized.analysis_ar
+      }
 
       await patientRecordsApi.updateMedicalProfile(pid, {
-        aiDiagnosisSummary: JSON.stringify(analysis)
+        aiDiagnosisSummary: JSON.stringify(normalized)
       })
 
       toast.success('AI Health Analysis Updated')
@@ -191,7 +230,7 @@ export default function DoctorPatientRecords() {
     } catch { toast.error('Failed to delete') }
   }
 
-  const canAdd = !['profile', 'scans'].includes(activeTab) || activeTab === 'scans'
+  const canAdd = !['profile', 'scans', 'visits'].includes(activeTab) || activeTab === 'scans'
 
   if (loading || hasAccessToday === null) return <PageLoader />
 
@@ -364,27 +403,36 @@ export default function DoctorPatientRecords() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-transparent p-6 text-slate-900 dark:text-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-6 text-slate-900 dark:text-slate-100">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition">
-          <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-slate-400" />
+      <div className="flex items-center gap-5 mb-8">
+        <button onClick={() => navigate(-1)} className="p-2.5 hover:bg-white dark:hover:bg-slate-800 rounded-xl transition shadow-sm border border-gray-100 dark:border-slate-800">
+          <ChevronLeft className="w-5 h-5 text-gray-500 dark:text-slate-400" />
         </button>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">{patient?.fullName || 'Patient'}</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400">{age ? `${age} years` : 'N/A'} / {patient?.gender || 'N/A'} / {medProfile?.bloodType || 'No blood type'}</p>
+        <div className="flex items-center gap-4 flex-1">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center shadow-lg shadow-primary-500/20">
+            <span className="text-white font-black text-xl">{(patient?.fullName || 'P').charAt(0).toUpperCase()}</span>
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-gray-900 dark:text-white">{patient?.fullName || 'Patient'}</h1>
+            <div className="flex items-center gap-3 mt-1">
+              {age && <span className="text-xs font-semibold bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 px-2.5 py-0.5 rounded-full">{age} years</span>}
+              {patient?.gender && <span className="text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2.5 py-0.5 rounded-full">{patient.gender}</span>}
+              {medProfile?.bloodType && <span className="text-xs font-semibold bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2.5 py-0.5 rounded-full">🩸 {medProfile.bloodType}</span>}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+      <div className="flex gap-1.5 mb-6 overflow-x-auto pb-2 scrollbar-hide bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm rounded-2xl p-1.5 border border-gray-100 dark:border-slate-800/80 shadow-sm">
         {TABS.map(tab => {
           const Icon = tab.icon
           const active = activeTab === tab.id
           return (
             <button key={tab.id} onClick={() => { setActiveTab(tab.id); setShowForm(false) }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                active ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'bg-white dark:bg-slate-900 text-gray-600 dark:text-slate-350 hover:bg-gray-100 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-800/80'
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all ${
+                active ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25' : 'text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-slate-300'
               }`}>
               <Icon className="w-4 h-4" />
               {tab.label}
@@ -394,7 +442,7 @@ export default function DoctorPatientRecords() {
       </div>
 
       {/* Content */}
-      <Card className="relative min-h-[400px]">
+      <Card className="relative min-h-[400px] shadow-xl shadow-black/[0.03] border-gray-100/80 dark:border-slate-800/60">
         <div className="p-6">
           {activeTab === 'profile' && (
             <div className="space-y-6">
@@ -444,19 +492,52 @@ export default function DoctorPatientRecords() {
                 {medProfile?.aiDiagnosisSummary ? (
                   <div className="w-full">
                     {(() => {
-                      try {
-                        const report = JSON.parse(medProfile.aiDiagnosisSummary);
-                        return (
-                          <div className="p-6 bg-purple-50/50 dark:bg-purple-950/10 rounded-2xl border border-purple-100 dark:border-purple-900/30">
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-purple-100 dark:border-purple-900/30">AI Analysis Report</span>
-                            </div>
-                            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">{report.analysis_en}</p>
-                          </div>
-                        );
-                      } catch (e) {
-                        return <p className="text-sm text-gray-500 italic">Report data is currently being processed or unavailable.</p>;
+                      const report = parseAiDiagnosisSummary(medProfile.aiDiagnosisSummary)
+                      if (!report) {
+                        return <p className="text-sm text-gray-500 italic">Report data is currently being processed or unavailable.</p>
                       }
+
+                      const showArabicFallbackNote = aiLang === 'ar' && !hasDistinctArabicReport(report)
+
+                      return (
+                        <div className="p-6 bg-purple-50/50 dark:bg-purple-950/10 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                          <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+                            <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-purple-100 dark:border-purple-900/30">
+                              {aiLang === 'ar' ? 'تقرير التحليل الذكي' : 'AI Analysis Report'}
+                            </span>
+
+                            <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-purple-200 dark:border-purple-800 shadow-sm">
+                              <button
+                                type="button"
+                                onClick={() => setAiLang('en')}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${aiLang === 'en' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30'}`}
+                              >
+                                English
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setAiLang('ar')}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${aiLang === 'ar' ? 'bg-purple-600 text-white shadow-md' : 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30'}`}
+                              >
+                                العربية
+                              </button>
+                            </div>
+                          </div>
+
+                          {showArabicFallbackNote && (
+                            <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl px-3 py-2 mb-3 text-right">
+                              التقرير العربي غير متوفر في النسخة الحالية. اضغط Refresh Analysis لإعادة توليد التقرير بالعربية.
+                            </p>
+                          )}
+
+                          <p
+                            className={`text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap ${aiLang === 'ar' ? 'text-right' : 'text-left'}`}
+                            dir={aiLang === 'ar' ? 'rtl' : 'ltr'}
+                          >
+                            {getAiReportText(report, aiLang)}
+                          </p>
+                        </div>
+                      )
                     })()}
                   </div>
                 ) : (
@@ -470,18 +551,126 @@ export default function DoctorPatientRecords() {
             </div>
           )}
 
+          {activeTab === 'visits' && ((patientHistory?.lastVisits || []).length === 0 ? renderEmpty('No visits history') : (
+            <div className="space-y-1">
+              {/* Timeline */}
+              <div className="relative">
+                {/* Vertical timeline line */}
+                <div className="absolute left-[19px] top-4 bottom-4 w-px bg-gradient-to-b from-primary-300 via-primary-200 to-transparent dark:from-primary-600 dark:via-primary-800" />
+
+                {patientHistory?.lastVisits?.map((v, idx) => (
+                  <div key={v.id} className="relative flex gap-4 pb-6 last:pb-0 group">
+                    {/* Timeline dot */}
+                    <div className="relative z-10 flex-shrink-0 mt-1">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-transform group-hover:scale-110 ${
+                        idx === 0 
+                          ? 'bg-gradient-to-br from-primary-500 to-primary-700 text-white ring-4 ring-primary-100 dark:ring-primary-900/40' 
+                          : 'bg-white dark:bg-slate-800 text-primary-500 border-2 border-primary-200 dark:border-primary-700'
+                      }`}>
+                        <Clock className="w-4 h-4" />
+                      </div>
+                    </div>
+
+                    {/* Visit card */}
+                    <div className={`flex-1 rounded-2xl border transition-all group-hover:shadow-lg ${
+                      idx === 0 
+                        ? 'bg-gradient-to-br from-white to-primary-50/30 dark:from-slate-800 dark:to-primary-950/20 border-primary-100 dark:border-primary-800/50 shadow-md' 
+                        : 'bg-white dark:bg-slate-800/60 border-gray-100 dark:border-slate-700/50 shadow-sm'
+                    }`}>
+                      {/* Card header */}
+                      <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-50 dark:border-slate-700/30">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black ${
+                            idx === 0 
+                              ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' 
+                              : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'
+                          }`}>
+                            {v.doctorName ? v.doctorName.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm text-gray-900 dark:text-white">
+                              {v.doctorName ? `Dr. ${v.doctorName}` : 'Unknown Doctor'}
+                            </p>
+                            <p className="text-[11px] text-gray-400 dark:text-slate-500">
+                              {v.doctorSpecialty || 'Specialist'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold ${
+                            idx === 0 
+                              ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' 
+                              : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'
+                          }`}>
+                            <Clock className="w-3 h-3" />
+                            {v.visitDate}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Card body */}
+                      <div className="px-5 py-4 space-y-3">
+                        {/* Chief complaint */}
+                        <div className="flex items-start gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500 mt-0.5 shrink-0 w-20">Complaint</span>
+                          <p className="text-sm text-gray-700 dark:text-slate-300 font-medium leading-relaxed">
+                            {v.chiefComplaint || 'None recorded'}
+                          </p>
+                        </div>
+
+                        {/* Summary */}
+                        {v.summary && (
+                          <div className="mt-2 bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-800/80 dark:to-slate-900/50 rounded-xl border border-gray-100/80 dark:border-slate-700/40 overflow-hidden transition-all">
+                            <div className="p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest">AI Summary</span>
+                                </div>
+                                <button
+                                  onClick={() => setExpandedVisits(prev => ({ ...prev, [v.id]: !prev[v.id] }))}
+                                  className="text-[10px] font-bold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-300 px-2.5 py-1 rounded-md transition"
+                                >
+                                  {expandedVisits[v.id] ? 'Read Less' : 'Read More'}
+                                </button>
+                              </div>
+                              {expandedVisits[v.id] && (
+                                <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap mt-3 border-t border-purple-100/50 dark:border-purple-900/20 pt-3">{v.summary}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Quick view link */}
+                      <div className="px-5 py-2.5 border-t border-gray-50 dark:border-slate-700/30 flex justify-end">
+                        <button
+                          onClick={() => window.open(`/doctor/visits/${v.id}/summary`, '_blank')}
+                          className="text-[11px] font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition flex items-center gap-1"
+                        >
+                          View Full Details
+                          <ChevronLeft className="w-3 h-3 rotate-180" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
           {activeTab === 'allergies' && (allergies.length === 0 ? renderEmpty('No allergies') : (
             <div className="space-y-3">
               {allergies.map(a => (
-                <div key={a.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:shadow-md transition">
+                <div key={a.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50 rounded-xl hover:shadow-md transition">
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-800">{a.allergenName}</p>
+                      <p className="font-semibold text-gray-800 dark:text-white">{a.allergenName}</p>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sevColor(a.severity)}`}>{a.severity}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{a.allergyType}{a.reactionDescription ? ` · ${a.reactionDescription}` : ''}</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{a.allergyType}{a.reactionDescription ? ` · ${a.reactionDescription}` : ''}</p>
                   </div>
-                  <button onClick={() => handleDelete('allergy', a.id)} className="p-2 text-gray-400 hover:text-red-500 transition"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => handleDelete('allergy', a.id)} className="p-2 text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
@@ -490,15 +679,15 @@ export default function DoctorPatientRecords() {
           {activeTab === 'chronic' && (chronic.length === 0 ? renderEmpty('No chronic diseases') : (
             <div className="space-y-3">
               {chronic.map(d => (
-                <div key={d.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:shadow-md transition">
+                <div key={d.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50 rounded-xl hover:shadow-md transition">
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-800">{d.diseaseName}</p>
+                      <p className="font-semibold text-gray-800 dark:text-white">{d.diseaseName}</p>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sevColor(d.severity)}`}>{d.severity}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{d.diseaseType}{d.doctorNotes ? ` · ${d.doctorNotes}` : ''}</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{d.diseaseType}{d.doctorNotes ? ` · ${d.doctorNotes}` : ''}</p>
                   </div>
-                  <button onClick={() => handleDelete('chronic', d.id)} className="p-2 text-gray-400 hover:text-red-500 transition"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => handleDelete('chronic', d.id)} className="p-2 text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
@@ -507,30 +696,32 @@ export default function DoctorPatientRecords() {
           {activeTab === 'medications' && (medications.length === 0 ? renderEmpty('No medications') : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {medications.map(m => (
-                <div key={m.id} className="p-4 bg-white border border-gray-100 rounded-xl hover:shadow-md transition">
+                <div key={m.id} className="p-4 bg-white dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50 rounded-xl hover:shadow-md transition">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <p className="font-bold text-gray-800 text-lg">{m.medicationName}</p>
-                      {m.genericName && <p className="text-xs text-gray-400 font-medium">{m.genericName}</p>}
+                      <p className="font-bold text-gray-800 dark:text-white text-lg">{m.medicationName}</p>
+                      {m.genericName && <p className="text-xs text-gray-400 dark:text-slate-500 font-medium">{m.genericName}</p>}
                     </div>
-                    {m.isChronic && <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Chronic</span>}
+                    {m.isChronic && <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-amber-200 dark:border-amber-800/50">Chronic</span>}
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <div className="w-5 h-5 rounded-md bg-primary-50 flex items-center justify-center text-primary-600"><Heart className="w-3 h-3" /></div>
-                      <span>{m.dosage} · {m.form}</span>
+                  <div className="space-y-2 mt-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
+                      <div className="w-6 h-6 rounded-md bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400"><Heart className="w-3.5 h-3.5" /></div>
+                      <span className="font-medium">{m.dosage} <span className="text-gray-400 dark:text-slate-500 mx-1">·</span> {m.form}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <div className="w-5 h-5 rounded-md bg-blue-50 flex items-center justify-center text-blue-600"><Activity className="w-3 h-3" /></div>
-                      <span>{m.frequency} · {m.timesPerDay}x/day ({m.doseTimes})</span>
+                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
+                      <div className="w-6 h-6 rounded-md bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400"><Activity className="w-3.5 h-3.5" /></div>
+                      <span className="font-medium">{m.frequency} <span className="text-gray-400 dark:text-slate-500 mx-1">·</span> {m.timesPerDay}x/day <span className="text-gray-400 dark:text-slate-500 text-xs">({m.doseTimes})</span></span>
                     </div>
                     {m.instructions && (
-                      <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-100 italic">"{m.instructions}"</p>
+                      <div className="mt-3 bg-gray-50 dark:bg-slate-900/50 p-3 rounded-lg border border-gray-100 dark:border-slate-700/50">
+                        <p className="text-xs text-gray-600 dark:text-slate-400 italic">"{m.instructions}"</p>
+                      </div>
                     )}
                   </div>
-                  <div className="mt-3 pt-3 border-t border-gray-50 flex justify-between items-center">
-                    <span className="text-[10px] text-gray-400">Added: {new Date(m.createdAt).toLocaleDateString()}</span>
-                    <button onClick={() => handleDelete('medication', m.id)} className="text-gray-400 hover:text-red-500 transition"><Trash2 className="w-4 h-4" /></button>
+                  <div className="mt-4 pt-4 border-t border-gray-50 dark:border-slate-700/30 flex justify-between items-center">
+                    <span className="text-[10px] font-medium text-gray-400 dark:text-slate-500">Added: {new Date(m.createdAt).toLocaleDateString()}</span>
+                    <button onClick={() => handleDelete('medication', m.id)} className="p-1.5 text-gray-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
               ))}

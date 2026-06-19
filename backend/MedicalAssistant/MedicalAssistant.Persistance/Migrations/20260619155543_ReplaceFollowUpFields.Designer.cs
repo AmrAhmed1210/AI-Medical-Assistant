@@ -4,6 +4,7 @@ using MedicalAssistant.Persistance.Data.DbContexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MedicalAssistant.Persistance.Migrations
 {
     [DbContext(typeof(MedicalAssistantDbContext))]
-    partial class MedicalAssistantDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260619155543_ReplaceFollowUpFields")]
+    partial class ReplaceFollowUpFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -82,12 +85,6 @@ namespace MedicalAssistant.Persistance.Migrations
 
                     b.Property<int>("DoctorId")
                         .HasColumnType("int");
-
-                    b.Property<int?>("FollowUpVisitId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsFollowUp")
-                        .HasColumnType("bit");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)

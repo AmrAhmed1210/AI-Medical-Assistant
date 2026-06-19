@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AvailabilityDto, DayOfWeek } from '@/lib/types'
 import { DAY_NAMES_AR } from '@/lib/utils'
@@ -25,6 +25,14 @@ export function AvailabilityEditor({ availability, onSave, isSaving }: Availabil
   const [slots, setSlots] = useState<AvailabilityDto[]>(
     availability.length > 0 ? availability : DEFAULT_AVAILABILITY
   )
+
+  useEffect(() => {
+    if (availability && availability.length > 0) {
+      setSlots(availability)
+    } else {
+      setSlots(DEFAULT_AVAILABILITY)
+    }
+  }, [availability])
 
   const update = (dayOfWeek: number, field: keyof AvailabilityDto, value: unknown) => {
     setSlots((prev) =>
