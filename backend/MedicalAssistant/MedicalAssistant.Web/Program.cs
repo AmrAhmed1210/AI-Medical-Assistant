@@ -154,7 +154,8 @@ public class Program
             ?? new[]
             {
                 "http://localhost:3000",
-                "http://localhost:5173"
+                "http://localhost:5173",
+                "http://localhost:8081"
             };
 
         builder.Services.AddCors(options =>
@@ -170,6 +171,7 @@ public class Program
 
         app.UseSwagger();
         app.UseSwaggerUI();
+       app.UseHttpsRedirection();
 
         app.UseCors("AllowAll");
 
@@ -199,7 +201,7 @@ public class Program
                 {
                     logger.LogInformation("Seeding Admin user...");
                     var hashedPassword = BCrypt.Net.BCrypt.HashPassword("12345678");
-                    
+
                     var newAdmin = new MedicalAssistant.Domain.Entities.UserModule.User
                     {
                         FullName = "Admin",
@@ -210,7 +212,7 @@ public class Program
                         IsDeleted = false,
                         CreatedAt = DateTime.UtcNow
                     };
-                    
+
                     context.Set<MedicalAssistant.Domain.Entities.UserModule.User>().Add(newAdmin);
                     context.SaveChanges();
                     logger.LogInformation("Admin user seeded successfully.");
