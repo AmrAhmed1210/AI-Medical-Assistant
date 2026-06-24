@@ -1,4 +1,4 @@
-// ─────────────────────────────────────────────
+﻿// ─────────────────────────────────────────────
 //  MedBook – i18n  (English + Arabic)
 // ─────────────────────────────────────────────
 
@@ -28,6 +28,7 @@ const translations = {
     health_categories:      "Health Categories",
     items:                  "items",
     failed_load_records:    "Failed to load records",
+    retry:                  "Retry",
 
     // ── Home ────────────────────────────────
     greeting_morning:       "Good morning 🌤",
@@ -49,6 +50,13 @@ const translations = {
     elite_membership:       "Elite Medical Membership",
     verified_patient:       "Verified Premium Patient",
     upcoming_appointment:   "Upcoming Appointment",
+    recommended_for_you:    "Recommended For You",
+    recommended_doctors:    "Recommended Doctors",
+    recommended_specialty:  "Recommended Specialty",
+    top_rated_doctors:      "Top Rated Doctors",
+    best_match:             "Best match",
+    no_doctors_specialty:   "No doctors available right now in",
+    tap_search_specialty:   "Tap here to search for a specialist in this field.",
     // specialty labels
     spec_cardiology:        "Cardiology",
     spec_eye:               "Eye",
@@ -57,6 +65,9 @@ const translations = {
     spec_dermatology:       "Dermatology",
     spec_general:           "General",
     spec_pediatrics:        "Pediatrics",
+    spec_gynecology:        "Gynecology",
+    spec_ophthalmology:     "Ophthalmology",
+    spec_ent:               "ENT",
 
     // ── Doctors ─────────────────────────────
     find_doctor:            "Find a Doctor",
@@ -66,6 +77,9 @@ const translations = {
     experience:             "Experience",
     fee:                    "Consultation Fee",
     reviews:                "Reviews",
+    doctors_matched_profile:"Top results are matched to your health profile",
+    show_next_doctors:      "Show Next Doctors",
+    end_of_list:            "You've reached the end of the list",
 
     // ── Doctor Details ───────────────────────
     about:                  "About",
@@ -344,6 +358,7 @@ const translations = {
     health_categories:      "الفئات الصحية",
     items:                  "عناصر",
     failed_load_records:    "فشل تحميل السجلات",
+    retry:                  "إعادة المحاولة",
 
     // ── Home ────────────────────────────────
     greeting_morning:       "صباح الخير 🌤",
@@ -365,6 +380,13 @@ const translations = {
     elite_membership:       "عضوية النخبة الطبية",
     verified_patient:       "مريض بريميوم موثق",
     upcoming_appointment:   "الموعد القادم",
+    recommended_for_you:    "مقترح لك",
+    recommended_doctors:    "الأطباء المقترحون",
+    recommended_specialty:  "التخصص المقترح",
+    top_rated_doctors:      "الأطباء الأعلى تقييماً",
+    best_match:             "أفضل تطابق",
+    no_doctors_specialty:   "لا يوجد أطباء متاحون حالياً في تخصص",
+    tap_search_specialty:   "انقر هنا للبحث عن طبيب في هذا التخصص.",
     spec_cardiology:        "قلب",
     spec_eye:               "عيون",
     spec_ortho:             "عظام",
@@ -372,6 +394,9 @@ const translations = {
     spec_dermatology:       "جلدية",
     spec_general:           "عام",
     spec_pediatrics:        "أطفال",
+    spec_gynecology:        "نساء وتوليد",
+    spec_ophthalmology:     "رمد وعيون",
+    spec_ent:               "أنف وأذن",
 
     // ── Doctors ─────────────────────────────
     find_doctor:            "ابحث عن طبيب",
@@ -381,6 +406,9 @@ const translations = {
     experience:             "الخبرة",
     fee:                    "رسوم الاستشارة",
     reviews:                "تقييمات",
+    doctors_matched_profile:"النتائج الأولى مناسبة لملفك الصحي",
+    show_next_doctors:      "عرض أطباء آخرين",
+    end_of_list:            "وصلت إلى نهاية القائمة",
 
     // ── Doctor Details ───────────────────────
     about:                  "نبذة",

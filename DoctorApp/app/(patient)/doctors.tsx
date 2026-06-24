@@ -18,7 +18,17 @@ import { onDoctorCreated, onDoctorUpdated, startSignalRConnection } from "../../
 import { getMyPatientId } from "../../services/authService";
 import { getVitals, getChronicDiseases, getPatientDocuments } from "../../services/medicalRecordService";
 
-const SPECIALTIES = ["All", "Cardiology", "Dermatology", "Neurology", "Orthopedics", "Pediatrics", "Gynecology", "Ophthalmology", "ENT"];
+const SPECIALTIES = [
+  { value: "All", labelKey: "all" },
+  { value: "Cardiology", labelKey: "spec_cardiology" },
+  { value: "Dermatology", labelKey: "spec_dermatology" },
+  { value: "Neurology", labelKey: "spec_neurology" },
+  { value: "Orthopedics", labelKey: "spec_ortho" },
+  { value: "Pediatrics", labelKey: "spec_pediatrics" },
+  { value: "Gynecology", labelKey: "spec_gynecology" },
+  { value: "Ophthalmology", labelKey: "spec_ophthalmology" },
+  { value: "ENT", labelKey: "spec_ent" },
+] as const;
 
 const STATUS_BAR_HEIGHT = Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 44;
 
@@ -49,8 +59,8 @@ export default function DoctorsScreen() {
 
   useEffect(() => {
     if (params.specialty) {
-      const match = SPECIALTIES.find((s) => s.toLowerCase() === params.specialty!.toLowerCase());
-      if (match) setActiveSpec(match);
+      const match = SPECIALTIES.find((s) => s.value.toLowerCase() === params.specialty!.toLowerCase());
+      if (match) setActiveSpec(match.value);
     }
   }, [params.specialty]);
 
@@ -98,18 +108,18 @@ export default function DoctorsScreen() {
           ...vitals.slice(0, 10).map(v => `${v.readingType} ${v.value}${v.value2 ? `/${v.value2}` : ""}`),
           ...docs.map(d => `${d.title ?? (d as any).Title ?? ""} ${d.description ?? (d as any).Description ?? ""}`),
         ].join(" ")
-        const recommendation = await getRecommendedDoctorsForNeed(needText, 3).catch(() => ({ specialty: null, doctors: [] }))
+        const recommendation = await getRecommendedDoctorsForNeed(needText, 5).catch(() => ({ specialty: null, doctors: [] }))
         setRecommendedSpecialty(recommendation.specialty)
         setRecommendedDoctorIds(recommendation.doctors.map(d => Number(d.id)))
       }
     } catch (e: any) {
       console.error('Failed to fetch doctors:', e)
-      setError("Failed to load doctors. Check your connection.")
+      setError(isRTL ? "فشل تحميل الأطباء. تحقق من الاتصال." : "Failed to load doctors. Check your connection.")
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [isRTL])
 
   useFocusEffect(
     useCallback(() => {
@@ -227,7 +237,7 @@ export default function DoctorsScreen() {
       <Ionicons name="cloud-offline-outline" size={48} color="#e53935" />
       <Text style={styles.errorTxt}>{error}</Text>
       <TouchableOpacity style={styles.retryBtn} onPress={fetchDoctors}>
-        <Text style={styles.retryTxt}>Retry</Text>
+        <Text style={styles.retryTxt}>{tr("retry")}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -318,11 +328,11 @@ export default function DoctorsScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
           {SPECIALTIES.map((s) => (
             <TouchableOpacity
-              key={s}
-              style={[styles.chip, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", borderColor: colors.border }, activeSpec === s && styles.chipActive]}
-              onPress={() => setActiveSpec(s)}
+              key={s.value}
+              style={[styles.chip, { backgroundColor: isDark ? "#1E293B" : "#F8FAFC", borderColor: colors.border }, activeSpec === s.value && styles.chipActive]}
+              onPress={() => setActiveSpec(s.value)}
             >
-              <Text style={[styles.chipTxt, { color: colors.textMuted }, activeSpec === s && styles.chipTxtActive]}>{s}</Text>
+              <Text style={[styles.chipTxt, { color: colors.textMuted }, activeSpec === s.value && styles.chipTxtActive]}>{tr(s.labelKey as any)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -331,7 +341,7 @@ export default function DoctorsScreen() {
         <View style={[styles.recommendationNotice, { backgroundColor: isDark ? "#0F172A" : "#ECFDF5", borderColor: colors.border }]}>
           <Ionicons name="sparkles" size={16} color="#059669" />
           <Text style={[styles.recommendationNoticeText, { color: colors.text }]}>
-            Top 3 are matched to your health profile{recommendedSpecialty ? `: ${recommendedSpecialty}` : ""}
+            {tr("doctors_matched_profile")}{recommendedSpecialty ? `: ${recommendedSpecialty}` : ""}
           </Text>
         </View>
       )}
@@ -349,7 +359,7 @@ export default function DoctorsScreen() {
           const hasSchedule = ((item as any).hasSchedule ?? true) && ((item as any).isScheduleVisible ?? true);
           
           // Calculate mock distance if nearby mode is on
-          const distance = isNearby ? `${((Number(item.id) * 7) % 50 / 10).toFixed(1)} km away` : item.location;
+          const distance = isNearby ? `${((Number(item.id) * 7) % 50 / 10).toFixed(1)} km away` : (item.location || "Medical Center");
           
           return (
             <DoctorCard
@@ -380,12 +390,12 @@ export default function DoctorsScreen() {
               style={styles.nextBtn} 
               onPress={() => setCurrentPage(p => p + 1)}
             >
-              <Text style={styles.nextBtnText}>Show Next Doctors</Text>
+              <Text style={styles.nextBtnText}>{tr("show_next_doctors")}</Text>
               <Ionicons name="chevron-down" size={18} color="#fff" />
             </TouchableOpacity>
           ) : filtered.length > 0 ? (
             <View style={styles.endList}>
-              <Text style={styles.endListText}>You've reached the end of the list</Text>
+              <Text style={styles.endListText}>{tr("end_of_list")}</Text>
             </View>
           ) : null
         )}

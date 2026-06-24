@@ -45,18 +45,25 @@ INDEX_NAME       = os.getenv("PINECONE_INDEX", "medical-index")
 MIN_CONFIDENCE   = float(os.getenv("MIN_CONFIDENCE", "0.70"))
 MAX_QUERY_LENGTH = int(os.getenv("MAX_QUERY_LENGTH", "500"))
 MAX_IMAGE_SIZE   = int(os.getenv("MAX_IMAGE_SIZE_MB", "10")) * 1024 * 1024
+PRIMARY_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+PRIMARY_GEMINI_VISION_MODEL = os.getenv("GEMINI_VISION_MODEL", PRIMARY_GEMINI_MODEL)
 
 GEMINI_MODELS = [
+    PRIMARY_GEMINI_MODEL,
     "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
 ]
 
 GEMINI_VISION_MODELS = [
+    PRIMARY_GEMINI_VISION_MODEL,
     "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-1.5-flash",
 ]
+
+GEMINI_MODELS = list(dict.fromkeys(GEMINI_MODELS))
+GEMINI_VISION_MODELS = list(dict.fromkeys(GEMINI_VISION_MODELS))
 
 ALLOWED_IMAGE_TYPES = {
     "image/jpeg",

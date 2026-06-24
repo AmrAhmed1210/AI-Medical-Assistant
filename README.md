@@ -113,6 +113,10 @@ cd E:\AI\DoctorApp
 npm install
 npm start
 ```
+```powershell
+cd .\MedicalAssistant.Web
+dotnet run --urls "http://0.0.0.0:5194"
+```
 
 Use Expo Go, an emulator, or the Expo web target.
 

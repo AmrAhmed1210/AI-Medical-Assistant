@@ -30,14 +30,16 @@ interface Doctor {
   specialty: string;
   rating?: number;
   reviewCount?: number;
-  location?: string;
+  followerCount?: number;
+  location?: string | null;
   experience?: string;
-  consultationFee?: number;
+  consultationFee?: number | null;
   imageUrl?: string;
   photoUrl?: string | null;
   isAvailable?: boolean;
   isProfileComplete?: boolean;
   hasSchedule?: boolean;
+  phoneNumber?: string | null;
 }
 
 export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doctor; highlight?: boolean; compact?: boolean }) {
@@ -48,6 +50,7 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
   const [showBadge, setShowBadge] = useState(false);
   const [isFollowed, setIsFollowed] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
+  const [followerCount, setFollowerCount] = useState(Number(doctor.followerCount || 0));
 
   const glowAnim = useRef(new Animated.Value(0)).current;
   const badgeAnim = useRef(new Animated.Value(0)).current;
@@ -73,6 +76,7 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
       try {
         if (!mounted) return;
         setIsFollowed(await checkIfFollowed(Number(doctor.id)));
+        setFollowerCount(Number(doctor.followerCount || 0));
       } catch {
         if (mounted) setIsFollowed(false);
       }
@@ -97,6 +101,7 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
       const next = !followed;
       await setFollowed(doctorId, next);
       setIsFollowed(next);
+      setFollowerCount((count) => Math.max(0, count + (next ? 1 : -1)));
     } finally {
       setFollowBusy(false);
     }
@@ -176,11 +181,22 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
                     {doctor.location || "Main Medical Center, Downtown"}
                   </Text>
                 </View>
+                {!!doctor.phoneNumber && (
+                  <View style={styles.addressMiniRow}>
+                    <Ionicons name="call-outline" size={12} color="#059669" />
+                    <Text style={styles.addressMiniTxt} numberOfLines={1}>{doctor.phoneNumber}</Text>
+                  </View>
+                )}
 
                 <View style={styles.metaRow}>
                   <View style={styles.metaItem}>
                     <Star size={10} color="#FFB300" fill="#FFB300" />
                     <Text style={styles.metaTxt}>{ratingLabel} {reviewLabel}</Text>
+                  </View>
+                  <View style={styles.dotSeparator} />
+                  <View style={styles.metaItem}>
+                    <Heart size={10} stroke="#EF4444" fill="#EF4444" />
+                    <Text style={styles.metaTxt}>{followerCount}</Text>
                   </View>
                   <View style={styles.dotSeparator} />
                   <View style={styles.metaItem}>

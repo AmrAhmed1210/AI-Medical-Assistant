@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { FullPageLoader } from '@/components/ui/LoadingSpinner'
 import { ROUTES } from '@/constants/config'
+import { LanguageProvider, useLanguage } from '@/lib/language'
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
@@ -80,12 +81,24 @@ function PublicGuard() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter>
+        <AppShell />
+      </BrowserRouter>
+    </LanguageProvider>
+  )
+}
+
+function AppShell() {
+  const { isRTL } = useLanguage()
+
+  return (
+    <>
       <Toaster
         position="top-center"
         reverseOrder={false}
         toastOptions={{
-          style: { fontFamily: 'Tajawal, sans-serif', fontSize: '14px', direction: 'rtl' },
+          style: { fontFamily: 'Tajawal, sans-serif', fontSize: '14px', direction: isRTL ? 'rtl' : 'ltr' },
           success: { style: { background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' } },
           error: { style: { background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' } },
         }}
@@ -147,7 +160,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
-    </BrowserRouter>
+    </>
   )
 }
 

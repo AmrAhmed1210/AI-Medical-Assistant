@@ -13,36 +13,52 @@ import { ROUTES } from '@/constants/config'
 import toast from 'react-hot-toast'
 import { useNotificationStore } from '@/store/notificationStore'
 import { useThemeStore } from '@/store/themeStore'
+import { useLanguage } from '@/lib/language'
+
+type NavKey =
+  | 'dashboard'
+  | 'todaysVisits'
+  | 'appointments'
+  | 'patients'
+  | 'reviews'
+  | 'messages'
+  | 'manageStaff'
+  | 'schedule'
+  | 'myProfile'
+  | 'users'
+  | 'statistics'
+  | 'applications'
+  | 'supportCenter'
 
 interface NavItem {
   to: string
   icon: React.ReactNode
-  label: string
+  labelKey: NavKey
 }
 
 const doctorNav: NavItem[] = [
-  { to: ROUTES.DOCTOR_DASHBOARD, icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
-  { to: ROUTES.DOCTOR_TODAY, icon: <CheckSquare size={18} />, label: "Today's Visits" },
-  { to: ROUTES.DOCTOR_APPOINTMENTS, icon: <Calendar size={18} />, label: 'Appointments' },
-  { to: ROUTES.DOCTOR_PATIENTS, icon: <Users size={18} />, label: 'Patients' },
-  { to: ROUTES.DOCTOR_REVIEWS, icon: <Star size={18} />, label: 'Reviews' },
-  { to: ROUTES.DOCTOR_CHAT, icon: <MessageSquare size={18} />, label: 'Messages' },
-  { to: '/doctor/staff', icon: <Users size={18} />, label: 'Manage Staff' },
-  { to: ROUTES.DOCTOR_SCHEDULE, icon: <Clock size={18} />, label: 'Schedule' },
-  { to: ROUTES.DOCTOR_PROFILE, icon: <User size={18} />, label: 'My Profile' },
+  { to: ROUTES.DOCTOR_DASHBOARD, icon: <LayoutDashboard size={18} />, labelKey: 'dashboard' },
+  { to: ROUTES.DOCTOR_TODAY, icon: <CheckSquare size={18} />, labelKey: 'todaysVisits' },
+  { to: ROUTES.DOCTOR_APPOINTMENTS, icon: <Calendar size={18} />, labelKey: 'appointments' },
+  { to: ROUTES.DOCTOR_PATIENTS, icon: <Users size={18} />, labelKey: 'patients' },
+  { to: ROUTES.DOCTOR_REVIEWS, icon: <Star size={18} />, labelKey: 'reviews' },
+  { to: ROUTES.DOCTOR_CHAT, icon: <MessageSquare size={18} />, labelKey: 'messages' },
+  { to: '/doctor/staff', icon: <Users size={18} />, labelKey: 'manageStaff' },
+  { to: ROUTES.DOCTOR_SCHEDULE, icon: <Clock size={18} />, labelKey: 'schedule' },
+  { to: ROUTES.DOCTOR_PROFILE, icon: <User size={18} />, labelKey: 'myProfile' },
 ]
 
 const adminNav: NavItem[] = [
-  { to: ROUTES.ADMIN_DASHBOARD, icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
-  { to: ROUTES.ADMIN_USERS, icon: <Users size={18} />, label: 'Users' },
-  { to: ROUTES.ADMIN_STATISTICS, icon: <TrendingUp size={18} />, label: 'Statistics' },
+  { to: ROUTES.ADMIN_DASHBOARD, icon: <LayoutDashboard size={18} />, labelKey: 'dashboard' },
+  { to: ROUTES.ADMIN_USERS, icon: <Users size={18} />, labelKey: 'users' },
+  { to: ROUTES.ADMIN_STATISTICS, icon: <TrendingUp size={18} />, labelKey: 'statistics' },
 
-  { to: ROUTES.ADMIN_APPLICATIONS, icon: <FileText size={18} />, label: 'Applications' },
-  { to: ROUTES.ADMIN_SUPPORT, icon: <LifeBuoy size={18} />, label: 'Support Center' },
+  { to: ROUTES.ADMIN_APPLICATIONS, icon: <FileText size={18} />, labelKey: 'applications' },
+  { to: ROUTES.ADMIN_SUPPORT, icon: <LifeBuoy size={18} />, labelKey: 'supportCenter' },
 ]
 
 const secretaryNav: NavItem[] = [
-  { to: '/secretary/dashboard', icon: <Calendar size={18} />, label: 'Appointments' },
+  { to: '/secretary/dashboard', icon: <Calendar size={18} />, labelKey: 'appointments' },
 ]
 
 export function Sidebar() {
@@ -50,6 +66,7 @@ export function Sidebar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { isDark } = useThemeStore()
+  const { isRTL, t } = useLanguage()
   const {
     unreadMessages,
     unreadAppointments,
@@ -70,7 +87,7 @@ export function Sidebar() {
     sessionStorage.clear()
     logout()
     navigate(ROUTES.LOGIN, { replace: true })
-    toast.success('Logged out successfully')
+    toast.success(t('loggedOut'))
     window.location.href = ROUTES.LOGIN
   }
 
@@ -83,10 +100,10 @@ export function Sidebar() {
 
   return (
     <motion.aside
-      initial={{ x: -256 }}
+      initial={{ x: isRTL ? 256 : -256 }}
       animate={{ x: 0 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="fixed top-4 left-4 h-[calc(100vh-2rem)] w-64 flex flex-col z-30 rounded-3xl overflow-hidden glass-card dark:bg-slate-900/80 dark:border-slate-800 shadow-xl"
+      className={`fixed top-4 ${isRTL ? 'right-4' : 'left-4'} h-[calc(100vh-2rem)] w-64 flex flex-col z-30 rounded-3xl overflow-hidden glass-card dark:bg-slate-900/80 dark:border-slate-800 shadow-xl`}
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-100 dark:border-slate-800/80">
@@ -95,7 +112,7 @@ export function Sidebar() {
         </div>
         <div>
           <p className="text-lg font-black text-slate-900 dark:text-white font-outfit tracking-tight">MedBook</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Smart Medical</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('smartMedical')}</p>
         </div>
       </div>
 
@@ -103,7 +120,7 @@ export function Sidebar() {
       <div className="px-5 py-4">
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold bg-primary-50 text-primary-600 dark:bg-primary-950/30 dark:text-primary-400 border border-primary-100 dark:border-primary-900/50">
           {lowerRole === 'admin' ? <Shield size={14} /> : lowerRole === 'secretary' ? <Users size={14} /> : <Stethoscope size={14} />}
-          {lowerRole === 'admin' ? 'System Administrator' : lowerRole === 'secretary' ? 'Secretary' : 'Doctor'}
+          {lowerRole === 'admin' ? t('systemAdministrator') : lowerRole === 'secretary' ? t('secretary') : t('doctor')}
         </div>
       </div>
 
@@ -140,7 +157,7 @@ export function Sidebar() {
                     </span>
                   )}
                 </div>
-                <span className="z-10">{item.label}</span>
+                <span className="z-10">{t(item.labelKey)}</span>
                 
                 {/* Hover Effect Background */}
                 {!isActive && (
@@ -170,7 +187,7 @@ export function Sidebar() {
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl transition-all duration-300 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
         >
           <LogOut size={16} />
-          Log Out
+          {t('logOut')}
         </button>
       </div>
     </motion.aside>

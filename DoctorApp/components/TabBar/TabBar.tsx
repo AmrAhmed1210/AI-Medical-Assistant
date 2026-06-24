@@ -191,6 +191,8 @@ const TabItem = React.memo(({ tab, isFocused, onPress }: TabItemProps) => {
 
 // ─── Custom Tab Bar ───────────────────────────────────────────────────────────
 
+TabItem.displayName = "TabItem";
+
 interface CustomTabBarProps extends BottomTabBarProps {
   insets: EdgeInsets;
   unreadCount: number;

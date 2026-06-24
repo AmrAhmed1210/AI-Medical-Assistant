@@ -34,8 +34,22 @@ type LocalChatSession = {
   messages: ChatUiMessage[];
 };
 
-const getSessionsKey = (patientId: number) => `ai_chatbot_saved_sessions_v1_${patientId}`;
-const getCurrentSessionKey = (patientId: number) => `ai_chatbot_current_session_v1_${patientId}`;
+const getSessionsKey = (scopeKey: string) => `ai_chatbot_saved_sessions_v2_${scopeKey}`;
+const getCurrentSessionKey = (scopeKey: string) => `ai_chatbot_current_session_v2_${scopeKey}`;
+const createLocalSessionId = () => Date.now();
+
+const getChatScopeKey = async (patientId: number) => {
+  if (patientId > 0) return `patient_${patientId}`;
+
+  const [userId, userEmail] = await Promise.all([
+    AsyncStorage.getItem("userId"),
+    AsyncStorage.getItem("userEmail"),
+  ]);
+
+  if (userId && Number(userId) > 0) return `user_${userId}`;
+  if (userEmail?.trim()) return `email_${userEmail.trim().toLowerCase()}`;
+  return null;
+};
 
 export default function ChatBotScreen() {
   const router = useRouter();
@@ -49,6 +63,7 @@ export default function ChatBotScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   const [patientId, setPatientId] = useState<number | null>(null);
+  const [chatScopeKey, setChatScopeKey] = useState<string | null>(null);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
 
   // AI medical chat is stateless on the server — no session restore needed.
@@ -56,39 +71,50 @@ export default function ChatBotScreen() {
   useEffect(() => {
     const init = async () => {
       const pid = await getMyPatientId();
-      if (pid) {
-        setPatientId(pid);
-        await restoreSavedChats(pid);
-        try {
-          const profile = await getMyProfile();
-          if (profile?.aiDiagnosisSummary) {
-            setAiSummary(profile.aiDiagnosisSummary);
-          }
-        } catch (e) {
-          // ignore
+      const scopeKey = await getChatScopeKey(pid);
+      setPatientId(pid || null);
+      setChatScopeKey(scopeKey);
+
+      if (scopeKey) {
+        await restoreSavedChats(scopeKey);
+      } else {
+        setCurrentSessionId(createLocalSessionId());
+        setMessages([]);
+        setSavedSessions([]);
+      }
+
+      try {
+        const profile = await getMyProfile();
+        if (profile?.aiDiagnosisSummary) {
+          setAiSummary(profile.aiDiagnosisSummary);
         }
+      } catch (e) {
+        // ignore
       }
     };
     init().catch(() => undefined);
   }, []);
 
-  const restoreSavedChats = async (pid: number) => {
-    const raw = await AsyncStorage.getItem(getSessionsKey(pid));
+  const restoreSavedChats = async (scopeKey: string) => {
+    const raw = await AsyncStorage.getItem(getSessionsKey(scopeKey));
     const sessions: LocalChatSession[] = raw ? JSON.parse(raw) : [];
     const sorted = sessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     setSavedSessions(sorted);
 
-    const currentRaw = await AsyncStorage.getItem(getCurrentSessionKey(pid));
+    const currentRaw = await AsyncStorage.getItem(getCurrentSessionKey(scopeKey));
     const currentId = currentRaw ? Number(currentRaw) : sorted[0]?.id;
     const current = sorted.find((session) => session.id === currentId) ?? sorted[0];
     if (current) {
       setCurrentSessionId(current.id);
       setMessages(current.messages);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 100);
+    } else {
+      setCurrentSessionId(createLocalSessionId());
+      setMessages([]);
     }
   };
 
-  const persistLocalChat = async (pid: number, sessionId: number, nextMessages: ChatUiMessage[]) => {
+  const persistLocalChat = async (scopeKey: string, sessionId: number, nextMessages: ChatUiMessage[]) => {
     if (nextMessages.length === 0) return;
     const firstUserMessage = nextMessages.find((message) => message.role === "user")?.content ?? "Medical chat";
     const session: LocalChatSession = {
@@ -98,18 +124,21 @@ export default function ChatBotScreen() {
       messages: nextMessages,
     };
 
-    const nextSessions = [session, ...savedSessions.filter((item) => item.id !== sessionId)].slice(0, 20);
+    const nextSessions = [
+      session,
+      ...savedSessions.filter((item) => item.id !== sessionId),
+    ].slice(0, 20);
     setSavedSessions(nextSessions);
-    await AsyncStorage.setItem(getSessionsKey(pid), JSON.stringify(nextSessions));
-    await AsyncStorage.setItem(getCurrentSessionKey(pid), String(sessionId));
+    await AsyncStorage.setItem(getSessionsKey(scopeKey), JSON.stringify(nextSessions));
+    await AsyncStorage.setItem(getCurrentSessionKey(scopeKey), String(sessionId));
   };
 
   const openSavedSession = async (session: LocalChatSession) => {
     setCurrentSessionId(session.id);
     setMessages(session.messages);
     setHistoryVisible(false);
-    if (patientId) {
-      await AsyncStorage.setItem(getCurrentSessionKey(patientId), String(session.id));
+    if (chatScopeKey) {
+      await AsyncStorage.setItem(getCurrentSessionKey(chatScopeKey), String(session.id));
     }
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 100);
   };
@@ -132,7 +161,7 @@ export default function ChatBotScreen() {
     Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    const localSessionId = currentSessionId ?? Date.now();
+    const localSessionId = currentSessionId ?? createLocalSessionId();
     if (!currentSessionId) setCurrentSessionId(localSessionId);
 
     const tempUserMsg: ChatUiMessage = {
@@ -145,8 +174,8 @@ export default function ChatBotScreen() {
     
     const optimisticMessages = [...messages, tempUserMsg];
     setMessages(optimisticMessages);
-    if (patientId) {
-      persistLocalChat(patientId, localSessionId, optimisticMessages).catch(() => undefined);
+    if (chatScopeKey) {
+      persistLocalChat(chatScopeKey, localSessionId, optimisticMessages).catch(() => undefined);
     }
     setIsLoading(true);
 
@@ -175,7 +204,7 @@ export default function ChatBotScreen() {
         content: m.content,
         timestamp: m.timestamp,
       }));
-      const response = await chatService.ask(contextPrompt, currentSessionId, history);
+      const response = await chatService.ask(contextPrompt, localSessionId, history);
       
       const assistantMsg: ChatUiMessage = {
         id: Date.now() + 1,
@@ -189,8 +218,8 @@ export default function ChatBotScreen() {
 
       const savedMessages = [...optimisticMessages, assistantMsg];
       setMessages(savedMessages);
-      if (patientId) {
-        persistLocalChat(patientId, localSessionId, savedMessages).catch(() => undefined);
+      if (chatScopeKey) {
+        persistLocalChat(chatScopeKey, localSessionId, savedMessages).catch(() => undefined);
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
@@ -224,7 +253,7 @@ export default function ChatBotScreen() {
     setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    const localSessionId = currentSessionId ?? Date.now();
+    const localSessionId = currentSessionId ?? createLocalSessionId();
     if (!currentSessionId) setCurrentSessionId(localSessionId);
 
     // Optimistic image message
@@ -237,12 +266,12 @@ export default function ChatBotScreen() {
     };
     const optimisticMessages = [...messages, tempMsg];
     setMessages(optimisticMessages);
-    if (patientId) {
-      persistLocalChat(patientId, localSessionId, optimisticMessages).catch(() => undefined);
+    if (chatScopeKey) {
+      persistLocalChat(chatScopeKey, localSessionId, optimisticMessages).catch(() => undefined);
     }
 
     try {
-      const result = await chatService.analyzeImage(uri, currentSessionId);
+      const result = await chatService.analyzeImage(uri, localSessionId);
       const res = result as any;
       
       const analysisText = `${res.analysis_ar}\n\n[التفاصيل التقنية]:\n${res.technical_details}\n\n${res.disclaimer}`;
@@ -260,8 +289,8 @@ export default function ChatBotScreen() {
         assistantMsg
       ];
       setMessages(savedMessages);
-      if (patientId) {
-        persistLocalChat(patientId, localSessionId, savedMessages).catch(() => undefined);
+      if (chatScopeKey) {
+        persistLocalChat(chatScopeKey, localSessionId, savedMessages).catch(() => undefined);
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
@@ -347,10 +376,11 @@ export default function ChatBotScreen() {
           <TouchableOpacity 
             style={styles.newChatButton}
             onPress={() => {
-              setCurrentSessionId(undefined);
+              const nextSessionId = createLocalSessionId();
+              setCurrentSessionId(nextSessionId);
               setMessages([]);
-              if (patientId) {
-                AsyncStorage.removeItem(getCurrentSessionKey(patientId)).catch(() => undefined);
+              if (chatScopeKey) {
+                AsyncStorage.setItem(getCurrentSessionKey(chatScopeKey), String(nextSessionId)).catch(() => undefined);
               }
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}

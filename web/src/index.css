@@ -25,7 +25,7 @@
   }
 
   html {
-    direction: rtl;
+    direction: ltr;
     font-family: 'Tajawal', 'Outfit', sans-serif;
     scroll-behavior: smooth;
   }

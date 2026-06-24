@@ -16,8 +16,9 @@ describe('Card Component', () => {
   it('has proper styling classes', () => {
     const { container } = render(<Card>Content</Card>)
     expect(container.firstChild).toHaveClass('rounded-3xl')
-    expect(container.firstChild).toHaveClass('shadow-xl')
-    expect(container.firstChild).toHaveClass('bg-white/80')
+    expect(container.firstChild).toHaveClass('bg-white/30')
+    expect(container.firstChild).toHaveClass('backdrop-blur-xl')
+    expect(container.firstChild).toHaveClass('shadow-[0_8px_30px_rgb(0,0,0,0.04)]')
   })
 })
 

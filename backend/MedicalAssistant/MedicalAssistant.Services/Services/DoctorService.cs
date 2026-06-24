@@ -3,6 +3,7 @@ using MedicalAssistant.Domain.Entities.AppointmentsModule;
 using MedicalAssistant.Domain.Entities.DoctorsModule;
 using MedicalAssistant.Domain.Entities.PatientModule;
 using MedicalAssistant.Domain.Entities.SessionsModule;
+using MedicalAssistant.Domain.Entities.UserModule;
 using MedicalAssistant.Services_Abstraction.Contracts;
 using MedicalAssistant.Shared.DTOs.AppointmentsDTOs;
 using MedicalAssistant.Shared.DTOs.DoctorDTOs;
@@ -39,7 +40,13 @@ public class DoctorService : IDoctorService
         }
 
         var schedule = await BuildScheduleDtoAsync(doctor);
-        return MapDoctorDetailsDto(doctor, schedule);
+        var reviewStats = await GetReviewStatsMapAsync(new[] { doctor.Id });
+        var followerCounts = await GetFollowerCountMapAsync(new[] { doctor.Id });
+        return MapDoctorDetailsDto(
+            doctor,
+            schedule,
+            reviewStats.GetValueOrDefault(doctor.Id),
+            followerCounts.GetValueOrDefault(doctor.Id));
     }
 
     public async Task<IReadOnlyList<DoctorDTO>> GetAvailableDoctorsAsync()
@@ -544,7 +551,13 @@ public class DoctorService : IDoctorService
         }
 
         var schedule = await BuildScheduleDtoAsync(doctor);
-        return MapDoctorDetailsDto(doctor, schedule);
+        var reviewStats = await GetReviewStatsMapAsync(new[] { doctor.Id });
+        var followerCounts = await GetFollowerCountMapAsync(new[] { doctor.Id });
+        return MapDoctorDetailsDto(
+            doctor,
+            schedule,
+            reviewStats.GetValueOrDefault(doctor.Id),
+            followerCounts.GetValueOrDefault(doctor.Id));
     }
 
     public Task<IEnumerable<AppointmentDto>> GetDoctorAppointmentsAsync(int doctorId) => GetAppointmentsAsync(doctorId, null);
@@ -629,21 +642,33 @@ public class DoctorService : IDoctorService
             return Array.Empty<DoctorDTO>();
         }
 
-        var scheduleMap = await GetScheduleMapAsync(doctorList.Select(d => d.Id));
+        var doctorIds = doctorList.Select(d => d.Id).ToList();
+        var scheduleMap = await GetScheduleMapAsync(doctorIds);
+        var reviewStats = await GetReviewStatsMapAsync(doctorIds);
+        var followerCounts = await GetFollowerCountMapAsync(doctorIds);
         return doctorList
-            .Select(doctor => MapDoctorDto(doctor, scheduleMap.GetValueOrDefault(doctor.Id)))
+            .Select(doctor => MapDoctorDto(
+                doctor,
+                scheduleMap.GetValueOrDefault(doctor.Id),
+                reviewStats.GetValueOrDefault(doctor.Id),
+                followerCounts.GetValueOrDefault(doctor.Id)))
             .ToList();
     }
 
-    private DoctorDTO MapDoctorDto(Doctor doctor, bool hasSchedule)
+    private DoctorDTO MapDoctorDto(
+        Doctor doctor,
+        bool hasSchedule,
+        (double Rating, int ReviewCount) reviewStats,
+        int followerCount)
     {
         return new DoctorDTO
         {
             Id = doctor.Id,
             Name = doctor.Name,
             Specialty = doctor.Specialty?.Name ?? string.Empty,
-            Rating = doctor.Rating,
-            ReviewCount = doctor.ReviewCount,
+            Rating = reviewStats.ReviewCount > 0 ? reviewStats.Rating : 0,
+            ReviewCount = reviewStats.ReviewCount,
+            FollowerCount = followerCount,
             Location = doctor.Location,
             ConsultationFee = doctor.ConsultationFee,
             IsAvailable = doctor.IsAvailable && hasSchedule,
@@ -652,19 +677,25 @@ public class DoctorService : IDoctorService
             IsProfileComplete = IsProfileComplete(doctor),
             IsMobileEnabled = doctor.IsAvailable,
             HasSchedule = hasSchedule,
-            IsScheduleVisible = doctor.IsScheduleVisible
+            IsScheduleVisible = doctor.IsScheduleVisible,
+            PhoneNumber = doctor.User?.PhoneNumber
         };
     }
 
-    private DoctorDetailsDTO MapDoctorDetailsDto(Doctor doctor, DoctorScheduleDto schedule)
+    private DoctorDetailsDTO MapDoctorDetailsDto(
+        Doctor doctor,
+        DoctorScheduleDto schedule,
+        (double Rating, int ReviewCount) reviewStats,
+        int followerCount)
     {
         return new DoctorDetailsDTO
         {
             Id = doctor.Id,
             Name = doctor.Name,
             Specialty = doctor.Specialty?.Name ?? string.Empty,
-            Rating = doctor.Rating,
-            ReviewCount = doctor.ReviewCount,
+            Rating = reviewStats.ReviewCount > 0 ? reviewStats.Rating : 0,
+            ReviewCount = reviewStats.ReviewCount,
+            FollowerCount = followerCount,
             Location = doctor.Location,
             ConsultationFee = doctor.ConsultationFee,
             IsAvailable = doctor.IsAvailable && schedule.HasSchedule,
@@ -676,7 +707,8 @@ public class DoctorService : IDoctorService
             IsScheduleVisible = doctor.IsScheduleVisible,
             Experience = doctor.Experience,
             Bio = doctor.Bio ?? string.Empty,
-            Schedule = schedule
+            Schedule = schedule,
+            PhoneNumber = doctor.User?.PhoneNumber
         };
     }
 
@@ -803,6 +835,45 @@ public class DoctorService : IDoctorService
         return availabilities
             .GroupBy(availability => availability.DoctorId)
             .ToDictionary(group => group.Key, group => group.Any(row => row.IsAvailable));
+    }
+
+    private async Task<Dictionary<int, (double Rating, int ReviewCount)>> GetReviewStatsMapAsync(IEnumerable<int> doctorIds)
+    {
+        var ids = doctorIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, (double Rating, int ReviewCount)>();
+        }
+
+        var reviews = await _unitOfWork.Repository<MedicalAssistant.Domain.Entities.ReviewsModule.Review>()
+            .FindAsync(review => ids.Contains(review.DoctorId));
+
+        return reviews
+            .GroupBy(review => review.DoctorId)
+            .ToDictionary(
+                group => group.Key,
+                group =>
+                {
+                    var count = group.Count();
+                    var rating = count > 0 ? Math.Round(group.Average(review => review.Rating), 1) : 0;
+                    return (rating, count);
+                });
+    }
+
+    private async Task<Dictionary<int, int>> GetFollowerCountMapAsync(IEnumerable<int> doctorIds)
+    {
+        var ids = doctorIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return new Dictionary<int, int>();
+        }
+
+        var follows = await _unitOfWork.Repository<FollowedDoctor>()
+            .FindAsync(follow => ids.Contains(follow.DoctorId));
+
+        return follows
+            .GroupBy(follow => follow.DoctorId)
+            .ToDictionary(group => group.Key, group => group.Count());
     }
 
     private static bool IsProfileComplete(Doctor doctor)

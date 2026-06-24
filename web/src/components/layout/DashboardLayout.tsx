@@ -9,12 +9,14 @@ import { useAuthStore } from '@/store/authStore'
 import { useNotificationStore } from '@/store/notificationStore'
 import { useAppointmentStore } from '@/store/appointmentStore'
 import { useThemeStore } from '@/store/themeStore'
+import { useLanguage } from '@/lib/language'
 
 export function DashboardLayout() {
   const { token, role } = useAuthStore()
   const navigate = useNavigate()
   const { incrementSessionMessage, incrementAppointments, incrementDoctorApplications, setLatestMessagePayload, addNotification } = useNotificationStore()
   const { handleNewBooking, handleAppointmentUpdated } = useAppointmentStore()
+  const { isRTL, t } = useLanguage()
 
   useEffect(() => {
     if (!token || !role) return
@@ -50,12 +52,12 @@ export function DashboardLayout() {
         const onNewBooking = (data: any) => {
           incrementAppointments()
           handleNewBooking(data)
-          toast.success(`📅 New booking: ${data?.patientName ?? 'Patient'}`, { duration: 5000 })
+          toast.success(`📅 ${t('newBooking')}: ${data?.patientName ?? 'Patient'}`, { duration: 5000 })
         }
 
         const onBookingCancelled = (data: any) => {
           handleAppointmentUpdated({ appointmentId: data?.appointmentId ?? data?.id, status: 'Cancelled' })
-          toast.error(`❌ Cancelled: ${data?.patientName ?? 'Patient'}`, { duration: 5000 })
+          toast.error(`❌ ${t('cancelled')}: ${data?.patientName ?? 'Patient'}`, { duration: 5000 })
         }
 
         const onNotificationReceived = (payload: any) => {
@@ -90,7 +92,7 @@ export function DashboardLayout() {
           const type =
             status === 'confirmed' ? 'success' :
               status === 'cancelled' ? 'warning' : 'info'
-          addNotification(type, 'Appointment Update', String(payload?.message ?? 'Appointment updated'))
+          addNotification(type, t('appointmentUpdate'), String(payload?.message ?? 'Appointment updated'))
           const message = String(payload?.message ?? 'Appointment updated')
           toast.success(message)
         }
@@ -100,7 +102,7 @@ export function DashboardLayout() {
           const doctorName = String(payload?.doctorName ?? payload?.DoctorName ?? 'Doctor')
           const title = String(payload?.title ?? payload?.Title ?? 'Consultation')
 
-          addNotification('info', 'New Consultation', `Dr. ${doctorName} scheduled: ${title}`)
+          addNotification('info', t('newConsultation'), `Dr. ${doctorName} scheduled: ${title}`)
           toast.success(`🩺 Dr. ${doctorName} scheduled a consultation: ${title}`, { duration: 6000 })
 
           // If patient is on appointments page, refresh appointments
@@ -128,7 +130,7 @@ export function DashboardLayout() {
 
         conn.onreconnected(() => {
           console.log('[SignalR] Reconnected')
-          toast.success('Connection restored')
+          toast.success(t('connectionRestored'))
         })
 
         conn.onclose(() => {
@@ -169,7 +171,7 @@ export function DashboardLayout() {
       cleanup?.()
       stopConnection().catch(() => undefined)
     }
-  }, [token, role, incrementSessionMessage, incrementAppointments, incrementDoctorApplications, setLatestMessagePayload, addNotification, navigate])
+  }, [token, role, incrementSessionMessage, incrementAppointments, incrementDoctorApplications, setLatestMessagePayload, addNotification, navigate, t])
 
   const { isDark } = useThemeStore()
 
@@ -184,7 +186,7 @@ export function DashboardLayout() {
   return (
     <div
       className="min-h-screen font-outfit relative overflow-hidden transition-colors duration-500"
-      dir="ltr"
+      dir={isRTL ? 'rtl' : 'ltr'}
       style={{
         background: isDark
           ? 'linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e1b4b 100%)'
@@ -225,7 +227,7 @@ export function DashboardLayout() {
 
       <div className="relative z-10 flex">
         <Sidebar />
-        <div className="flex-1 flex flex-col min-w-0 ml-[280px]">
+        <div className={`flex-1 flex flex-col min-w-0 ${isRTL ? 'mr-[280px]' : 'ml-[280px]'}`}>
           <TopBar />
           <main className="p-6 min-h-[calc(100vh-4rem)]">
             <Outlet />

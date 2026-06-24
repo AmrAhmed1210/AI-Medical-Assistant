@@ -6,7 +6,6 @@ const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept-Language': 'ar',
   },
   timeout: 30000,
 })
@@ -18,6 +17,7 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    config.headers['Accept-Language'] = localStorage.getItem('app_language') === 'ar' ? 'ar' : 'en'
     return config
   },
   (error) => Promise.reject(error)

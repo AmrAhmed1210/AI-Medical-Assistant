@@ -21,7 +21,7 @@ namespace MedicalAssistant.Persistance.Data.DbContexts
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseSqlServer("Server=.\\SQLEXPRESS;Database=MedicalAssistantDb;Trusted_Connection=True;TrustServerCertificate=True;");
+                optionsBuilder.UseSqlServer("Server=.\\SQLEXPRESS;Database=MedicalAssistantDb;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False;");
             }
         }
 

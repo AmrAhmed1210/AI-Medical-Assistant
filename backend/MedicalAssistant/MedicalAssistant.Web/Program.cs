@@ -24,6 +24,13 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        if (builder.Environment.IsDevelopment() &&
+            string.IsNullOrWhiteSpace(builder.Configuration["urls"]) &&
+            string.IsNullOrWhiteSpace(builder.Configuration["ASPNETCORE_URLS"]))
+        {
+            builder.WebHost.UseUrls("http://0.0.0.0:5194");
+        }
+
         builder.Logging.ClearProviders();
         builder.Logging.AddConsole();
         builder.Logging.AddDebug();

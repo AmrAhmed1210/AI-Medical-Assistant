@@ -140,7 +140,7 @@ export default function DoctorDashboard() {
 
       {/* Schedule Section */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Today's Schedule</Text>
+        <Text style={styles.sectionTitle}>Today&apos;s Schedule</Text>
         <TouchableOpacity style={styles.viewAllBtn}>
           <Text style={styles.viewAllText}>View All →</Text>
         </TouchableOpacity>

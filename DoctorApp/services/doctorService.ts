@@ -10,15 +10,17 @@ export interface Doctor {
   specialty: string;
   rating: number;
   reviewCount: number;
+  followerCount?: number;
   fairScore?: number;
-  location: string;
-  consultationFee: number;
+  location?: string | null;
+  consultationFee?: number | null;
   isAvailable: boolean;
   imageUrl: string;
   bio?: string | null;
   yearsExperience?: number | null;
   photoUrl?: string | null;
   consultFee?: number | null;
+  phoneNumber?: string | null;
 }
 
 export interface DoctorDetails extends Doctor {
@@ -77,14 +79,65 @@ const SPECIALTY_KEYWORDS: Array<{ specialty: string; keywords: string[] }> = [
   { specialty: "Nephrology", keywords: ["kidney", "renal", "كلى", "كلوي"] },
 ];
 
-const normalize = (value?: string | null) => (value || "").toLowerCase();
+const normalize = (value?: string | null) =>
+  (value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u064B-\u065F]/g, "")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي")
+    .trim();
+
+const SPECIALTY_ALIASES: Record<string, string[]> = {
+  Cardiology: ["cardiology", "cardiologist", "heart", "قلب"],
+  Endocrinology: ["endocrinology", "endocrinologist", "diabetes", "سكر", "غدد"],
+  Neurology: ["neurology", "neurologist", "أعصاب", "اعصاب"],
+  Orthopedics: ["orthopedics", "orthopedic", "ortho", "عظام"],
+  Dermatology: ["dermatology", "dermatologist", "جلدية", "جلد"],
+  Ophthalmology: ["ophthalmology", "ophthalmologist", "eye", "عيون", "عين"],
+  Pulmonology: ["pulmonology", "pulmonologist", "chest", "صدر", "رئة"],
+  Gastroenterology: ["gastroenterology", "gastroenterologist", "باطنة", "جهاز هضمي"],
+  Nephrology: ["nephrology", "nephrologist", "kidney", "كلى"],
+  Pediatrics: ["pediatrics", "pediatrician", "children", "أطفال", "اطفال"],
+  Gynecology: ["gynecology", "gynecologist", "نساء", "نسا"],
+  ENT: ["ent", "ear nose throat", "أنف وأذن", "انف واذن"],
+  General: ["general", "internal medicine", "family medicine", "عام", "باطنة"],
+};
+
+const EXTRA_SPECIALTY_KEYWORDS: Array<{ specialty: string; keywords: string[] }> = [
+  { specialty: "Cardiology", keywords: ["قلب", "صدر", "ضغط", "خفقان", "نهجان", "blood pressure", "hypertension"] },
+  { specialty: "Endocrinology", keywords: ["سكر", "غدة", "غدد", "هرمون", "diabetes", "thyroid"] },
+  { specialty: "Neurology", keywords: ["أعصاب", "اعصاب", "عصب", "مخ", "صداع", "دوخة", "تنميل", "migraine"] },
+  { specialty: "Orthopedics", keywords: ["عظام", "مفاصل", "ظهر", "ركبة", "كسر", "خشونة", "joint"] },
+  { specialty: "Dermatology", keywords: ["جلد", "جلدية", "حساسية جلد", "طفح", "حبوب", "اكزيما", "rash"] },
+  { specialty: "Ophthalmology", keywords: ["عين", "عيون", "نظر", "زغللة", "vision"] },
+  { specialty: "Pulmonology", keywords: ["صدر", "رئة", "ربو", "تنفس", "كحة", "سعال", "asthma"] },
+  { specialty: "Gastroenterology", keywords: ["معدة", "قولون", "كبد", "هضم", "بطن", "حموضة", "stomach"] },
+  { specialty: "Nephrology", keywords: ["كلى", "كلوي", "كلية", "بول", "kidney"] },
+  { specialty: "Pediatrics", keywords: ["أطفال", "اطفال", "طفل", "رضيع", "child"] },
+  { specialty: "Gynecology", keywords: ["حمل", "دورة", "نساء", "نسا", "رحم", "pregnancy"] },
+  { specialty: "ENT", keywords: ["أذن", "اذن", "أنف", "انف", "حنجرة", "زور", "ear", "nose", "throat"] },
+  { specialty: "General", keywords: ["حمى", "سخونية", "تعب", "إرهاق", "ارهاق", "fever", "fatigue"] },
+];
 
 const inferSpecialtyFromText = (text: string): string | null => {
   const source = normalize(text);
+  const extraMatch = EXTRA_SPECIALTY_KEYWORDS.find((item) =>
+    item.keywords.some((keyword) => source.includes(normalize(keyword)))
+  );
+  if (extraMatch) return extraMatch.specialty;
+
   const match = SPECIALTY_KEYWORDS.find((item) =>
-    item.keywords.some((keyword) => source.includes(keyword.toLowerCase()))
+    item.keywords.some((keyword) => source.includes(normalize(keyword)))
   );
   return match?.specialty ?? null;
+};
+
+const doctorMatchesSpecialty = (doctorSpecialty: string | null | undefined, specialty: string) => {
+  const source = normalize(doctorSpecialty);
+  const aliases = SPECIALTY_ALIASES[specialty] ?? [specialty];
+  return aliases.some((alias) => source.includes(normalize(alias)));
 };
 
 export const getFairDoctorScore = (doctor: Pick<Doctor, "rating" | "reviewCount">) => {
@@ -158,9 +211,7 @@ export const getRecommendedDoctorsForNeed = async (
   if (!specialty) return { specialty: null, doctors: [] };
 
   const doctors = await enrichDoctorsWithReviewStats(await getAllDoctors());
-  const filtered = doctors.filter((doctor) =>
-    normalize(doctor.specialty).includes(specialty.toLowerCase())
-  );
+  const filtered = doctors.filter((doctor) => doctorMatchesSpecialty(doctor.specialty, specialty));
 
   // If no doctors match this specialty, return specialty with empty array
   // so the chatbot can tell the user what specialty they need

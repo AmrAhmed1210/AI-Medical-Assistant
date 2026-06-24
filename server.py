@@ -16,11 +16,12 @@ load_dotenv()
 
 # --- Configuration ---
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 if GOOGLE_API_KEY:
     print(f"DEBUG: API Key found (starts with: {GOOGLE_API_KEY[:5]}...)")
     genai.configure(api_key=GOOGLE_API_KEY)
-    # Using gemini-2.5-flash to avoid rate limits of gemini-3.5-flash
-    model = genai.GenerativeModel('gemini-2.5-flash')
+    model = genai.GenerativeModel(GEMINI_MODEL)
+    print(f"DEBUG: Gemini model configured: {GEMINI_MODEL}")
 else:
     print("WARNING: GOOGLE_API_KEY not found in environment variables.")
 
@@ -180,7 +181,7 @@ async def ask_endpoint(data: AskRequest):
         return {
             "query": data.question,
             "reply": strip_markdown(response.text),
-            "model_used": "gemini-flash-latest",
+            "model_used": GEMINI_MODEL,
             "is_medical": True,
             "found_in_database": False,
             "low_confidence": False,
@@ -397,7 +398,7 @@ async def analyze_image(
             "status": "success", 
             "analysis_ar": strip_markdown(text), 
             "technical_details": strip_markdown(tech_details),
-            "model_used": "gemini-flash-latest",
+            "model_used": GEMINI_MODEL,
             "disclaimer": "تحذير: هذا التحليل بواسطة الذكاء الاصطناعي ولا يغني عن استشارة الطبيب."
         }
             

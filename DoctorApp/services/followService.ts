@@ -1,4 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BASE_URL } from "../constants/api";
+import { apiFetch } from "./http";
 
 export const getFollowKey = async (doctorId: number) => {
   const patientId = await AsyncStorage.getItem("patientId") || await AsyncStorage.getItem("userId") || 'guest';
@@ -7,6 +9,13 @@ export const getFollowKey = async (doctorId: number) => {
 
 export const checkIfFollowed = async (doctorId: number): Promise<boolean> => {
   if (!Number.isFinite(doctorId) || doctorId <= 0) return false;
+  try {
+    const followed = await getFollowedDoctorIds();
+    return followed.includes(doctorId);
+  } catch {
+    // Fall through to local cache below.
+  }
+
   const key = await getFollowKey(doctorId);
   const value = await AsyncStorage.getItem(key);
   return value === "true";
@@ -14,6 +23,18 @@ export const checkIfFollowed = async (doctorId: number): Promise<boolean> => {
 
 export const setFollowed = async (doctorId: number, followed: boolean): Promise<void> => {
   if (!Number.isFinite(doctorId) || doctorId <= 0) return;
+  try {
+    await apiFetch(
+      followed
+        ? `${BASE_URL}/api/users/follow/${doctorId}`
+        : `${BASE_URL}/api/users/unfollow/${doctorId}`,
+      { method: followed ? "POST" : "DELETE" },
+      true
+    );
+  } catch {
+    // Keep the UI responsive offline; local state is still scoped per patient.
+  }
+
   const key = await getFollowKey(doctorId);
   await AsyncStorage.setItem(key, followed ? "true" : "false");
 };
@@ -28,6 +49,33 @@ export const toggleFollowed = async (doctorId: number): Promise<boolean> => {
 export const getFollowedDoctorIds = async (): Promise<number[]> => {
   const patientId = await AsyncStorage.getItem("patientId") || await AsyncStorage.getItem("userId") || 'guest';
   const prefix = `follow_${patientId}_doctor_`;
+  try {
+    const doctors = await apiFetch<Array<{ id?: number | string }>>(
+      `${BASE_URL}/api/users/followed-doctors`,
+      { method: "GET" },
+      true
+    );
+    if (!Array.isArray(doctors)) {
+      throw new Error("Invalid followed doctors response");
+    }
+
+    const keys = await AsyncStorage.getAllKeys();
+    const existingFollowKeys = keys.filter((key) => key.startsWith(prefix));
+    if (existingFollowKeys.length > 0) {
+      await AsyncStorage.multiRemove(existingFollowKeys);
+    }
+
+    const serverIds = doctors
+      .map((doctor) => Number(doctor.id))
+      .filter((id) => Number.isFinite(id) && id > 0);
+
+    if (serverIds.length > 0) {
+      await AsyncStorage.multiSet(serverIds.map((id) => [`${prefix}${id}`, "true"]));
+    }
+    return serverIds;
+  } catch {
+    // Fall back to locally cached follows.
+  }
   
   const keys = await AsyncStorage.getAllKeys();
   const followKeys = keys.filter((key) => key.startsWith(prefix));
@@ -85,4 +133,3 @@ export const shouldReceiveDoctorNotifications = async (doctorId: number): Promis
   ]);
   return followed || subscribed;
 };
-

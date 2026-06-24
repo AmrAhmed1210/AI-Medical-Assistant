@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
+﻿import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, TextInput, Modal, Alert, ActivityIndicator, Image,
@@ -777,7 +777,9 @@ export default function ProfileScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.settingsOptionTitle, { color: colors.text }]}>{tr("edit_profile") || "Edit Profile"}</Text>
-                  <Text style={[styles.settingsOptionSub, { color: colors.textMuted }]}>Update your medical information and photo</Text>
+                  <Text style={[styles.settingsOptionSub, { color: colors.textMuted }]}>
+                    {isRTL ? "حدّث بياناتك الطبية وصورتك" : "Update your medical information and photo"}
+                  </Text>
                 </View>
                 <ChevronRight size={18} color={colors.textLight} />
               </TouchableOpacity>
@@ -792,8 +794,12 @@ export default function ProfileScreen() {
                   <Ionicons name={isDark ? "moon" : "sunny"} size={20} color={isDark ? "#10B981" : "#F59E0B"} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.settingsOptionTitle, { color: colors.text }]}>{isDark ? "Dark Mode: ON" : "Dark Mode: OFF"}</Text>
-                  <Text style={[styles.settingsOptionSub, { color: colors.textMuted }]}>Switch between dark and light appearance</Text>
+                  <Text style={[styles.settingsOptionTitle, { color: colors.text }]}>
+                    {isRTL ? (isDark ? "الوضع الداكن: مفعل" : "الوضع الداكن: غير مفعل") : (isDark ? "Dark Mode: ON" : "Dark Mode: OFF")}
+                  </Text>
+                  <Text style={[styles.settingsOptionSub, { color: colors.textMuted }]}>
+                    {isRTL ? "بدّل بين المظهر الداكن والفاتح" : "Switch between dark and light appearance"}
+                  </Text>
                 </View>
                 <Ionicons name={isDark ? "toggle" : "toggle-outline"} size={28} color={isDark ? "#10B981" : "#CBD5E1"} />
               </TouchableOpacity>
@@ -808,8 +814,10 @@ export default function ProfileScreen() {
                   <Globe size={20} color="#6366F1" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.settingsOptionTitle, { color: colors.text }]}>{lang === 'ar' ? "العربية (Arabic)" : "English"}</Text>
-                  <Text style={[styles.settingsOptionSub, { color: colors.textMuted }]}>Change application language</Text>
+                  <Text style={[styles.settingsOptionTitle, { color: colors.text }]}>{lang === 'ar' ? "العربية" : "English"}</Text>
+                  <Text style={[styles.settingsOptionSub, { color: colors.textMuted }]}>
+                    {isRTL ? "غيّر لغة التطبيق بالكامل" : "Change application language"}
+                  </Text>
                 </View>
                 <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>
                   {lang === 'ar' ? "EN" : "عربي"}

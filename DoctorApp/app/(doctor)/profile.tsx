@@ -25,6 +25,8 @@ export default function DoctorProfile() {
   const [fee, setFee] = useState("");
   const [exp, setExp] = useState("");
   const [avail, setAvail] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [location, setLocation] = useState("");
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -36,6 +38,8 @@ export default function DoctorProfile() {
       setFee(String(data.consultFee || ""));
       setExp(String(data.yearsExperience || ""));
       setAvail(data.isAvailable || false);
+      setPhone((data as any).phoneNumber || "");
+      setLocation((data as any).location || "");
     } catch {
       setProfile(null);
     } finally {
@@ -94,6 +98,10 @@ export default function DoctorProfile() {
   };
 
   const handleSave = async () => {
+    if (!phone.trim()) {
+      Alert.alert("Phone Required", "Please add a contact phone number. Patients need to be able to reach you.");
+      return;
+    }
     setSaving(true);
     try {
       await updateDoctorProfile({
@@ -102,7 +110,9 @@ export default function DoctorProfile() {
         consultFee: parseFloat(fee) || 0,
         yearsExperience: parseInt(exp) || 0,
         isAvailable: avail,
-      });
+        ...(phone.trim() && { phoneNumber: phone.trim() }),
+        ...(location.trim() && { location: location.trim() }),
+      } as any);
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -181,14 +191,34 @@ export default function DoctorProfile() {
 
             <View style={styles.inputRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>Consultation Fee ($)</Text>
-                <TextInput style={styles.input} value={fee} onChangeText={setFee} keyboardType="numeric" placeholder="e.g. 50" />
+                <Text style={styles.fieldLabel}>Consultation Fee (EGP)</Text>
+                <TextInput style={styles.input} value={fee} onChangeText={setFee} keyboardType="numeric" placeholder="e.g. 200" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Experience (Years)</Text>
                 <TextInput style={styles.input} value={exp} onChangeText={setExp} keyboardType="numeric" placeholder="e.g. 10" />
               </View>
             </View>
+
+            <Text style={[styles.fieldLabel, { color: '#EF4444' }]}>📞 Contact Phone * (Required)</Text>
+            <TextInput
+              style={[styles.input, !phone.trim() && { borderColor: '#FCA5A5', borderWidth: 2 }]}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              placeholder="e.g. +20 1XX XXX XXXX"
+            />
+            {!phone.trim() && (
+              <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 4 }}>⚠️ Phone number is required for patients to contact you</Text>
+            )}
+
+            <Text style={styles.fieldLabel}>📍 Clinic Location</Text>
+            <TextInput
+              style={styles.input}
+              value={location}
+              onChangeText={setLocation}
+              placeholder="e.g. Cairo Medical Center, Nasr City"
+            />
 
             <View style={styles.switchRow}>
               <Text style={styles.fieldLabel}>Available for Appointments</Text>
@@ -203,7 +233,9 @@ export default function DoctorProfile() {
           <>
             <View style={styles.summaryCard}>
               <SummaryRow icon="time-outline" label="Experience" value={profile?.yearsExperience ? `${profile.yearsExperience} years` : "Not set"} />
-              <SummaryRow icon="cash-outline" label="Consultation Fee" value={profile?.consultFee ? `$${profile.consultFee}` : "Not set"} />
+              <SummaryRow icon="cash-outline" label="Consultation Fee" value={profile?.consultFee ? `${profile.consultFee} EGP` : "Not set"} />
+              <SummaryRow icon="call-outline" label="Contact Phone" value={(profile as any)?.phoneNumber || "⚠️ Not set — please add your phone number"} />
+              <SummaryRow icon="location-outline" label="Clinic Location" value={(profile as any)?.location || "Not set"} />
               <SummaryRow icon="document-text-outline" label="Bio" value={profile?.bio || "Add your bio"} />
               <SummaryRow icon="eye-outline" label="Visibility" value={profile?.isAvailable ? "Online" : "Offline"} />
             </View>

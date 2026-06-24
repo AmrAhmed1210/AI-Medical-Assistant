@@ -20,7 +20,7 @@ namespace MedicalAssistant.Presentation.Controllers
         [HttpGet("followed-doctors")]
         public async Task<IActionResult> GetFollowedDoctors()
         {
-            var patientIdClaim = User.FindFirst("PatientId")?.Value ?? User.FindFirst("UserId")?.Value;
+            var patientIdClaim = User.FindFirst("PatientId")?.Value;
             if (!int.TryParse(patientIdClaim, out var patientId))
                 return Unauthorized();
 
@@ -32,7 +32,7 @@ namespace MedicalAssistant.Presentation.Controllers
         [HttpPost("follow/{doctorId}")]
         public async Task<IActionResult> FollowDoctor(int doctorId)
         {
-            var patientIdClaim = User.FindFirst("PatientId")?.Value ?? User.FindFirst("UserId")?.Value;
+            var patientIdClaim = User.FindFirst("PatientId")?.Value;
             if (!int.TryParse(patientIdClaim, out var patientId))
                 return Unauthorized();
 
@@ -44,7 +44,7 @@ namespace MedicalAssistant.Presentation.Controllers
         [HttpDelete("unfollow/{doctorId}")]
         public async Task<IActionResult> UnfollowDoctor(int doctorId)
         {
-            var patientIdClaim = User.FindFirst("PatientId")?.Value ?? User.FindFirst("UserId")?.Value;
+            var patientIdClaim = User.FindFirst("PatientId")?.Value;
             if (!int.TryParse(patientIdClaim, out var patientId))
                 return Unauthorized();
 

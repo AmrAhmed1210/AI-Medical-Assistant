@@ -13,6 +13,7 @@ namespace MedicalAssistant.Shared.DTOs.DoctorDTOs
         public string Specialty { get; set; } = string.Empty;
         public double Rating { get; set; }
         public int ReviewCount { get; set; }
+        public int FollowerCount { get; set; }
         public string? Location { get; set; }
         public decimal? ConsultationFee { get; set; }
         public bool IsAvailable { get; set; }

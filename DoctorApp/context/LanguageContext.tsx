@@ -37,6 +37,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     AsyncStorage.getItem(LANG_KEY).then((stored) => {
       const resolved = (stored as Lang) ?? getDeviceDefaultLang();
+      const shouldRTL = resolved === "ar";
+      if (I18nManager.isRTL !== shouldRTL) {
+        I18nManager.allowRTL(shouldRTL);
+        I18nManager.forceRTL(shouldRTL);
+      }
       setLang(resolved);
       setReady(true);
     });
@@ -47,6 +52,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     setLang(newLang);
     const shouldRTL = newLang === "ar";
     if (I18nManager.isRTL !== shouldRTL) {
+      I18nManager.allowRTL(shouldRTL);
       I18nManager.forceRTL(shouldRTL);
     }
   }, []);

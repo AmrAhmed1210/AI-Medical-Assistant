@@ -222,6 +222,7 @@ export default function DoctorDetailsScreen() {
 
   const [isFollowed, setIsFollowed] = useState(false);
   const [following, setFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
 
   const days = useMemo(() => {
     if (!hasSchedule) return getNextDays(7)
@@ -286,6 +287,7 @@ export default function DoctorDetailsScreen() {
       ]);
       setDoctor(doc);
       setReviews(revs);
+      setFollowerCount(Number((doc as any).followerCount ?? 0));
       fetchAvailability();
     } catch (e: any) {
       setError(e.message || "Failed to load");
@@ -323,6 +325,7 @@ export default function DoctorDetailsScreen() {
       const next = !isFollowed;
       await setFollowed(Number(doctorId), next);
       setIsFollowed(next);
+      setFollowerCount((count) => Math.max(0, count + (next ? 1 : -1)));
       if (next) {
         await startSignalRConnection();
         await subscribeToDoctorSchedule(Number(doctorId));
@@ -415,7 +418,9 @@ export default function DoctorDetailsScreen() {
     }
   };
 
-  const calculatedRating = doctor?.rating ? Number(doctor.rating).toFixed(1) : "0.0";
+  const calculatedRating = reviews.length > 0
+    ? (reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / reviews.length).toFixed(1)
+    : "0.0";
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -459,7 +464,7 @@ export default function DoctorDetailsScreen() {
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={16} color="#FBBF24" />
                 <Text style={styles.ratingText}>{calculatedRating}</Text>
-                <Text style={styles.reviewCount}>{doctor?.reviewCount || 0} Reviews</Text>
+                <Text style={styles.reviewCount}>{reviews.length} Reviews</Text>
               </View>
             </View>
           </View>
@@ -488,12 +493,18 @@ export default function DoctorDetailsScreen() {
             <View style={[styles.statLine, { backgroundColor: colors.border }]} />
             <View style={styles.statBox}>
               <Ionicons name="heart" size={18} color="#EF4444" />
-              <Text style={[styles.statVal, { color: colors.text }]}>{doctor?.reviewCount || 0}</Text>
-              <Text style={[styles.statLab, { color: colors.textMuted }]}>Fans & Reviews</Text>
+              <Text style={[styles.statVal, { color: colors.text }]}>{followerCount}</Text>
+              <Text style={[styles.statLab, { color: colors.textMuted }]}>Followers</Text>
+            </View>
+            <View style={[styles.statLine, { backgroundColor: colors.border }]} />
+            <View style={styles.statBox}>
+              <Ionicons name="star" size={18} color="#FBBF24" />
+              <Text style={[styles.statVal, { color: colors.text }]}>{reviews.length}</Text>
+              <Text style={[styles.statLab, { color: colors.textMuted }]}>Reviews</Text>
             </View>
           </View>
 
-          {/* CLINIC ADDRESS - REQUESTED FEATURE */}
+          {/* CLINIC ADDRESS */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Clinic Location</Text>
             <TouchableOpacity style={styles.addressCard}>
@@ -504,7 +515,7 @@ export default function DoctorDetailsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.addressTitle, { color: colors.textMuted }]}>Main Clinic Address</Text>
                   <Text style={[styles.addressText, { color: colors.text }]} numberOfLines={2}>
-                    {(doctor as any)?.location || (doctor as any)?.address || "Clinic address not configured yet"}
+                    {doctor?.location || "Clinic address not configured yet"}
                   </Text>
                 </View>
                 <View style={styles.mapCircle}>
@@ -514,10 +525,17 @@ export default function DoctorDetailsScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* CONTACT INFO - REQUESTED FEATURE */}
+          {/* CONTACT INFO */}
+          {doctor?.phoneNumber ? (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Contact Info</Text>
-            <TouchableOpacity style={styles.addressCard}>
+            <TouchableOpacity
+              style={styles.addressCard}
+              onPress={() => {
+                const { Linking } = require('react-native');
+                if (doctor?.phoneNumber) Linking.openURL(`tel:${doctor.phoneNumber}`).catch(() => {});
+              }}
+            >
               <LinearGradient colors={isDark ? ["#1E293B", "#0F172A"] : ["#F8FAFC", "#F1F5F9"]} style={styles.addressGradient}>
                 <View style={[styles.addressIconBox, { backgroundColor: colors.background }]}>
                   <Ionicons name="call" size={24} color="#059669" />
@@ -525,7 +543,7 @@ export default function DoctorDetailsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.addressTitle, { color: colors.textMuted }]}>Phone Number</Text>
                   <Text style={[styles.addressText, { color: colors.text }]}>
-                    {(doctor as any)?.phoneNumber || (doctor as any)?.phone || "No phone number registered"}
+                    {doctor.phoneNumber}
                   </Text>
                 </View>
                 <View style={styles.mapCircle}>
@@ -534,6 +552,7 @@ export default function DoctorDetailsScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
+          ) : null}
 
           {/* BIO */}
           <View style={styles.section}>

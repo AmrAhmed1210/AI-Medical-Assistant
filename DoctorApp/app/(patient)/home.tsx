@@ -1,4 +1,4 @@
-import {
+﻿import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image, Dimensions, Modal, TextInput, PanResponder
 } from "react-native";
@@ -69,6 +69,75 @@ function formatRecentVisitsForAi(visits: PatientVisit[]) {
     }));
 }
 
+type AiVitalReading = {
+  readingType: string;
+  value: number;
+  value2?: number;
+  unit?: string;
+  isNormal?: boolean;
+  recordedAt: string;
+};
+
+function summarizeVitalsForAi(vitals: AiVitalReading[]) {
+  const sortedVitals = [...vitals].sort(
+    (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+  );
+  const latestByType = new Map<string, AiVitalReading>();
+
+  for (const reading of sortedVitals) {
+    if (!latestByType.has(reading.readingType)) {
+      latestByType.set(reading.readingType, reading);
+    }
+  }
+
+  const abnormalRecent = sortedVitals
+    .filter((reading) => !reading.isNormal)
+    .slice(0, 12);
+
+  return {
+    total_count: vitals.length,
+    latest_by_type: Array.from(latestByType.values()).map((reading) => ({
+      type: reading.readingType,
+      value: reading.value,
+      value2: reading.value2,
+      unit: reading.unit,
+      isNormal: reading.isNormal,
+      recordedAt: reading.recordedAt,
+    })),
+    abnormal_recent: abnormalRecent.map((reading) => ({
+      type: reading.readingType,
+      value: reading.value,
+      value2: reading.value2,
+      unit: reading.unit,
+      recordedAt: reading.recordedAt,
+    })),
+  };
+}
+
+function getAiReportText(summary: string | null | undefined, lang: 'en' | 'ar') {
+  if (!summary) return "";
+  try {
+    const parsed = JSON.parse(summary);
+    return lang === 'ar'
+      ? (parsed.analysis_ar || parsed.ar || "")
+      : (parsed.analysis_en || parsed.en || "");
+  } catch {
+    return summary;
+  }
+}
+
+function formatReadableReport(raw: string) {
+  return (raw || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\*\*/g, "")
+    .replace(/#{1,6}\s*/g, "")
+    .replace(/(?:^|\n)\s*[-•]\s*/g, "\n• ")
+    .replace(/\. (?=(General Summary|Recent Visits|Warnings|Medications|Safe Advice|Recommended Doctors|الملخص|الزيارات|التحذيرات|الأدوية|النصائح|الأطباء))/g, ".\n\n")
+    .replace(/(General Summary|Recent Visits Summary \(Last 8 Months\)|Warnings|Medications & Interactions|Safe Advice|Recommended Doctors|الملخص العام|ملخص الزيارات|التحذيرات|الأدوية والتداخلات|نصائح آمنة|الأطباء المقترحون)\s*:?/g, "\n\n$1\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const { tr, isRTL } = useLanguage();
@@ -133,6 +202,10 @@ export default function HomeScreen() {
   const pulseScale = useSharedValue(1);
 
   useEffect(() => {
+    setReportLang(isRTL ? 'ar' : 'en');
+  }, [isRTL]);
+
+  useEffect(() => {
     pulseScale.value = withRepeat(
       withSequence(
         withSpring(1.1, { damping: 2 }),
@@ -186,6 +259,12 @@ export default function HomeScreen() {
       checkDailyReminder();
     }, [])
   );
+
+  useEffect(() => {
+    if (profile?.aiDiagnosisSummary) {
+      refreshDoctorRecommendations().catch(() => undefined);
+    }
+  }, [profile?.aiDiagnosisSummary]);
 
   const fetchProfile = async () => {
     try {
@@ -283,9 +362,10 @@ export default function HomeScreen() {
         ...chronic.map(c => c.diseaseName),
         ...vitals.slice(0, 10).map(v => `${v.readingType} ${v.value}${v.value2 ? `/${v.value2}` : ""}`),
         ...docs.map(d => `${d.title ?? (d as any).Title ?? ""} ${d.description ?? (d as any).Description ?? ""}`),
+        profile?.aiDiagnosisSummary ?? "",
       ].join(" ");
 
-      const recommendation = await getRecommendedDoctorsForNeed(needText, 3);
+      const recommendation = await getRecommendedDoctorsForNeed(needText, 5);
       setRecommendedSpecialty(recommendation.specialty);
       setRecommendedDoctors(recommendation.doctors);
     } catch {
@@ -413,14 +493,14 @@ export default function HomeScreen() {
       console.log("DEBUG: Patient docs fetched in Home:", JSON.stringify(docs));
       const needText = [
         ...chronic.map(c => c.diseaseName),
-        ...vitals.map(v => `${v.readingType} ${v.value}${v.value2 ? `/${v.value2}` : ""}`),
+        ...summarizeVitalsForAi(vitals).latest_by_type.map(v => `${v.type} ${v.value}${v.value2 ? `/${v.value2}` : ""}`),
         ...docs.map(d => `${d.title ?? (d as any).Title ?? ""} ${d.description ?? (d as any).Description ?? ""}`),
       ].join(" ");
       const doctorRecommendations = await getRecommendedDoctorsForNeed(needText, 5).catch(() => ({ specialty: null, doctors: [] }));
       setRecommendedDoctors(doctorRecommendations.doctors);
       setRecommendedSpecialty(doctorRecommendations.specialty);
       const analysis = await analyzePatientHistory({
-        vitals: vitals.map(v => ({ type: v.readingType, value: v.value, recordedAt: v.recordedAt })),
+        vitals: summarizeVitalsForAi(vitals),
         surgeries: surgeries.map(s => s.surgeryName),
         medications: meds.map(m => m.medicationName),
         allergies: allergies.map(a => a.allergenName),
@@ -678,13 +758,8 @@ export default function HomeScreen() {
 
             {profile?.aiDiagnosisSummary ? (
               <View style={styles.aiContentRefined}>
-                <Text style={[styles.aiTextRefined, { color: colors.textMuted }, reportLang === 'ar' && { textAlign: 'right' }]} numberOfLines={3}>
-                  {(() => {
-                    try {
-                      const parsed = JSON.parse(profile.aiDiagnosisSummary);
-                      return reportLang === 'ar' ? parsed.analysis_ar : parsed.analysis_en;
-                    } catch { return profile.aiDiagnosisSummary; }
-                  })()}
+                <Text style={[styles.aiTextRefined, { color: colors.textMuted }, reportLang === 'ar' && { textAlign: 'right' }]} numberOfLines={6}>
+                  {formatReadableReport(getAiReportText(profile.aiDiagnosisSummary, reportLang))}
                 </Text>
                 {(() => {
                   let needsDoc = true;
@@ -696,7 +771,7 @@ export default function HomeScreen() {
                   if (recommendedDoctors.length > 0) {
                     return (
                       <View style={styles.docRecommendSection}>
-                        <Text style={[styles.docRecommendLabel, { color: colors.textMuted }]}>{isRTL ? "الأطباء المقترحون" : "Recommended Doctors"}</Text>
+                        <Text style={[styles.docRecommendLabel, { color: colors.textMuted }]}>{tr("recommended_doctors")}</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.docRecommendScroll}>
                           {recommendedDoctors.map((doc) => (
                             <TouchableOpacity
@@ -716,16 +791,16 @@ export default function HomeScreen() {
                   if (recommendedSpecialty) {
                     return (
                       <View style={styles.docRecommendSection}>
-                        <Text style={[styles.docRecommendLabel, { color: colors.textMuted }]}>{isRTL ? "التخصص المقترح" : "Recommended Specialty"}</Text>
+                        <Text style={[styles.docRecommendLabel, { color: colors.textMuted }]}>{tr("recommended_specialty")}</Text>
                         <TouchableOpacity 
                           style={[styles.docRecommendChip, { backgroundColor: isDark ? 'rgba(234,179,8,0.1)' : '#FEF9C3', borderColor: isDark ? 'rgba(234,179,8,0.2)' : '#FEF08A', marginTop: 8, padding: 12, width: '100%', alignItems: 'center' }]}
                           onPress={() => router.push({ pathname: "/(patient)/doctors", params: { specialty: recommendedSpecialty } } as any)}
                         >
                           <Text style={[styles.docRecommendName, { color: isDark ? '#FDE047' : '#854D0E', textAlign: 'center', marginBottom: 4 }]} numberOfLines={2}>
-                            {isRTL ? `لا يوجد أطباء متاحين حالياً في تخصص (${recommendedSpecialty}).` : `No doctors available right now in ${recommendedSpecialty}.`}
+                            {tr("no_doctors_specialty")} ({recommendedSpecialty}).
                           </Text>
                           <Text style={[styles.docRecommendSpecialty, { color: isDark ? '#FEF08A' : '#A16207', textAlign: 'center' }]} numberOfLines={2}>
-                            {isRTL ? "انقر هنا للبحث عن أطباء في هذا المجال." : "Tap here to search for a specialist in this field."}
+                            {tr("tap_search_specialty")}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -956,13 +1031,13 @@ export default function HomeScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {recommendedDoctors.length > 0 ? "Recommended For You" : "Top Rated Doctors"}
+            {recommendedDoctors.length > 0 ? tr("recommended_for_you") : tr("top_rated_doctors")}
           </Text>
-          <TouchableOpacity onPress={() => router.push("/(patient)/doctors")}><Text style={styles.seeMore}>View All</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/(patient)/doctors")}><Text style={styles.seeMore}>{tr("view_all")}</Text></TouchableOpacity>
         </View>
         {recommendedSpecialty && recommendedDoctors.length > 0 && (
           <Text style={[styles.docRecommendLabel, { color: colors.textMuted, paddingHorizontal: 20, marginBottom: 10 }]}>
-            Best match: {recommendedSpecialty}
+            {tr("best_match")}: {recommendedSpecialty}
           </Text>
         )}
 
@@ -970,14 +1045,14 @@ export default function HomeScreen() {
           {loadingDocs ? (
             <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
           ) : (
-            (recommendedDoctors.length > 0 ? recommendedDoctors : popularDocs).slice(0, 3).map((doc) => (
+            (recommendedDoctors.length > 0 ? recommendedDoctors : popularDocs).slice(0, 5).map((doc) => (
               <DoctorCard
                 key={doc.id}
                 doctor={{
                   ...doc,
                   id: String(doc.id),
-                  experience: "5+ yrs",
-                  location: "Main Clinic"
+                  experience: doc.yearsExperience ? `${doc.yearsExperience}+ yrs` : "5+ yrs",
+                  location: doc.location || "Medical Center"
                 }}
               />
             ))
@@ -995,13 +1070,8 @@ export default function HomeScreen() {
               <TouchableOpacity onPress={() => setShowAiModal(false)}><Ionicons name="close" size={26} color={colors.textMuted} /></TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBodyRefined}>
-              <Text style={[styles.modalTextRefined, { color: colors.textMuted }, reportLang === 'ar' && { textAlign: 'right' }]}>
-                {(() => {
-                  try {
-                    const parsed = JSON.parse(profile?.aiDiagnosisSummary || "{}");
-                    return reportLang === 'ar' ? parsed.analysis_ar : parsed.analysis_en;
-                  } catch { return profile?.aiDiagnosisSummary; }
-                })()}
+              <Text selectable style={[styles.modalTextRefined, { color: colors.textMuted }, reportLang === 'ar' && { textAlign: 'right' }]}>
+                {formatReadableReport(getAiReportText(profile?.aiDiagnosisSummary, reportLang))}
               </Text>
               {(() => {
                 let needsDoc = true;
@@ -1013,7 +1083,7 @@ export default function HomeScreen() {
                 if (recommendedDoctors.length > 0) {
                   return (
                     <View style={[styles.modalDocSection, { borderTopColor: colors.border }]}>
-                      <Text style={[styles.modalDocLabel, { color: colors.text }]}>{isRTL ? "الأطباء المقترحون" : "Recommended Doctors"}</Text>
+                      <Text style={[styles.modalDocLabel, { color: colors.text }]}>{tr("recommended_doctors")}</Text>
                       {recommendedDoctors.map((doc) => (
                         <TouchableOpacity
                           key={doc.id}
@@ -1035,17 +1105,17 @@ export default function HomeScreen() {
                 if (recommendedSpecialty) {
                   return (
                     <View style={[styles.modalDocSection, { borderTopColor: colors.border }]}>
-                      <Text style={[styles.modalDocLabel, { color: colors.text }]}>{isRTL ? "التخصص المقترح" : "Recommended Specialty"}</Text>
+                      <Text style={[styles.modalDocLabel, { color: colors.text }]}>{tr("recommended_specialty")}</Text>
                       <TouchableOpacity 
                         style={[styles.modalDocCard, { backgroundColor: isDark ? 'rgba(234,179,8,0.1)' : '#FEF9C3', borderColor: isDark ? 'rgba(234,179,8,0.2)' : '#FEF08A', alignItems: 'center', paddingVertical: 16 }]}
                         onPress={() => { setShowAiModal(false); router.push({ pathname: "/(patient)/doctors", params: { specialty: recommendedSpecialty } } as any); }}
                         activeOpacity={0.7}
                       >
                         <Text style={[styles.modalDocName, { color: isDark ? '#FDE047' : '#854D0E', textAlign: 'center' }]}>
-                          {isRTL ? `لا يوجد أطباء متاحين في تخصص (${recommendedSpecialty})` : `No doctors available in ${recommendedSpecialty}`}
+                          {tr("no_doctors_specialty")} ({recommendedSpecialty})
                         </Text>
                         <Text style={[styles.modalDocMeta, { color: isDark ? '#FEF08A' : '#A16207', textAlign: 'center', marginTop: 4 }]}>
-                          {isRTL ? "انقر للبحث عن أطباء في هذا التخصص" : "Tap to search for doctors in this specialty"}
+                          {tr("tap_search_specialty")}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -1449,3 +1519,5 @@ const styles = StyleSheet.create({
   modalDocSpecialty: { fontSize: 12, fontWeight: '600', marginTop: 2 },
   modalDocMeta: { fontSize: 11, fontWeight: '500', marginTop: 4 },
 });
+
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, ActivityIndicator, TextInput, Switch, Alert, Dimensions, Animated, Platform
@@ -28,6 +28,8 @@ import { getAllDoctors, enrichDoctorsWithReviewStats, sortDoctorsFairly, type Do
 import Toast from "react-native-toast-message";
 
 const { width } = Dimensions.get("window");
+const HISTORY_INITIAL_LIMIT = 5;
+const HISTORY_PAGE_SIZE = 10;
 
 const VITAL_TYPES = [
   { key: "Blood Pressure", unit: "mmHg", hasValue2: true, icon: Activity, color: "#0EA5E9", bg: "#F0F9FF" },
@@ -90,9 +92,29 @@ export default function VitalsScreen() {
   const [adviceLang, setAdviceLang] = useState<"en" | "ar">(isRTL ? "ar" : "en");
   const [recommendedDoctors, setRecommendedDoctors] = useState<Doctor[]>([]);
   const [expandedTypes, setExpandedTypes] = useState<Record<string, boolean>>({});
+  const [visibleHistoryCounts, setVisibleHistoryCounts] = useState<Record<string, number>>({});
 
   const toggleType = (type: string) => {
     setExpandedTypes(prev => ({ ...prev, [type]: !prev[type] }));
+  };
+
+  const sortedVitals = useMemo(
+    () => [...vitals].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()),
+    [vitals]
+  );
+
+  const vitalsByType = useMemo(() => {
+    return VITAL_TYPES.reduce<Record<string, VitalReading[]>>((groups, type) => {
+      groups[type.key] = sortedVitals.filter((reading) => reading.readingType === type.key);
+      return groups;
+    }, {});
+  }, [sortedVitals]);
+
+  const showMoreHistory = (type: string) => {
+    setVisibleHistoryCounts(prev => ({
+      ...prev,
+      [type]: (prev[type] ?? HISTORY_INITIAL_LIMIT) + HISTORY_PAGE_SIZE,
+    }));
   };
 
   useEffect(() => {
@@ -117,6 +139,7 @@ export default function VitalsScreen() {
       ]);
 
       setVitals(allVitals);
+      setVisibleHistoryCounts({});
       setChronicDiseases(diseases);
       if (allergies.length > 0) {
         setSosData({ bloodType: "", allergies });
@@ -132,8 +155,9 @@ export default function VitalsScreen() {
       latestResults.forEach((r) => { latestMap[r.type] = r.reading; });
       setLatestVitals(latestMap);
       // Trigger AI Advice for latest context if available
-      if (allVitals.length > 0) {
-        triggerAiAdvice(allVitals[0]);
+      const newestVital = [...allVitals].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())[0];
+      if (newestVital) {
+        triggerAiAdvice(newestVital);
       }
     } catch (e: any) {
       Toast.show({ type: "error", text1: e.message || "Failed to load vitals" });
@@ -627,9 +651,12 @@ export default function VitalsScreen() {
           ) : (
             <View style={styles.timeline}>
               {VITAL_TYPES.map(t => {
-                const typeVitals = vitals.filter(v => v.readingType === t.key);
+                const typeVitals = vitalsByType[t.key] ?? [];
                 if (typeVitals.length === 0) return null;
                 const isExpanded = expandedTypes[t.key];
+                const visibleCount = visibleHistoryCounts[t.key] ?? HISTORY_INITIAL_LIMIT;
+                const visibleVitals = typeVitals.slice(0, visibleCount);
+                const remainingCount = Math.max(typeVitals.length - visibleVitals.length, 0);
                 return (
                   <View key={t.key} style={{ marginBottom: 12 }}>
                     <TouchableOpacity 
@@ -647,7 +674,7 @@ export default function VitalsScreen() {
                     
                     {isExpanded && (
                       <View style={{ paddingLeft: 16, paddingTop: 8, borderLeftWidth: 2, borderLeftColor: t.color, marginLeft: 16 }}>
-                        {typeVitals.map((v, i) => {
+                        {visibleVitals.map((v, i) => {
                           const isAbnormal = !v.isNormal;
                           const miniReport = buildVitalMiniReport(v);
                           return (
@@ -688,6 +715,19 @@ export default function VitalsScreen() {
                             </View>
                           );
                         })}
+                        {remainingCount > 0 && (
+                          <TouchableOpacity
+                            onPress={() => showMoreHistory(t.key)}
+                            style={[styles.loadMoreHistoryBtn, { borderColor: colors.border, backgroundColor: isDark ? "#0F172A" : "#F8FAFC" }]}
+                          >
+                            <Text style={styles.loadMoreHistoryText}>
+                              {isRTL ? `عرض ${Math.min(HISTORY_PAGE_SIZE, remainingCount)} قياسات أخرى` : `Load ${Math.min(HISTORY_PAGE_SIZE, remainingCount)} more readings`}
+                            </Text>
+                            <Text style={styles.loadMoreHistoryMeta}>
+                              {isRTL ? `${remainingCount} متبقي` : `${remainingCount} remaining`}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     )}
                   </View>
@@ -817,6 +857,9 @@ const styles = StyleSheet.create({
   vitalMiniReportBox: { borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 12, gap: 6 },
   vitalMiniReportLabel: { color: '#059669', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   vitalMiniReportText: { fontSize: 12, lineHeight: 18, fontWeight: '600' },
+  loadMoreHistoryBtn: { borderWidth: 1.5, borderRadius: 18, paddingVertical: 12, paddingHorizontal: 14, alignItems: 'center', marginBottom: 8 },
+  loadMoreHistoryText: { color: '#059669', fontSize: 13, fontWeight: '900' },
+  loadMoreHistoryMeta: { color: '#94A3B8', fontSize: 11, fontWeight: '700', marginTop: 2 },
   cardLangToggle: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 10, padding: 2, marginRight: 10 },
   cardLangBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   cardLangBtnActive: { backgroundColor: '#fff', elevation: 2 },
