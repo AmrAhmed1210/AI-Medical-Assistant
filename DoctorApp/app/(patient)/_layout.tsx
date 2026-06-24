@@ -10,8 +10,9 @@
  * this layout file focused on routing and data concerns.
  */
 
-import { Tabs, usePathname } from "expo-router";
-import { useEffect } from "react";
+import { Tabs, usePathname, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -51,12 +52,48 @@ interface ScheduleDedupeState {
 
 export default function TabsLayout() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
   const unreadMessages      = useNotificationStore((s) => s.unreadMessages);
   const clearAllMessages    = useNotificationStore((s) => s.clearAllMessages);
   const setLatestMsgPayload = useNotificationStore((s) => s.setLatestMessagePayload);
   const incrementSession    = useNotificationStore((s) => s.incrementSessionMessage);
 
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    let mounted = true;
+
+    const requirePatientSession = async () => {
+      const [token, isLoggedIn, role] = await Promise.all([
+        AsyncStorage.getItem("token"),
+        AsyncStorage.getItem("isLoggedIn"),
+        AsyncStorage.getItem("userRole"),
+      ]);
+
+      if (!mounted) return;
+
+      if (!token || isLoggedIn !== "true") {
+        router.replace("/(auth)/login");
+        return;
+      }
+
+      if (role?.toLowerCase() === "doctor") {
+        router.replace("/(doctor)");
+        return;
+      }
+
+      setAuthChecked(true);
+    };
+
+    requirePatientSession().catch(() => {
+      if (mounted) router.replace("/(auth)/login");
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
 
   // ── SignalR bootstrap ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -247,6 +284,14 @@ export default function TabsLayout() {
   }, [pathname, clearAllMessages]);
 
   // ── Render ────────────────────────────────────────────────────────────────
+  if (!authChecked) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
   return (
     <Tabs
       screenOptions={{ headerShown: false }}

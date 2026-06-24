@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, StatusBar, Alert,
+  TextInput, ActivityIndicator, StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "../constants/colors";
 import { useLanguage } from "../context/LanguageContext";
 import { getMyPatientId } from "../services/authService";
@@ -34,6 +34,21 @@ export default function OnboardingScreen() {
 
   const totalSteps = 4;
 
+  const goToSignedInHome = async () => {
+    const [token, isLoggedIn, role] = await Promise.all([
+      AsyncStorage.getItem("token"),
+      AsyncStorage.getItem("isLoggedIn"),
+      AsyncStorage.getItem("userRole"),
+    ]);
+
+    if (!token || isLoggedIn !== "true") {
+      router.replace("/(auth)/login");
+      return;
+    }
+
+    router.replace(role?.toLowerCase() === "doctor" ? "/(doctor)" : "/(patient)/home");
+  };
+
   const handleNext = async () => {
     if (step < totalSteps) {
       setStep(step + 1);
@@ -47,7 +62,7 @@ export default function OnboardingScreen() {
     if (step < totalSteps) {
       setStep(step + 1);
     } else {
-      router.replace("/(patient)/home");
+      goToSignedInHome();
     }
   };
 
@@ -74,7 +89,7 @@ export default function OnboardingScreen() {
       if (promises.length > 0) await Promise.all(promises);
 
       Toast.show({ type: "success", text1: tr("saved") });
-      router.replace("/(patient)/home");
+      goToSignedInHome();
     } catch (e: any) {
       Toast.show({ type: "error", text1: e.message || tr("error") });
     } finally {

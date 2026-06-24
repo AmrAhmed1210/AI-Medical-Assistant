@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width, height } = Dimensions.get("window");
 
@@ -89,8 +90,19 @@ export default function OnboardingScreen() {
 
   const handleSkip = () => handleComplete();
 
-  const handleComplete = () => {
-    router.replace("/(patient)/home");
+  const handleComplete = async () => {
+    const [token, isLoggedIn, role] = await Promise.all([
+      AsyncStorage.getItem("token"),
+      AsyncStorage.getItem("isLoggedIn"),
+      AsyncStorage.getItem("userRole"),
+    ]);
+
+    if (!token || isLoggedIn !== "true") {
+      router.replace("/(auth)/login");
+      return;
+    }
+
+    router.replace(role?.toLowerCase() === "doctor" ? "/(doctor)" : "/(patient)/home");
   };
 
   const currentSlide = ONBOARDING_SLIDES[activeIndex];

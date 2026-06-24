@@ -190,7 +190,10 @@ export default function ChatBotScreen() {
         // Case 2: Specialty inferred BUT no matching doctors on platform → tell the user what specialty they need
         contextPrompt = `${userMsg}\n\n[Context: Based on the patient's message, the recommended medical specialty is "${doctorRecommendations.specialty}". However, there are currently no doctors available in the "${doctorRecommendations.specialty}" specialty on our platform. You MUST explicitly state in a simple and polite sentence that there are currently no doctors available on our platform for this specialty, and advise the patient to seek an external consultation with a "${doctorRecommendations.specialty}" doctor. DO NOT hallucinate doctor names.]`;
       }
-      // Case 3: No specialty inferred → just send the raw message, no doctor context
+      // Case 3: No reliable specialty inferred -> keep the response conversational.
+      if (!doctorRecommendations.specialty) {
+        contextPrompt = `${userMsg}\n\n[Conversation safety rule: Do not recommend a doctor, specialty, clinic, or external consultation unless the user explicitly asks for one or provides clear symptoms/medical details. If this is only a greeting or general chat, reply naturally and ask how you can help.]`;
+      }
 
       // Inject the AI Diagnosis Summary from the Home Report if available
       if (aiSummary) {

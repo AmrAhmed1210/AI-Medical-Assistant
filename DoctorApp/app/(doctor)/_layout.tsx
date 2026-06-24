@@ -1,8 +1,56 @@
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function DoctorTabsLayout() {
+  const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const requireDoctorSession = async () => {
+      const [token, isLoggedIn, role] = await Promise.all([
+        AsyncStorage.getItem("token"),
+        AsyncStorage.getItem("isLoggedIn"),
+        AsyncStorage.getItem("userRole"),
+      ]);
+
+      if (!mounted) return;
+
+      if (!token || isLoggedIn !== "true") {
+        router.replace("/(auth)/login");
+        return;
+      }
+
+      if (role?.toLowerCase() !== "doctor") {
+        router.replace("/(patient)/home");
+        return;
+      }
+
+      setAuthChecked(true);
+    };
+
+    requireDoctorSession().catch(() => {
+      if (mounted) router.replace("/(auth)/login");
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
+
+  if (!authChecked) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
   return (
     <Tabs
       screenOptions={{

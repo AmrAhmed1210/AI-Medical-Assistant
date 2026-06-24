@@ -121,6 +121,158 @@ const EXTRA_SPECIALTY_KEYWORDS: Array<{ specialty: string; keywords: string[] }>
   { specialty: "General", keywords: ["حمى", "سخونية", "تعب", "إرهاق", "ارهاق", "fever", "fatigue"] },
 ];
 
+const GREETING_PATTERNS = [
+  "السلام عليكم",
+  "وعليكم السلام",
+  "صباح الخير",
+  "مساء الخير",
+  "اهلا",
+  "اهلاً",
+  "مرحبا",
+  "hello",
+  "hi",
+  "hey",
+];
+
+const DOCTOR_REQUEST_TERMS = [
+  "doctor",
+  "specialist",
+  "clinic",
+  "appointment",
+  "book",
+  "دكتور",
+  "دكتورة",
+  "طبيب",
+  "طبيبة",
+  "تخصص",
+  "استشارة",
+  "اكشف",
+  "كشف",
+  "احجز",
+  "حجز",
+  "عيادة",
+];
+
+const MEDICAL_SIGNAL_TERMS = [
+  "pain",
+  "ache",
+  "fever",
+  "rash",
+  "cough",
+  "vomit",
+  "nausea",
+  "dizzy",
+  "bleeding",
+  "swelling",
+  "severe",
+  "chronic",
+  "symptom",
+  "medicine",
+  "medication",
+  "وجع",
+  "ألم",
+  "الم",
+  "تعب",
+  "سخونية",
+  "حرارة",
+  "حمى",
+  "كحة",
+  "سعال",
+  "قيء",
+  "ترجيع",
+  "غثيان",
+  "دوخة",
+  "صداع",
+  "نزيف",
+  "تورم",
+  "حساسية",
+  "طفح",
+  "حكة",
+  "حرقان",
+  "تنميل",
+  "ضيق",
+  "نهجان",
+  "خفقان",
+  "اسهال",
+  "إسهال",
+  "امساك",
+  "إمساك",
+  "دواء",
+  "علاج",
+  "حبوب",
+  "جرعة",
+  "حمل",
+  "دورة",
+  "متأخرة",
+  "متاخره",
+  "رحم",
+  "سكر",
+  "ضغط",
+  "قلب",
+  "صدر",
+  "بطن",
+  "معدة",
+  "عين",
+  "جلد",
+  "ظهر",
+  "ركبة",
+  "اذن",
+  "أذن",
+  "انف",
+  "أنف",
+  "زور",
+];
+
+const DETAIL_SIGNAL_TERMS = [
+  "منذ",
+  "بقال",
+  "بقالي",
+  "يوم",
+  "يومين",
+  "اسبوع",
+  "أسبوع",
+  "شهر",
+  "ساعات",
+  "ساعة",
+  "شديد",
+  "جامد",
+  "قوي",
+  "مستمر",
+  "متكرر",
+  "يزيد",
+  "بيزيد",
+  "مفاجئ",
+  "sudden",
+  "severe",
+  "days",
+  "weeks",
+  "hours",
+  "persistent",
+  "recurrent",
+];
+
+const includesAny = (source: string, terms: string[]) =>
+  terms.some((term) => source.includes(normalize(term)));
+
+const countMatches = (source: string, terms: string[]) =>
+  terms.reduce((count, term) => count + (source.includes(normalize(term)) ? 1 : 0), 0);
+
+const isGreetingOnly = (source: string, wordCount: number) =>
+  wordCount <= 7 && includesAny(source, GREETING_PATTERNS) && !includesAny(source, MEDICAL_SIGNAL_TERMS);
+
+export const shouldAttemptDoctorRecommendation = (text: string): boolean => {
+  const source = normalize(text);
+  const words = source.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  if (words.length === 0 || isGreetingOnly(source, words.length)) return false;
+
+  if (includesAny(source, DOCTOR_REQUEST_TERMS)) return true;
+
+  const medicalSignalCount = countMatches(source, MEDICAL_SIGNAL_TERMS);
+  const hasDetails = includesAny(source, DETAIL_SIGNAL_TERMS) || /\d/.test(source);
+
+  return medicalSignalCount >= 2 || (medicalSignalCount >= 1 && hasDetails);
+};
+
 const inferSpecialtyFromText = (text: string): string | null => {
   const source = normalize(text);
   const extraMatch = EXTRA_SPECIALTY_KEYWORDS.find((item) =>
@@ -206,6 +358,8 @@ export const getRecommendedDoctorsForNeed = async (
   needText: string,
   limit = 5
 ): Promise<{ specialty: string | null; doctors: Doctor[] }> => {
+  if (!shouldAttemptDoctorRecommendation(needText)) return { specialty: null, doctors: [] };
+
   const specialty = inferSpecialtyFromText(needText);
   // If we can't infer a specialty, don't recommend random doctors
   if (!specialty) return { specialty: null, doctors: [] };
