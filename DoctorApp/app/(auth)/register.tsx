@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import {
   View, Text, TextInput, StyleSheet, KeyboardAvoidingView,
   Platform, ScrollView, TouchableOpacity, Keyboard, ActivityIndicator,
-  Dimensions, Animated, Easing, StatusBar
+  Animated, Easing, StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
@@ -13,81 +13,105 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { registerApi, saveSession } from "../../services/authService";
 import { useLanguage } from "../../context/LanguageContext";
 
-const { width } = Dimensions.get("window");
-
-const COLORS = {
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const C = {
   primary: "#059669",
-  primaryLight: "#10B981",
-  secondary: "#0284C7",
-  bg: "#F8FAFC",
-  surface: "#FFFFFF",
+  dark: "#047857",
+  bg: "#ECFDF5",          // soft mint background — not blinding white
+  card: "#FFFFFF",
   text: "#0F172A",
-  textMuted: "#64748B",
-  border: "#E2E8F0"
+  sub: "#475569",
+  muted: "#94A3B8",
+  border: "#D1FAE5",          // mint-tinted border
+  inputBg: "#F0FDF4",          // very light mint for inputs
+  focusBg: "#FFFFFF",
+  red: "#EF4444",
 };
 
 const EGYPT_CITIES_EN = [
-  "Cairo", "Giza", "Alexandria", "Qalyubia", "Sharqia", "Dakahlia", 
-  "Gharbia", "Monufia", "Fayoum", "Minya", "Assiut", "Sohag"
+  "Cairo", "Giza", "Alexandria", "Qalyubia", "Sharqia", "Dakahlia",
+  "Gharbia", "Monufia", "Kafr El-Sheikh", "Beheira", "Ismailia", "Port Said",
+  "Suez", "Damietta", "North Sinai", "South Sinai", "Fayoum", "Beni Suef",
+  "Minya", "Assiut", "Sohag", "Qena", "Luxor", "Aswan", "Red Sea",
+  "Matruh", "New Valley",
 ];
-
 const EGYPT_CITIES_AR = [
   "القاهرة", "الجيزة", "الإسكندرية", "القليوبية", "الشرقية", "الدقهلية",
-  "الغربية", "المنوفية", "الفيوم", "المنيا", "أسيوط", "سوهاج"
+  "الغربية", "المنوفية", "كفر الشيخ", "البحيرة", "الإسماعيلية", "بور سعيد",
+  "السويس", "دمياط", "شمال سيناء", "جنوب سيناء", "الفيوم", "بني سويف",
+  "المنيا", "أسيوط", "سوهاج", "قنا", "الأقصر", "أسوان", "البحر الأحمر",
+  "مطروح", "الوادي الجديد",
+];
+
+const STEP_INFO = [
+  { icon: "person", titleKey: "join_medbook", subKey: "step_1_subtitle" },
+  { icon: "mail", titleKey: "join_medbook", subKey: "step_2_subtitle" },
+  { icon: "lock-closed", titleKey: "join_medbook", subKey: "step_3_subtitle" },
 ];
 
 export default function RegisterScreen() {
-  const router        = useRouter();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const router = useRouter();
+  const scrollRef = useRef<ScrollView>(null);
   const { tr, isRTL } = useLanguage();
-  
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(40)).current;
 
+  // ── entry animation ────────────────────────────────────────────────────────
+  const fadeIn = useRef(new Animated.Value(0)).current;
+  const slideIn = useRef(new Animated.Value(36)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      })
+      Animated.timing(fadeIn, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(slideIn, { toValue: 0, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
   }, []);
 
-  const [step, setStep] = useState(1);
-  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  // ── step cross-fade ────────────────────────────────────────────────────────
+  const stepFade = useRef(new Animated.Value(1)).current;
+  const stepSlide = useRef(new Animated.Value(0)).current;
+  const changeStep = (next: number) => {
+    Animated.parallel([
+      Animated.timing(stepFade, { toValue: 0, duration: 130, useNativeDriver: true }),
+      Animated.timing(stepSlide, { toValue: -16, duration: 130, useNativeDriver: true }),
+    ]).start(() => {
+      setStep(next);
+      stepSlide.setValue(16);
+      Animated.parallel([
+        Animated.timing(stepFade, { toValue: 1, duration: 250, useNativeDriver: true }),
+        Animated.timing(stepSlide, { toValue: 0, duration: 250, useNativeDriver: true }),
+      ]).start();
+    });
+  };
 
-  // Step 1: Personal
+  // ── form state ─────────────────────────────────────────────────────────────
+  const [step, setStep] = useState(1);
+  const [focused, setFocused] = useState<string | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [dobDate, setDobDate] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
   const [gender, setGender] = useState("Male");
-
-  // Step 2: Contact & Location
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [country, setCountry] = useState("Egypt");
   const [city, setCity] = useState("");
   const [district, setDistrict] = useState("");
-
-  // Step 3: Medical & Security
   const [bloodType, setBloodType] = useState("O+");
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [citySearch, setCitySearch] = useState("");
 
-  const EGYPT_CITIES = isRTL ? EGYPT_CITIES_AR : EGYPT_CITIES_EN;
+  const CITIES = isRTL ? EGYPT_CITIES_AR : EGYPT_CITIES_EN;
+  const filteredIndexes = EGYPT_CITIES_EN
+    .map((en, i) => ({ en, ar: EGYPT_CITIES_AR[i], i }))
+    .filter(({ en, ar }) =>
+      citySearch === "" ||
+      en.toLowerCase().includes(citySearch.toLowerCase()) ||
+      ar.includes(citySearch)
+    );
 
+  // ── logic — untouched ──────────────────────────────────────────────────────
   const handleNextStep1 = () => {
     Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -95,7 +119,7 @@ export default function RegisterScreen() {
       Toast.show({ type: "error", text1: tr("error"), text2: tr("please_write_comment") || "Please fill all fields", position: "top" });
       return;
     }
-    setStep(2);
+    changeStep(2);
   };
 
   const handleNextStep2 = () => {
@@ -105,13 +129,12 @@ export default function RegisterScreen() {
       Toast.show({ type: "error", text1: tr("error"), position: "top" });
       return;
     }
-    setStep(3);
+    changeStep(3);
   };
 
   const handleRegister = async () => {
     Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
     if (password.length < 6) {
       Toast.show({ type: "error", text1: tr("min_6_chars"), position: "top" });
       return;
@@ -120,34 +143,29 @@ export default function RegisterScreen() {
       Toast.show({ type: "error", text1: tr("error"), position: "top" });
       return;
     }
-
     setLoading(true);
     try {
       const address = `${country} - ${city.trim()} - ${district.trim()}`;
-      
       const tzOffset = dobDate!.getTimezoneOffset() * 60000;
-      const localISOTime = new Date(dobDate!.getTime() - tzOffset).toISOString().split('T')[0];
-
+      const localISO = new Date(dobDate!.getTime() - tzOffset).toISOString().split("T")[0];
       const auth = await registerApi({
         fullName: `${firstName.trim()} ${lastName.trim()}`,
         email: email.toLowerCase().trim(),
-        password: password,
+        password,
         role: "Patient",
         phoneNumber: phone.trim(),
         address,
-        dateOfBirth: localISOTime,
+        dateOfBirth: localISO,
         gender: gender === "Male" ? "Male" : "Female",
-        bloodType: bloodType,
+        bloodType,
         weight: Number(weight) || 0,
         height: Number(height) || 0,
         smokingStatus: "Non-Smoker",
       });
-
       await saveSession(auth);
       Toast.show({ type: "success", text1: `${tr("success")} 👋`, position: "top" });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTimeout(() => router.replace("/(auth)/onboarding"), 1600);
-
     } catch (err: any) {
       Toast.show({ type: "error", text1: err.message || tr("error"), position: "top" });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -156,291 +174,346 @@ export default function RegisterScreen() {
     }
   };
 
-  const renderProgress = () => {
-    return (
-      <View style={[styles.progressContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        {[1, 2, 3].map((s) => (
-          <View key={s} style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', flex: s < 3 ? 1 : 0 }}>
-            <View style={[styles.progressDot, step >= s && styles.progressDotActive]}>
-              {step > s ? (
-                <Ionicons name="checkmark" size={16} color="#fff" />
-              ) : (
-                <Text style={[styles.progressDotText, step >= s && styles.progressDotTextActive]}>{s}</Text>
-              )}
-            </View>
-            {s < 3 && <View style={[styles.progressLine, step > s && styles.progressLineActive]} />}
+  // ── helpers ────────────────────────────────────────────────────────────────
+  const fw = (id: string) => [
+    s.inputWrap,
+    focused === id && s.inputWrapFocused,
+    { flexDirection: (isRTL ? "row-reverse" : "row") as any },
+  ];
+  const ic = (id: string) => focused === id ? C.primary : C.muted;
+  const tx = (id: string) => [s.input, { textAlign: (isRTL ? "right" : "left") as any }];
+
+  // ── progress bar ───────────────────────────────────────────────────────────
+  const Progress = () => (
+    <View style={[s.progressRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+      {[1, 2, 3].map((n) => (
+        <React.Fragment key={n}>
+          <View style={[s.dot, step >= n && s.dotActive]}>
+            {step > n
+              ? <Ionicons name="checkmark" size={14} color="#fff" />
+              : <Text style={[s.dotTxt, step >= n && s.dotTxtActive]}>{n}</Text>
+            }
           </View>
-        ))}
-      </View>
-    );
-  };
+          {n < 3 && <View style={[s.line, step > n && s.lineActive]} />}
+        </React.Fragment>
+      ))}
+    </View>
+  );
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      
-      <View style={[styles.bgCircle, styles.circleTop]} />
-      <View style={[styles.bgCircle, styles.circleBottom]} />
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} enabled={Platform.OS === "ios"}>
-        <ScrollView ref={scrollViewRef} contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          
-          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-            
-            <View style={[styles.headerRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-              <TouchableOpacity style={styles.backBtn} onPress={() => step > 1 ? setStep(step - 1) : router.back()}>
-                <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={24} color={COLORS.text} />
-              </TouchableOpacity>
-              <Text style={styles.stepIndicator}>
-                {step === 1 ? tr("step_1") : step === 2 ? tr("step_2") : tr("step_3")}
-              </Text>
-            </View>
+      {/* ── Gradient header ── */}
+      <LinearGradient colors={[C.primary, C.dark]} style={s.header}>
+        {/* top row */}
+        <View style={[s.headerTop, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          <TouchableOpacity
+            style={s.backBtn}
+            onPress={() => step > 1 ? changeStep(step - 1) : router.back()}
+          >
+            <Ionicons name={isRTL ? "arrow-forward" : "arrow-back"} size={22} color="#fff" />
+          </TouchableOpacity>
+          <Text style={s.headerStep}>{step === 1 ? tr("step_1") : step === 2 ? tr("step_2") : tr("step_3")}</Text>
+        </View>
 
-            <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("join_medbook")}</Text>
-            <Text style={[styles.subtitle, { textAlign: isRTL ? 'right' : 'left' }]}>
-              {step === 1 ? tr("step_1_subtitle") : step === 2 ? tr("step_2_subtitle") : tr("step_3_subtitle")}
-            </Text>
+        {/* title */}
+        <Text style={[s.headerTitle, { textAlign: isRTL ? "right" : "left" }]}>{tr("join_medbook")}</Text>
+        <Text style={[s.headerSub, { textAlign: isRTL ? "right" : "left" }]}>
+          {step === 1 ? tr("step_1_subtitle") : step === 2 ? tr("step_2_subtitle") : tr("step_3_subtitle")}
+        </Text>
 
-            {renderProgress()}
+        <Progress />
+      </LinearGradient>
 
-            <View style={styles.glassCard}>
-              
-              {/* STEP 1: PERSONAL INFO */}
-              {step === 1 && (
-                <View>
-                  <View style={[styles.row, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    <View style={styles.flex1}>
-                      <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("first_name")}</Text>
-                      <View style={[styles.inputWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }, focusedInput === "first" && styles.inputWrapperFocused]}>
-                        <Ionicons name="person-outline" size={20} color={focusedInput === "first" ? COLORS.primary : COLORS.textMuted} style={isRTL ? { marginLeft: 12 } : { marginRight: 12 }} />
-                        <TextInput
-                          style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]} placeholderTextColor="#94A3B8"
-                          value={firstName} onChangeText={setFirstName}
-                          onFocus={() => setFocusedInput("first")} onBlur={() => setFocusedInput(null)}
-                        />
-                      </View>
-                    </View>
-                    <View style={styles.flex1}>
-                      <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("last_name")}</Text>
-                      <View style={[styles.inputWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }, focusedInput === "last" && styles.inputWrapperFocused]}>
-                        <TextInput
-                          style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]} placeholderTextColor="#94A3B8"
-                          value={lastName} onChangeText={setLastName}
-                          onFocus={() => setFocusedInput("last")} onBlur={() => setFocusedInput(null)}
-                        />
-                      </View>
+      {/* ── Scrollable form ── */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView
+          ref={scrollRef}
+          style={s.scroll}
+          contentContainerStyle={s.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View style={[s.card, { opacity: stepFade, transform: [{ translateY: stepSlide }] }]}>
+
+            {/* ══ STEP 1 ══════════════════════════════════════════════════ */}
+            {step === 1 && (
+              <View>
+                <View style={[s.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                  <View style={s.half}>
+                    <Text style={[s.label, { textAlign: isRTL ? "right" : "left" }]}>{tr("first_name")}</Text>
+                    <View style={fw("first")}>
+                      <Ionicons name="person-outline" size={18} color={ic("first")} style={isRTL ? s.iconL : s.iconR} />
+                      <TextInput
+                        placeholder={tr("first_name")} placeholderTextColor={C.muted}
+                        style={tx("first")} value={firstName} onChangeText={setFirstName}
+                        onFocus={() => setFocused("first")} onBlur={() => setFocused(null)}
+                      />
                     </View>
                   </View>
+                  <View style={s.half}>
+                    <Text style={[s.label, { textAlign: isRTL ? "right" : "left" }]}>{tr("last_name")}</Text>
+                    <View style={fw("last")}>
+                      <TextInput
+                        placeholder={tr("last_name")} placeholderTextColor={C.muted}
+                        style={tx("last")} value={lastName} onChangeText={setLastName}
+                        onFocus={() => setFocused("last")} onBlur={() => setFocused(null)}
+                      />
+                    </View>
+                  </View>
+                </View>
 
-                  <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("date_of_birth")}</Text>
-                  <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[styles.inputWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    <Ionicons name="calendar-outline" size={20} color={dobDate ? COLORS.primary : COLORS.textMuted} style={isRTL ? { marginLeft: 12 } : { marginRight: 12 }} />
-                    <Text style={[styles.input, { textAlign: isRTL ? 'right' : 'left', color: dobDate ? COLORS.text : "#94A3B8", paddingTop: 16 }]}>
-                      {dobDate ? dobDate.toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : tr("dob_hint")}
-                    </Text>
+                <Text style={[s.label, { textAlign: isRTL ? "right" : "left" }]}>{tr("date_of_birth")}</Text>
+                <TouchableOpacity onPress={() => setShowPicker(true)} style={[s.inputWrap, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                  <Ionicons name="calendar-outline" size={18} color={dobDate ? C.primary : C.muted} style={isRTL ? s.iconL : s.iconR} />
+                  <Text style={[s.input, { color: dobDate ? C.text : C.muted, textAlign: isRTL ? "right" : "left", paddingTop: 2 }]}>
+                    {dobDate
+                      ? dobDate.toLocaleDateString(isRTL ? "ar-EG" : "en-US", { year: "numeric", month: "long", day: "numeric" })
+                      : tr("dob_hint")}
+                  </Text>
+                </TouchableOpacity>
+
+                {showPicker && (
+                  <DateTimePicker
+                    value={dobDate || new Date(2000, 0, 1)}
+                    mode="date" display="spinner" maximumDate={new Date()}
+                    onChange={(_, d) => {
+                      if (Platform.OS === "android") setShowPicker(false);
+                      if (d) setDobDate(d);
+                    }}
+                  />
+                )}
+                {Platform.OS === "ios" && showPicker && (
+                  <TouchableOpacity style={s.iosDone} onPress={() => setShowPicker(false)}>
+                    <Text style={{ color: "#fff", fontWeight: "700" }}>{tr("confirm")}</Text>
                   </TouchableOpacity>
+                )}
 
-                  {showDatePicker && (
-                    <DateTimePicker
-                      value={dobDate || new Date(2000, 0, 1)}
-                      mode="date"
-                      display="spinner"
-                      maximumDate={new Date()}
-                      onChange={(event, date) => {
-                        if (Platform.OS === 'android') setShowDatePicker(false);
-                        if (date) setDobDate(date);
-                      }}
-                    />
-                  )}
-                  {Platform.OS === 'ios' && showDatePicker && (
-                    <TouchableOpacity style={styles.iosDateDoneBtn} onPress={() => setShowDatePicker(false)}>
-                      <Text style={{ color: '#fff', fontWeight: 'bold' }}>{tr("confirm")}</Text>
+                <Text style={[s.label, { marginTop: 8, textAlign: isRTL ? "right" : "left" }]}>{tr("gender")}</Text>
+                <View style={[s.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                  {["Male", "Female"].map((g) => (
+                    <TouchableOpacity
+                      key={g}
+                      style={[s.genderBtn, gender === g && s.genderBtnActive]}
+                      onPress={() => setGender(g)} activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={g === "Male" ? "male" : "female"}
+                        size={16}
+                        color={gender === g ? C.primary : C.muted}
+                        style={{ marginRight: 6 }}
+                      />
+                      <Text style={[s.genderTxt, gender === g && s.genderTxtActive]}>
+                        {g === "Male" ? tr("male") : tr("female")}
+                      </Text>
                     </TouchableOpacity>
-                  )}
-
-                  <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left', marginTop: 12 }]}>{tr("gender")}</Text>
-                  <View style={[styles.row, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    {["Male", "Female"].map((g) => (
-                      <TouchableOpacity
-                        key={g}
-                        style={[styles.genderBtn, gender === g && styles.genderBtnActive]}
-                        onPress={() => setGender(g)}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>{g === "Male" ? tr("male") : tr("female")}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  <TouchableOpacity style={styles.btnWrap} onPress={handleNextStep1} activeOpacity={0.8}>
-                    <LinearGradient colors={[COLORS.primary, '#047857']} style={[styles.btnGradient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                      <Text style={styles.btnText}>{tr("continue_btn")}</Text>
-                      <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={20} color="#fff" style={isRTL ? { marginRight: 8 } : { marginLeft: 8 }} />
-                    </LinearGradient>
-                  </TouchableOpacity>
+                  ))}
                 </View>
-              )}
 
-              {/* STEP 2: CONTACT & LOCATION */}
-              {step === 2 && (
-                <View>
-                  <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("email")}</Text>
-                  <View style={[styles.inputWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }, focusedInput === "email" && styles.inputWrapperFocused]}>
-                    <Ionicons name="mail-outline" size={20} color={focusedInput === "email" ? COLORS.primary : COLORS.textMuted} style={isRTL ? { marginLeft: 12 } : { marginRight: 12 }} />
-                    <TextInput
-                      keyboardType="email-address" autoCapitalize="none"
-                      style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]} value={email} onChangeText={setEmail} placeholderTextColor="#94A3B8"
-                      onFocus={() => setFocusedInput("email")} onBlur={() => setFocusedInput(null)}
-                    />
-                  </View>
-
-                  <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("phone")}</Text>
-                  <View style={[styles.inputWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }, focusedInput === "phone" && styles.inputWrapperFocused]}>
-                    <Ionicons name="call-outline" size={20} color={focusedInput === "phone" ? COLORS.primary : COLORS.textMuted} style={isRTL ? { marginLeft: 12 } : { marginRight: 12 }} />
-                    <TextInput
-                      keyboardType="phone-pad" maxLength={15}
-                      style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]} value={phone} onChangeText={setPhone} placeholderTextColor="#94A3B8"
-                      onFocus={() => setFocusedInput("phone")} onBlur={() => setFocusedInput(null)}
-                    />
-                  </View>
-
-                  <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("country")}</Text>
-                  <View style={[styles.cityGrid, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    {["Egypt", "Other"].map((item) => (
-                      <TouchableOpacity
-                        key={item}
-                        style={[styles.cityOption, country === item && styles.cityOptionActive]}
-                        onPress={() => { setCountry(item); setCity(""); setDistrict(""); }}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[styles.cityOptionText, country === item && styles.cityOptionTextActive]}>
-                          {item === "Egypt" ? tr("egypt") : tr("other")}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  {country === "Egypt" ? (
-                    <>
-                      <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("city")}</Text>
-                      <View style={[styles.cityGrid, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                        {EGYPT_CITIES.map((item, index) => (
-                          <TouchableOpacity
-                            key={index}
-                            style={[styles.cityOption, city === EGYPT_CITIES_EN[index] && styles.cityOptionActive]}
-                            onPress={() => setCity(EGYPT_CITIES_EN[index])}
-                            activeOpacity={0.8}
-                          >
-                            <Text style={[styles.cityOptionText, city === EGYPT_CITIES_EN[index] && styles.cityOptionTextActive]}>
-                              {item}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("city")}</Text>
-                      <View style={[styles.inputWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }, focusedInput === "city" && styles.inputWrapperFocused]}>
-                        <Ionicons name="location-outline" size={20} color={focusedInput === "city" ? COLORS.primary : COLORS.textMuted} style={isRTL ? { marginLeft: 12 } : { marginRight: 12 }} />
-                        <TextInput
-                          style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]} value={city} onChangeText={setCity} placeholderTextColor="#94A3B8"
-                          onFocus={() => setFocusedInput("city")} onBlur={() => setFocusedInput(null)}
-                        />
-                      </View>
-                    </>
-                  )}
-
-                  <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("district_area")}</Text>
-                  <View style={[styles.inputWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }, focusedInput === "district" && styles.inputWrapperFocused]}>
-                    <Ionicons name="location-outline" size={20} color={focusedInput === "district" ? COLORS.primary : COLORS.textMuted} style={isRTL ? { marginLeft: 12 } : { marginRight: 12 }} />
-                    <TextInput
-                      style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]} value={district} onChangeText={setDistrict} placeholderTextColor="#94A3B8"
-                      onFocus={() => setFocusedInput("district")} onBlur={() => setFocusedInput(null)}
-                    />
-                  </View>
-                  <Text style={[styles.inputHint, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("district_hint")}</Text>
-
-                  <TouchableOpacity style={styles.btnWrap} onPress={handleNextStep2} activeOpacity={0.8}>
-                    <LinearGradient colors={[COLORS.primary, '#047857']} style={[styles.btnGradient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                      <Text style={styles.btnText}>{tr("continue_btn")}</Text>
-                      <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={20} color="#fff" style={isRTL ? { marginRight: 8 } : { marginLeft: 8 }} />
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* STEP 3: MEDICAL & SECURITY */}
-              {step === 3 && (
-                <View>
-                  <View style={[styles.row, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    <View style={styles.flex1}>
-                      <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("weight_kg")}</Text>
-                      <View style={[styles.inputWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }, focusedInput === "weight" && styles.inputWrapperFocused]}>
-                        <Ionicons name="scale-outline" size={20} color={focusedInput === "weight" ? COLORS.primary : COLORS.textMuted} style={isRTL ? { marginLeft: 12 } : { marginRight: 12 }} />
-                        <TextInput
-                          keyboardType="numeric" maxLength={3}
-                          style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]} value={weight} onChangeText={setWeight} placeholderTextColor="#94A3B8"
-                          onFocus={() => setFocusedInput("weight")} onBlur={() => setFocusedInput(null)}
-                        />
-                      </View>
-                    </View>
-                    <View style={styles.flex1}>
-                      <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("height_cm")}</Text>
-                      <View style={[styles.inputWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }, focusedInput === "height" && styles.inputWrapperFocused]}>
-                        <Ionicons name="body-outline" size={20} color={focusedInput === "height" ? COLORS.primary : COLORS.textMuted} style={isRTL ? { marginLeft: 12 } : { marginRight: 12 }} />
-                        <TextInput
-                          keyboardType="numeric" maxLength={3}
-                          style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]} value={height} onChangeText={setHeight} placeholderTextColor="#94A3B8"
-                          onFocus={() => setFocusedInput("height")} onBlur={() => setFocusedInput(null)}
-                        />
-                      </View>
-                    </View>
-                  </View>
-
-                  <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("blood_type")}</Text>
-                  <View style={[styles.bloodTypesGrid, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((bt) => (
-                      <TouchableOpacity
-                        key={bt}
-                        style={[styles.bloodBtn, bloodType === bt && styles.bloodBtnActive]}
-                        onPress={() => setBloodType(bt)}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[styles.bloodText, bloodType === bt && styles.bloodTextActive]}>{bt}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  <Text style={[styles.inputLabel, { marginTop: 16, textAlign: isRTL ? 'right' : 'left' }]}>{tr("create_password")}</Text>
-                  <View style={[styles.inputWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }, focusedInput === "password" && styles.inputWrapperFocused]}>
-                    <Ionicons name="lock-closed-outline" size={20} color={focusedInput === "password" ? COLORS.primary : COLORS.textMuted} style={isRTL ? { marginLeft: 12 } : { marginRight: 12 }} />
-                    <TextInput
-                      secureTextEntry={!showPassword}
-                      style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]} value={password} onChangeText={setPassword} placeholderTextColor="#94A3B8"
-                      onFocus={() => setFocusedInput("password")} onBlur={() => setFocusedInput(null)}
-                    />
-                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={{ padding: 8 }}>
-                      <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color={COLORS.textMuted} />
-                    </TouchableOpacity>
-                  </View>
-
-                  <TouchableOpacity style={[styles.btnWrap, loading && { opacity: 0.7 }]} onPress={handleRegister} disabled={loading} activeOpacity={0.8}>
-                    <LinearGradient colors={[COLORS.primary, '#047857']} style={[styles.btnGradient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                      {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>{tr("create_account")}</Text>}
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              <View style={[styles.footer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                <Text style={styles.footerText}>{tr("already_have_account")}</Text>
-                <TouchableOpacity onPress={() => router.push("/(auth)/login")} activeOpacity={0.7}>
-                  <Text style={styles.linkText}>{tr("log_in")}</Text>
+                <TouchableOpacity style={s.cta} onPress={handleNextStep1} activeOpacity={0.85}>
+                  <LinearGradient colors={[C.primary, C.dark]} style={s.ctaGrad}>
+                    <Text style={s.ctaTxt}>{tr("continue_btn")}</Text>
+                    <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={18} color="#fff" style={{ marginLeft: 8 }} />
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
+            )}
 
+            {/* ══ STEP 2 ══════════════════════════════════════════════════ */}
+            {step === 2 && (
+              <View>
+                <Text style={[s.label, { textAlign: isRTL ? "right" : "left" }]}>{tr("email")}</Text>
+                <View style={fw("email")}>
+                  <Ionicons name="mail-outline" size={18} color={ic("email")} style={isRTL ? s.iconL : s.iconR} />
+                  <TextInput
+                    placeholder="example@email.com" placeholderTextColor={C.muted}
+                    keyboardType="email-address" autoCapitalize="none"
+                    style={tx("email")} value={email} onChangeText={setEmail}
+                    onFocus={() => setFocused("email")} onBlur={() => setFocused(null)}
+                  />
+                </View>
+
+                <Text style={[s.label, { textAlign: isRTL ? "right" : "left" }]}>{tr("phone")}</Text>
+                <View style={fw("phone")}>
+                  <Ionicons name="call-outline" size={18} color={ic("phone")} style={isRTL ? s.iconL : s.iconR} />
+                  <TextInput
+                    placeholder="+20 1xx xxxx xxxx" placeholderTextColor={C.muted}
+                    keyboardType="phone-pad" maxLength={15}
+                    style={tx("phone")} value={phone} onChangeText={setPhone}
+                    onFocus={() => setFocused("phone")} onBlur={() => setFocused(null)}
+                  />
+                </View>
+
+                <Text style={[s.label, { textAlign: isRTL ? "right" : "left" }]}>{tr("country")}</Text>
+                <View style={[s.chipRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                  {["Egypt", "Other"].map((item) => (
+                    <TouchableOpacity
+                      key={item}
+                      style={[s.chip, country === item && s.chipActive]}
+                      onPress={() => { setCountry(item); setCity(""); setDistrict(""); }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[s.chipTxt, country === item && s.chipTxtActive]}>
+                        {item === "Egypt" ? tr("egypt") : tr("other")}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={[s.label, { textAlign: isRTL ? "right" : "left" }]}>{tr("city")}</Text>
+                {country === "Egypt" ? (
+                  <View>
+                    {/* search box */}
+                    <View style={[fw("citySearch"), { marginBottom: 10 }]}>
+                      <Ionicons name="search-outline" size={18} color={ic("citySearch")} style={isRTL ? s.iconL : s.iconR} />
+                      <TextInput
+                        placeholder={isRTL ? "ابحث عن محافظتك..." : "Search governorate..."}
+                        placeholderTextColor={C.muted}
+                        style={tx("citySearch")}
+                        value={citySearch}
+                        onChangeText={setCitySearch}
+                        onFocus={() => setFocused("citySearch")}
+                        onBlur={() => setFocused(null)}
+                      />
+                      {citySearch.length > 0 && (
+                        <TouchableOpacity onPress={() => setCitySearch("")} style={{ padding: 4 }}>
+                          <Ionicons name="close-circle" size={18} color={C.muted} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    {/* chips grid */}
+                    <View style={[s.cityGrid, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                      {filteredIndexes.map(({ en, ar, i }) => (
+                        <TouchableOpacity
+                          key={i}
+                          style={[s.cityChip, city === en && s.cityChipActive]}
+                          onPress={() => setCity(en)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[s.cityTxt, city === en && s.cityTxtActive]}>
+                            {isRTL ? ar : en}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    {city !== "" && (
+                      <View style={s.selectedCity}>
+                        <Ionicons name="checkmark-circle" size={16} color={C.primary} />
+                        <Text style={s.selectedCityTxt}>{isRTL ? EGYPT_CITIES_AR[EGYPT_CITIES_EN.indexOf(city)] : city}</Text>
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <View style={fw("city")}>
+                    <Ionicons name="location-outline" size={18} color={ic("city")} style={isRTL ? s.iconL : s.iconR} />
+                    <TextInput
+                      placeholder={tr("city")} placeholderTextColor={C.muted}
+                      style={tx("city")} value={city} onChangeText={setCity}
+                      onFocus={() => setFocused("city")} onBlur={() => setFocused(null)}
+                    />
+                  </View>
+                )}
+
+                <Text style={[s.label, { textAlign: isRTL ? "right" : "left" }]}>{tr("district_area")}</Text>
+                <View style={fw("district")}>
+                  <Ionicons name="navigate-outline" size={18} color={ic("district")} style={isRTL ? s.iconL : s.iconR} />
+                  <TextInput
+                    placeholder={tr("district_area")} placeholderTextColor={C.muted}
+                    style={tx("district")} value={district} onChangeText={setDistrict}
+                    onFocus={() => setFocused("district")} onBlur={() => setFocused(null)}
+                  />
+                </View>
+                <Text style={s.hint}>{tr("district_hint")}</Text>
+
+                <TouchableOpacity style={s.cta} onPress={handleNextStep2} activeOpacity={0.85}>
+                  <LinearGradient colors={[C.primary, C.dark]} style={s.ctaGrad}>
+                    <Text style={s.ctaTxt}>{tr("continue_btn")}</Text>
+                    <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={18} color="#fff" style={{ marginLeft: 8 }} />
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* ══ STEP 3 ══════════════════════════════════════════════════ */}
+            {step === 3 && (
+              <View>
+                <View style={[s.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                  <View style={s.half}>
+                    <Text style={[s.label, { textAlign: isRTL ? "right" : "left" }]}>{tr("weight_kg")}</Text>
+                    <View style={fw("weight")}>
+                      <Ionicons name="scale-outline" size={18} color={ic("weight")} style={isRTL ? s.iconL : s.iconR} />
+                      <TextInput
+                        placeholder="70" placeholderTextColor={C.muted}
+                        keyboardType="numeric" maxLength={3}
+                        style={tx("weight")} value={weight} onChangeText={setWeight}
+                        onFocus={() => setFocused("weight")} onBlur={() => setFocused(null)}
+                      />
+                    </View>
+                  </View>
+                  <View style={s.half}>
+                    <Text style={[s.label, { textAlign: isRTL ? "right" : "left" }]}>{tr("height_cm")}</Text>
+                    <View style={fw("height")}>
+                      <Ionicons name="body-outline" size={18} color={ic("height")} style={isRTL ? s.iconL : s.iconR} />
+                      <TextInput
+                        placeholder="170" placeholderTextColor={C.muted}
+                        keyboardType="numeric" maxLength={3}
+                        style={tx("height")} value={height} onChangeText={setHeight}
+                        onFocus={() => setFocused("height")} onBlur={() => setFocused(null)}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                <Text style={[s.label, { textAlign: isRTL ? "right" : "left" }]}>{tr("blood_type")}</Text>
+                <View style={s.bloodGrid}>
+                  {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((bt) => (
+                    <TouchableOpacity
+                      key={bt}
+                      style={[s.bloodBtn, bloodType === bt && s.bloodBtnActive]}
+                      onPress={() => setBloodType(bt)} activeOpacity={0.8}
+                    >
+                      <Text style={[s.bloodTxt, bloodType === bt && s.bloodTxtActive]}>{bt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={[s.label, { marginTop: 16, textAlign: isRTL ? "right" : "left" }]}>{tr("create_password")}</Text>
+                <View style={fw("pass")}>
+                  <Ionicons name="lock-closed-outline" size={18} color={ic("pass")} style={isRTL ? s.iconL : s.iconR} />
+                  <TextInput
+                    placeholder="Min. 6 characters" placeholderTextColor={C.muted}
+                    secureTextEntry={!showPassword}
+                    style={tx("pass")} value={password} onChangeText={setPassword}
+                    onFocus={() => setFocused("pass")} onBlur={() => setFocused(null)}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={s.eye}>
+                    <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={18} color={C.muted} />
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[s.cta, loading && { opacity: 0.7 }]}
+                  onPress={handleRegister} disabled={loading} activeOpacity={0.85}
+                >
+                  <LinearGradient colors={[C.primary, C.dark]} style={s.ctaGrad}>
+                    {loading
+                      ? <ActivityIndicator color="#fff" />
+                      : <Text style={s.ctaTxt}>{tr("create_account")}</Text>
+                    }
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* footer */}
+            <View style={[s.footer, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+              <Text style={s.footerTxt}>{tr("already_have_account")} </Text>
+              <TouchableOpacity onPress={() => router.push("/(auth)/login")} activeOpacity={0.7}>
+                <Text style={s.link}>{tr("log_in")}</Text>
+              </TouchableOpacity>
             </View>
+
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -449,58 +522,158 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: COLORS.bg },
-  bgCircle: { position: 'absolute', borderRadius: 200, opacity: 0.3 },
-  circleTop: { width: 300, height: 300, backgroundColor: 'rgba(16, 185, 129, 0.15)', top: -100, right: -100 },
-  circleBottom: { width: 350, height: 350, backgroundColor: 'rgba(2, 132, 199, 0.1)', bottom: -150, left: -150 },
-  scrollContainer: { flexGrow: 1, padding: 24, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 60 },
-  headerRow: { alignItems: "center", justifyContent: "space-between", marginBottom: 20 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.8)", justifyContent: "center", alignItems: "center" },
-  stepIndicator: { fontSize: 14, fontWeight: "600", color: COLORS.primary },
-  title: { fontSize: 32, fontWeight: "800", color: COLORS.text, letterSpacing: -0.5 },
-  subtitle: { fontSize: 15, color: COLORS.textMuted, marginTop: 8, marginBottom: 24 },
-  progressContainer: { alignItems: "center", marginBottom: 30, paddingHorizontal: 10 },
-  progressDot: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.border, justifyContent: "center", alignItems: "center" },
-  progressDotActive: { backgroundColor: COLORS.primary },
-  progressDotText: { color: COLORS.textMuted, fontSize: 12, fontWeight: "700" },
-  progressDotTextActive: { color: "#fff" },
-  progressLine: { flex: 1, height: 3, backgroundColor: COLORS.border, marginHorizontal: 8, borderRadius: 2 },
-  progressLineActive: { backgroundColor: COLORS.primary },
-  glassCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)", borderRadius: 28, padding: 24,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.05, shadowRadius: 30,
-    elevation: 5, borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.5)",
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: C.bg },
+
+  // ── gradient header ──────────────────────────────────────────────────────
+  header: {
+    paddingTop: Platform.OS === "ios" ? 60 : 44,
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
-  row: { gap: 12 },
-  flex1: { flex: 1 },
-  inputLabel: { fontSize: 12, fontWeight: "700", color: COLORS.text, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
-  inputHint: { fontSize: 11, color: COLORS.textMuted, marginTop: -10, marginBottom: 16 },
-  inputWrapper: {
-    alignItems: "center", backgroundColor: "#F8FAFC", borderWidth: 1,
-    borderColor: COLORS.border, borderRadius: 16, height: 56, paddingHorizontal: 16, marginBottom: 16
+  headerTop: { alignItems: "center", justifyContent: "space-between", marginBottom: 20 },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center", alignItems: "center",
   },
-  inputWrapperFocused: { borderColor: COLORS.primary, backgroundColor: "#fff" },
-  input: { flex: 1, fontSize: 16, color: COLORS.text, height: "100%" },
-  genderBtn: { flex: 1, height: 56, borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, justifyContent: "center", alignItems: "center", marginBottom: 20 },
-  genderBtnActive: { backgroundColor: "rgba(16, 185, 129, 0.1)", borderColor: COLORS.primary },
-  genderText: { fontSize: 15, fontWeight: "600", color: COLORS.textMuted },
-  genderTextActive: { color: COLORS.primary },
-  bloodTypesGrid: { flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
-  bloodBtn: { width: "23%", height: 45, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, justifyContent: "center", alignItems: "center" },
-  bloodBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  bloodText: { fontSize: 14, fontWeight: "600", color: COLORS.textMuted },
-  bloodTextActive: { color: "#fff" },
-  cityGrid: { flexWrap: "wrap", gap: 8, marginBottom: 14 },
-  cityOption: { paddingHorizontal: 12, height: 38, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, justifyContent: "center", alignItems: "center", backgroundColor: "#F8FAFC" },
-  cityOptionActive: { backgroundColor: "rgba(16, 185, 129, 0.12)", borderColor: COLORS.primary },
-  cityOptionText: { fontSize: 12, fontWeight: "700", color: COLORS.textMuted },
-  cityOptionTextActive: { color: COLORS.primary },
-  btnWrap: { width: "100%", borderRadius: 16, overflow: "hidden", shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6, marginTop: 10, marginBottom: 24 },
-  btnGradient: { height: 56, justifyContent: "center", alignItems: "center" },
-  btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  headerStep: { fontSize: 13, color: "rgba(255,255,255,0.8)", fontWeight: "700" },
+  headerTitle: { fontSize: 30, fontWeight: "900", color: "#fff", letterSpacing: -0.5, marginBottom: 4 },
+  headerSub: { fontSize: 14, color: "rgba(255,255,255,0.75)", marginBottom: 24 },
+
+  // progress
+  progressRow: { alignItems: "center" },
+  dot: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    justifyContent: "center", alignItems: "center",
+    borderWidth: 2, borderColor: "rgba(255,255,255,0.4)",
+  },
+  dotActive: { backgroundColor: "#fff", borderColor: "#fff" },
+  dotTxt: { fontSize: 13, fontWeight: "700", color: "rgba(255,255,255,0.7)" },
+  dotTxtActive: { color: C.primary },
+  line: { flex: 1, height: 2, backgroundColor: "rgba(255,255,255,0.25)", marginHorizontal: 6 },
+  lineActive: { backgroundColor: "#fff" },
+
+  // scroll / card
+  scroll: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+  card: {
+    backgroundColor: C.card,
+    borderRadius: 24, padding: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.07, shadowRadius: 20,
+    elevation: 4,
+    borderWidth: 1, borderColor: "rgba(5,150,105,0.08)",
+  },
+
+  // inputs
+  label: {
+    fontSize: 12, fontWeight: "700", color: C.text,
+    textTransform: "uppercase", letterSpacing: 0.6,
+    marginBottom: 8, marginLeft: 2,
+  },
+  inputWrap: {
+    alignItems: "center",
+    backgroundColor: C.inputBg,
+    borderWidth: 1.5, borderColor: C.border,
+    borderRadius: 14, height: 54,
+    paddingHorizontal: 14, marginBottom: 16,
+  },
+  inputWrapFocused: { borderColor: C.primary, backgroundColor: C.focusBg },
+  iconR: { marginRight: 10 },
+  iconL: { marginLeft: 10 },
+  input: { flex: 1, fontSize: 15, color: C.text, height: "100%" },
+  eye: { padding: 6 },
+
+  // layout helpers
+  row: { gap: 10, marginBottom: 0 },
+  half: { flex: 1 },
+
+  // gender
+  genderBtn: {
+    flex: 1, height: 50, borderRadius: 14,
+    borderWidth: 1.5, borderColor: C.border,
+    flexDirection: "row", justifyContent: "center", alignItems: "center",
+    backgroundColor: C.inputBg, marginBottom: 16,
+  },
+  genderBtnActive: { backgroundColor: "#ECFDF5", borderColor: C.primary },
+  genderTxt: { fontSize: 14, fontWeight: "600", color: C.muted },
+  genderTxtActive: { color: C.primary },
+
+  // chips (country / severity)
+  chipRow: { gap: 8, marginBottom: 16 },
+  chip: {
+    flex: 1, height: 44, borderRadius: 12,
+    borderWidth: 1.5, borderColor: C.border,
+    justifyContent: "center", alignItems: "center",
+    backgroundColor: C.inputBg,
+  },
+  chipActive: { backgroundColor: "#ECFDF5", borderColor: C.primary },
+  chipTxt: { fontSize: 13, fontWeight: "600", color: C.muted },
+  chipTxtActive: { color: C.primary, fontWeight: "700" },
+
+  // city grid
+  cityGrid: { flexWrap: "wrap", gap: 8, marginBottom: 16 },
+  cityChip: {
+    paddingHorizontal: 12, height: 36, borderRadius: 10,
+    borderWidth: 1.5, borderColor: C.border,
+    justifyContent: "center", alignItems: "center",
+    backgroundColor: C.inputBg,
+  },
+  cityChipActive: { backgroundColor: "#ECFDF5", borderColor: C.primary },
+  cityTxt: { fontSize: 12, fontWeight: "600", color: C.muted },
+  cityTxtActive: { color: C.primary, fontWeight: "700" },
+
+  selectedCity: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    marginTop: 4, marginBottom: 8, marginLeft: 2,
+  },
+  selectedCityTxt: { fontSize: 13, fontWeight: "700", color: C.primary },
+
+  hint: { fontSize: 11, color: C.muted, marginTop: -10, marginBottom: 16, marginLeft: 2 },
+
+  // blood type
+  bloodGrid: {
+    flexDirection: "row", flexWrap: "wrap",
+    gap: 8, justifyContent: "space-between", marginBottom: 4,
+  },
+  bloodBtn: {
+    width: "23%", height: 46, borderRadius: 12,
+    borderWidth: 1.5, borderColor: C.border,
+    justifyContent: "center", alignItems: "center",
+    backgroundColor: C.inputBg,
+  },
+  bloodBtnActive: { backgroundColor: C.primary, borderColor: C.primary },
+  bloodTxt: { fontSize: 14, fontWeight: "700", color: C.muted },
+  bloodTxtActive: { color: "#fff" },
+
+  // CTA button
+  cta: {
+    borderRadius: 16, overflow: "hidden",
+    marginTop: 12, marginBottom: 20,
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28, shadowRadius: 12, elevation: 5,
+  },
+  ctaGrad: {
+    height: 56, flexDirection: "row",
+    justifyContent: "center", alignItems: "center",
+  },
+  ctaTxt: { color: "#fff", fontSize: 16, fontWeight: "800" },
+
+  // footer
   footer: { justifyContent: "center", alignItems: "center" },
-  footerText: { color: COLORS.textMuted, fontSize: 14 },
-  linkText: { color: COLORS.primary, fontWeight: "700", fontSize: 14 },
-  iosDateDoneBtn: { backgroundColor: COLORS.primary, padding: 12, borderRadius: 12, alignItems: 'center', marginTop: 10, marginBottom: 20 }
+  footerTxt: { color: C.sub, fontSize: 14 },
+  link: { color: C.primary, fontWeight: "700", fontSize: 14 },
+
+  // iOS date picker done btn
+  iosDone: {
+    backgroundColor: C.primary, padding: 12,
+    borderRadius: 12, alignItems: "center",
+    marginTop: 8, marginBottom: 16,
+  },
 });

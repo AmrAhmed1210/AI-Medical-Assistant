@@ -7,7 +7,7 @@ import google.generativeai as genai
 from fastapi import FastAPI, File, UploadFile, HTTPException, Body, Form, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional, Any
 from dotenv import load_dotenv
 
@@ -91,6 +91,33 @@ class PatientHistoryInput(BaseModel):
     recommended_doctors: Optional[List[Any]] = []
     recommended_specialty: Optional[str] = None
 
+    # NOTE: these "before" validators are a defensive fix for the /analyze-history
+    # 422 - they coerce whatever shape the .NET side sends (null, a single
+    # object instead of an array, etc.) into something this model accepts,
+    # instead of FastAPI rejecting the whole request before it reaches the
+    # endpoint. If a 422 still happens after this, paste the literal 422
+    # "detail" array so the remaining mismatch can be pinned exactly.
+    @field_validator(
+        "vitals", "surgeries", "medications", "allergies",
+        "chronic_diseases", "documents_analysis", "recent_visits",
+        "recommended_doctors",
+        mode="before",
+    )
+    @classmethod
+    def _coerce_to_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return v
+        return [v]
+
+    @field_validator("recommended_specialty", mode="before")
+    @classmethod
+    def _coerce_specialty_to_str(cls, v):
+        if v is None or isinstance(v, str):
+            return v
+        return str(v)
+
 class PreVisitInput(BaseModel):
     patient_id: str
     age: int
@@ -101,9 +128,29 @@ class PreVisitInput(BaseModel):
     allergies: Optional[List[Any]] = []
     vitals: Optional[List[Any]] = []
 
+    @field_validator(
+        "chronic_diseases", "medications", "allergies", "vitals", mode="before"
+    )
+    @classmethod
+    def _coerce_to_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return v
+        return [v]
+
 class PersonalizedTipInput(BaseModel):
     patient_id: str
     chronic_diseases: Optional[List[str]] = []
+
+    @field_validator("chronic_diseases", mode="before")
+    @classmethod
+    def _coerce_to_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return v
+        return [v]
 
 class MessageDto(BaseModel):
     role: str
@@ -197,59 +244,6 @@ async def analyze_history(data: PatientHistoryInput):
     print(f"DEBUG: Received history data for analysis. Documents analysis: {data.documents_analysis}")
     if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
-    
-    prompt = f"""
-    Analyze the following patient medical history and provide a professional diagnosis summary and health insights.
-    
-    Vitals: {json.dumps(data.vitals)}
-    Surgeries: {json.dumps(data.surgeries)}
-    Medications: {json.dumps(data.medications)}
-    Allergies: {json.dumps(data.allergies)}
-    Chronic Diseases: {json.dumps(data.chronic_diseases)}
-    AI Analyzed Documents: {json.dumps(data.documents_analysis)}
-    
-    CRITICAL INSTRUCTION: You MUST read the 'AI Analyzed Documents' provided. If there are any lab results, prescriptions, or medical scans inside 'AI Analyzed Documents', you MUST explicitly mention them in your final report and incorporate any abnormalities, risks, or new medications into your overall diagnosis.
-    
-    ACTIONABLE ADVICE INSTRUCTION: If you detect any abnormal vitals or health issues, you MUST provide simple, safe, non-medical home remedies or quick first-aid tips (e.g., "If your blood pressure is low, try drinking some water or having a light salty snack"). Always follow these tips with the phrase: "However, please consult a doctor for professional medical advice" (or its Arabic equivalent).
-    
-    EXPANDED LIFESTYLE & WELLNESS ADVICE: You MUST provide 3 to 4 detailed, highly practical, and safe wellness and preventative lifestyle tips tailored to the patient's medical history (e.g. dietary recommendations, foods to avoid, exercise guidance, sleep, stress reduction, and hydration tips based on their chronic diseases or vitals). Make this advice extremely rich, rich in detail, and reassuring.
-    
-
-    RETURN ONLY A JSON OBJECT with these keys:
-    {{
-      "en": "Detailed professional analysis in English, cleanly structured using these exact section headers (with emojis, plain text, no markdown, separate sections with newlines):\n🩺 General Summary:\n...\n⚠️ Health Risks & Warnings:\n...\n💊 Medications & Interactions:\n...\n💡 Home Remedies & Non-Medical Advice:\n...",
-      "ar": "تحليل طبي مفصل ومنظم للغاية باللغة العربية، مقسم إلى الأقسام التالية بشكل منسق وجذاب (بدون مارك داون، مع ترك أسطر فارغة بين الأقسام):\n🩺 الملخص الصحي العام:\n...\n⚠️ التحذيرات والمخاطر الطبية:\n...\n💊 الأدوية والتداخلات الدوائية:\n...\n💡 النصائح والإسعافات المنزلية السريعة (مثل تناول شيء مالح للضغط المنخفض، مع جملة الاستشارة الطبية):\n..."
-    }}
-    
-    IMPORTANT: Do NOT use markdown (#, *, etc). Use plain text with emojis and line breaks to create a clean, elegant layout.
-    """
-    
-    prompt = f"""
-    Analyze the following patient medical history:
-    Vitals: {json.dumps(data.vitals)}
-    Surgeries: {json.dumps(data.surgeries)}
-    Medications: {json.dumps(data.medications)}
-    Allergies: {json.dumps(data.allergies)}
-    Chronic Diseases: {json.dumps(data.chronic_diseases)}
-    
-    You MUST provide two separate reports.
-    
-    IMPORTANT INSTRUCTION: You must explicitly analyze this history for any HEALTH RISKS, DRUG INTERACTIONS, or DANGEROUS VITALS. If you detect any danger, allergy conflict, or high risk based on their vitals and chronic diseases, YOU MUST START THE REPORT WITH AN EXPLICIT WARNING (e.g. "WARNING: ...").
-    
-    REPORT 1: English ONLY. Professional medical tone. Plain text. Include risk analysis.
-    REPORT 2: Arabic ONLY. Professional medical tone. Plain text. Include risk analysis (تحذير: ...).
-    
-    RETURN YOUR RESPONSE AS A VALID JSON OBJECT ONLY:
-    {{
-      "en": "FULL_ENGLISH_REPORT_HERE",
-      "ar": "FULL_ARABIC_REPORT_HERE"
-    }}
-    
-    CRITICAL: 
-    - The 'en' field must NOT contain any Arabic characters.
-    - The 'ar' field must NOT contain any English sentences (except medical terms if necessary).
-    - Do NOT use markdown symbols like # or *.
-    """
 
     prompt = f"""
     Analyze this patient medical history and return two plain-text reports as valid JSON only.
