@@ -18,14 +18,15 @@ import { apiFetch } from "../../services/http";
 import { BASE_URL } from "../../constants/api";
 import { useTheme } from "../../context/ThemeContext";
 import { startSignalRConnection, onDoctorUpdated, onScheduleReady, onScheduleUpdated, subscribeToDoctorSchedule } from "../../services/signalr";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { addNotification } from "../../services/notificationService";
 import { checkIfFollowed, setFollowed, toggleFollowed, checkIfSubscribed, setSubscribed } from "../../services/followService";
+import { useLanguage } from "../../context/LanguageContext";
 import Toast from "react-native-toast-message";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+const DAY_NAMES_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
+const DAY_NAMES_SHORT_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
 
 const toLocalIsoDate = (date: Date): string => {
   const year = date.getFullYear()
@@ -75,19 +76,19 @@ const parseTimeToMinutes = (value: unknown): number | null => {
   return null
 }
 
-const toDisplaySlot = (raw: unknown): string => {
+const toDisplaySlot = (raw: unknown, isAr = false): string => {
   const text = raw?.toString?.() ?? ""
   if (text.includes("AM") || text.includes("PM")) return text
   const minutes = parseTimeToMinutes(text)
   if (minutes == null) return text
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
-  const ampm = h >= 12 ? "PM" : "AM"
+  const ampm = h >= 12 ? (isAr ? "م" : "PM") : (isAr ? "ص" : "AM")
   const h12 = h % 12 || 12
   return `${h12.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")} ${ampm}`
 }
 
-const getTimeSlotsForDay = (date: string, availability: any[], bookedSlots: any[] = []): string[] => {
+const getTimeSlotsForDay = (date: string, availability: any[], bookedSlots: any[] = [], isAr = false): string[] => {
   if (!date || !availability || availability.length === 0) return []
   const dayIndex = getDayIndexFromLocalIsoDate(date)
   const dayOfWeek = DAY_NAMES[dayIndex].toLowerCase()
@@ -110,7 +111,7 @@ const getTimeSlotsForDay = (date: string, availability: any[], bookedSlots: any[
 
   const rawSlots = dayAvail.timeSlots ?? dayAvail.TimeSlots
   if (Array.isArray(rawSlots) && rawSlots.length > 0) {
-    return rawSlots.map(s => toDisplaySlot(s)).filter(s => !isBooked(s))
+    return rawSlots.map(s => toDisplaySlot(s, isAr)).filter(s => !isBooked(s))
   }
 
   const start = parseTimeToMinutes(dayAvail.startTime ?? dayAvail.StartTime ?? '09:00')
@@ -123,7 +124,7 @@ const getTimeSlotsForDay = (date: string, availability: any[], bookedSlots: any[
   }
   const slots: string[] = []
   for (let m = start; m <= end; m += dur) {
-    const s = toDisplaySlot(`${Math.floor(m / 60) % 24}:${m % 60}`)
+    const s = toDisplaySlot(`${Math.floor(m / 60) % 24}:${m % 60}`, isAr)
     if (!isBooked(s)) {
       const isToday = date === toLocalIsoDate(new Date())
       const nowMins = new Date().getHours() * 60 + new Date().getMinutes()
@@ -133,8 +134,9 @@ const getTimeSlotsForDay = (date: string, availability: any[], bookedSlots: any[
   return slots;
 }
 
-function getNextAvailableDays(availability: any[], count: number) {
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function getNextAvailableDays(availability: any[], count: number, isAr = false) {
+  const monthNamesEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthNamesAr = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
   const result: { label: string; date: string; isoDate: string }[] = []
   const today = new Date()
 
@@ -144,22 +146,24 @@ function getNextAvailableDays(availability: any[], count: number) {
     const hasAvail = availability.some(a => getNormalizedDayName(a.dayName ?? a.DayName ?? a.dayOfWeek ?? a.DayOfWeek ?? a.day ?? a.Day) === dayName && (a.isAvailable ?? a.IsAvailable ?? true))
     if (!hasAvail) continue
     result.push({
-      label: i === 0 ? "Today" : DAY_NAMES[d.getDay()].slice(0, 3),
-      date: `${d.getDate()} ${monthNames[d.getMonth()]}`,
+      label: i === 0 ? (isAr ? "اليوم" : "Today") : (isAr ? DAY_NAMES_SHORT_AR[d.getDay()] : DAY_NAMES[d.getDay()].slice(0, 3)),
+      date: isAr ? `${d.getDate()} ${monthNamesAr[d.getMonth()]}` : `${d.getDate()} ${monthNamesEn[d.getMonth()]}`,
       isoDate: toLocalIsoDate(d)
     })
   }
   return result
 }
 
-function getNextDays(count: number) {
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function getNextDays(count: number, isAr = false) {
+  const dayNamesEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const dayNamesAr = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+  const monthNamesEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthNamesAr = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
   return Array.from({ length: count }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() + i);
     return {
-      label: i === 0 ? "Today" : dayNames[d.getDay()],
-      date: `${d.getDate()} ${monthNames[d.getMonth()]}`,
+      label: i === 0 ? (isAr ? "اليوم" : "Today") : (isAr ? dayNamesAr[d.getDay()] : dayNamesEn[d.getDay()]),
+      date: isAr ? `${d.getDate()} ${monthNamesAr[d.getMonth()]}` : `${d.getDate()} ${monthNamesEn[d.getMonth()]}`,
       isoDate: toLocalIsoDate(d)
     };
   });
@@ -175,6 +179,7 @@ const StarRow = ({ value, size = 16 }: { value: number, size?: number }) => (
 
 export default function DoctorDetailsScreen() {
   const { theme, isDark, colors } = useTheme();
+  const { tr, isRTL } = useLanguage();
   const { id, doctorId: doctorIdParam, editAppointmentId, initialDate, initialTime } = useLocalSearchParams<{ 
     id: string, 
     doctorId: string,
@@ -225,15 +230,15 @@ export default function DoctorDetailsScreen() {
   const [followerCount, setFollowerCount] = useState(0);
 
   const days = useMemo(() => {
-    if (!hasSchedule) return getNextDays(7)
-    return getNextAvailableDays(availability, 7)
-  }, [availability, hasSchedule])
+    if (!hasSchedule) return getNextDays(7, isRTL)
+    return getNextAvailableDays(availability, 7, isRTL)
+  }, [availability, hasSchedule, isRTL])
 
   const currentSlots = useMemo(() => {
     const day = days[selectedDay]
     if (!day) return []
-    return getTimeSlotsForDay(day.isoDate, availability, bookedSlots)
-  }, [selectedDay, days, availability, bookedSlots])
+    return getTimeSlotsForDay(day.isoDate, availability, bookedSlots, isRTL)
+  }, [selectedDay, days, availability, bookedSlots, isRTL])
 
   useEffect(() => {
     if (!doctorId) return;
@@ -290,7 +295,7 @@ export default function DoctorDetailsScreen() {
       setFollowerCount(Number((doc as any).followerCount ?? 0));
       fetchAvailability();
     } catch (e: any) {
-      setError(e.message || "Failed to load");
+      setError(e.message || (isRTL ? "فشل التحميل" : "Failed to load"));
     } finally {
       setLoading(false);
     }
@@ -340,8 +345,8 @@ export default function DoctorDetailsScreen() {
       const next = !notifyEnabled;
       await setSubscribed(Number(doctorId), next);
       setNotifyEnabled(next);
-      if (next) Alert.alert("Notifications Enabled", "We will notify you when Dr. " + doctor?.name + " updates their schedule.");
-    } catch { Alert.alert("Error", "Failed to update notification settings."); }
+      if (next) Alert.alert(isRTL ? "تم تفعيل التنبيهات" : "Notifications Enabled", isRTL ? `سنقوم بتنبيهك فور قيام د. ${doctor?.name} بتحديث جدول مواعيده.` : "We will notify you when Dr. " + doctor?.name + " updates their schedule.");
+    } catch { Alert.alert(isRTL ? "خطأ" : "Error", isRTL ? "فشل تحديث إعدادات التنبيه." : "Failed to update notification settings."); }
   };
 
   const openReviewModal = () => {
@@ -353,7 +358,7 @@ export default function DoctorDetailsScreen() {
 
   const handleSaveReview = async () => {
     if (!myRating) {
-      Alert.alert("Rating Required", "Please choose a star rating first.");
+      Alert.alert(isRTL ? "التقييم مطلوب" : "Rating Required", isRTL ? "يرجى اختيار عدد النجوم أولاً." : "Please choose a star rating first.");
       return;
     }
 
@@ -368,16 +373,16 @@ export default function DoctorDetailsScreen() {
         return [{ ...saved, isMine: true }, ...prev];
       });
       setShowAddReview(false);
-      Toast.show({ type: "success", text1: mine ? "Review updated" : "Review added" });
+      Toast.show({ type: "success", text1: mine ? (isRTL ? "تم تحديث التقييم" : "Review updated") : (isRTL ? "تم إضافة التقييم" : "Review added") });
     } catch (error: any) {
-      Toast.show({ type: "error", text1: "Review failed", text2: error?.message || "Could not save review" });
+      Toast.show({ type: "error", text1: isRTL ? "فشل التقييم" : "Review failed", text2: error?.message || (isRTL ? "تعذر حفظ التقييم" : "Could not save review") });
     } finally {
       setSavingReview(false);
     }
   };
 
   const handleProceed = () => {
-    if (!selectedTime) { Alert.alert("Select Time", "Please choose a preferred time slot first."); return; }
+    if (!selectedTime) { Alert.alert(isRTL ? "اختر الوقت" : "Select Time", isRTL ? "يرجى اختيار موعد مناسب أولاً." : "Please choose a preferred time slot first."); return; }
     setModalStep("payment");
   };
 
@@ -387,7 +392,7 @@ export default function DoctorDetailsScreen() {
       const day = days[selectedDay];
       if (!day || !selectedTime) {
         setModalStep(null);
-        Alert.alert("Slot Unavailable", "Please choose another available time slot.");
+        Alert.alert(isRTL ? "الموعد غير متاح" : "Slot Unavailable", isRTL ? "يرجى اختيار موعد آخر متاح." : "Please choose another available time slot.");
         return;
       }
       const time = selectedTime;
@@ -400,10 +405,10 @@ export default function DoctorDetailsScreen() {
 
       if (editAppointmentId) {
         await updateAppointment(Number(editAppointmentId), payload);
-        Toast.show({ type: "success", text1: "Appointment Updated", text2: "Your booking has been rescheduled." });
+        Toast.show({ type: "success", text1: isRTL ? "تم تحديث الموعد" : "Appointment Updated", text2: isRTL ? "تم إعادة جدولة حجزك بنجاح." : "Your booking has been rescheduled." });
       } else {
         await bookAppointment(payload);
-        Toast.show({ type: "success", text1: "Booking Successful", text2: "Your appointment has been confirmed." });
+        Toast.show({ type: "success", text1: isRTL ? "تم الحجز بنجاح" : "Booking Successful", text2: isRTL ? "تم تأكيد موعدك بنجاح." : "Your appointment has been confirmed." });
       }
 
       setBookedSlots(prev => [...prev, { date: day.isoDate, time }]);
@@ -412,7 +417,7 @@ export default function DoctorDetailsScreen() {
       setShowSuccess(true);
       fetchAvailability();
     } catch (e: any) {
-      Alert.alert("Booking Failed", e.message);
+      Alert.alert(isRTL ? "فشل الحجز" : "Booking Failed", e.message);
     } finally {
       setBooking(false);
     }

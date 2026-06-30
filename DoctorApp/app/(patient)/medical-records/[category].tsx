@@ -272,7 +272,7 @@ export default function MedicalRecordsCategory() {
       console.log('📝 Saving record for patient:', pid, 'category:', category);
       
       if (pid <= 0) {
-        Alert.alert("Error", "Could not identify patient session. Please login again.");
+        Alert.alert(tr(isRTL ? "ar" : "en", "error" as any), "Could not identify patient session. Please login again.");
         return;
       }
 
@@ -305,7 +305,7 @@ export default function MedicalRecordsCategory() {
           res = await createSurgery(pid, payload);
         }
       } else if (category === "vitals") {
-        if (!vitalValue.trim()) { Toast.show({ type: "error", text1: "Please enter value" }); return; }
+        if (!vitalValue.trim()) { Toast.show({ type: "error", text1: tr(isRTL ? "ar" : "en", "please_enter_value" as any) }); return; }
         const payload = { readingType: vitalType, value: parseFloat(vitalValue), unit: vitalUnit, recordedBy: "Patient" };
         console.log('📤 Sending Vital:', payload);
         if (selectedItem) {
@@ -314,7 +314,7 @@ export default function MedicalRecordsCategory() {
           res = await createVital(pid, payload);
         }
       } else if (category === "medications") {
-        if (!medName.trim()) { Toast.show({ type: "error", text1: "Please enter name" }); return; }
+        if (!medName.trim()) { Toast.show({ type: "error", text1: tr(isRTL ? "ar" : "en", "please_enter_name" as any) }); return; }
         const payload = { medicationName: medName, dosage: medDosage, frequency: medFreq, form: "Pill", startDate: new Date().toISOString().split('T')[0], isActive: true, isChronic: false };
         console.log('📤 Sending Medication:', payload);
         if (selectedItem) {
@@ -337,12 +337,12 @@ export default function MedicalRecordsCategory() {
       }
 
       console.log('✅ Save result:', res);
-      Toast.show({ type: "success", text1: selectedItem ? "Record updated" : "Record added" });
+      Toast.show({ type: "success", text1: selectedItem ? tr(isRTL ? "ar" : "en", "record_updated" as any) : tr(isRTL ? "ar" : "en", "record_added" as any) });
       setShowModal(false);
       fetchData();
     } catch (err: any) {
       console.error("❌ Failed to save record:", err);
-      Alert.alert("Error", err.message || "Could not save record.");
+      Alert.alert(tr(isRTL ? "ar" : "en", "error" as any), err.message || tr(isRTL ? "ar" : "en", "could_not_save_record" as any));
     } finally {
       setSaving(false);
     }
@@ -352,11 +352,11 @@ export default function MedicalRecordsCategory() {
   const pickImage = async () => {
     Alert.alert(
       tr("select_image" as any),
-      "Would you like to take a new photo or choose from your gallery?",
+      tr(isRTL ? "ar" : "en", "photo_prompt" as any),
       [
-        { text: "Take Photo", onPress: () => handleImageSource(true) },
-        { text: "Choose from Gallery", onPress: () => handleImageSource(false) },
-        { text: "Cancel", style: "cancel" }
+        { text: tr(isRTL ? "ar" : "en", "take_photo" as any), onPress: () => handleImageSource(true) },
+        { text: tr(isRTL ? "ar" : "en", "choose_from_gallery" as any), onPress: () => handleImageSource(false) },
+        { text: tr(isRTL ? "ar" : "en", "cancel" as any), style: "cancel" }
       ]
     );
   };
@@ -366,7 +366,7 @@ export default function MedicalRecordsCategory() {
       if (useCamera) {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert("Permission Needed", "Camera access is required to take photos.");
+          Alert.alert(tr(isRTL ? "ar" : "en", "permission_needed" as any), tr(isRTL ? "ar" : "en", "camera_access_required" as any));
           return;
         }
       }
@@ -385,7 +385,7 @@ export default function MedicalRecordsCategory() {
         setDocUri(result.assets[0].uri);
       }
     } catch (e: any) {
-      Toast.show({ type: "error", text1: e.message || "Failed to pick image" });
+      Toast.show({ type: "error", text1: e.message || tr(isRTL ? "ar" : "en", "failed_pick_image" as any) });
     }
   };
 

@@ -359,14 +359,16 @@ export default function DoctorsScreen() {
           const hasSchedule = ((item as any).hasSchedule ?? true) && ((item as any).isScheduleVisible ?? true);
           
           // Calculate mock distance if nearby mode is on
-          const distance = isNearby ? `${((Number(item.id) * 7) % 50 / 10).toFixed(1)} km away` : (item.location || "Medical Center");
+          const distance = isNearby 
+            ? (isRTL ? `على بعد ${((Number(item.id) * 7) % 50 / 10).toFixed(1)} كم` : `${((Number(item.id) * 7) % 50 / 10).toFixed(1)} km away`)
+            : (item.location || (isRTL ? "المركز الطبي" : "Medical Center"));
           
           return (
             <DoctorCard
               doctor={{
                 ...item,
                 id: String(item.id),
-                experience: `${years} yrs`,
+                experience: isRTL ? `خبرة ${years} سنوات` : `${years} yrs`,
                 location: distance,
                 hasSchedule,
               }}

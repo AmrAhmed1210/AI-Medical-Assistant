@@ -5,6 +5,7 @@ import {
 } from "react-native";
 import { Brain, ChevronDown, ChevronUp, FileText } from "lucide-react-native";
 import { COLORS } from "../../constants/colors";
+import { useLanguage } from "../../context/LanguageContext";
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -24,7 +25,34 @@ const urgencyConfig = {
   emergency: { bg: "#FEE2E2", text: "#991B1B" },
 };
 
+const getLocalizedSeverity = (severity: string, isRTL: boolean) => {
+  if (isRTL) {
+    switch (severity) {
+      case "low": return "منخفض";
+      case "medium": return "متوسط";
+      case "high": return "مرتفع";
+      case "critical": return "حرج";
+      default: return severity;
+    }
+  }
+  return severity.charAt(0).toUpperCase() + severity.slice(1);
+};
+
+const getLocalizedUrgency = (urgency: string, isRTL: boolean) => {
+  if (isRTL) {
+    switch (urgency) {
+      case "routine": return "روتيني";
+      case "soon": return "قريباً";
+      case "urgent": return "عاجل";
+      case "emergency": return "طوارئ";
+      default: return urgency;
+    }
+  }
+  return urgency.charAt(0).toUpperCase() + urgency.slice(1);
+};
+
 function ReportCard({ report }: { report: any }) {
+  const { tr, isRTL } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const sev = severityConfig[report.severity as keyof typeof severityConfig];
 
@@ -33,23 +61,31 @@ function ReportCard({ report }: { report: any }) {
     setExpanded(!expanded);
   };
 
+  const localizedDiagnosis = isRTL
+    ? (report.diagnosis === "Acute Coronary Syndrome" ? "متلازمة الشريان التاجي الحادة" : "صداع نصفي خفيف")
+    : report.diagnosis;
+
+  const localizedDate = isRTL
+    ? report.date.replace("Oct", "أكتوبر")
+    : report.date;
+
   return (
     <View style={styles.reportCard}>
-      <TouchableOpacity onPress={toggleExpand} style={styles.reportHeader} activeOpacity={0.7}>
+      <TouchableOpacity onPress={toggleExpand} style={[styles.reportHeader, { flexDirection: isRTL ? "row-reverse" : "row" }]} activeOpacity={0.7}>
         <View style={[styles.iconBox, { backgroundColor: sev.bg }]}>
           <Brain size={20} color={sev.color} />
         </View>
-        <View style={styles.headerInfo}>
-          <View style={styles.nameRow}>
+        <View style={[styles.headerInfo, isRTL ? { marginRight: 12, marginLeft: 0, alignItems: "flex-end" } : { marginLeft: 12 }]}>
+          <View style={[styles.nameRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
             <Text style={styles.patientName}>{report.patientName}</Text>
             <View style={[styles.miniBadge, { backgroundColor: sev.bg }]}>
-              <Text style={[styles.miniBadgeText, { color: sev.text }]}>{report.severity}</Text>
+              <Text style={[styles.miniBadgeText, { color: sev.text }]}>{getLocalizedSeverity(report.severity, isRTL)}</Text>
             </View>
           </View>
-          <Text style={styles.diagnosisText}>{report.diagnosis}</Text>
-          <Text style={styles.dateText}>{report.date}</Text>
+          <Text style={[styles.diagnosisText, { textAlign: isRTL ? "right" : "left" }]}>{localizedDiagnosis}</Text>
+          <Text style={styles.dateText}>{localizedDate}</Text>
         </View>
-        <View style={styles.headerRight}>
+        <View style={[styles.headerRight, { alignItems: isRTL ? "flex-start" : "flex-end" }]}>
           <Text style={styles.confidenceMain}>{Math.round(report.confidence * 100)}%</Text>
           {expanded ? <ChevronUp size={16} color="#999" /> : <ChevronDown size={16} color="#999" />}
         </View>
@@ -59,41 +95,63 @@ function ReportCard({ report }: { report: any }) {
         <View style={styles.expandedContent}>
           <View style={styles.divider} />
 
-          <View style={styles.badgeRow}>
+          <View style={[styles.badgeRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
             <View style={[styles.detailBadge, { backgroundColor: sev.bg }]}>
-              <Text style={[styles.detailBadgeText, { color: sev.text }]}>Severity: {report.severity}</Text>
+              <Text style={[styles.detailBadgeText, { color: sev.text }]}>
+                {isRTL ? `الشدة: ${getLocalizedSeverity(report.severity, isRTL)}` : `Severity: ${getLocalizedSeverity(report.severity, isRTL)}`}
+              </Text>
             </View>
             <View style={[styles.detailBadge, { backgroundColor: urgencyConfig[report.urgency as keyof typeof urgencyConfig].bg }]}>
               <Text style={[styles.detailBadgeText, { color: urgencyConfig[report.urgency as keyof typeof urgencyConfig].text }]}>
-                Urgency: {report.urgency}
+                {isRTL ? `الأهمية: ${getLocalizedUrgency(report.urgency, isRTL)}` : `Urgency: ${getLocalizedUrgency(report.urgency, isRTL)}`}
               </Text>
             </View>
           </View>
 
-          <View style={styles.detailSection}>
-            <Text style={styles.detailTitle}>Reported Symptoms</Text>
-            <View style={styles.symptomsWrap}>
-              {report.symptoms.map((s: string, i: number) => (
-                <View key={i} style={styles.symptomTag}>
-                  <Text style={styles.symptomText}>{s}</Text>
-                </View>
-              ))}
+          <View style={[styles.detailSection, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
+            <Text style={styles.detailTitle}>{tr("reported_symptoms")}</Text>
+            <View style={[styles.symptomsWrap, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+              {report.symptoms.map((s: string, i: number) => {
+                let localizedSymptom = s;
+                if (isRTL) {
+                  if (s === "Chest pain") localizedSymptom = "ألم بالصدر";
+                  else if (s === "Shortness of breath") localizedSymptom = "ضيق تنفس";
+                  else if (s === "Nausea") localizedSymptom = "غثيان";
+                  else if (s === "Headache") localizedSymptom = "صداع";
+                  else if (s === "Light sensitivity") localizedSymptom = "حساسية ضوء";
+                }
+                return (
+                  <View key={i} style={styles.symptomTag}>
+                    <Text style={styles.symptomText}>{localizedSymptom}</Text>
+                  </View>
+                );
+              })}
             </View>
           </View>
 
-          <View style={styles.detailSection}>
-            <Text style={styles.detailTitle}>AI Recommendations</Text>
-            {report.recommendations.map((rec: string, i: number) => (
-              <View key={i} style={styles.recRow}>
-                <View style={styles.bullet} />
-                <Text style={styles.recText}>{rec}</Text>
-              </View>
-            ))}
+          <View style={[styles.detailSection, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
+            <Text style={styles.detailTitle}>{tr("ai_recommendations")}</Text>
+            {report.recommendations.map((rec: string, i: number) => {
+              let localizedRec = rec;
+              if (isRTL) {
+                if (rec === "Immediate ECG") localizedRec = "تخطيط قلب فوري";
+                else if (rec === "Administer Aspirin") localizedRec = "إعطاء أسبرين";
+                else if (rec === "Refer to ICU") localizedRec = "تحويل للعناية المركزة";
+                else if (rec === "Rest in dark room") localizedRec = "الراحة في غرفة مظلمة";
+                else if (rec === "Oral hydration") localizedRec = "ترطيب وسوائل";
+              }
+              return (
+                <View key={i} style={[styles.recRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                  <View style={styles.bullet} />
+                  <Text style={[styles.recText, { textAlign: isRTL ? "right" : "left" }]}>{localizedRec}</Text>
+                </View>
+              );
+            })}
           </View>
 
           <View style={styles.detailSection}>
-            <View style={styles.barLabelRow}>
-              <Text style={styles.detailTitle}>AI Confidence</Text>
+            <View style={[styles.barLabelRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+              <Text style={styles.detailTitle}>{tr("ai_confidence")}</Text>
               <Text style={styles.confidenceValue}>{Math.round(report.confidence * 100)}%</Text>
             </View>
             <View style={styles.barBg}>
@@ -101,13 +159,13 @@ function ReportCard({ report }: { report: any }) {
             </View>
           </View>
 
-          <View style={styles.actionRow}>
+          <View style={[styles.actionRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
             <TouchableOpacity style={styles.approveBtn}>
               <FileText size={14} color="#FFF" />
-              <Text style={styles.approveBtnText}>Approve Report</Text>
+              <Text style={styles.approveBtnText}>{tr("approve_report")}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.editBtn}>
-              <Text style={styles.editBtnText}>Edit Diagnosis</Text>
+              <Text style={styles.editBtnText}>{tr("edit_diagnosis")}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -117,6 +175,7 @@ function ReportCard({ report }: { report: any }) {
 }
 
 export default function DoctorAIReports() {
+  const { tr, isRTL } = useLanguage();
   const aiReports = [
     {
       id: "1",
@@ -144,19 +203,19 @@ export default function DoctorAIReports() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 50 }}>
-      <View style={styles.pageHeader}>
-        <Text style={styles.title}>AI Medical Reports</Text>
-        <Text style={styles.subtitle}>AI-generated diagnosis reports for your patients</Text>
+      <View style={[styles.pageHeader, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
+        <Text style={styles.title}>{tr("ai_medical_reports")}</Text>
+        <Text style={[styles.subtitle, { textAlign: isRTL ? "right" : "left" }]}>{tr("ai_gen_reports_desc")}</Text>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.summaryScroll} contentContainerStyle={{ gap: 10 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.summaryScroll} contentContainerStyle={{ gap: 10, flexDirection: isRTL ? "row-reverse" : "row" }}>
         <View style={[styles.summaryCard, { backgroundColor: "#E0F2F1" }]}>
           <Text style={[styles.summaryCount, { color: COLORS.primary }]}>{aiReports.length}</Text>
-          <Text style={[styles.summaryLabel, { color: COLORS.primary }]}>Total</Text>
+          <Text style={[styles.summaryLabel, { color: COLORS.primary }]}>{tr("total")}</Text>
         </View>
         <View style={[styles.summaryCard, { backgroundColor: "#FEE2E2" }]}>
           <Text style={[styles.summaryCount, { color: "#EF4444" }]}>1</Text>
-          <Text style={[styles.summaryLabel, { color: "#EF4444" }]}>Critical</Text>
+          <Text style={[styles.summaryLabel, { color: "#EF4444" }]}>{tr("critical")}</Text>
         </View>
       </ScrollView>
 

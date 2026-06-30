@@ -21,6 +21,7 @@ import {
   type PatientHistory,
 } from "../../services/visitService";
 import { getMedicationSchedule, type MedicationScheduleItem } from "../../services/medicationService";
+import { useLanguage } from "../../context/LanguageContext";
 
 const normalRanges = {
   bpSystolic: { min: 90, max: 120, label: "90-120 mmHg" },
@@ -38,6 +39,7 @@ function parseNum(v: string): number | undefined {
 
 export default function DoctorWorkspaceScreen() {
   const router = useRouter();
+  const { tr, isRTL } = useLanguage();
   const params = useLocalSearchParams<{ visitId?: string; patientId?: string }>();
   const visitId = Number(params.visitId ?? 0);
   const patientIdFromParam = Number(params.patientId ?? 0);
@@ -59,10 +61,14 @@ export default function DoctorWorkspaceScreen() {
   const [followUpTime, setFollowUpTime] = useState("");
   const [followUpNotes, setFollowUpNotes] = useState("");
   const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const DAYS_OF_WEEK_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
   const calculateNextDateForDay = (dayName: string) => {
     if (!dayName) return "";
-    const dayIndex = DAYS_OF_WEEK.indexOf(dayName);
+    let dayIndex = DAYS_OF_WEEK.indexOf(dayName);
+    if (dayIndex === -1) {
+      dayIndex = DAYS_OF_WEEK_AR.indexOf(dayName);
+    }
     if (dayIndex === -1) return "";
     const today = new Date();
     let diff = dayIndex - today.getDay();
@@ -101,7 +107,9 @@ export default function DoctorWorkspaceScreen() {
       if (visit.followUpDate) {
          // Try to map back to day of week, or leave followUpDay empty if it's already a past date
          const d = new Date(visit.followUpDate);
-         if (!isNaN(d.getTime())) setFollowUpDay(DAYS_OF_WEEK[d.getDay()]);
+         if (!isNaN(d.getTime())) {
+           setFollowUpDay(isRTL ? DAYS_OF_WEEK_AR[d.getDay()] : DAYS_OF_WEEK[d.getDay()]);
+         }
       }
       setFollowUpTime(visit.followUpTime || "");
       setFollowUpNotes(visit.followUpNotes || "");
@@ -111,7 +119,7 @@ export default function DoctorWorkspaceScreen() {
       setNotes(visit.notes || "");
       setIsClosed(String(visit.status || "").toLowerCase() === "closed");
     } catch (e: any) {
-      Toast.show({ type: "error", text1: e?.message || "Failed to load workspace" });
+      Toast.show({ type: "error", text1: e?.message || tr("error") });
     } finally {
       setLoading(false);
     }
@@ -122,10 +130,10 @@ export default function DoctorWorkspaceScreen() {
     const d = parseNum(bpDia);
     const glu = parseNum(sugar);
     if ((s != null && s > 180) || (d != null && d > 120) || (glu != null && glu > 200)) {
-      return "CRITICAL VALUE - Requires immediate attention";
+      return isRTL ? "قيمة حرجة - تتطلب اتخاذ إجراء فوري" : "CRITICAL VALUE - Requires immediate attention";
     }
     return "";
-  }, [bpSys, bpDia, sugar]);
+  }, [bpSys, bpDia, sugar, isRTL]);
 
   const vitalWarnings = useMemo(
     () => ({
@@ -204,9 +212,9 @@ export default function DoctorWorkspaceScreen() {
         followUpNotes,
         vitalSigns: buildVitalPayload(),
       });
-      Toast.show({ type: "success", text1: "Draft saved" });
+      Toast.show({ type: "success", text1: isRTL ? "تم حفظ المسودة بنجاح" : "Draft saved" });
     } catch (e: any) {
-      Toast.show({ type: "error", text1: e?.message || "Failed to save draft" });
+      Toast.show({ type: "error", text1: e?.message || tr("error") });
     } finally {
       setSaving(false);
     }
@@ -214,26 +222,30 @@ export default function DoctorWorkspaceScreen() {
 
   const onCloseVisit = () => {
     if (!visitId || isClosed) return;
-    Alert.alert("Close Visit", "Once closed, this visit cannot be edited. Confirm?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Confirm",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            setSaving(true);
-            await onSaveDraft();
-            await closeVisit(visitId);
-            setIsClosed(true);
-            router.push({ pathname: "/(doctor)/visit-summary", params: { visitId: String(visitId) } });
-          } catch (e: any) {
-            Toast.show({ type: "error", text1: e?.message || "Failed to close visit" });
-          } finally {
-            setSaving(false);
-          }
+    Alert.alert(
+      isRTL ? "إنهاء الزيارة" : "Close Visit",
+      isRTL ? "بمجرد إغلاق الزيارة، لا يمكن تعديلها. هل تؤكد الإغلاق؟" : "Once closed, this visit cannot be edited. Confirm?",
+      [
+        { text: tr("cancel"), style: "cancel" },
+        {
+          text: tr("confirm"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setSaving(true);
+              await onSaveDraft();
+              await closeVisit(visitId);
+              setIsClosed(true);
+              router.push({ pathname: "/(doctor)/visit-summary", params: { visitId: String(visitId) } });
+            } catch (e: any) {
+              Toast.show({ type: "error", text1: e?.message || tr("error") });
+            } finally {
+              setSaving(false);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   if (loading) {
@@ -246,37 +258,37 @@ export default function DoctorWorkspaceScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.pageTitle}>Clinical Workspace</Text>
-      <Text style={styles.pageSubtitle}>3 easy steps: patient overview, visit notes, then save.</Text>
-      {isClosed && <Text style={styles.closedHint}>This visit is closed and read-only.</Text>}
-      {!!criticalAlert && <Text style={styles.criticalBanner}>{criticalAlert}</Text>}
+      <Text style={[styles.pageTitle, { textAlign: isRTL ? "right" : "left" }]}>{tr("clinical_workspace")}</Text>
+      <Text style={[styles.pageSubtitle, { textAlign: isRTL ? "right" : "left" }]}>{tr("workspace_desc")}</Text>
+      {isClosed && <Text style={[styles.closedHint, { textAlign: isRTL ? "right" : "left" }]}>{tr("visit_read_only")}</Text>}
+      {!!criticalAlert && <Text style={[styles.criticalBanner, { textAlign: isRTL ? "right" : "left" }]}>{criticalAlert}</Text>}
 
-      <View style={styles.card}>
-        <Text style={styles.stepTitle}>Step 1 - Patient Overview</Text>
-        <Text style={styles.meta}>Blood Type: {history?.bloodType || "-"}</Text>
-        <Text style={styles.meta}>Allergies</Text>
-        <View style={styles.tagWrap}>
+      <View style={[styles.card, { alignItems: isRTL ? "flex-end" : "stretch" }]}>
+        <Text style={styles.stepTitle}>{tr("step_1_overview")}</Text>
+        <Text style={styles.meta}>{isRTL ? "فصيلة الدم: " : "Blood Type: "}{history?.bloodType || "-"}</Text>
+        <Text style={styles.meta}>{isRTL ? "الحساسية" : "Allergies"}</Text>
+        <View style={[styles.tagWrap, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           {(history?.allergies || []).slice(0, 4).map((a, idx) => (
             <View key={`${a.allergenName}_${idx}`} style={styles.tagItem}>
               <Text style={styles.tagText}>{a.allergenName}</Text>
             </View>
           ))}
-          {(history?.allergies || []).length === 0 && <Text style={styles.metaMuted}>No known allergies</Text>}
+          {(history?.allergies || []).length === 0 && <Text style={styles.metaMuted}>{tr("no_allergies_known")}</Text>}
         </View>
-        <Text style={[styles.meta, { marginTop: 8 }]}>Active Medications</Text>
-        <View style={styles.tagWrap}>
+        <Text style={[styles.meta, { marginTop: 8 }]}>{isRTL ? "الأدوية النشطة" : "Active Medications"}</Text>
+        <View style={[styles.tagWrap, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           {(history?.medications || []).slice(0, 4).map((m, idx) => (
             <View key={`${m.medicationName}_${idx}`} style={styles.tagItem}>
               <Text style={styles.tagText}>{m.medicationName}</Text>
             </View>
           ))}
-          {(history?.medications || []).length === 0 && <Text style={styles.metaMuted}>No active medications</Text>}
+          {(history?.medications || []).length === 0 && <Text style={styles.metaMuted}>{tr("no_meds_active")}</Text>}
         </View>
       </View>
 
-      <View style={styles.card}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Past Visits Summary (Last 8 Months)</Text>
+      <View style={[styles.card, { alignItems: isRTL ? "flex-end" : "stretch" }]}>
+        <View style={[styles.sectionHeaderRow, { flexDirection: isRTL ? "row-reverse" : "row", width: "100%" }]}>
+          <Text style={styles.sectionTitle}>{tr("past_visits_8m")}</Text>
           <View style={styles.langToggle}>
             <TouchableOpacity onPress={() => setVisitLang("en")} style={[styles.langBtn, visitLang === "en" && styles.langBtnActive]}>
               <Text style={[styles.langBtnText, visitLang === "en" && styles.langBtnTextActive]}>EN</Text>
@@ -287,22 +299,22 @@ export default function DoctorWorkspaceScreen() {
           </View>
         </View>
         {(history?.lastVisits || []).length === 0 ? (
-          <Text style={styles.metaMuted}>
+          <Text style={[styles.metaMuted, { textAlign: isRTL ? "right" : "left" }]}>
             {visitLang === "ar" ? "لا توجد زيارات في آخر 8 أشهر." : "No previous visits found in the last 8 months."}
           </Text>
         ) : (
           (history?.lastVisits || []).map((v: any, idx: number) => (
-            <View key={v.id || idx} style={{ marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <View key={v.id || idx} style={{ marginBottom: 12, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', width: "100%" }}>
+              <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                 <Text style={{ fontWeight: '700', fontSize: 14, color: '#1E293B' }}>{v.visitDate}</Text>
                 <Text style={{ fontSize: 12, color: '#059669', fontWeight: '600' }}>
-                  {v.doctorName ? `Dr. ${v.doctorName}` : 'Unknown'}
+                  {v.doctorName ? (isRTL ? `د. ${v.doctorName}` : `Dr. ${v.doctorName}`) : (isRTL ? "غير معروف" : "Unknown")}
                 </Text>
               </View>
               {v.doctorSpecialty && (
-                <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }}>{v.doctorSpecialty}</Text>
+                <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6, textAlign: isRTL ? 'right' : 'left' }}>{v.doctorSpecialty}</Text>
               )}
-              <Text style={{ fontSize: 13, color: '#475569', marginBottom: 4 }}>
+              <Text style={{ fontSize: 13, color: '#475569', marginBottom: 4, textAlign: isRTL ? 'right' : 'left' }}>
                 <Text style={{ fontWeight: '600' }}>{visitLang === "ar" ? "الشكوى: " : "Complaint: "}</Text>{v.chiefComplaint}
               </Text>
               {(visitLang === "ar" ? (v.summaryAr || v.summary) : (v.summaryEn || v.summary)) && (
@@ -316,12 +328,12 @@ export default function DoctorWorkspaceScreen() {
         )}
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Today Medications</Text>
+      <View style={[styles.card, { alignItems: isRTL ? "flex-end" : "stretch" }]}>
+        <Text style={styles.sectionTitle}>{isRTL ? "أدوية اليوم" : "Today Medications"}</Text>
         {schedule.length === 0 ? (
-          <Text style={styles.metaMuted}>No schedule for this patient today.</Text>
+          <Text style={styles.metaMuted}>{isRTL ? "لا توجد أدوية مجدولة لهذا المريض اليوم." : "No schedule for this patient today."}</Text>
         ) : (
-          <View style={styles.tagWrap}>
+          <View style={[styles.tagWrap, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
             {schedule.slice(0, 8).map((item, idx) => (
               <View key={`${item.medicationTrackerId}_${idx}`} style={styles.scheduleTag}>
                 <Text style={styles.scheduleTagText}>
@@ -333,50 +345,56 @@ export default function DoctorWorkspaceScreen() {
         )}
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.stepTitle}>Step 2 - Visit Notes</Text>
-        <Text style={styles.fieldLabel}>Chief Complaint</Text>
-        <TextInput editable={!isClosed} value={chiefComplaint} onChangeText={setChiefComplaint} placeholder="Example: headache for 2 days" style={styles.input} />
-        <Text style={styles.fieldLabel}>HPI</Text>
-        <TextInput editable={!isClosed} value={hpi} onChangeText={setHpi} placeholder="Brief history of symptoms" style={styles.input} multiline />
-        <Text style={styles.fieldLabel}>Examination</Text>
-        <TextInput editable={!isClosed} value={exam} onChangeText={setExam} placeholder="What you found on exam" style={styles.input} multiline />
-        <Text style={styles.fieldLabel}>Assessment</Text>
-        <TextInput editable={!isClosed} value={assessment} onChangeText={setAssessment} placeholder="Likely diagnosis" style={styles.input} multiline />
-        <Text style={styles.fieldLabel}>Plan</Text>
-        <TextInput editable={!isClosed} value={plan} onChangeText={setPlan} placeholder="Treatment and next steps" style={styles.input} multiline />
-        <Text style={styles.fieldLabel}>Additional Notes</Text>
-        <TextInput editable={!isClosed} value={notes} onChangeText={setNotes} placeholder="Optional note for the record" style={styles.input} multiline />
+      <View style={[styles.card, { alignItems: isRTL ? "flex-end" : "stretch" }]}>
+        <Text style={styles.stepTitle}>{tr("step_2_notes")}</Text>
+        
+        <Text style={styles.fieldLabel}>{tr("chief_complaint")}</Text>
+        <TextInput editable={!isClosed} value={chiefComplaint} onChangeText={setChiefComplaint} placeholder={isRTL ? "مثال: صداع لمدة يومين" : "Example: headache for 2 days"} style={[styles.input, { textAlign: isRTL ? "right" : "left", width: "100%" }]} />
+        
+        <Text style={styles.fieldLabel}>{isRTL ? "تاريخ المرض الحالي (HPI)" : "HPI"}</Text>
+        <TextInput editable={!isClosed} value={hpi} onChangeText={setHpi} placeholder={isRTL ? "تاريخ مختصر للأعراض" : "Brief history of symptoms"} style={[styles.input, { textAlign: isRTL ? "right" : "left", width: "100%" }]} multiline />
+        
+        <Text style={styles.fieldLabel}>{isRTL ? "الفحص السريري" : "Examination"}</Text>
+        <TextInput editable={!isClosed} value={exam} onChangeText={setExam} placeholder={isRTL ? "نتائج الفحص البدني والسريري" : "What you found on exam"} style={[styles.input, { textAlign: isRTL ? "right" : "left", width: "100%" }]} multiline />
+        
+        <Text style={styles.fieldLabel}>{tr("assessment")}</Text>
+        <TextInput editable={!isClosed} value={assessment} onChangeText={setAssessment} placeholder={isRTL ? "التشخيص المحتمل" : "Likely diagnosis"} style={[styles.input, { textAlign: isRTL ? "right" : "left", width: "100%" }]} multiline />
+        
+        <Text style={styles.fieldLabel}>{tr("plan")}</Text>
+        <TextInput editable={!isClosed} value={plan} onChangeText={setPlan} placeholder={isRTL ? "العلاج والخطوات التالية" : "Treatment and next steps"} style={[styles.input, { textAlign: isRTL ? "right" : "left", width: "100%" }]} multiline />
+        
+        <Text style={styles.fieldLabel}>{isRTL ? "ملاحظات إضافية" : "Additional Notes"}</Text>
+        <TextInput editable={!isClosed} value={notes} onChangeText={setNotes} placeholder={isRTL ? "ملاحظة اختيارية للسجل الطبي" : "Optional note for the record"} style={[styles.input, { textAlign: isRTL ? "right" : "left", width: "100%" }]} multiline />
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Quick Vitals</Text>
-        <Text style={styles.metaMuted}>Enter only available readings. Abnormal values are highlighted automatically.</Text>
-        <View style={styles.row}>
-          <TextInput editable={!isClosed} value={bpSys} onChangeText={setBpSys} placeholder="BP Sys" style={[styles.input, styles.smallInput, vitalWarnings.bpSys && styles.inputWarn]} />
-          <TextInput editable={!isClosed} value={bpDia} onChangeText={setBpDia} placeholder="BP Dia" style={[styles.input, styles.smallInput, vitalWarnings.bpDia && styles.inputWarn]} />
+      <View style={[styles.card, { alignItems: isRTL ? "flex-end" : "stretch" }]}>
+        <Text style={styles.sectionTitle}>{isRTL ? "العلامات الحيوية السريعة" : "Quick Vitals"}</Text>
+        <Text style={[styles.metaMuted, { textAlign: isRTL ? "right" : "left" }]}>{isRTL ? "أدخل القراءات المتاحة فقط. سيتم تمييز القيم غير الطبيعية تلقائياً." : "Enter only available readings. Abnormal values are highlighted automatically."}</Text>
+        <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          <TextInput editable={!isClosed} value={bpSys} onChangeText={setBpSys} placeholder={isRTL ? "الضغط الانقباضي" : "BP Sys"} style={[styles.input, styles.smallInput, vitalWarnings.bpSys && styles.inputWarn, { textAlign: isRTL ? "right" : "left" }]} />
+          <TextInput editable={!isClosed} value={bpDia} onChangeText={setBpDia} placeholder={isRTL ? "الضغط الانبساطي" : "BP Dia"} style={[styles.input, styles.smallInput, vitalWarnings.bpDia && styles.inputWarn, { textAlign: isRTL ? "right" : "left" }]} />
         </View>
-        <View style={styles.row}>
-          <TextInput editable={!isClosed} value={sugar} onChangeText={setSugar} placeholder="Sugar" style={[styles.input, styles.smallInput, vitalWarnings.sugar && styles.inputWarn]} />
-          <TextInput editable={!isClosed} value={hr} onChangeText={setHr} placeholder="HR" style={[styles.input, styles.smallInput, vitalWarnings.hr && styles.inputWarn]} />
+        <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          <TextInput editable={!isClosed} value={sugar} onChangeText={setSugar} placeholder={isRTL ? "السكر" : "Sugar"} style={[styles.input, styles.smallInput, vitalWarnings.sugar && styles.inputWarn, { textAlign: isRTL ? "right" : "left" }]} />
+          <TextInput editable={!isClosed} value={hr} onChangeText={setHr} placeholder={isRTL ? "نبض القلب" : "HR"} style={[styles.input, styles.smallInput, vitalWarnings.hr && styles.inputWarn, { textAlign: isRTL ? "right" : "left" }]} />
         </View>
-        <View style={styles.row}>
-          <TextInput editable={!isClosed} value={temp} onChangeText={setTemp} placeholder="Temp" style={[styles.input, styles.smallInput, vitalWarnings.temp && styles.inputWarn]} />
-          <TextInput editable={!isClosed} value={spo2} onChangeText={setSpo2} placeholder="SpO2" style={[styles.input, styles.smallInput, vitalWarnings.spo2 && styles.inputWarn]} />
+        <View style={[styles.row, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          <TextInput editable={!isClosed} value={temp} onChangeText={setTemp} placeholder={isRTL ? "الحرارة" : "Temp"} style={[styles.input, styles.smallInput, vitalWarnings.temp && styles.inputWarn, { textAlign: isRTL ? "right" : "left" }]} />
+          <TextInput editable={!isClosed} value={spo2} onChangeText={setSpo2} placeholder={isRTL ? "الأكسجين" : "SpO2"} style={[styles.input, styles.smallInput, vitalWarnings.spo2 && styles.inputWarn, { textAlign: isRTL ? "right" : "left" }]} />
         </View>
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.stepTitle}>Step 3 - Follow-up</Text>
-        <View style={styles.switchRow}>
-          <Text style={styles.meta}>Follow-up required</Text>
+      <View style={[styles.card, { alignItems: isRTL ? "flex-end" : "stretch" }]}>
+        <Text style={styles.stepTitle}>{isRTL ? "الخطوة 3 - المتابعة" : "Step 3 - Follow-up"}</Text>
+        <View style={[styles.switchRow, { flexDirection: isRTL ? "row-reverse" : "row", width: "100%" }]}>
+          <Text style={styles.meta}>{isRTL ? "زيارة متابعة مطلوبة" : "Follow-up required"}</Text>
           <Switch disabled={isClosed} value={followUpRequired} onValueChange={setFollowUpRequired} />
         </View>
         {followUpRequired && (
           <>
-            <Text style={[styles.meta, { marginTop: 10, marginBottom: 5 }]}>Select Day</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-              {DAYS_OF_WEEK.map(d => (
+            <Text style={[styles.meta, { marginTop: 10, marginBottom: 5 }]}>{isRTL ? "اختر اليوم" : "Select Day"}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }} contentContainerStyle={{ flexDirection: isRTL ? "row-reverse" : "row" }}>
+              {(isRTL ? DAYS_OF_WEEK_AR : DAYS_OF_WEEK).map(d => (
                 <TouchableOpacity
                   key={d}
                   disabled={isClosed}
@@ -384,31 +402,31 @@ export default function DoctorWorkspaceScreen() {
                   style={{
                     paddingHorizontal: 16, paddingVertical: 8,
                     backgroundColor: followUpDay === d ? '#10B981' : '#E2E8F0',
-                    borderRadius: 20, marginRight: 8
+                    borderRadius: 20, marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0
                   }}
                 >
-                  <Text style={{ color: followUpDay === d ? '#fff' : '#475569', fontWeight: '600' }}>{d.substring(0,3)}</Text>
+                  <Text style={{ color: followUpDay === d ? '#fff' : '#475569', fontWeight: '600' }}>{isRTL ? d : d.substring(0,3)}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
             {followUpDay ? (
-              <Text style={{ color: '#059669', fontSize: 13, marginBottom: 10, fontWeight: '600' }}>
-                Will schedule for: {calculateNextDateForDay(followUpDay)}
+              <Text style={{ color: '#059669', fontSize: 13, marginBottom: 10, fontWeight: '600', textAlign: isRTL ? "right" : "left" }}>
+                {isRTL ? `سيتم الجدولة بتاريخ: ${calculateNextDateForDay(followUpDay)}` : `Will schedule for: ${calculateNextDateForDay(followUpDay)}`}
               </Text>
             ) : null}
-            <TextInput editable={!isClosed} value={followUpTime} onChangeText={setFollowUpTime} placeholder="Time (HH:MM)" style={styles.input} />
-            <TextInput editable={!isClosed} value={followUpNotes} onChangeText={setFollowUpNotes} placeholder="Notes for patient" style={styles.input} />
+            <TextInput editable={!isClosed} value={followUpTime} onChangeText={setFollowUpTime} placeholder={isRTL ? "الوقت (ساعة:دقيقة)" : "Time (HH:MM)"} style={[styles.input, { textAlign: isRTL ? "right" : "left", width: "100%" }]} />
+            <TextInput editable={!isClosed} value={followUpNotes} onChangeText={setFollowUpNotes} placeholder={isRTL ? "تعليمات للمريض" : "Notes for patient"} style={[styles.input, { textAlign: isRTL ? "right" : "left", width: "100%" }]} />
           </>
         )}
       </View>
 
       {!isClosed && (
-        <View style={styles.footerBtns}>
+        <View style={[styles.footerBtns, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <TouchableOpacity style={styles.saveBtn} onPress={onSaveDraft} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnTxt}>Save Draft</Text>}
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnTxt}>{isRTL ? "حفظ كمسودة" : "Save Draft"}</Text>}
           </TouchableOpacity>
           <TouchableOpacity style={styles.closeBtn} onPress={onCloseVisit} disabled={saving}>
-            <Text style={styles.btnTxt}>Finish Visit</Text>
+            <Text style={styles.btnTxt}>{isRTL ? "إنهاء الزيارة" : "Finish Visit"}</Text>
           </TouchableOpacity>
         </View>
       )}

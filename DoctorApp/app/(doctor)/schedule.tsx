@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from "react-native";
 import { Clock, User, Calendar as CalendarIcon } from "lucide-react-native";
 import { COLORS } from "../../constants/colors";
+import { useLanguage } from "../../context/LanguageContext";
 
 const weekDays = [
   { date: 15, day: "Mon" },
@@ -31,25 +32,64 @@ const scheduleData: Record<number, { time: string; patient: string; type: string
   ],
 };
 
+const getLocalizedDay = (day: string, isRTL: boolean) => {
+  if (isRTL) {
+    switch (day) {
+      case "Mon": return "الاثنين";
+      case "Tue": return "الثلاثاء";
+      case "Wed": return "الأربعاء";
+      case "Thu": return "الخميس";
+      case "Fri": return "الجمعة";
+      case "Sat": return "السبت";
+      case "Sun": return "الأحد";
+      default: return day;
+    }
+  }
+  return day;
+};
+
+const getLocalizedType = (type: string, isRTL: boolean) => {
+  if (isRTL) {
+    switch (type) {
+      case "Follow-up": return "متابعة";
+      case "Consultation": return "استشارة";
+      case "Review": return "مراجعة";
+      case "Pre-Op": return "تجهيز عملية";
+      case "Emergency": return "طوارئ";
+      case "New Patient": return "مريض جديد";
+      default: return type;
+    }
+  }
+  return type;
+};
+
+const getLocalizedTime = (time: string, isRTL: boolean) => {
+  if (isRTL) {
+    return time.replace("AM", "ص").replace("PM", "م");
+  }
+  return time;
+};
+
 export default function DoctorSchedule() {
+  const { tr, isRTL } = useLanguage();
   const [selectedDay, setSelectedDay] = useState(15);
   const slots = scheduleData[selectedDay] || [];
 
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>My Schedule</Text>
-        <Text style={styles.subtitle}>October 2024</Text>
+      <View style={[styles.header, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
+        <Text style={styles.title}>{tr("my_schedule")}</Text>
+        <Text style={styles.subtitle}>{isRTL ? "أكتوبر 2024" : "October 2024"}</Text>
       </View>
 
       {/* Day Picker (Horizontal Scroll) */}
       <View style={{ marginBottom: 25 }}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayPickerContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.dayPickerContainer, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           {weekDays.map((d) => {
             const count = (scheduleData[d.date] || []).length;
             const isSelected = selectedDay === d.date;
-            
+
             return (
               <TouchableOpacity
                 key={d.date}
@@ -57,7 +97,7 @@ export default function DoctorSchedule() {
                 style={[styles.dayButton, isSelected && styles.selectedDayButton]}
               >
                 <Text style={[styles.dateText, isSelected && styles.selectedText]}>{d.date}</Text>
-                <Text style={[styles.dayNameText, isSelected && styles.selectedSubtext]}>{d.day}</Text>
+                <Text style={[styles.dayNameText, isSelected && styles.selectedSubtext]}>{getLocalizedDay(d.day, isRTL)}</Text>
                 {count > 0 && (
                   <View style={[styles.dot, isSelected ? { backgroundColor: '#fff' } : { backgroundColor: COLORS.primary }]} />
                 )}
@@ -69,20 +109,24 @@ export default function DoctorSchedule() {
 
       {/* Timeline Section */}
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        <View style={styles.sectionTitleRow}>
+        <View style={[styles.sectionTitleRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <Text style={styles.sectionTitle}>
-            {weekDays.find((d) => d.date === selectedDay)?.day}, Oct {selectedDay}
+            {isRTL
+              ? (getLocalizedDay(weekDays.find((d) => d.date === selectedDay)?.day || "", true) + "، " + selectedDay + " أكتوبر")
+              : (weekDays.find((d) => d.date === selectedDay)?.day + ", Oct " + selectedDay)}
           </Text>
-          <Text style={styles.countText}>{slots.length} appointments</Text>
+          <Text style={styles.countText}>
+            {isRTL ? `${slots.length} ${tr("bookings")}` : `${slots.length} appointments`}
+          </Text>
         </View>
 
         {slots.length > 0 ? (
-          <View style={styles.timelineWrapper}>
+          <View style={[styles.timelineWrapper, { paddingLeft: isRTL ? 0 : 10, paddingRight: isRTL ? 10 : 0 }]}>
             {/* Vertical Line */}
-            <View style={styles.timelineLine} />
+            <View style={[styles.timelineLine, isRTL ? { right: 19, left: undefined } : { left: 19 }]} />
 
             {slots.map((slot, i) => (
-              <View key={i} style={styles.timelineItem}>
+              <View key={i} style={[styles.timelineItem, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
                 {/* Dot on line */}
                 <View style={styles.dotContainer}>
                   <View style={styles.timelineDot} />
@@ -90,19 +134,19 @@ export default function DoctorSchedule() {
 
                 {/* Card */}
                 <View style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.timeContainer}>
+                  <View style={[styles.cardHeader, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                    <View style={[styles.timeContainer, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
                       <Clock size={12} color={COLORS.primary} />
-                      <Text style={styles.timeText}>{slot.time}</Text>
+                      <Text style={styles.timeText}>{getLocalizedTime(slot.time, isRTL)}</Text>
                     </View>
                     <View style={styles.typeTag}>
-                      <Text style={styles.typeText}>{slot.type}</Text>
+                      <Text style={styles.typeText}>{getLocalizedType(slot.type, isRTL)}</Text>
                     </View>
                   </View>
-                  
-                  <View style={styles.patientRow}>
+
+                  <View style={[styles.patientRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
                     <User size={12} color="#888" />
-                    <Text style={styles.patientName}>{slot.patient}</Text>
+                    <Text style={[styles.patientName, isRTL ? { marginRight: 5 } : { marginLeft: 5 }]}>{slot.patient}</Text>
                   </View>
                 </View>
               </View>
@@ -114,8 +158,8 @@ export default function DoctorSchedule() {
             <View style={styles.emptyIconCircle}>
               <CalendarIcon size={32} color="#CCC" />
             </View>
-            <Text style={styles.emptyTitle}>No appointments</Text>
-            <Text style={styles.emptySubtitle}>Enjoy your day off, Doctor!</Text>
+            <Text style={styles.emptyTitle}>{tr("no_appointments")}</Text>
+            <Text style={styles.emptySubtitle}>{tr("enjoy_day_off")}</Text>
           </View>
         )}
       </ScrollView>
@@ -128,15 +172,15 @@ const styles = StyleSheet.create({
   header: { marginBottom: 20 },
   title: { fontSize: 22, fontWeight: "bold", color: "#1A1A1A" },
   subtitle: { fontSize: 13, color: "#888", marginTop: 2 },
-  
+
   dayPickerContainer: { paddingRight: 40, gap: 10 },
-  dayButton: { 
-    minWidth: 55, 
-    height: 75, 
-    backgroundColor: "#F0F0F0", 
-    borderRadius: 16, 
-    justifyContent: "center", 
-    alignItems: "center" 
+  dayButton: {
+    minWidth: 55,
+    height: 75,
+    backgroundColor: "#F0F0F0",
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center"
   },
   selectedDayButton: { backgroundColor: COLORS.primary, elevation: 4, shadowColor: COLORS.primary, shadowOpacity: 0.3, shadowRadius: 5 },
   dateText: { fontSize: 18, fontWeight: "bold", color: "#444" },
@@ -150,31 +194,31 @@ const styles = StyleSheet.create({
   countText: { fontSize: 11, color: "#999" },
 
   timelineWrapper: { paddingLeft: 10 },
-  timelineLine: { 
-    position: "absolute", 
-    left: 19, 
-    top: 10, 
-    bottom: 10, 
-    width: 1, 
-    backgroundColor: "#EEE" 
+  timelineLine: {
+    position: "absolute",
+    left: 19,
+    top: 10,
+    bottom: 10,
+    width: 1,
+    backgroundColor: "#EEE"
   },
   timelineItem: { flexDirection: "row", marginBottom: 15 },
   dotContainer: { width: 40, alignItems: "center", justifyContent: "center" },
-  timelineDot: { 
-    width: 12, 
-    height: 12, 
-    borderRadius: 6, 
-    backgroundColor: "#FFF", 
-    borderWidth: 2, 
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#FFF",
+    borderWidth: 2,
     borderColor: COLORS.primary,
     zIndex: 10
   },
-  card: { 
-    flex: 1, 
-    backgroundColor: "#FFF", 
-    borderRadius: 15, 
-    padding: 12, 
-    borderWidth: 1, 
+  card: {
+    flex: 1,
+    backgroundColor: "#FFF",
+    borderRadius: 15,
+    padding: 12,
+    borderWidth: 1,
     borderColor: "#F0F0F0",
     shadowColor: "#000",
     shadowOpacity: 0.02,

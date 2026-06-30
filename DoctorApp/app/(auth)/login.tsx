@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   View, Text, TextInput, StyleSheet, KeyboardAvoidingView,
   Platform, ScrollView, TouchableOpacity, Keyboard, ActivityIndicator,
-  Dimensions, Animated, Easing, Image, StatusBar
+  Dimensions, Animated, Easing, StatusBar
 } from "react-native";
 import { useRouter } from "expo-router";
 import Toast from "react-native-toast-message";
@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { loginApi, saveSession } from "../../services/authService";
+import { useLanguage } from "../../context/LanguageContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -26,10 +27,11 @@ const COLORS = {
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email,        setEmail]        = useState("");
-  const [password,     setPassword]     = useState("");
+  const { tr, isRTL } = useLanguage();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading,      setLoading]      = useState(false);
+  const [loading, setLoading] = useState(false);
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -64,14 +66,14 @@ export default function LoginScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     if (!email.trim() || !password.trim()) {
-      Toast.show({ type: "error", text1: "Please fill all fields", position: "top", topOffset: 60 });
+      Toast.show({ type: "error", text1: tr("please_write_comment"), position: "top", topOffset: 60 });
       return;
     }
 
     setLoading(true);
     try {
       const auth = await loginApi({
-        email:    email.toLowerCase().trim(),
+        email: email.toLowerCase().trim(),
         password: password,
       });
 
@@ -79,7 +81,7 @@ export default function LoginScreen() {
 
       Toast.show({
         type: "success",
-        text1: `Welcome back ${auth.name}!`,
+        text1: `${tr("welcome_back")} ${auth.name}!`,
         position: "top",
         topOffset: 60,
         visibilityTime: 1500,
@@ -94,7 +96,7 @@ export default function LoginScreen() {
     } catch (err: any) {
       Toast.show({
         type: "error",
-        text1: err.message || "Login failed",
+        text1: err.message || tr("error"),
         position: "top",
         topOffset: 60,
       });
@@ -107,7 +109,7 @@ export default function LoginScreen() {
   return (
     <View style={styles.mainContainer}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      
+
       <View style={[styles.bgCircle, styles.circleTop]} />
       <View style={[styles.bgCircle, styles.circleBottom]} />
 
@@ -117,25 +119,25 @@ export default function LoginScreen() {
         enabled={Platform.OS === "ios"}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          
+
           <Animated.View style={[styles.headerContainer, { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] }]}>
             <LinearGradient colors={[COLORS.primary, COLORS.primaryLight]} style={styles.iconWrapper}>
               <Ionicons name="medical" size={40} color="#fff" />
             </LinearGradient>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to access your health records</Text>
+            <Text style={styles.title}>{tr("welcome_back")}</Text>
+            <Text style={styles.subtitle}>{tr("sign_in_records")}</Text>
           </Animated.View>
 
           <Animated.View style={[styles.glassCard, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            
+
             <View style={[styles.inputGroup, focusedInput === "email" && styles.inputGroupFocused]}>
-              <Text style={styles.inputLabel}>Email Address</Text>
+              <Text style={styles.inputLabel}>{tr("email_address")}</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color={focusedInput === "email" ? COLORS.primary : COLORS.textMuted} style={styles.inputIcon} />
+                <Ionicons name="mail-outline" size={20} color={focusedInput === "email" ? COLORS.primary : COLORS.textMuted} style={[styles.inputIcon, { marginRight: isRTL ? 0 : 12, marginLeft: isRTL ? 12 : 0 }]} />
                 <TextInput
-                  placeholder="Enter your email"
+                  placeholder={tr("enter_email")}
                   placeholderTextColor="#94A3B8"
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: "right" }]}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -148,14 +150,14 @@ export default function LoginScreen() {
             </View>
 
             <View style={[styles.inputGroup, focusedInput === "password" && styles.inputGroupFocused]}>
-              <Text style={styles.inputLabel}>Password</Text>
+              <Text style={styles.inputLabel}>{tr("password")}</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color={focusedInput === "password" ? COLORS.primary : COLORS.textMuted} style={styles.inputIcon} />
+                <Ionicons name="lock-closed-outline" size={20} color={focusedInput === "password" ? COLORS.primary : COLORS.textMuted} style={[styles.inputIcon, { marginRight: isRTL ? 0 : 12, marginLeft: isRTL ? 12 : 0 }]} />
                 <TextInput
-                  placeholder="Enter your password"
+                  placeholder={tr("enter_password")}
                   placeholderTextColor="#94A3B8"
                   secureTextEntry={!showPassword}
-                  style={styles.input}
+                  style={[styles.input, isRTL && { textAlign: "right" }]}
                   value={password}
                   onChangeText={setPassword}
                   editable={!loading}
@@ -171,7 +173,7 @@ export default function LoginScreen() {
             </View>
 
             <TouchableOpacity style={styles.forgotBtn} activeOpacity={0.7}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
+              <Text style={styles.forgotText}>{tr("forgot_password")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -185,17 +187,17 @@ export default function LoginScreen() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Text style={styles.btnText}>Sign In</Text>
-                    <Ionicons name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 8 }} />
+                    <Text style={styles.btnText}>{tr("sign_in")}</Text>
+                    <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={20} color="#fff" style={{ [isRTL ? "marginRight" : "marginLeft"]: 8 }} />
                   </>
                 )}
               </LinearGradient>
             </TouchableOpacity>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+              <Text style={styles.footerText}>{isRTL ? "ليس لديك حساب؟ " : "Don't have an account? "}</Text>
               <TouchableOpacity onPress={() => router.push("/(auth)/register")} activeOpacity={0.7}>
-                <Text style={styles.linkText}>Create Account</Text>
+                <Text style={styles.linkText}>{tr("create_account")}</Text>
               </TouchableOpacity>
             </View>
 

@@ -10,9 +10,11 @@ import { logout } from "../../services/authService";
 import { getDoctorProfile, updateDoctorProfile, uploadDoctorPhoto, type DoctorProfileDto } from "../../services/doctorService";
 import Toast from 'react-native-toast-message';
 import * as ImagePicker from "expo-image-picker";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function DoctorProfile() {
   const router = useRouter();
+  const { tr, isRTL } = useLanguage();
   const [profile, setProfile] = useState<DoctorProfileDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -53,12 +55,12 @@ export default function DoctorProfile() {
 
   const handleLogout = () => {
     Alert.alert(
-      "Logout",
-      "Are you sure you want to log out?",
+      tr("sign_out"),
+      tr("sign_out_desc"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: tr("cancel"), style: "cancel" },
         { 
-          text: "Logout", 
+          text: tr("sign_out"), 
           style: "destructive",
           onPress: async () => {
             await logout();
@@ -72,7 +74,7 @@ export default function DoctorProfile() {
   const handleUploadPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Denied", "We need access to your photos to update your profile.");
+      Alert.alert(tr("permission_denied"), tr("allow_photos"));
       return;
     }
 
@@ -87,10 +89,10 @@ export default function DoctorProfile() {
       setUploading(true);
       try {
         await uploadDoctorPhoto(result.assets[0].uri);
-        Toast.show({ type: "success", text1: "Photo Updated!" });
+        Toast.show({ type: "success", text1: tr("photo_updated") });
         await loadProfile();
       } catch (e: any) {
-        Alert.alert("Upload Failed", e.message || "Failed to upload photo");
+        Alert.alert(tr("upload_failed"), e.message || tr("error"));
       } finally {
         setUploading(false);
       }
@@ -99,7 +101,7 @@ export default function DoctorProfile() {
 
   const handleSave = async () => {
     if (!phone.trim()) {
-      Alert.alert("Phone Required", "Please add a contact phone number. Patients need to be able to reach you.");
+      Alert.alert(tr("phone_required"), tr("please_add_phone"));
       return;
     }
     setSaving(true);
@@ -115,13 +117,13 @@ export default function DoctorProfile() {
       } as any);
       Toast.show({
         type: 'success',
-        text1: 'Success',
-        text2: 'Profile updated successfully! 👋'
+        text1: tr("success"),
+        text2: isRTL ? 'تم تحديث الملف الشخصي بنجاح! 👋' : 'Profile updated successfully! 👋'
       });
       await loadProfile();
       setIsEditing(false);
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Failed to update profile");
+      Alert.alert(tr("error"), e.message || tr("error"));
     } finally {
       setSaving(false);
     }
@@ -135,25 +137,25 @@ export default function DoctorProfile() {
     );
   }
 
-  const fullName = profile?.fullName?.trim() || "Doctor";
+  const fullName = profile?.fullName?.trim() || tr("doctor");
   const initials = fullName.split(" ").filter(Boolean).map((p) => p[0]?.toUpperCase() ?? "").slice(0, 2).join("") || "DR";
   const profileComplete = Boolean(profile?.bio?.trim() && profile?.photoUrl);
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>My Profile</Text>
+        <View style={[styles.header, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          <Text style={styles.title}>{tr("profile")}</Text>
           <TouchableOpacity onPress={() => isEditing ? handleSave() : setIsEditing(true)} disabled={saving}>
             {saving ? (
               <ActivityIndicator color={COLORS.primary} size="small" />
             ) : (
-              <Text style={styles.editBtnText}>{isEditing ? "Save" : "Edit Profile"}</Text>
+              <Text style={styles.editBtnText}>{isEditing ? tr("save") : (tr("edit") + " " + tr("profile"))}</Text>
             )}
           </TouchableOpacity>
         </View>
 
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <TouchableOpacity style={styles.avatarContainer} onPress={handleUploadPhoto} disabled={uploading}>
             {profile?.photoUrl ? (
               <Image source={{ uri: profile.photoUrl }} style={styles.avatar} />
@@ -162,7 +164,7 @@ export default function DoctorProfile() {
                 <Text style={styles.avatarText}>{initials}</Text>
               </View>
             )}
-            <View style={styles.cameraBadge}>
+            <View style={[styles.cameraBadge, isRTL ? { left: -2, right: undefined } : { right: -2 }]}>
               {uploading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
@@ -170,114 +172,116 @@ export default function DoctorProfile() {
               )}
             </View>
           </TouchableOpacity>
-          <View style={styles.profileInfo}>
+          <View style={[styles.profileInfo, isRTL ? { marginRight: 15, marginLeft: 0, alignItems: "flex-end" } : { marginLeft: 15 }]}>
             {isEditing ? (
-              <TextInput style={styles.nameInput} value={name} onChangeText={setName} placeholder="Full Name" />
+              <TextInput style={[styles.nameInput, { textAlign: isRTL ? "right" : "left" }]} value={name} onChangeText={setName} placeholder={tr("full_name_placeholder")} />
             ) : (
               <Text style={styles.doctorName}>{fullName}</Text>
             )}
-            <Text style={styles.specialtyText}>{profile?.specialty || "Specialty not set"}</Text>
-            <View style={styles.verifiedBadge}>
+            <Text style={styles.specialtyText}>{profile?.specialty || tr("not_set")}</Text>
+            <View style={[styles.verifiedBadge, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
               <Ionicons name={profileComplete ? "checkmark-circle" : "alert-circle"} size={14} color={profileComplete ? COLORS.primary : "#F59E0B"} />
-              <Text style={styles.verifiedText}>{profileComplete ? "Profile complete" : "Profile being completed"}</Text>
+              <Text style={styles.verifiedText}>{profileComplete ? tr("profile_complete") : tr("profile_being_completed")}</Text>
             </View>
           </View>
         </View>
 
         {isEditing ? (
-          <View style={styles.editSection}>
-            <Text style={styles.fieldLabel}>Biography</Text>
-            <TextInput style={[styles.input, styles.textarea]} value={bio} onChangeText={setBio} multiline placeholder="Tell patients about your background..." />
+          <View style={[styles.editSection, { alignItems: isRTL ? "flex-end" : "stretch" }]}>
+            <Text style={styles.fieldLabel}>{tr("biography")}</Text>
+            <TextInput style={[styles.input, styles.textarea, { textAlign: isRTL ? "right" : "left" }]} value={bio} onChangeText={setBio} multiline placeholder={tr("bio_placeholder")} />
 
-            <View style={styles.inputRow}>
+            <View style={[styles.inputRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>Consultation Fee (EGP)</Text>
-                <TextInput style={styles.input} value={fee} onChangeText={setFee} keyboardType="numeric" placeholder="e.g. 200" />
+                <Text style={[styles.fieldLabel, { textAlign: isRTL ? "right" : "left" }]}>{tr("consultation_fee_egp")}</Text>
+                <TextInput style={[styles.input, { textAlign: isRTL ? "right" : "left" }]} value={fee} onChangeText={setFee} keyboardType="numeric" placeholder={tr("fee_placeholder")} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.fieldLabel}>Experience (Years)</Text>
-                <TextInput style={styles.input} value={exp} onChangeText={setExp} keyboardType="numeric" placeholder="e.g. 10" />
+                <Text style={[styles.fieldLabel, { textAlign: isRTL ? "right" : "left" }]}>{tr("experience_years")}</Text>
+                <TextInput style={[styles.input, { textAlign: isRTL ? "right" : "left" }]} value={exp} onChangeText={setExp} keyboardType="numeric" placeholder={tr("exp_placeholder")} />
               </View>
             </View>
 
-            <Text style={[styles.fieldLabel, { color: '#EF4444' }]}>📞 Contact Phone * (Required)</Text>
+            <Text style={[styles.fieldLabel, { color: '#EF4444' }, { textAlign: isRTL ? "right" : "left" }]}>
+              {isRTL ? "📞 هاتف التواصل * (مطلوب)" : "📞 Contact Phone * (Required)"}
+            </Text>
             <TextInput
-              style={[styles.input, !phone.trim() && { borderColor: '#FCA5A5', borderWidth: 2 }]}
+              style={[styles.input, !phone.trim() && { borderColor: '#FCA5A5', borderWidth: 2 }, { textAlign: isRTL ? "right" : "left", width: "100%" }]}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
-              placeholder="e.g. +20 1XX XXX XXXX"
+              placeholder={tr("phone_placeholder")}
             />
             {!phone.trim() && (
-              <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 4 }}>⚠️ Phone number is required for patients to contact you</Text>
+              <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 4, textAlign: isRTL ? "right" : "left" }}>{tr("phone_required_warning")}</Text>
             )}
 
-            <Text style={styles.fieldLabel}>📍 Clinic Location</Text>
+            <Text style={[styles.fieldLabel, { textAlign: isRTL ? "right" : "left" }]}>{isRTL ? "📍 موقع العيادة" : "📍 Clinic Location"}</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { textAlign: isRTL ? "right" : "left", width: "100%" }]}
               value={location}
               onChangeText={setLocation}
-              placeholder="e.g. Cairo Medical Center, Nasr City"
+              placeholder={tr("location_placeholder")}
             />
 
-            <View style={styles.switchRow}>
-              <Text style={styles.fieldLabel}>Available for Appointments</Text>
+            <View style={[styles.switchRow, { flexDirection: isRTL ? "row-reverse" : "row", width: "100%" }]}>
+              <Text style={styles.fieldLabel}>{tr("avail_appointments")}</Text>
               <Switch value={avail} onValueChange={setAvail} trackColor={{ false: "#767577", true: COLORS.primary }} />
             </View>
             
             <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsEditing(false)}>
-              <Text style={styles.cancelBtnText}>Cancel Changes</Text>
+              <Text style={styles.cancelBtnText}>{tr("cancel_changes")}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <>
             <View style={styles.summaryCard}>
-              <SummaryRow icon="time-outline" label="Experience" value={profile?.yearsExperience ? `${profile.yearsExperience} years` : "Not set"} />
-              <SummaryRow icon="cash-outline" label="Consultation Fee" value={profile?.consultFee ? `${profile.consultFee} EGP` : "Not set"} />
-              <SummaryRow icon="call-outline" label="Contact Phone" value={(profile as any)?.phoneNumber || "⚠️ Not set — please add your phone number"} />
-              <SummaryRow icon="location-outline" label="Clinic Location" value={(profile as any)?.location || "Not set"} />
-              <SummaryRow icon="document-text-outline" label="Bio" value={profile?.bio || "Add your bio"} />
-              <SummaryRow icon="eye-outline" label="Visibility" value={profile?.isAvailable ? "Online" : "Offline"} />
+              <SummaryRow icon="time-outline" label={isRTL ? "الخبرة" : "Experience"} value={profile?.yearsExperience ? (isRTL ? `${profile.yearsExperience} ${tr("years")}` : `${profile.yearsExperience} years`) : tr("not_set")} isRTL={isRTL} />
+              <SummaryRow icon="cash-outline" label={isRTL ? "رسوم الكشف" : "Consultation Fee"} value={profile?.consultFee ? (isRTL ? `${profile.consultFee} ج.م` : `${profile.consultFee} EGP`) : tr("not_set")} isRTL={isRTL} />
+              <SummaryRow icon="call-outline" label={isRTL ? "هاتف التواصل" : "Contact Phone"} value={(profile as any)?.phoneNumber || tr("not_set_warning")} isRTL={isRTL} />
+              <SummaryRow icon="location-outline" label={isRTL ? "موقع العيادة" : "Clinic Location"} value={(profile as any)?.location || tr("not_set")} isRTL={isRTL} />
+              <SummaryRow icon="document-text-outline" label={isRTL ? "النبذة التعريفية" : "Bio"} value={profile?.bio || tr("add_bio_hint")} isRTL={isRTL} />
+              <SummaryRow icon="eye-outline" label={isRTL ? "حالة الظهور" : "Visibility"} value={profile?.isAvailable ? tr("online") : tr("offline")} isRTL={isRTL} />
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Account Settings</Text>
+              <Text style={[styles.sectionTitle, { textAlign: isRTL ? "right" : "left" }]}>{tr("account_settings")}</Text>
               <View style={styles.menuList}>
-                <MenuField icon="person-outline" title="Personal Information" subtitle="Update your name and photo" onPress={() => setIsEditing(true)} />
-                <MenuField icon="notifications-outline" title="Notifications" subtitle="Alerts for new appointments" />
+                <MenuField icon="person-outline" title={tr("personal_info")} subtitle={tr("update_name_photo")} onPress={() => setIsEditing(true)} isRTL={isRTL} />
+                <MenuField icon="notifications-outline" title={isRTL ? "التنبيهات" : "Notifications"} subtitle={tr("alerts_new_appt")} isRTL={isRTL} />
               </View>
             </View>
           </>
         )}
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <TouchableOpacity style={[styles.logoutButton, { flexDirection: isRTL ? "row-reverse" : "row" }]} onPress={handleLogout}>
           <View style={styles.logoutIconBox}><Ionicons name="log-out-outline" size={22} color="#EF4444" /></View>
-          <Text style={styles.logoutText}>Logout</Text>
-          <Ionicons name="chevron-forward" size={18} color="#FEE2E2" />
+          <Text style={[styles.logoutText, isRTL ? { marginRight: 12, marginLeft: 0, textAlign: "right" } : { marginLeft: 12 }]}>{tr("sign_out")}</Text>
+          <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={18} color="#FEE2E2" />
         </TouchableOpacity>
         
-        <Text style={styles.versionText}>Version 1.1.0 (Bug Fixed)</Text>
+        <Text style={styles.versionText}>{isRTL ? "النسخة 1.1.0 (تم إصلاح الأخطاء)" : "Version 1.1.0 (Bug Fixed)"}</Text>
       </ScrollView>
       <Toast />
     </View>
   );
 }
 
-function SummaryRow({ icon, label, value }: { icon: any; label: string; value: string }) {
+function SummaryRow({ icon, label, value, isRTL }: { icon: any; label: string; value: string; isRTL: boolean }) {
   return (
-    <View style={styles.summaryRow}>
+    <View style={[styles.summaryRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
       <View style={styles.summaryIcon}><Ionicons name={icon} size={16} color={COLORS.primary} /></View>
-      <View style={{ flex: 1 }}><Text style={styles.summaryLabel}>{label}</Text><Text style={styles.summaryValue} numberOfLines={3}>{value}</Text></View>
+      <View style={[{ flex: 1 }, isRTL ? { marginRight: 10, marginLeft: 0, alignItems: "flex-end" } : { marginLeft: 10 }]}><Text style={styles.summaryLabel}>{label}</Text><Text style={styles.summaryValue} numberOfLines={3}>{value}</Text></View>
     </View>
   );
 }
 
-function MenuField({ icon, title, subtitle, onPress }: any) {
+function MenuField({ icon, title, subtitle, onPress, isRTL }: any) {
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+    <TouchableOpacity style={[styles.menuItem, { flexDirection: isRTL ? "row-reverse" : "row" }]} onPress={onPress}>
       <View style={styles.menuIconBox}><Ionicons name={icon} size={22} color="#333" /></View>
-      <View style={styles.menuInfo}><Text style={styles.menuTitle}>{title}</Text>{subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}</View>
-      <Ionicons name="chevron-forward" size={18} color="#CCC" />
+      <View style={[styles.menuInfo, isRTL ? { marginRight: 12, marginLeft: 0, alignItems: "flex-end" } : { marginLeft: 12 }]}><Text style={styles.menuTitle}>{title}</Text>{subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}</View>
+      <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={18} color="#CCC" />
     </TouchableOpacity>
   );
 }

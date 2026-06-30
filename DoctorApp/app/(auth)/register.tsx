@@ -116,7 +116,7 @@ export default function RegisterScreen() {
     Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (!firstName.trim() || !lastName.trim() || !dobDate) {
-      Toast.show({ type: "error", text1: tr("error"), text2: tr("please_write_comment") || "Please fill all fields", position: "top" });
+      Toast.show({ type: "error", text1: tr("error"), text2: tr("please_fill_fields" as any), position: "top" });
       return;
     }
     changeStep(2);
@@ -126,7 +126,7 @@ export default function RegisterScreen() {
     Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (!email.trim() || !phone.trim() || !city.trim() || !district.trim()) {
-      Toast.show({ type: "error", text1: tr("error"), position: "top" });
+      Toast.show({ type: "error", text1: tr("error"), text2: tr("please_fill_fields" as any), position: "top" });
       return;
     }
     changeStep(3);
@@ -140,7 +140,7 @@ export default function RegisterScreen() {
       return;
     }
     if (!weight.trim() || !height.trim()) {
-      Toast.show({ type: "error", text1: tr("error"), position: "top" });
+      Toast.show({ type: "error", text1: tr("error"), text2: tr("please_fill_fields" as any), position: "top" });
       return;
     }
     setLoading(true);
@@ -314,7 +314,7 @@ export default function RegisterScreen() {
                 <TouchableOpacity style={s.cta} onPress={handleNextStep1} activeOpacity={0.85}>
                   <LinearGradient colors={[C.primary, C.dark]} style={s.ctaGrad}>
                     <Text style={s.ctaTxt}>{tr("continue_btn")}</Text>
-                    <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={18} color="#fff" style={{ marginLeft: 8 }} />
+                    <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={18} color="#fff" style={{ [isRTL ? "marginRight" : "marginLeft"]: 8 }} />
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -327,7 +327,7 @@ export default function RegisterScreen() {
                 <View style={fw("email")}>
                   <Ionicons name="mail-outline" size={18} color={ic("email")} style={isRTL ? s.iconL : s.iconR} />
                   <TextInput
-                    placeholder="example@email.com" placeholderTextColor={C.muted}
+                    placeholder={tr("email_placeholder" as any) || "example@email.com"} placeholderTextColor={C.muted}
                     keyboardType="email-address" autoCapitalize="none"
                     style={tx("email")} value={email} onChangeText={setEmail}
                     onFocus={() => setFocused("email")} onBlur={() => setFocused(null)}
@@ -338,7 +338,7 @@ export default function RegisterScreen() {
                 <View style={fw("phone")}>
                   <Ionicons name="call-outline" size={18} color={ic("phone")} style={isRTL ? s.iconL : s.iconR} />
                   <TextInput
-                    placeholder="+20 1xx xxxx xxxx" placeholderTextColor={C.muted}
+                    placeholder={tr("phone_placeholder" as any) || "+20 1xx xxxx xxxx"} placeholderTextColor={C.muted}
                     keyboardType="phone-pad" maxLength={15}
                     style={tx("phone")} value={phone} onChangeText={setPhone}
                     onFocus={() => setFocused("phone")} onBlur={() => setFocused(null)}
@@ -368,7 +368,7 @@ export default function RegisterScreen() {
                     <View style={[fw("citySearch"), { marginBottom: 10 }]}>
                       <Ionicons name="search-outline" size={18} color={ic("citySearch")} style={isRTL ? s.iconL : s.iconR} />
                       <TextInput
-                        placeholder={isRTL ? "ابحث عن محافظتك..." : "Search governorate..."}
+                        placeholder={tr("search_governorate" as any)}
                         placeholderTextColor={C.muted}
                         style={tx("citySearch")}
                         value={citySearch}
@@ -429,7 +429,7 @@ export default function RegisterScreen() {
                 <TouchableOpacity style={s.cta} onPress={handleNextStep2} activeOpacity={0.85}>
                   <LinearGradient colors={[C.primary, C.dark]} style={s.ctaGrad}>
                     <Text style={s.ctaTxt}>{tr("continue_btn")}</Text>
-                    <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={18} color="#fff" style={{ marginLeft: 8 }} />
+                    <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={18} color="#fff" style={{ [isRTL ? "marginRight" : "marginLeft"]: 8 }} />
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -482,7 +482,7 @@ export default function RegisterScreen() {
                 <View style={fw("pass")}>
                   <Ionicons name="lock-closed-outline" size={18} color={ic("pass")} style={isRTL ? s.iconL : s.iconR} />
                   <TextInput
-                    placeholder="Min. 6 characters" placeholderTextColor={C.muted}
+                    placeholder={tr("min_6_chars")} placeholderTextColor={C.muted}
                     secureTextEntry={!showPassword}
                     style={tx("pass")} value={password} onChangeText={setPassword}
                     onFocus={() => setFocused("pass")} onBlur={() => setFocused(null)}

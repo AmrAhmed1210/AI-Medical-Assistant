@@ -153,8 +153,8 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
           <LinearGradient colors={isDark ? ["#1E293B", "#0F172A"] : ["#fff", "#F8FAFC"]} style={styles.cardGradient}>
             {/* Verified Strip */}
             <View style={styles.verifiedStrip}>
-               <ShieldCheck size={10} color="#1E9E84" fill="#E6F4F1" />
-               <Text style={styles.verifiedText}>PRO VERIFIED</Text>
+              <ShieldCheck size={10} color="#1E9E84" fill="#E6F4F1" />
+              <Text style={styles.verifiedText}>PRO VERIFIED</Text>
             </View>
 
             <View style={styles.topRow}>
@@ -216,14 +216,14 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
               </View>
 
               <View style={styles.rightCol}>
-                 <TouchableOpacity
+                <TouchableOpacity
                   style={[styles.miniHeart, isFollowed && styles.miniHeartActive]}
                   onPress={(e) => { e.stopPropagation(); toggleFollow().catch(() => undefined); }}
                 >
                   <Heart size={14} stroke={isFollowed ? "#fff" : "#EF4444"} fill={isFollowed ? "#fff" : "transparent"} />
                 </TouchableOpacity>
                 <View style={styles.feeBadge}>
-                   <Text style={styles.feeVal}>{doctor.consultationFee ?? 0} EGP</Text>
+                  <Text style={styles.feeVal}>{doctor.consultationFee ?? 0} EGP</Text>
                 </View>
               </View>
             </View>
@@ -236,15 +236,15 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
                 <Text style={[styles.actionBtnTextSecondary, { color: colors.textMuted }]}>Profile</Text>
                 <ChevronRight size={14} color={colors.textMuted} />
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={styles.actionBtnPrimary}
                 onPress={(e) => { e.stopPropagation(); openConsultationModal(); }}
               >
-                <LinearGradient 
-                  colors={[COLORS.primary, COLORS.primaryDark]} 
-                  start={{x:0, y:0}} 
-                  end={{x:1, y:1}} 
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.primaryDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={styles.primaryGradient}
                 >
                   <MessageCircleIcon size={14} color="#fff" />
@@ -307,8 +307,8 @@ export default function DoctorCard({ doctor, highlight, compact }: { doctor: Doc
               }}
             >
               <LinearGradient colors={[COLORS.primary, COLORS.primaryDark]} style={styles.sendBtnGradient}>
-                 <MessageCircleIcon size={16} stroke="#FFF" />
-                 <Text style={styles.sendTxt}>Send Message</Text>
+                <MessageCircleIcon size={16} stroke="#FFF" />
+                <Text style={styles.sendTxt}>Send Message</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   card: { borderRadius: 24, overflow: "hidden", backgroundColor: "#fff", borderWidth: 1, borderColor: "#F1F5F9" },
   cardGradient: { padding: 16 },
   cardHighlightBorder: { borderColor: "#FBBF24", borderWidth: 1.5 },
-  
+
   verifiedStrip: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 12, backgroundColor: '#E6F4F1', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   verifiedText: { fontSize: 8, fontWeight: '900', color: '#1E9E84', letterSpacing: 0.5 },
 
@@ -333,19 +333,19 @@ const styles = StyleSheet.create({
   avatarBorder: { padding: 2, borderRadius: 28, backgroundColor: '#fff', borderWidth: 1, borderColor: '#F1F5F9' },
   avatar: { width: 52, height: 52, borderRadius: 26 },
   statusDot: { position: 'absolute', bottom: 2, right: 2, width: 12, height: 12, borderRadius: 6, backgroundColor: '#10B981', borderWidth: 2, borderColor: '#fff' },
-  
+
   infoCol: { flex: 1, gap: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   name: { fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: -0.3 },
   specialty: { fontSize: 12, color: '#64748B', fontWeight: '600', marginBottom: 2 },
   addressMiniRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
   addressMiniTxt: { fontSize: 11, color: '#059669', fontWeight: '700' },
-  
+
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   metaTxt: { fontSize: 11, color: '#64748B', fontWeight: '700' },
   dotSeparator: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#CBD5E1' },
-  
+
   rightCol: { alignItems: 'flex-end', justifyContent: 'space-between', height: 60 },
   miniHeart: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF1F2', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FFE4E6' },
   miniHeartActive: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
@@ -355,14 +355,14 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
   actionBtnSecondary: { flex: 0.4, backgroundColor: '#F8FAFC', paddingVertical: 12, borderRadius: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 4, borderWidth: 1, borderColor: '#F1F5F9' },
   actionBtnTextSecondary: { fontSize: 13, fontWeight: '800', color: '#64748B' },
-  
-  actionBtnPrimary: { flex: 1, borderRadius: 14, overflow: 'hidden', elevation: 4, shadowColor: '#1E9E84', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width:0, height:4 } },
+
+  actionBtnPrimary: { flex: 1, borderRadius: 14, overflow: 'hidden', elevation: 4, shadowColor: '#1E9E84', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
   primaryGradient: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12 },
   actionBtnTextPrimary: { color: '#fff', fontSize: 13, fontWeight: '800' },
 
   updatedBadge: { position: "absolute", top: 12, right: 12, backgroundColor: "#FBBF24", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, elevation: 4 },
   updatedBadgeText: { color: "#000", fontSize: 10, fontWeight: "900" },
-  
+
   overlay: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "flex-end" },
   sheet: { backgroundColor: "#FFF", borderTopLeftRadius: 36, borderTopRightRadius: 36, padding: 25, paddingBottom: 40, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 20 },
   sheetHeaderRow: { flexDirection: "row", alignItems: "center", gap: 15, marginBottom: 25 },
@@ -370,9 +370,9 @@ const styles = StyleSheet.create({
   sheetTitle: { fontSize: 19, fontWeight: "900", color: "#0F172A", letterSpacing: -0.5 },
   sheetSub: { fontSize: 13, color: '#64748B', marginTop: 2, fontWeight: '600' },
   closeBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: "#F8FAFC", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: '#F1F5F9' },
-  
+
   input: { height: 140, backgroundColor: "#F8FAFC", borderRadius: 20, padding: 20, marginBottom: 25, fontSize: 15, color: "#1E293B", textAlignVertical: "top", borderWidth: 1, borderColor: "#F1F5F9", lineHeight: 22 },
-  sendBtn: { borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#1E9E84', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width:0, height:6 } },
+  sendBtn: { borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#1E9E84', shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
   sendBtnGradient: { height: 60, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 10 },
   sendTxt: { color: "#FFF", fontSize: 16, fontWeight: "800" },
 });

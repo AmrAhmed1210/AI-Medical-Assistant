@@ -6,6 +6,7 @@ import { COLORS } from "../../constants/colors";
 import { getDoctorDashboard, getDoctorProfile, type DoctorDashboardDto, type DoctorProfileDto } from "../../services/doctorService";
 import { getVisitById, openVisit } from "../../services/visitService";
 import Toast from "react-native-toast-message";
+import { useLanguage } from "../../context/LanguageContext";
 
 const emptyDashboard: DoctorDashboardDto = {
   todayAppointments: 0,
@@ -19,6 +20,7 @@ const emptyDashboard: DoctorDashboardDto = {
 
 export default function DoctorDashboard() {
   const router = useRouter();
+  const { tr, isRTL } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [startingVisitId, setStartingVisitId] = useState<number | null>(null);
   const [dashboard, setDashboard] = useState<DoctorDashboardDto>(emptyDashboard);
@@ -48,13 +50,13 @@ export default function DoctorDashboard() {
   );
 
   const stats = [
-    { label: "Patients Today", value: String(dashboard.totalPatients), icon: Users, iconBg: "#EBF5FB", change: "" },
-    { label: "Appointments", value: String(dashboard.todayAppointments), icon: CalendarDays, iconBg: "#FEF3E2", change: "" },
-    { label: "Pending", value: String(dashboard.pendingAppointments), icon: Clock, iconBg: "#F3E8FF", change: "" },
-    { label: "Week", value: String(dashboard.weekAppointments), icon: TrendingUp, iconBg: "#E0F2F1", change: "" },
+    { label: tr("stats_patients") + " " + tr("today"), value: String(dashboard.totalPatients), icon: Users, iconBg: "#EBF5FB", change: "" },
+    { label: tr("bookings"), value: String(dashboard.todayAppointments), icon: CalendarDays, iconBg: "#FEF3E2", change: "" },
+    { label: tr("pending"), value: String(dashboard.pendingAppointments), icon: Clock, iconBg: "#F3E8FF", change: "" },
+    { label: tr("schedule"), value: String(dashboard.weekAppointments), icon: TrendingUp, iconBg: "#E0F2F1", change: "" },
   ];
-  const fullName = profile?.fullName || "Doctor";
-  const specialty = profile?.specialty || "Specialty not set";
+  const fullName = profile?.fullName || tr("doctor");
+  const specialty = profile?.specialty || tr("not_set");
   const initials = fullName.split(" ").filter(Boolean).map((n) => n[0]?.toUpperCase() ?? "").slice(0, 2).join("") || "DR";
   const incompleteProfile = !(profile?.bio && profile.bio.trim().length > 0 && profile?.photoUrl);
 
@@ -75,9 +77,9 @@ export default function DoctorDashboard() {
           const existing = await getVisitById(maybeId);
           router.push({ pathname: "/(doctor)/workspace", params: { visitId: String(existing.id), patientId: String(existing.patientId) } });
           return;
-        } catch {}
+        } catch { }
       }
-      Toast.show({ type: "error", text1: e?.message || "Failed to start visit" });
+      Toast.show({ type: "error", text1: e?.message || tr("error") });
     } finally {
       setStartingVisitId(null);
     }
@@ -94,12 +96,12 @@ export default function DoctorDashboard() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      
+
       {/* Gradient Header */}
       <View style={styles.headerGradient}>
-        <View style={styles.headerContent}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>Good Morning</Text>
+        <View style={[styles.headerContent, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          <View style={[styles.headerLeft, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
+            <Text style={styles.greeting}>{tr("greeting_morning")}</Text>
             <Text style={styles.doctorName}>{fullName}</Text>
             <View style={styles.specialtyChip}>
               <Text style={styles.specialtyText}>{specialty}</Text>
@@ -119,16 +121,16 @@ export default function DoctorDashboard() {
       </View>
 
       {incompleteProfile && (
-        <View style={styles.noticeCard}>
+        <View style={[styles.noticeCard, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <Text style={styles.noticeIcon}>⚠️</Text>
-          <Text style={styles.noticeText}>Complete your profile with a bio and photo</Text>
+          <Text style={[styles.noticeText, { textAlign: isRTL ? "right" : "left" }]}>{tr("complete_profile_notice")}</Text>
         </View>
       )}
 
       {/* Stats Grid */}
-      <View style={styles.statsGrid}>
+      <View style={[styles.statsGrid, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
         {stats.map((stat, index) => (
-          <View key={index} style={styles.statCard}>
+          <View key={index} style={[styles.statCard, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
             <View style={[styles.statIconWrap, { backgroundColor: stat.iconBg }]}>
               <stat.icon size={20} color={COLORS.primary} />
             </View>
@@ -139,10 +141,10 @@ export default function DoctorDashboard() {
       </View>
 
       {/* Schedule Section */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Today&apos;s Schedule</Text>
+      <View style={[styles.sectionHeader, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+        <Text style={styles.sectionTitle}>{tr("today") + " " + tr("schedule")}</Text>
         <TouchableOpacity style={styles.viewAllBtn}>
-          <Text style={styles.viewAllText}>View All →</Text>
+          <Text style={styles.viewAllText}>{tr("view_all") + (isRTL ? " ←" : " →")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -150,21 +152,21 @@ export default function DoctorDashboard() {
         {dashboard.todayAppointmentsList.length === 0 ? (
           <View style={styles.emptyCard}>
             <CalendarDays size={32} color="#D0D5DD" />
-            <Text style={styles.emptyTitle}>No appointments today</Text>
-            <Text style={styles.emptySubtitle}>Enjoy your day!</Text>
+            <Text style={styles.emptyTitle}>{tr("no_appointments_today")}</Text>
+            <Text style={styles.emptySubtitle}>{tr("enjoy_day")}</Text>
           </View>
         ) : dashboard.todayAppointmentsList.map((item, i) => (
-          <View key={i} style={styles.appointmentCard}>
+          <View key={i} style={[styles.appointmentCard, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
             <View style={styles.timeSection}>
               <Text style={styles.timeText}>
                 {item.time ?? (item.scheduledAt ? new Date(item.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--")}
               </Text>
-              <Text style={styles.timeLabel}>{item.status ?? "Pending"}</Text>
+              <Text style={styles.timeLabel}>{item.status ? tr(item.status.toLowerCase() as any) : tr("pending")}</Text>
             </View>
             <View style={styles.apptDivider} />
-            <View style={styles.apptInfo}>
-              <Text style={styles.patientNameText}>{item.patientName ?? "Unknown Patient"}</Text>
-              {item.notes && <Text style={styles.notesText} numberOfLines={1}>{item.notes}</Text>}
+            <View style={[styles.apptInfo, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
+              <Text style={styles.patientNameText}>{item.patientName ?? tr("not_set")}</Text>
+              {item.notes && <Text style={[styles.notesText, { textAlign: isRTL ? "right" : "left" }]} numberOfLines={1}>{item.notes}</Text>}
             </View>
             <TouchableOpacity
               style={styles.startBtn}
@@ -174,7 +176,7 @@ export default function DoctorDashboard() {
               {startingVisitId === item.id ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.startBtnText}>Start</Text>
+                <Text style={styles.startBtnText}>{tr("start")}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -190,7 +192,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
   },
   loaderWrap: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F8FAFC" },
-  
+
   headerGradient: {
     backgroundColor: "#00695C",
     paddingTop: 50,

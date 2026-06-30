@@ -5,6 +5,7 @@ import {
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "../../context/LanguageContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -43,6 +44,7 @@ function Bubble({ size, left, delay, dur }: { size: number; left: number; delay:
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { tr, isRTL } = useLanguage();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -74,17 +76,17 @@ export default function WelcomeScreen() {
             <Ionicons name="heart" size={42} color={T.primary} />
           </View>
 
-          <Text style={s.brand}>MedBook</Text>
-          <Text style={s.tagline}>Your AI-Powered Medical Companion</Text>
+          <Text style={s.brand}>{tr("app_name")}</Text>
+          <Text style={s.tagline}>{tr("tagline")}</Text>
 
           <View style={s.featureRow}>
             <View style={s.featureBadge}>
               <Ionicons name="sparkles" size={14} color="#fff" />
-              <Text style={s.featureText}>AI Diagnostics</Text>
+              <Text style={s.featureText}>{tr("ai_diagnostics")}</Text>
             </View>
             <View style={s.featureBadge}>
               <Ionicons name="shield-checkmark" size={14} color="#fff" />
-              <Text style={s.featureText}>Secure Files</Text>
+              <Text style={s.featureText}>{tr("secure_files")}</Text>
             </View>
           </View>
         </Animated.View>
@@ -94,16 +96,16 @@ export default function WelcomeScreen() {
       <Animated.View style={[s.bottomSection, { opacity: btnFade }]}>
         <TouchableOpacity style={s.primaryBtn} activeOpacity={0.85} onPress={() => router.push("/(auth)/login")}>
           <LinearGradient colors={[T.primary, T.deep]} style={s.btnGrad}>
-            <Text style={s.primaryBtnTxt}>Sign In</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 6 }} />
+            <Text style={s.primaryBtnTxt}>{tr("sign_in")}</Text>
+            <Ionicons name={isRTL ? "arrow-back" : "arrow-forward"} size={18} color="#fff" style={{ [isRTL ? "marginRight" : "marginLeft"]: 6 }} />
           </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity style={s.outlineBtn} activeOpacity={0.85} onPress={() => router.push("/(auth)/register")}>
-          <Text style={s.outlineBtnTxt}>Create Account</Text>
+          <Text style={s.outlineBtnTxt}>{tr("create_account")}</Text>
         </TouchableOpacity>
 
-        <Text style={s.disclaimer}>By continuing you agree to our Terms of Service</Text>
+        <Text style={s.disclaimer}>{tr("tos_disclaimer")}</Text>
       </Animated.View>
     </View>
   );

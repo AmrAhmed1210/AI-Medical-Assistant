@@ -40,6 +40,7 @@ import type { EdgeInsets } from "react-native-safe-area-context";
 import { COLORS } from "../../constants/colors";
 import { useTheme } from "../../context/ThemeContext";
 import { Home, Search, MessageSquare, Bot, User } from "lucide-react-native";
+import { useLanguage } from "../../context/LanguageContext";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -213,8 +214,14 @@ export function CustomTabBar({
   unreadCount,
 }: CustomTabBarProps) {
   const { colors, isDark } = useTheme();
+  const { tr } = useLanguage();
   const tabs: TabConfig[] = TAB_CONFIGS.map((t) => ({
     ...t,
+    label: t.name === "home" ? tr("home") :
+           t.name === "doctors" ? tr("find") :
+           t.name === "messages" ? tr("chat") :
+           t.name === "chatbot" ? tr("ai_bot") :
+           tr("profile"),
     badge: t.name === "messages" ? unreadCount : undefined,
   }));
 

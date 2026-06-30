@@ -1,12 +1,12 @@
-﻿// ─────────────────────────────────────────────
+// ---------------------------------------------
 //  MedBook – i18n  (English + Arabic)
-// ─────────────────────────────────────────────
+// ---------------------------------------------
 
 export type Lang = "en" | "ar";
 
 const translations = {
   en: {
-    // ── Common ──────────────────────────────
+    // -- Common ------------------------------
     app_name:       "MedBook",
     save:           "Save",
     cancel:         "Cancel",
@@ -29,8 +29,11 @@ const translations = {
     items:                  "items",
     failed_load_records:    "Failed to load records",
     retry:                  "Retry",
+    profile:                "Profile",
+    offline:                "Offline",
+    patient:                "Patient",
 
-    // ── Home ────────────────────────────────
+    // -- Home --------------------------------
     greeting_morning:       "Good morning 🌤",
     greeting_afternoon:     "Good afternoon ☀️",
     greeting_evening:       "Good evening 🌙",
@@ -69,7 +72,7 @@ const translations = {
     spec_ophthalmology:     "Ophthalmology",
     spec_ent:               "ENT",
 
-    // ── Doctors ─────────────────────────────
+    // -- Doctors -----------------------------
     find_doctor:            "Find a Doctor",
     all:                    "All",
     no_doctors:             "No doctors found",
@@ -81,7 +84,7 @@ const translations = {
     show_next_doctors:      "Show Next Doctors",
     end_of_list:            "You've reached the end of the list",
 
-    // ── Doctor Details ───────────────────────
+    // -- Doctor Details -----------------------
     about:                  "About",
     schedule:               "Schedule",
     book_appointment:       "Book Appointment",
@@ -107,7 +110,7 @@ const translations = {
     cvv:                    "CVV",
     pay_now:                "Pay Now",
 
-    // ── Profile ──────────────────────────────
+    // -- Profile ------------------------------
     my_profile:             "My Profile",
     info:                   "Info",
     bookings:               "Bookings",
@@ -132,7 +135,7 @@ const translations = {
     language_en:            "English",
     restart_required:       "App restart needed for full language update",
 
-    // ── Medications ───────────────────────────
+    // -- Medications ---------------------------
     my_medications:         "My Medications",
     add_medication:         "Add Medication",
     edit_medication:        "Edit Medication",
@@ -162,7 +165,7 @@ const translations = {
     no_medications_sub:     "No medication records found.",
     add_medication_hint:    "Add your medications to track them",
 
-    // ── Vitals / Home Metrics ─────────────────
+    // -- Vitals / Home Metrics -----------------
     vitals:                 "Vitals",
     next_dose:              "Next Dose",
     no_pending_doses:       "No pending doses",
@@ -177,7 +180,7 @@ const translations = {
     blood_sugar:            "Blood Sugar",
     add_vital:              "Add Reading",
 
-    // ── Scan Rx ──────────────────────────────
+    // -- Scan Rx ------------------------------
     prescription_scanner:   "Prescription Scanner",
     scan_subtitle:          "Take or upload a photo of your prescription to extract medicines automatically",
     camera:                 "Camera",
@@ -197,7 +200,7 @@ const translations = {
     completed_today:        "Completed Today",
     doses:                  "doses",
     taken_of:               "taken of",
-    // ── Medical History ───────────────────────
+    // -- Medical History -----------------------
     medical_history:        "Medical History",
     chronic_diseases:       "Chronic Diseases",
     surgeries_diagnoses:    "Surgeries & Diagnoses",
@@ -210,7 +213,7 @@ const translations = {
     chronic_placeholder:    "e.g. Diabetes, Hypertension...",
     surgery_placeholder:    "e.g. Appendectomy 2020...",
 
-    // ── Medical Records (new unified) ────────
+    // -- Medical Records (new unified) --------
     medical_records:        "Medical Records",
     allergies:              "Allergies",
     medications:            "Medications",
@@ -291,7 +294,7 @@ const translations = {
     onboarding_medication_desc: "Are you currently taking any medications? Enter the name and dosage.",
     onboarding_surgery_desc: "Have you had any surgeries? Enter the surgery name and date.",
     
-    // ── Auth Flow ────────────────────────────
+    // -- Auth Flow ----------------------------
     join_medbook:           "Join MedBook",
     step_1:                 "Step 1 of 3",
     step_2:                 "Step 2 of 3",
@@ -333,10 +336,157 @@ const translations = {
     disease_name:           "Disease Name",
     step:                   "Step",
     of:                     "of",
+
+    // New Keys
+    welcome_back: "Welcome Back",
+    sign_in_records: "Sign in to access your health records",
+    email_address: "Email Address",
+    password: "Password",
+    forgot_password: "Forgot Password?",
+    enter_email: "Enter your email",
+    enter_password: "Enter your password",
+    reported_symptoms: "Reported Symptoms",
+    ai_recommendations: "AI Recommendations",
+    ai_confidence: "AI Confidence",
+    approve_report: "Approve Report",
+    edit_diagnosis: "Edit Diagnosis",
+    ai_medical_reports: "AI Medical Reports",
+    ai_gen_reports_desc: "AI-generated diagnosis reports for your patients",
+    total: "Total",
+    critical: "Critical",
+    good_morning_simple: "Good Morning",
+    complete_profile_notice: "Complete your profile with a bio and photo",
+    no_appointments_today: "No appointments today",
+    enjoy_day: "Enjoy your day!",
+    start: "Start",
+    biography: "Biography",
+    consultation_fee_egp: "Consultation Fee (EGP)",
+    experience_years: "Experience (Years)",
+    avail_appointments: "Available for Appointments",
+    cancel_changes: "Cancel Changes",
+    account_settings: "Account Settings",
+    version_bug_fixed: "Version 1.1.0 (Bug Fixed)",
+    full_name_placeholder: "Full Name",
+    bio_placeholder: "Tell patients about your background...",
+    fee_placeholder: "e.g. 200",
+    exp_placeholder: "e.g. 10",
+    phone_placeholder: "e.g. +20 1XX XXX XXXX",
+    location_placeholder: "e.g. Cairo Medical Center, Nasr City",
+    phone_required_warning: "Phone number is required for patients to contact you",
+    profile_complete: "Profile complete",
+    profile_being_completed: "Profile being completed",
+    personal_info: "Personal Information",
+    update_name_photo: "Update your name and photo",
+    alerts_new_appt: "Alerts for new appointments",
+    my_schedule: "My Schedule",
+    no_appointments: "No appointments",
+    enjoy_day_off: "Enjoy your day off, Doctor!",
+    clinical_workspace: "Clinical Workspace",
+    workspace_desc: "3 easy steps: patient overview, visit notes, then save.",
+    visit_read_only: "This visit is closed and read-only.",
+    step_1_overview: "Step 1 - Patient Overview",
+    no_allergies_known: "No known allergies",
+    no_meds_active: "No active medications",
+    past_visits_8m: "Past Visits Summary (Last 8 Months)",
+    step_2_notes: "Step 2 - Clinical Notes",
+    step_3_finalize: "Step 3 - Finalize Visit",
+    chief_complaint: "Chief Complaint",
+    diagnosis: "Diagnosis",
+    prescribed_medications: "Prescribed Medications",
+    save_record: "Save Record",
+    adding: "Adding...",
+    no_records_found: "No records found",
+    follow_up_date: "Follow Up Date (Optional)",
+    recommended_specialists: "Recommended Specialists:",
+    ai_assistant: "AI Assistant",
+    online: "Online",
+    saved_chats: "Saved Chats",
+    no_old_chats: "No old chats yet.",
+    how_help_today: "How can I help you today?",
+    ai_disclaimer: "Note: AI can make mistakes in analysis and recommendations. Always consult a specialist doctor and verify medical information yourself.",
+    ai_thinking: "AI is thinking...",
+    type_message: "Type your message...",
+    loading_profile: "Loading Luxury Profile...",
+    exp_short: "Exp",
+    fee_short: "Fee",
+    followers: "Followers",
+    reviews_count: "Reviews",
+    clinic_location: "Clinic Location",
+    main_clinic_address: "Main Clinic Address",
+    contact_info: "Contact Info",
+    phone_number: "Phone Number",
+    about_doctor: "About Doctor",
+    followed_doctors: "Followed Doctors",
+    no_followed_doctors: "You have not followed any doctors yet.",
+    find_doctors: "Find Doctors",
+    find_specialist: "Find a Specialist Doctor",
+    medication_due: "Medication Due",
+    take: "Take",
+    view_history: "View Full Medical History",
+    ai_analysis_report: "AI Analysis Report",
+    ai_analysis_desc: "Use AI to refine and summarize notes",
+    select_folder: "Select Folder",
+    back_to_folders: "Back to Folders",
+    reading_type_placeholder: "Reading Type (e.g. BP, Sugar)",
+    value_placeholder: "Value",
+    unit_placeholder: "Unit (e.g. mmHg, mg/dL)",
+    med_name_placeholder: "Medication Name",
+    dosage_placeholder: "Dosage (e.g. 500mg)",
+    frequency_placeholder: "Frequency (e.g. Once daily)",
+    pharmacy_concierge: "Pharmacy Concierge",
+    live: "LIVE",
+    form: "FORM",
+    type: "TYPE",
+    refill_at: "REFILL AT",
+    edit: "Edit",
+    low_stock_warning: "Low stock! Consider refilling soon.",
+    ai_safety_check: "AI Safety Check",
+    messages_subtitle: "Seamless care with your team",
+    no_conversations: "No conversations yet",
+    start_conv_hint: "Start a conversation from doctor profile.",
+    file_attachment: "File Attachment",
+    search_conv_placeholder: "Search conversations...",
+    type_msg_placeholder: "Type a message...",
+    upcoming_appointments: "Upcoming Appointments",
+    no_past_booking: "No past booking activity",
+    general_health_history: "General Health History",
+    complaint_label: "Complaint:",
+    summary_available: "Summary Available",
+    in_progress: "In Progress",
+    sign_out_desc: "Safely sign out of your account",
+    visit_summary_not_found: "Visit summary not found.",
+    go_back: "Go Back",
+    visit_summary: "Visit Summary",
+    examination_findings: "Examination Findings",
+    assessment: "Assessment",
+    plan: "Plan",
+    symptoms: "Symptoms",
+    vitals_dashboard: "Vitals Dashboard",
+    health_summary: "Health Summary",
+    biometric_data: "Biometric Data",
+    live_analysis: "Live Analysis",
+    latest_health_metrics: "Latest Health Metrics",
+    live_sync_active: "Live Sync Active",
+    record: "Record",
+    yyyy_mm_dd: "YYYY-MM-DD",
+    years_short: "yrs",
+    years: "years",
+    not_set_warning: "⚠️ Not set — please add your phone number",
+    add_bio_hint: "Add your bio",
+    phone_required: "Phone Required",
+    please_add_phone: "Please add a contact phone number. Patients need to be able to reach you.",
+    upload_failed: "Upload Failed",
+    photo_updated: "Photo Updated!",
+    permission_denied: "Permission Denied",
+    allow_photos: "We need access to your photos to update your profile.",
+    home: "Home",
+    find: "Find",
+    chat: "Chat",
+    ai_bot: "AI Bot",
   },
 
   ar: {
-    // ── Common ──────────────────────────────
+    // -- Common ------------------------------
     app_name:       "ميدبوك",
     save:           "حفظ",
     cancel:         "إلغاء",
@@ -359,8 +509,11 @@ const translations = {
     items:                  "عناصر",
     failed_load_records:    "فشل تحميل السجلات",
     retry:                  "إعادة المحاولة",
+    profile:                "الملف الشخصي",
+    offline:                "غير متصل",
+    patient:                "المريض",
 
-    // ── Home ────────────────────────────────
+    // -- Home --------------------------------
     greeting_morning:       "صباح الخير 🌤",
     greeting_afternoon:     "طاب يومك ☀️",
     greeting_evening:       "مساء الخير 🌙",
@@ -398,7 +551,7 @@ const translations = {
     spec_ophthalmology:     "رمد وعيون",
     spec_ent:               "أنف وأذن",
 
-    // ── Doctors ─────────────────────────────
+    // -- Doctors -----------------------------
     find_doctor:            "ابحث عن طبيب",
     all:                    "الكل",
     no_doctors:             "لا يوجد أطباء",
@@ -410,7 +563,7 @@ const translations = {
     show_next_doctors:      "عرض أطباء آخرين",
     end_of_list:            "وصلت إلى نهاية القائمة",
 
-    // ── Doctor Details ───────────────────────
+    // -- Doctor Details -----------------------
     about:                  "نبذة",
     schedule:               "المواعيد",
     book_appointment:       "احجز موعداً",
@@ -436,7 +589,7 @@ const translations = {
     cvv:                    "CVV",
     pay_now:                "ادفع الآن",
 
-    // ── Profile ──────────────────────────────
+    // -- Profile ------------------------------
     my_profile:             "ملفي الشخصي",
     info:                   "المعلومات",
     bookings:               "الحجوزات",
@@ -461,7 +614,7 @@ const translations = {
     language_en:            "English",
     restart_required:       "يُحتاج إعادة تشغيل التطبيق لتحديث اللغة بالكامل",
 
-    // ── Medications ───────────────────────────
+    // -- Medications ---------------------------
     my_medications:         "أدويتي",
     add_medication:         "إضافة دواء",
     edit_medication:        "تعديل دواء",
@@ -491,7 +644,7 @@ const translations = {
     no_medications_sub:     "لا توجد سجلات أدوية.",
     add_medication_hint:    "أضف أدويتك لمتابعتها",
 
-    // ── Vitals / Home Metrics ─────────────────
+    // -- Vitals / Home Metrics -----------------
     vitals:                 "العلامات الحيوية",
     next_dose:              "الجرعة القادمة",
     no_pending_doses:       "لا توجد جرعات معلقة",
@@ -506,7 +659,7 @@ const translations = {
     blood_sugar:            "سكر الدم",
     add_vital:              "إضافة قراءة",
 
-    // ── Scan Rx ──────────────────────────────
+    // -- Scan Rx ------------------------------
     prescription_scanner:   "ماسح الروشتة",
     scan_subtitle:          "التقط أو ارفع صورة الروشتة لاستخراج الأدوية تلقائياً",
     camera:                 "الكاميرا",
@@ -526,7 +679,7 @@ const translations = {
     completed_today:        "مكتمل اليوم",
     doses:                  "جرعات",
     taken_of:               "أخذت من",
-    // ── Medical History ───────────────────────
+    // -- Medical History -----------------------
     medical_history:        "التاريخ المرضي",
     chronic_diseases:       "الأمراض المزمنة",
     surgeries_diagnoses:    "العمليات والتشخيصات",
@@ -539,7 +692,7 @@ const translations = {
     chronic_placeholder:    "مثال: سكر، ضغط...",
     surgery_placeholder:    "مثال: استئصال الزائدة 2020...",
 
-    // ── Medical Records (new unified) ────────
+    // -- Medical Records (new unified) --------
     medical_records:        "السجل الطبي",
     allergies:              "الحساسية",
     medications:            "الأدوية",
@@ -625,7 +778,7 @@ const translations = {
     of:                     "من",
     patient_profile_not_found: "لم يتم العثور على ملف المريض.",
     
-    // ── Auth Flow ────────────────────────────
+    // -- Auth Flow ----------------------------
     join_medbook:           "انضم إلى ميدبوك",
     step_1:                 "الخطوة 1 من 3",
     step_2:                 "الخطوة 2 من 3",
@@ -666,7 +819,152 @@ const translations = {
 
 
 
-
+    // New Arabic Keys
+    welcome_back: "مرحباً بك مجدداً",
+    sign_in_records: "سجل الدخول للوصول إلى سجلاتك الصحية",
+    email_address: "البريد الإلكتروني",
+    password: "كلمة المرور",
+    forgot_password: "هل نسيت كلمة المرور؟",
+    enter_email: "أدخل بريدك الإلكتروني",
+    enter_password: "أدخل كلمة المرور",
+    reported_symptoms: "الأعراض المبلغ عنها",
+    ai_recommendations: "توصيات الذكاء الاصطناعي",
+    ai_confidence: "ثقة الذكاء الاصطناعي",
+    approve_report: "الموافقة على التقرير",
+    edit_diagnosis: "تعديل التشخيص",
+    ai_medical_reports: "تقارير الذكاء الاصطناعي الطبية",
+    ai_gen_reports_desc: "تقارير التشخيص الناتجة عن الذكاء الاصطناعي لمرضاك",
+    total: "الإجمالي",
+    critical: "حرج",
+    good_morning_simple: "مرحباً",
+    complete_profile_notice: "يرجى استكمال ملفك الشخصي بنبذة وصورة شخصية",
+    no_appointments_today: "لا توجد مواعيد اليوم",
+    enjoy_day: "أتمنى لك يوماً سعيداً!",
+    start: "بدء",
+    biography: "السيرة الذاتية",
+    consultation_fee_egp: "رسوم الاستشارة (بالجنيه المصري)",
+    experience_years: "الخبرة (بالسنوات)",
+    avail_appointments: "متاح للحجوزات",
+    cancel_changes: "إلغاء التغييرات",
+    account_settings: "إعدادات الحساب",
+    version_bug_fixed: "نسخة 1.1.0 (تم إصلاح الأخطاء)",
+    full_name_placeholder: "الاسم الكامل",
+    bio_placeholder: "أخبر المرضى عن خلفيتك المهنية...",
+    fee_placeholder: "مثال: 200",
+    exp_placeholder: "مثال: 10",
+    phone_placeholder: "مثال: +20 1XX XXX XXXX",
+    location_placeholder: "مثال: مركز القاهرة الطبي، مدينة نصر",
+    phone_required_warning: "رقم الهاتف مطلوب حتى يتمكن المرضى من التواصل معك",
+    profile_complete: "الملف الشخصي مكتمل",
+    profile_being_completed: "الملف الشخصي جاري استكماله",
+    personal_info: "المعلومات الشخصية",
+    update_name_photo: "تعديل اسمك وصورتك",
+    alerts_new_appt: "تنبيهات للمواعيد الجديدة",
+    my_schedule: "جدولي",
+    no_appointments: "لا توجد مواعيد",
+    enjoy_day_off: "استمتع بيوم راحتك يا دكتور!",
+    clinical_workspace: "مساحة العمل السريرية",
+    workspace_desc: "3 خطوات سهلة: نظرة عامة على المريض، الملاحظات الطبية، ثم الحفظ.",
+    visit_read_only: "هذه الزيارة مغلقة وللقراءة فقط.",
+    step_1_overview: "الخطوة 1 - نظرة عامة على المريض",
+    no_allergies_known: "لا توجد حساسية معروفة",
+    no_meds_active: "لا توجد أدوية نشطة",
+    past_visits_8m: "ملخص الزيارات السابقة (آخر 8 أشهر)",
+    step_2_notes: "الخطوة 2 - الملاحظات الطبية",
+    step_3_finalize: "الخطوة 3 - إنهاء الزيارة",
+    chief_complaint: "الشكوى الرئيسية",
+    diagnosis: "التشخيص",
+    prescribed_medications: "الأدوية الموصوفة",
+    save_record: "حفظ السجل الطبي",
+    adding: "جاري الإضافة...",
+    no_records_found: "لم يتم العثور على سجلات",
+    follow_up_date: "تاريخ المتابعة (اختياري)",
+    recommended_specialists: "الأطباء المقترحون:",
+    ai_assistant: "مساعد الذكاء الاصطناعي",
+    online: "متصل الآن",
+    saved_chats: "المحادثات المحفوظة",
+    no_old_chats: "لا توجد محادثات سابقة بعد.",
+    how_help_today: "كيف يمكنني مساعدتك اليوم؟",
+    ai_disclaimer: "ملاحظة: الذكاء الاصطناعي يمكن أن يخطئ. استشر طبيباً متخصصاً دائماً وتحقق من المعلومات الطبية بنفسك.",
+    ai_thinking: "الذكاء الاصطناعي يفكر...",
+    type_message: "اكتب رسالة...",
+    loading_profile: "جاري تحميل الملف الشخصي المميز...",
+    exp_short: "الخبرة",
+    fee_short: "الرسوم",
+    followers: "المتابعون",
+    reviews_count: "التقييمات",
+    clinic_location: "موقع العيادة",
+    main_clinic_address: "عنوان العيادة الرئيسي",
+    contact_info: "معلومات الاتصال",
+    phone_number: "رقم الهاتف",
+    about_doctor: "عن الطبيب",
+    followed_doctors: "الأطباء المتابَعون",
+    no_followed_doctors: "لم تقم بمتابعة أي أطباء بعد.",
+    find_doctors: "البحث عن أطباء",
+    find_specialist: "ابحث عن طبيب متخصص",
+    medication_due: "موعد الدواء",
+    take: "أخذ الدواء",
+    view_history: "عرض السجل الطبي الكامل",
+    ai_analysis_report: "تقرير تحليل الذكاء الاصطناعي",
+    ai_analysis_desc: "استخدم الذكاء الاصطناعي لتلخيص وتفصيل الملاحظات",
+    select_folder: "اختر مجلداً",
+    back_to_folders: "الرجوع للمجلدات",
+    reading_type_placeholder: "نوع القراءة (مثال: ضغط الدم، السكر)",
+    value_placeholder: "القيمة",
+    unit_placeholder: "الوحدة (مثال: مم زئبق، ملجم/ديسيلتر)",
+    med_name_placeholder: "اسم الدواء",
+    dosage_placeholder: "الجرعة (مثال: 500 ملجم)",
+    frequency_placeholder: "التكرار (مثال: مرة واحدة يومياً)",
+    pharmacy_concierge: "صيدليتك الشخصية",
+    live: "مباشر",
+    form: "شكل",
+    type: "نوع",
+    refill_at: "إعادة تعبئة في",
+    edit: "تعديل",
+    low_stock_warning: "المخزون منخفض! يرجى إعادة تعبئة الدواء قريباً.",
+    ai_safety_check: "فحص سلامة الذكاء الاصطناعي",
+    messages_subtitle: "رعاية سلسة مع فريقك الطبي",
+    no_conversations: "لا توجد محادثات بعد",
+    start_conv_hint: "ابدأ محادثة من صفحة الطبيب الشخصية.",
+    file_attachment: "مرفق ملف",
+    search_conv_placeholder: "البحث في المحادثات...",
+    type_msg_placeholder: "اكتب رسالة...",
+    upcoming_appointments: "المواعيد القادمة",
+    no_past_booking: "لا توجد حجوزات سابقة",
+    general_health_history: "التاريخ الصحي العام",
+    complaint_label: "الشكوى:",
+    summary_available: "الملخص متاح",
+    in_progress: "قيد التنفيذ",
+    sign_out_desc: "تسجيل الخروج بأمان من حسابك",
+    visit_summary_not_found: "لم يتم العثور على ملخص الزيارة.",
+    go_back: "رجوع",
+    visit_summary: "ملخص الزيارة",
+    examination_findings: "نتائج الفحص",
+    assessment: "التقييم الطبي",
+    plan: "الخطة العلاجية",
+    symptoms: "الأعراض",
+    vitals_dashboard: "لوحة العلامات الحيوية",
+    health_summary: "الملخص الصحي",
+    biometric_data: "البيانات الحيوية",
+    live_analysis: "التحليل المباشر",
+    latest_health_metrics: "أحدث المؤشرات الصحية",
+    live_sync_active: "المزامنة المباشرة نشطة",
+    record: "سجل",
+    yyyy_mm_dd: "YYYY-MM-DD",
+    years_short: "سنة",
+    years: "سنوات",
+    not_set_warning: "⚠️ غير محدد — يرجى إضافة رقم الهاتف",
+    add_bio_hint: "أضف نبذة عنك",
+    phone_required: "رقم الهاتف مطلوب",
+    please_add_phone: "يرجى إضافة رقم الهاتف للتواصل. يحتاج المرضى للوصول إليك.",
+    upload_failed: "فشل الرفع",
+    photo_updated: "تم تحديث الصورة بنجاح!",
+    permission_denied: "تم رفض الإذن",
+    allow_photos: "نحن بحاجة للوصول إلى معرض الصور لتحديث صورتك الشخصية.",
+    home: "الرئيسية",
+    find: "البحث",
+    chat: "المحادثات",
+    ai_bot: "المساعد الذكي",
   },
 } as const;
 

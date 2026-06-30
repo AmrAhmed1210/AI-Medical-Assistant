@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLanguage } from "../../context/LanguageContext";
 
 const SLIDES = [
   {
@@ -49,6 +50,7 @@ const SLIDES = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { tr, isRTL } = useLanguage();
   const [activeIndex, setActiveIndex] = useState(0);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -113,10 +115,10 @@ export default function OnboardingScreen() {
       <SafeAreaView style={s.safe}>
 
         {/* header */}
-        <View style={s.header}>
+        <View style={[s.header, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <View style={s.pill}><Text style={s.pillTxt}>{activeIndex + 1} / {SLIDES.length}</Text></View>
           <TouchableOpacity onPress={handleSkip} style={s.pill} activeOpacity={0.75}>
-            <Text style={s.pillTxt}>تخطي</Text>
+            <Text style={s.pillTxt}>{tr("skip")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -129,11 +131,9 @@ export default function OnboardingScreen() {
             <Text style={s.emoji}>{slide.emoji}</Text>
           </View>
 
-          <Text style={s.titleAr}>{slide.title}</Text>
-          <Text style={s.titleEn}>{slide.titleEn}</Text>
+          <Text style={s.titleAr}>{isRTL ? slide.title : slide.titleEn}</Text>
           <View style={s.divider} />
-          <Text style={s.descAr}>{slide.description}</Text>
-          <Text style={s.descEn}>{slide.descriptionEn}</Text>
+          <Text style={s.descAr}>{isRTL ? slide.description : slide.descriptionEn}</Text>
         </Animated.View>
 
         {/* footer */}
@@ -144,14 +144,14 @@ export default function OnboardingScreen() {
             ))}
           </View>
 
-          <TouchableOpacity style={s.nextBtn} onPress={handleNext} activeOpacity={0.85}>
+          <TouchableOpacity style={[s.nextBtn, { flexDirection: isRTL ? "row-reverse" : "row" }]} onPress={handleNext} activeOpacity={0.85}>
             <Text style={[s.nextTxt, { color: slide.gradient[0] }]}>
-              {isLast ? "ابدأ الآن • Get Started" : "التالي • Next"}
+              {isLast ? tr("finish") : tr("next")}
             </Text>
             <Ionicons
-              name={isLast ? "checkmark-circle" : "arrow-forward"}
+              name={isLast ? "checkmark-circle" : (isRTL ? "arrow-back" : "arrow-forward")}
               size={20} color={slide.gradient[0]}
-              style={{ marginLeft: 8 }}
+              style={{ [isRTL ? "marginRight" : "marginLeft"]: 8 }}
             />
           </TouchableOpacity>
         </View>

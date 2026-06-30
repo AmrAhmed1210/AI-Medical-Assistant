@@ -87,34 +87,44 @@ export default function MedicalRecordsHub() {
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
       <PatientBackgroundBubbles isDark={isDark} />
       <View style={styles.header}>
-        <View style={styles.headerTop}>
+        <View style={[styles.headerTop, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={22} color="#fff" />
+            <Ionicons name="arrow-back" size={22} color="#fff" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{tr("medical_records")}</Text>
           <View style={{ width: 22 }} />
         </View>
       </View>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>{tr("health_categories")}</Text>
-        <View style={styles.grid}>
+        <Text style={[styles.sectionTitle, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>{tr("health_categories")}</Text>
+        <View style={[styles.grid, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           {categories.map((cat) => (
             <TouchableOpacity
               key={cat.id}
-              style={[styles.card, { borderLeftColor: cat.color, backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[
+                styles.card, 
+                { 
+                  backgroundColor: colors.surface, 
+                  borderColor: colors.border,
+                  borderLeftWidth: isRTL ? 0 : 4,
+                  borderRightWidth: isRTL ? 4 : 0,
+                  borderLeftColor: isRTL ? "transparent" : cat.color,
+                  borderRightColor: isRTL ? cat.color : "transparent",
+                  alignItems: isRTL ? "flex-end" : "flex-start"
+                }
+              ]}
               onPress={() => router.push({ pathname: "/(patient)/medical-records/[category]", params: { category: cat.id } })}
               activeOpacity={0.8}
             >
               <View style={[styles.iconWrap, { backgroundColor: cat.bgColor }]}>
                 <Ionicons name={cat.icon} size={22} color={cat.color} />
               </View>
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.cardTitle, { color: colors.text }]}>{tr(cat.titleKey as any)}</Text>
-                <Text style={[styles.cardCount, { color: cat.color }]}>
+              <View style={{ flex: 1, [isRTL ? "marginRight" : "marginLeft"]: 12, alignItems: isRTL ? "flex-end" : "flex-start", width: "100%" }}>
+                <Text style={[styles.cardTitle, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>{tr(cat.titleKey as any)}</Text>
+                <Text style={[styles.cardCount, { color: cat.color, textAlign: isRTL ? "right" : "left" }]}>
                   {counts[cat.id]} {tr("items")}
                 </Text>
               </View>
-              <Ionicons name={isRTL ? "chevron-back" : "chevron-forward"} size={18} color="#CBD5E1" />
             </TouchableOpacity>
           ))}
         </View>

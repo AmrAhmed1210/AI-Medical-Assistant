@@ -40,6 +40,8 @@ import {
 } from "../../services/followService";
 import { useNotificationStore } from "../../store/notificationStore";
 
+import { useLanguage } from "../../context/LanguageContext";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /** Prevent duplicate schedule toasts within a short burst window */
@@ -51,6 +53,7 @@ interface ScheduleDedupeState {
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
 export default function TabsLayout() {
+  const { tr, isRTL } = useLanguage();
   const pathname = usePathname();
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
@@ -132,8 +135,8 @@ export default function TabsLayout() {
         addNotification(createScheduleReadyNotification(doctorName));
         Toast.show({
           type: "success",
-          text1: "Schedule Updated",
-          text2: `Dr. ${doctorName} has updated availability`,
+          text1: isRTL ? "تم تحديث الجدول" : "Schedule Updated",
+          text2: isRTL ? `قام د. ${doctorName} بتحديث أوقات العمل` : `Dr. ${doctorName} has updated availability`,
           position: "top",
           topOffset: 60,
         });
@@ -152,11 +155,11 @@ export default function TabsLayout() {
       onAppointmentUpdated((data) => {
         if (!mounted) return;
         const status = String(data?.status ?? "").toLowerCase();
-        const message = data?.message || "Appointment updated";
+        const message = data?.message || (isRTL ? "تم تحديث الموعد" : "Appointment updated");
         const title =
-          status === "confirmed" ? "Appointment Confirmed"
-          : status === "cancelled" ? "Appointment Cancelled"
-          : "Appointment Updated";
+          status === "confirmed" ? (isRTL ? "تم تأكيد الموعد" : "Appointment Confirmed")
+          : status === "cancelled" ? (isRTL ? "تم إلغاء الموعد" : "Appointment Cancelled")
+          : (isRTL ? "تم تحديث الموعد" : "Appointment Updated");
         const type =
           status === "confirmed" ? "appointment_confirmed"
           : status === "cancelled" ? "appointment_cancelled"
@@ -166,7 +169,7 @@ export default function TabsLayout() {
         Toast.show({
           type: "info",
           text1: title,
-          text2: data?.status ? `Status: ${data.status}` : undefined,
+          text2: data?.status ? (isRTL ? `الحالة: ${data.status === "confirmed" ? "مؤكد" : data.status === "cancelled" ? "ملغي" : data.status}` : `Status: ${data.status}`) : undefined,
           position: "top",
           topOffset: 60,
         });
@@ -186,8 +189,8 @@ export default function TabsLayout() {
           id: `doctor_update_${doctorId}_${Date.now()}`,
           type: "update",
           icon: "👨‍⚕️",
-          title: "👨‍⚕️ Doctor Updated",
-          message: `Dr. ${doctorName} updated their profile`,
+          title: isRTL ? "👨‍⚕️ تم تحديث الطبيب" : "👨‍⚕️ Doctor Updated",
+          message: isRTL ? `قام د. ${doctorName} بتحديث الملف الشخصي` : `Dr. ${doctorName} updated their profile`,
           timestamp: Date.now(),
           doctorId,
           doctorName,
@@ -195,8 +198,8 @@ export default function TabsLayout() {
 
         Toast.show({
           type: "info",
-          text1: "Doctor Updated",
-          text2: `Dr. ${doctorName} updated their profile`,
+          text1: isRTL ? "تم تحديث الطبيب" : "Doctor Updated",
+          text2: isRTL ? `قام د. ${doctorName} بتحديث الملف الشخصي` : `Dr. ${doctorName} updated their profile`,
           position: "top",
           topOffset: 60,
         });
@@ -216,12 +219,12 @@ export default function TabsLayout() {
         const doctorName = String(payload?.doctorName ?? payload?.DoctorName ?? "Doctor");
         const message    = String(payload?.message    ?? payload?.Message    ?? "You received a new message.");
         addNotification(
-          createAppointmentUpdatedNotification("New Message", `Dr. ${doctorName}: ${message}`, "message")
+          createAppointmentUpdatedNotification(isRTL ? "رسالة جديدة" : "New Message", isRTL ? `د. ${doctorName}: ${message}` : `Dr. ${doctorName}: ${message}`, "message")
         );
         Toast.show({
           type: "info",
-          text1: "New Message",
-          text2: `Dr. ${doctorName}: ${message}`,
+          text1: isRTL ? "رسالة جديدة" : "New Message",
+          text2: isRTL ? `د. ${doctorName}: ${message}` : `Dr. ${doctorName}: ${message}`,
           position: "top",
           topOffset: 60,
         });
@@ -251,8 +254,8 @@ export default function TabsLayout() {
         ]);
 
         if (APPOINTMENT_CATEGORIES.has(category)) {
-          const title   = String(payload?.title   ?? payload?.Title   ?? "Appointment");
-          const message = String(payload?.message ?? payload?.Message ?? "You have a new appointment update.");
+          const title   = String(payload?.title   ?? payload?.Title   ?? (isRTL ? "موعد" : "Appointment"));
+          const message = String(payload?.message ?? payload?.Message ?? (isRTL ? "لديك تحديث جديد للموعد." : "You have a new appointment update."));
           addNotification(createAppointmentUpdatedNotification(title, message, category));
           Toast.show({ type: "info", text1: title, text2: message, position: "top", topOffset: 60 });
           return;
@@ -260,8 +263,8 @@ export default function TabsLayout() {
 
         if (category === "message") {
           incrementSession(0);
-          const title   = String(payload?.title   ?? payload?.Title   ?? "New Message");
-          const message = String(payload?.message ?? payload?.Message ?? "You received a new message.");
+          const title   = String(payload?.title   ?? payload?.Title   ?? (isRTL ? "رسالة جديدة" : "New Message"));
+          const message = String(payload?.message ?? payload?.Message ?? (isRTL ? "تلقيت رسالة جديدة." : "You received a new message."));
           addNotification(createAppointmentUpdatedNotification(title, message, "message"));
           Toast.show({ type: "info", text1: title, text2: message, position: "top", topOffset: 60 });
         }
@@ -274,7 +277,7 @@ export default function TabsLayout() {
       mounted = false;
       stopSignalRConnection();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isRTL]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Clear message badge when user navigates to messages ──
   useEffect(() => {

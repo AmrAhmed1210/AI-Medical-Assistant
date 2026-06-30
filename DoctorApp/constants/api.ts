@@ -23,8 +23,8 @@ function getExpoHost(): string | null {
 const expoHost = getExpoHost();
 const inferredBaseUrl = expoHost ? `http://${expoHost}:5194` : null;
 
-// Expo host updates when you change Wi‑Fi; app.json apiBaseUrl is only a fallback.
-export const BASE_URL = inferredBaseUrl || configuredBaseUrl || "http://localhost:5194";
+// The backend is now live on SmarterASP!
+export const BASE_URL = "http://amrahmed1210-001-site1.itempurl.com";
 
 if (__DEV__) {
   console.log("[API] Using backend:", BASE_URL);

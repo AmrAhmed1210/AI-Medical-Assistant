@@ -4,9 +4,11 @@ import { COLORS } from "../../constants/colors";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function DoctorTabsLayout() {
   const router = useRouter();
+  const { tr } = useLanguage();
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
@@ -76,7 +78,7 @@ export default function DoctorTabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: tr("home"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />
           ),
@@ -86,7 +88,7 @@ export default function DoctorTabsLayout() {
       <Tabs.Screen
         name="schedule"
         options={{
-          title: "Schedule",
+          title: tr("schedule"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar-outline" size={size} color={color} />
           ),
@@ -96,7 +98,7 @@ export default function DoctorTabsLayout() {
       <Tabs.Screen
         name="ai-reports"
         options={{
-          title: "AI Reports",
+          title: tr("ai_medical_reports"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="analytics-outline" size={size} color={color} />
           ),
@@ -106,7 +108,7 @@ export default function DoctorTabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: tr("profile"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),

@@ -1,4 +1,4 @@
-﻿import {
+import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, StatusBar, ActivityIndicator, Alert, Image, Dimensions, Modal, TextInput, PanResponder
 } from "react-native";
@@ -605,9 +605,9 @@ export default function HomeScreen() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
-    return "Good Evening";
+    if (hour < 12) return tr("greeting_morning") || "Good Morning";
+    if (hour < 18) return isRTL ? "مساء الخير" : "Good Afternoon";
+    return isRTL ? "مساء الخير" : "Good Evening";
   };
 
   const headerTranslateY = scrollY.interpolate({
@@ -656,15 +656,15 @@ export default function HomeScreen() {
       >
         <RNAnimated.View style={[styles.magicHeaderContainer, { transform: [{ translateY: headerTranslateY }] }]}>
           <LinearGradient colors={["#064E3B", "#059669"]} style={styles.magicHeader}>
-            <RNAnimated.View style={[styles.headerTop, { opacity: headerOpacity }]}>
-              <View>
+            <RNAnimated.View style={[styles.headerTop, { opacity: headerOpacity, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
                 <Text style={styles.greetText}>{getGreeting()}</Text>
-                <View style={styles.nameRow}>
-                  <Text style={styles.userName}>{profile?.name?.split(" ")[0] || "Patient"}</Text>
-                  <Sparkles size={16} color="#FDE047" style={{ marginLeft: 4 }} />
+                <View style={[styles.nameRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <Text style={styles.userName}>{profile?.name?.split(" ")[0] || tr("patient")}</Text>
+                  <Sparkles size={16} color="#FDE047" style={{ [isRTL ? "marginRight" : "marginLeft"]: 4 }} />
                 </View>
               </View>
-              <View style={styles.headerRight}>
+              <View style={[styles.headerRight, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <TouchableOpacity style={styles.headerIconBtn} onPress={() => router.push("/(patient)/doctors")}>
                   <Search size={22} color="#fff" />
                 </TouchableOpacity>
@@ -681,15 +681,15 @@ export default function HomeScreen() {
 
             <RNAnimated.View style={{ transform: [{ scale: searchScale }] }}>
               <TouchableOpacity
-                style={styles.findDoctorBtn}
+                style={[styles.findDoctorBtn, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                 activeOpacity={0.8}
                 onPress={() => router.push("/(patient)/doctors")}
               >
-                <View style={styles.findDoctorContent}>
+                <View style={[styles.findDoctorContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                   <Stethoscope size={20} color="#059669" />
-                  <Text style={styles.findDoctorText}>Find a Specialist Doctor</Text>
+                  <Text style={styles.findDoctorText}>{tr("find_specialist")}</Text>
                 </View>
-                <View style={styles.findDoctorArrow}>
+                <View style={[styles.findDoctorArrow, { transform: [{ scaleX: isRTL ? -1 : 1 }] }]}>
                   <ArrowRight size={18} color="#059669" />
                 </View>
               </TouchableOpacity>
@@ -704,16 +704,16 @@ export default function HomeScreen() {
         <View style={styles.tipWrapper}>
           <LinearGradient
             colors={isDark ? ["rgba(30, 41, 59, 0.95)", "rgba(15, 23, 42, 0.9)"] : ["rgba(255, 255, 255, 0.95)", "rgba(240, 253, 244, 0.9)"]}
-            style={[styles.magicTipCard, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(5, 150, 105, 0.12)' }]}
+            style={[styles.magicTipCard, { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(5, 150, 105, 0.12)', flexDirection: isRTL ? 'row-reverse' : 'row' }]}
           >
             <View style={[styles.tipIconBox, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5' }]}>
               <View style={[styles.innerIconBox, { backgroundColor: isDark ? '#059669' : '#fff' }]}>
                 <Ionicons name="bulb" size={22} color={isDark ? "#fff" : "#059669"} />
               </View>
             </View>
-            <View style={{ flex: 1, marginHorizontal: 12 }}>
+            <View style={{ flex: 1, marginHorizontal: 12, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
               <Text style={[styles.tipTitle, { color: isDark ? '#6EE7B7' : '#064E3B' }]}>{isRTL ? "نصيحة اليوم ✨" : "Daily Wellness ✨"}</Text>
-              <Text style={[styles.tipDesc, { color: isDark ? '#34D399' : '#047857' }, isRTL && { textAlign: 'right' }]}>
+              <Text style={[styles.tipDesc, { color: isDark ? '#34D399' : '#047857' }, { textAlign: isRTL ? 'right' : 'left' }]}>
                 {isRTL ? dailyTip.tip_ar : dailyTip.tip_en}
               </Text>
             </View>
@@ -732,13 +732,13 @@ export default function HomeScreen() {
         {/* AI HEALTH INSIGHTS CARD - REFINED BILINGUAL */}
         <View style={styles.aiInsightContainer}>
           <View style={[styles.aiWhiteCardRefined, { backgroundColor: colors.surface, borderColor: isDark ? '#0284C7' : '#BAE6FD' }]}>
-            <View style={styles.aiHeaderRefined}>
+            <View style={[styles.aiHeaderRefined, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
               <View style={[styles.aiIconBoxRefined, { backgroundColor: isDark ? 'rgba(14, 165, 233, 0.2)' : '#F0F9FF' }]}>
                 <Sparkles size={20} color="#0EA5E9" />
               </View>
-              <Text style={[styles.aiTitleRefined, { color: colors.text }]}>{isRTL ? "تحليل الذكاء الاصطناعي" : "AI Health Insights"}</Text>
+              <Text style={[styles.aiTitleRefined, { color: colors.text, [isRTL ? "marginRight" : "marginLeft"]: 12 }]}>{isRTL ? "تحليل الذكاء الاصطناعي" : "AI Health Insights"}</Text>
 
-              <View style={styles.miniToggleBox}>
+              <View style={[styles.miniToggleBox, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <TouchableOpacity onPress={() => setReportLang('en')} style={[styles.miniToggleBtn, reportLang === 'en' && styles.miniToggleBtnActive]}>
                   <Text style={[styles.miniToggleText, reportLang === 'en' && styles.miniToggleTextActive]}>EN</Text>
                 </TouchableOpacity>
@@ -748,17 +748,17 @@ export default function HomeScreen() {
               </View>
 
               {isAnalyzing ? (
-                <ActivityIndicator size="small" color="#0EA5E9" style={{ marginLeft: 10 }} />
+                <ActivityIndicator size="small" color="#0EA5E9" style={{ [isRTL ? "marginRight" : "marginLeft"]: 10 }} />
               ) : (
-                <TouchableOpacity onPress={runAiAnalysis} style={{ marginLeft: 10 }}>
+                <TouchableOpacity onPress={runAiAnalysis} style={{ [isRTL ? "marginRight" : "marginLeft"]: 10 }}>
                   <Clock size={18} color="#0EA5E9" />
                 </TouchableOpacity>
               )}
             </View>
 
             {profile?.aiDiagnosisSummary ? (
-              <View style={styles.aiContentRefined}>
-                <Text style={[styles.aiTextRefined, { color: colors.textMuted }, reportLang === 'ar' && { textAlign: 'right' }]} numberOfLines={6}>
+              <View style={[styles.aiContentRefined, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                <Text style={[styles.aiTextRefined, { color: colors.textMuted }, { textAlign: reportLang === 'ar' ? 'right' : 'left' }]} numberOfLines={6}>
                   {formatReadableReport(getAiReportText(profile.aiDiagnosisSummary, reportLang))}
                 </Text>
                 {(() => {
@@ -770,9 +770,9 @@ export default function HomeScreen() {
                   if (!needsDoc) return null;
                   if (recommendedDoctors.length > 0) {
                     return (
-                      <View style={styles.docRecommendSection}>
+                      <View style={[styles.docRecommendSection, { alignItems: isRTL ? 'flex-end' : 'flex-start', width: '100%' }]}>
                         <Text style={[styles.docRecommendLabel, { color: colors.textMuted }]}>{tr("recommended_doctors")}</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.docRecommendScroll}>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.docRecommendScroll, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                           {recommendedDoctors.map((doc) => (
                             <TouchableOpacity
                               key={doc.id}
@@ -790,7 +790,7 @@ export default function HomeScreen() {
                   }
                   if (recommendedSpecialty) {
                     return (
-                      <View style={styles.docRecommendSection}>
+                      <View style={[styles.docRecommendSection, { alignItems: isRTL ? 'flex-end' : 'flex-start', width: '100%' }]}>
                         <Text style={[styles.docRecommendLabel, { color: colors.textMuted }]}>{tr("recommended_specialty")}</Text>
                         <TouchableOpacity 
                           style={[styles.docRecommendChip, { backgroundColor: isDark ? 'rgba(234,179,8,0.1)' : '#FEF9C3', borderColor: isDark ? 'rgba(234,179,8,0.2)' : '#FEF08A', marginTop: 8, padding: 12, width: '100%', alignItems: 'center' }]}
@@ -809,11 +809,11 @@ export default function HomeScreen() {
                   return null;
                 })()}
                 <TouchableOpacity
-                  style={styles.fullReportBtnRefined}
+                  style={[styles.fullReportBtnRefined, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                   onPress={() => setShowAiModal(true)}
                 >
                   <Text style={styles.fullReportBtnText}>{isRTL ? "عرض التقرير الكامل" : "Read Full Analysis"}</Text>
-                  <ArrowRight size={14} color="#0EA5E9" />
+                  <ArrowRight size={14} color="#0EA5E9" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
                 </TouchableOpacity>
               </View>
             ) : (
@@ -827,20 +827,20 @@ export default function HomeScreen() {
         {/* MEDICATION DUE REMINDER CARD */}
         {nextDose && (
           <View style={styles.medTaskContainer}>
-            <LinearGradient colors={isDark ? ["#042F2E", "#134E4A"] : ["#F0FDFA", "#CCFBF1"]} style={[styles.medTaskCard, { borderColor: isDark ? '#0D9488' : '#99F6E4' }]}>
+            <LinearGradient colors={isDark ? ["#042F2E", "#134E4A"] : ["#F0FDFA", "#CCFBF1"]} style={[styles.medTaskCard, { borderColor: isDark ? '#0D9488' : '#99F6E4', flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
               <View style={[styles.medTaskIconBox, { backgroundColor: isDark ? 'rgba(20, 184, 166, 0.2)' : '#fff' }]}>
                 <Pill size={20} color="#14B8A6" />
               </View>
-              <View style={{ flex: 1, marginLeft: 15 }}>
-                <Text style={[styles.medTaskTitle, { color: isDark ? '#5EEAD4' : '#0F766E' }]}>Medication Due</Text>
+              <View style={{ flex: 1, [isRTL ? "marginRight" : "marginLeft"]: 15, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+                <Text style={[styles.medTaskTitle, { color: isDark ? '#5EEAD4' : '#0F766E' }]}>{tr("medication_due")}</Text>
                 <Text style={[styles.medTaskName, { color: isDark ? '#fff' : '#134E4A' }]}>{nextDose.medicationName} • {nextDose.dosage}</Text>
               </View>
               <TouchableOpacity
-                style={styles.medTaskBtn}
+                style={[styles.medTaskBtn, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                 onPress={() => router.push("/(patient)/medications")}
               >
-                <Text style={styles.medTaskBtnText}>Take</Text>
-                <ArrowRight size={14} color="#fff" />
+                <Text style={styles.medTaskBtnText}>{tr("take")}</Text>
+                <ArrowRight size={14} color="#fff" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
               </TouchableOpacity>
             </LinearGradient>
           </View>
@@ -856,15 +856,15 @@ export default function HomeScreen() {
                 colors={isDark ? ["#064E3B", "#121B2E"] : ["#ECFDF5", "#F0FDF4"]}
                 style={[styles.reminderCardCalm, { borderColor: isDark ? '#047857' : '#DCFCE7' }]}
               >
-                <View style={styles.reminderHeaderCompact}>
+                <View style={[styles.reminderHeaderCompact, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                   <View style={[styles.reminderIconBoxCalm, { backgroundColor: isDark ? 'rgba(5, 150, 105, 0.2)' : '#fff' }]}>
                     <Calendar size={18} color="#059669" />
                   </View>
-                  <View style={{ flex: 1, marginLeft: 15 }}>
-                    <Text style={[styles.reminderTitleCalm, { color: isDark ? '#34D399' : '#059669' }, isRTL && { textAlign: 'right' }]}>{tr("upcoming_appointment")}</Text>
-                    <Text style={[styles.reminderDoctorCalm, { color: isDark ? '#fff' : '#064E3B' }, isRTL && { textAlign: 'right' }]}>{isRTL ? `د. ${nextBooking.doctorName}` : `Dr. ${nextBooking.doctorName}`} • {formatReminderDate(nextBooking.date)} • {nextBooking.time}</Text>
+                  <View style={{ flex: 1, [isRTL ? "marginRight" : "marginLeft"]: 15 }}>
+                    <Text style={[styles.reminderTitleCalm, { color: isDark ? '#34D399' : '#059669' }, { textAlign: isRTL ? 'right' : 'left' }]}>{tr("upcoming_appointment")}</Text>
+                    <Text style={[styles.reminderDoctorCalm, { color: isDark ? '#fff' : '#064E3B' }, { textAlign: isRTL ? 'right' : 'left' }]}>{isRTL ? `د. ${nextBooking.doctorName}` : `Dr. ${nextBooking.doctorName}`} • {formatReminderDate(nextBooking.date)} • {nextBooking.time}</Text>
                   </View>
-                  <ChevronRight size={20} color="#059669" />
+                  <ChevronRight size={20} color="#059669" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
                 </View>
 
                 {/* Decorative element */}
@@ -883,8 +883,8 @@ export default function HomeScreen() {
             colors={isDark ? ["#121B2E", "#0F172A"] : ["#FFFFFF", "#F0F9FF"]}
             style={[styles.healthDashboardCard, { borderColor: colors.border }]}
           >
-            <View style={styles.dashboardHeader}>
-              <View>
+            <View style={[styles.dashboardHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
                 <Text style={[styles.dashboardTitle, { color: colors.text }]}>{isRTL ? "متابعة صحتك اليوم" : "Today's Health Tracker"}</Text>
                 <Text style={[styles.dashboardSubTitle, { color: colors.textMuted }]}>{isRTL ? "سجل قياساتك للحصول على تحليل دقيق" : "Track your vitals & medications"}</Text>
               </View>
@@ -895,9 +895,9 @@ export default function HomeScreen() {
 
             <View style={[styles.dashboardDivider, { backgroundColor: colors.border }]} />
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.healthTasksRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.healthTasksRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
               <TouchableOpacity
-                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border, marginRight: isRTL ? 0 : 10, marginLeft: isRTL ? 10 : 0 }]}
                 onPress={() => {
                   triggerHaptic();
                   router.push("/(patient)/vitals");
@@ -910,7 +910,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border, marginRight: isRTL ? 0 : 10, marginLeft: isRTL ? 10 : 0 }]}
                 onPress={() => {
                   triggerHaptic();
                   router.push("/(patient)/medications");
@@ -923,7 +923,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border, marginRight: isRTL ? 0 : 10, marginLeft: isRTL ? 10 : 0 }]}
                 onPress={() => {
                   triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
                   router.push("/(patient)/ai-profile-assistant");
@@ -936,7 +936,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                style={[styles.healthTaskItem, { backgroundColor: colors.surface, borderColor: colors.border, marginRight: isRTL ? 0 : 10, marginLeft: isRTL ? 10 : 0 }]}
                 onPress={() => {
                   triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
                   setShowAiModal(true);
@@ -957,9 +957,9 @@ export default function HomeScreen() {
                   router.push("/(patient)/vitals");
                 }}
               >
-                <LinearGradient colors={["#0EA5E9", "#0284C7"]} style={styles.recordNowGradient}>
+                <LinearGradient colors={["#0EA5E9", "#0284C7"]} style={[styles.recordNowGradient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                   <Text style={styles.recordNowText}>{isRTL ? "سجل قياساتك الآن" : "Record Vitals Now"}</Text>
-                  <ArrowRight size={16} color="#fff" />
+                  <ArrowRight size={16} color="#fff" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
                 </LinearGradient>
               </TouchableOpacity>
             )}
@@ -967,25 +967,25 @@ export default function HomeScreen() {
         </Animated.View>
 
         <View style={styles.metricsArea}>
-          <View style={styles.metricsRow}>
+          <View style={[styles.metricsRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <TouchableOpacity
               style={{ width: '48%' }}
               onPress={() => router.push("/(patient)/medications" as any)}
             >
-              <SmallMetric icon={Pill} color="#14B8A6" bg={isDark ? "rgba(20, 184, 166, 0.2)" : "#F0FDFA"} label="Your Medications" val={nextDose ? nextDose.medicationName : "Up to date"} />
+              <SmallMetric icon={Pill} color="#14B8A6" bg={isDark ? "rgba(20, 184, 166, 0.2)" : "#F0FDFA"} label={isRTL ? "أدويتك" : "Your Medications"} val={nextDose ? nextDose.medicationName : (isRTL ? "مكتملة اليوم" : "Up to date")} isRTL={isRTL} />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={{ width: '48%' }}
               onPress={() => router.push("/(patient)/vitals" as any)}
             >
-              <SmallMetric icon={HeartPulse} color="#0EA5E9" bg={isDark ? "rgba(14, 165, 233, 0.2)" : "#F0F9FF"} label="Record Vitals" val={lastBP ? `${lastBP.value}/${lastBP.value2}` : "No readings"} />
+              <SmallMetric icon={HeartPulse} color="#0EA5E9" bg={isDark ? "rgba(14, 165, 233, 0.2)" : "#F0F9FF"} label={isRTL ? "تسجيل القياسات" : "Record Vitals"} val={lastBP ? `${lastBP.value}/${lastBP.value2}` : (isRTL ? "لا توجد قياسات" : "No readings")} isRTL={isRTL} />
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Medical History & Records</Text>
+        <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{isRTL ? "السجل الطبي والمستندات" : "Medical History & Records"}</Text>
         </View>
         <View style={styles.quickAccessRow}>
           <TouchableOpacity
@@ -993,32 +993,32 @@ export default function HomeScreen() {
             onPress={() => router.push("/(patient)/profile?tab=history")}
             activeOpacity={0.8}
           >
-            <LinearGradient colors={isDark ? ["#064E3B", "#121B2E"] : ["#ECFDF5", "#fff"]} style={[styles.fullHistoryGradient, { borderColor: colors.border }]}>
+            <LinearGradient colors={isDark ? ["#064E3B", "#121B2E"] : ["#ECFDF5", "#fff"]} style={[styles.fullHistoryGradient, { borderColor: colors.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
               <View style={styles.historyIconCircle}>
                 <Clock size={24} color="#059669" />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.fullHistoryTitle, { color: colors.text }]}>View Full Medical History</Text>
-                <Text style={[styles.fullHistorySub, { color: colors.textMuted }]}>Allergies, Surgeries, Records & Folders</Text>
+              <View style={{ flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start', marginHorizontal: isRTL ? 15 : 0 }}>
+                <Text style={[styles.fullHistoryTitle, { color: colors.text }]}>{tr("view_history")}</Text>
+                <Text style={[styles.fullHistorySub, { color: colors.textMuted }]}>{isRTL ? "الحساسية، العمليات، المجلدات والتقارير" : "Allergies, Surgeries, Records & Folders"}</Text>
               </View>
-              <ChevronRight size={20} color="#059669" />
+              <ChevronRight size={20} color="#059669" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
             </LinearGradient>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.bottomMetricsRow}>
-          <SmallMetric icon={Activity} color="#0EA5E9" bg={isDark ? "rgba(14, 165, 233, 0.2)" : "#F0F9FF"} label="Vitals" val="Latest" onPress={() => router.push("/(patient)/vitals")} />
-          <SmallMetric icon={Pill} color="#14B8A6" bg={isDark ? "rgba(20, 184, 166, 0.2)" : "#F0FDFA"} label="Meds" val="Schedule" onPress={() => router.push("/(patient)/medications")} />
+        <View style={[styles.bottomMetricsRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <SmallMetric icon={Activity} color="#0EA5E9" bg={isDark ? "rgba(14, 165, 233, 0.2)" : "#F0F9FF"} label={isRTL ? "العلامات الحيوية" : "Vitals"} val={isRTL ? "أحدث القياسات" : "Latest"} onPress={() => router.push("/(patient)/vitals")} isRTL={isRTL} />
+          <SmallMetric icon={Pill} color="#14B8A6" bg={isDark ? "rgba(20, 184, 166, 0.2)" : "#F0FDFA"} label={isRTL ? "الأدوية" : "Meds"} val={isRTL ? "الجدول اليومي" : "Schedule"} onPress={() => router.push("/(patient)/medications")} isRTL={isRTL} />
         </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Medical Specialists</Text>
+        <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{isRTL ? "التخصصات الطبية" : "Medical Specialists"}</Text>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.catScroll, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           {CATEGORIES.map((cat, i) => (
             <TouchableOpacity
               key={i}
-              style={styles.catCard}
+              style={[styles.catCard, { marginRight: isRTL ? 0 : 15, marginLeft: isRTL ? 15 : 0 }]}
               onPress={() => router.push({ pathname: "/(patient)/doctors", params: { specialty: cat.specialty } } as any)}
             >
               <LinearGradient colors={isDark ? ["#1E293B", "#121B2E"] : ["#fff", "#F1F5F9"]} style={[styles.catIconBox, { borderColor: colors.border }]}>
@@ -1029,14 +1029,14 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        <View style={styles.sectionHeader}>
+        <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             {recommendedDoctors.length > 0 ? tr("recommended_for_you") : tr("top_rated_doctors")}
           </Text>
           <TouchableOpacity onPress={() => router.push("/(patient)/doctors")}><Text style={styles.seeMore}>{tr("view_all")}</Text></TouchableOpacity>
         </View>
         {recommendedSpecialty && recommendedDoctors.length > 0 && (
-          <Text style={[styles.docRecommendLabel, { color: colors.textMuted, paddingHorizontal: 20, marginBottom: 10 }]}>
+          <Text style={[styles.docRecommendLabel, { color: colors.textMuted, paddingHorizontal: 20, marginBottom: 10, textAlign: isRTL ? "right" : "left" }]}>
             {tr("best_match")}: {recommendedSpecialty}
           </Text>
         )}
@@ -1064,13 +1064,13 @@ export default function HomeScreen() {
       <Modal visible={showAiModal} animationType="fade" transparent>
         <View style={styles.modalOverlayRefined}>
           <View style={[styles.modalContentRefined, { backgroundColor: colors.surface }]}>
-            <View style={styles.modalHeaderRefined}>
+            <View style={[styles.modalHeaderRefined, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
               <Sparkles size={22} color="#0EA5E9" />
-              <Text style={[styles.modalTitleRefined, { color: colors.text }]}>{isRTL ? "تقرير الصحة الذكي" : "Smart AI Report"}</Text>
+              <Text style={[styles.modalTitleRefined, { color: colors.text, [isRTL ? "marginRight" : "marginLeft"]: 12, textAlign: isRTL ? "right" : "left" }]}>{isRTL ? "تقرير الصحة الذكي" : "Smart AI Report"}</Text>
               <TouchableOpacity onPress={() => setShowAiModal(false)}><Ionicons name="close" size={26} color={colors.textMuted} /></TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBodyRefined}>
-              <Text selectable style={[styles.modalTextRefined, { color: colors.textMuted }, reportLang === 'ar' && { textAlign: 'right' }]}>
+              <Text selectable style={[styles.modalTextRefined, { color: colors.textMuted }, { textAlign: reportLang === 'ar' ? 'right' : 'left' }]}>
                 {formatReadableReport(getAiReportText(profile?.aiDiagnosisSummary, reportLang))}
               </Text>
               {(() => {
@@ -1083,20 +1083,20 @@ export default function HomeScreen() {
                 if (recommendedDoctors.length > 0) {
                   return (
                     <View style={[styles.modalDocSection, { borderTopColor: colors.border }]}>
-                      <Text style={[styles.modalDocLabel, { color: colors.text }]}>{tr("recommended_doctors")}</Text>
+                      <Text style={[styles.modalDocLabel, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{tr("recommended_doctors")}</Text>
                       {recommendedDoctors.map((doc) => (
                         <TouchableOpacity
                           key={doc.id}
-                          style={[styles.modalDocCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+                          style={[styles.modalDocCard, { backgroundColor: colors.background, borderColor: colors.border, flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                           onPress={() => { setShowAiModal(false); router.push({ pathname: "/(patient)/doctor-details", params: { id: doc.id } } as any); }}
                           activeOpacity={0.7}
                         >
-                          <View style={styles.modalDocInfo}>
+                          <View style={[styles.modalDocInfo, { alignItems: isRTL ? 'flex-end' : 'flex-start', marginHorizontal: isRTL ? 12 : 0 }]}>
                             <Text style={[styles.modalDocName, { color: colors.text }]}>{doc.name}</Text>
                             <Text style={[styles.modalDocSpecialty, { color: colors.primary }]}>{doc.specialty}</Text>
                             <Text style={[styles.modalDocMeta, { color: colors.textMuted }]}>{doc.location} · {doc.rating?.toFixed(1)} ⭐</Text>
                           </View>
-                          <ChevronRight size={18} color={colors.textMuted} />
+                          <ChevronRight size={18} color={colors.textMuted} style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -1105,7 +1105,7 @@ export default function HomeScreen() {
                 if (recommendedSpecialty) {
                   return (
                     <View style={[styles.modalDocSection, { borderTopColor: colors.border }]}>
-                      <Text style={[styles.modalDocLabel, { color: colors.text }]}>{tr("recommended_specialty")}</Text>
+                      <Text style={[styles.modalDocLabel, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{tr("recommended_specialty")}</Text>
                       <TouchableOpacity 
                         style={[styles.modalDocCard, { backgroundColor: isDark ? 'rgba(234,179,8,0.1)' : '#FEF9C3', borderColor: isDark ? 'rgba(234,179,8,0.2)' : '#FEF08A', alignItems: 'center', paddingVertical: 16 }]}
                         onPress={() => { setShowAiModal(false); router.push({ pathname: "/(patient)/doctors", params: { specialty: recommendedSpecialty } } as any); }}
@@ -1140,6 +1140,7 @@ export default function HomeScreen() {
         {...panResponder.panHandlers}
         style={[
           styles.stackedFabContainer,
+          isRTL ? { left: 25, right: undefined } : { right: 25, left: undefined },
           { transform: [{ translateX: pan.x }, { translateY: pan.y }] }
         ]}
       >
@@ -1200,11 +1201,11 @@ export default function HomeScreen() {
                 </Text>
 
                 {/* Blood Pressure Input */}
-                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12 }]}>
-                  <Activity size={20} color="#059669" style={styles.dailyIcon} />
+                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <Activity size={20} color="#059669" style={isRTL ? { marginLeft: 12 } : styles.dailyIcon} />
                   <TextInput
-                    style={[styles.modalInput, { color: colors.text }]}
-                    placeholder="Sys"
+                    style={[styles.modalInput, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}
+                    placeholder={isRTL ? "الانقباضي" : "Sys"}
                     placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                     value={dailySysBp}
@@ -1212,70 +1213,70 @@ export default function HomeScreen() {
                   />
                   <Text style={{ color: colors.textMuted, fontSize: 18 }}>/</Text>
                   <TextInput
-                    style={[styles.modalInput, { color: colors.text }]}
-                    placeholder="Dia"
+                    style={[styles.modalInput, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}
+                    placeholder={isRTL ? "الانبساطي" : "Dia"}
                     placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                     value={dailyDiaBp}
                     onChangeText={setDailyDiaBp}
                   />
-                  <Text style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>mmHg</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 12, [isRTL ? "marginRight" : "marginLeft"]: 8 }}>mmHg</Text>
                 </View>
 
                 {/* Blood Sugar Input */}
-                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12 }]}>
-                  <Droplets size={20} color="#3B82F6" style={styles.dailyIcon} />
+                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <Droplets size={20} color="#3B82F6" style={isRTL ? { marginLeft: 12 } : styles.dailyIcon} />
                   <TextInput
-                    style={[styles.modalInput, { color: colors.text }]}
+                    style={[styles.modalInput, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}
                     placeholder={isRTL ? "السكر" : "Blood Sugar"}
                     placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                     value={dailySugar}
                     onChangeText={setDailySugar}
                   />
-                  <Text style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>mg/dL</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 12, [isRTL ? "marginRight" : "marginLeft"]: 8 }}>mg/dL</Text>
                 </View>
 
                 {/* Heart Rate Input */}
-                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12 }]}>
-                  <HeartPulse size={20} color="#EF4444" style={styles.dailyIcon} />
+                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <HeartPulse size={20} color="#EF4444" style={isRTL ? { marginLeft: 12 } : styles.dailyIcon} />
                   <TextInput
-                    style={[styles.modalInput, { color: colors.text }]}
+                    style={[styles.modalInput, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}
                     placeholder={isRTL ? "معدل النبض" : "Heart Rate"}
                     placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                     value={dailyHeartRate}
                     onChangeText={setDailyHeartRate}
                   />
-                  <Text style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>bpm</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 12, [isRTL ? "marginRight" : "marginLeft"]: 8 }}>bpm</Text>
                 </View>
 
                 {/* Temperature Input */}
-                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12 }]}>
-                  <Thermometer size={20} color="#F59E0B" style={styles.dailyIcon} />
+                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <Thermometer size={20} color="#F59E0B" style={isRTL ? { marginLeft: 12 } : styles.dailyIcon} />
                   <TextInput
-                    style={[styles.modalInput, { color: colors.text }]}
+                    style={[styles.modalInput, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}
                     placeholder={isRTL ? "درجة الحرارة" : "Temperature"}
                     placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                     value={dailyTemp}
                     onChangeText={setDailyTemp}
                   />
-                  <Text style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>C°</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 12, [isRTL ? "marginRight" : "marginLeft"]: 8 }}>C°</Text>
                 </View>
 
                 {/* Weight Input */}
-                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12 }]}>
-                  <User size={20} color="#8B5CF6" style={styles.dailyIcon} />
+                <View style={[styles.modalInputGroup, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f8fafc', borderColor: colors.border, marginBottom: 12, flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <User size={20} color="#8B5CF6" style={isRTL ? { marginLeft: 12 } : styles.dailyIcon} />
                   <TextInput
-                    style={[styles.modalInput, { color: colors.text }]}
+                    style={[styles.modalInput, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}
                     placeholder={isRTL ? "الوزن" : "Weight"}
                     placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                     value={dailyWeight}
                     onChangeText={setDailyWeight}
                   />
-                  <Text style={{ color: colors.textMuted, fontSize: 12, marginLeft: 8 }}>kg</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 12, [isRTL ? "marginRight" : "marginLeft"]: 8 }}>kg</Text>
                 </View>
 
                 <TouchableOpacity 

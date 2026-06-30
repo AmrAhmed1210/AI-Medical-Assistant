@@ -58,7 +58,11 @@
       "reactCompiler": true
     },
     "extra": {
-      "apiBaseUrl": ""
+      "apiBaseUrl": "",
+      "router": {},
+      "eas": {
+        "projectId": "6aae9b03-040b-4c23-93c6-1cdbd68950eb"
+      }
     }
   }
 }

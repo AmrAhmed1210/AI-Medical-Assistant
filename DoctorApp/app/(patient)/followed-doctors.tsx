@@ -6,9 +6,11 @@ import { COLORS } from "../../constants/colors";
 import { getDoctorById } from "../../services/doctorService";
 import DoctorCard from "../../components/DoctorCard";
 import { getFollowedDoctorIds } from "../../services/followService";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function FollowedDoctorsScreen() {
   const router = useRouter();
+  const { tr, isRTL } = useLanguage();
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -16,7 +18,7 @@ export default function FollowedDoctorsScreen() {
   const fetchFollowed = useCallback(async () => {
     try {
       const followedIds = await getFollowedDoctorIds()
-      
+
       if (followedIds.length === 0) {
         setDoctors([]);
         return;
@@ -32,7 +34,7 @@ export default function FollowedDoctorsScreen() {
           }
         })
       );
-      
+
       setDoctors(details.filter(d => d !== null));
     } catch (e) {
       console.error(e);
@@ -50,24 +52,28 @@ export default function FollowedDoctorsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+      <View style={[styles.header, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+        <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { transform: [{ scaleX: isRTL ? -1 : 1 }] }]}>
           <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
         </TouchableOpacity>
-        <Text style={styles.title}>Followed Doctors</Text>
+        <Text style={[styles.title, { textAlign: isRTL ? "right" : "left", flex: 1, marginRight: isRTL ? 12 : 0, marginLeft: isRTL ? 0 : 12 }]}>
+          {isRTL ? "الأطباء المتابَعون" : "Followed Doctors"}
+        </Text>
       </View>
 
       <FlatList
         data={doctors}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
-          <DoctorCard 
+          <DoctorCard
             doctor={{
               ...item,
               id: String(item.id),
-              experience: `${item.yearsExperience || item.experience || 0} yrs`,
+              experience: isRTL 
+                ? `خبرة ${item.yearsExperience || item.experience || 0} سنوات` 
+                : `${item.yearsExperience || item.experience || 0} yrs`,
               isProfileComplete: true
-            }} 
+            }}
           />
         )}
         contentContainerStyle={styles.list}
@@ -77,9 +83,9 @@ export default function FollowedDoctorsScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="heart-outline" size={64} color="#DDD" />
-            <Text style={styles.emptyTxt}>You have not followed any doctors yet.</Text>
+            <Text style={styles.emptyTxt}>{isRTL ? "لم تقم بمتابعة أي أطباء بعد." : "You have not followed any doctors yet."}</Text>
             <TouchableOpacity style={styles.findBtn} onPress={() => router.push("/(patient)/doctors")}>
-              <Text style={styles.findBtnTxt}>Find Doctors</Text>
+              <Text style={styles.findBtnTxt}>{isRTL ? "البحث عن أطباء" : "Find Doctors"}</Text>
             </TouchableOpacity>
           </View>
         }
@@ -90,13 +96,13 @@ export default function FollowedDoctorsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F4F6FA" },
-  center:    { flex: 1, justifyContent: "center", alignItems: "center" },
-  header:    { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 60, paddingBottom: 20, backgroundColor: "#fff" },
-  backBtn:   { marginRight: 12 },
-  title:     { fontSize: 20, fontWeight: "800", color: "#1A1A1A" },
-  list:      { paddingVertical: 12 },
-  empty:     { alignItems: "center", marginTop: 100, paddingHorizontal: 40 },
-  emptyTxt:  { fontSize: 15, color: "#AAA", textAlign: "center", marginTop: 16, lineHeight: 22 },
-  findBtn:   { marginTop: 24, backgroundColor: COLORS.primary, paddingHorizontal: 32, paddingVertical: 12, borderRadius: 24 },
-  findBtnTxt:{ color: "#fff", fontWeight: "700", fontSize: 14 }
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 60, paddingBottom: 20, backgroundColor: "#fff" },
+  backBtn: { minWidth: 24 },
+  title: { fontSize: 20, fontWeight: "800", color: "#1A1A1A" },
+  list: { paddingVertical: 12 },
+  empty: { alignItems: "center", marginTop: 100, paddingHorizontal: 40 },
+  emptyTxt: { fontSize: 15, color: "#AAA", textAlign: "center", marginTop: 16, lineHeight: 22 },
+  findBtn: { marginTop: 24, backgroundColor: COLORS.primary, paddingHorizontal: 32, paddingVertical: 12, borderRadius: 24 },
+  findBtnTxt: { color: "#fff", fontWeight: "700", fontSize: 14 }
 });

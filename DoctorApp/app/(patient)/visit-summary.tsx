@@ -8,13 +8,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { getVisitSummary, VisitSummary } from "../../services/visitService";
 import Toast from "react-native-toast-message";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function VisitSummaryScreen() {
   const router = useRouter();
+  const { tr, isRTL } = useLanguage();
   const { visitId } = useLocalSearchParams<{ visitId: string }>();
   const [summary, setSummary] = useState<VisitSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [reportLang, setReportLang] = useState<"en" | "ar">("en");
+  const [reportLang, setReportLang] = useState<"en" | "ar">(isRTL ? "ar" : "en");
 
   useEffect(() => {
     if (!visitId) return;
@@ -27,7 +29,7 @@ export default function VisitSummaryScreen() {
       const data = await getVisitSummary(Number(visitId));
       setSummary(data);
     } catch (e: any) {
-      Toast.show({ type: "error", text1: "Failed to load visit summary" });
+      Toast.show({ type: "error", text1: isRTL ? "فشل تحميل ملخص الزيارة" : "Failed to load visit summary" });
     } finally {
       setLoading(false);
     }
@@ -44,9 +46,9 @@ export default function VisitSummaryScreen() {
   if (!summary) {
     return (
       <View style={styles.center}>
-        <Text style={styles.emptyText}>Visit summary not found.</Text>
+        <Text style={styles.emptyText}>{isRTL ? "لم يتم العثور على ملخص الزيارة." : "Visit summary not found."}</Text>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backBtnTxt}>Go Back</Text>
+          <Text style={styles.backBtnTxt}>{isRTL ? "رجوع" : "Go Back"}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -58,14 +60,14 @@ export default function VisitSummaryScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()}>
+        <View style={[styles.headerTop, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+          <TouchableOpacity onPress={() => router.back()} style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }}>
             <Ionicons name="arrow-back" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Visit Summary</Text>
+          <Text style={styles.headerTitle}>{isRTL ? "ملخص الزيارة" : "Visit Summary"}</Text>
           <View style={{ width: 22 }} />
         </View>
-        <View style={styles.headerInfo}>
+        <View style={[styles.headerInfo, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
           <Text style={styles.patientName}>{summary.patientName}</Text>
           <Text style={styles.visitDate}>{summary.visitDate}</Text>
         </View>
@@ -74,8 +76,8 @@ export default function VisitSummaryScreen() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {/* Past Visits Summary (Last 8 Months) */}
         {((summary.recentVisits?.length ?? 0) > 0 || summary.visitsTimelineSummaryEn || summary.visitsTimelineSummaryAr) && (
-          <View style={styles.card}>
-            <View style={styles.cardHeaderRow}>
+          <View style={[styles.card, { alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+            <View style={[styles.cardHeaderRow, { flexDirection: isRTL ? 'row-reverse' : 'row', width: '100%' }]}>
               <Text style={styles.cardTitle}>
                 {reportLang === "ar" ? "ملخص الزيارات (آخر 8 أشهر)" : "Past Visits (Last 8 Months)"}
               </Text>
@@ -94,19 +96,21 @@ export default function VisitSummaryScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            <Text style={[styles.cardText, reportLang === "ar" && { textAlign: "right" }]}>
+            <Text style={[styles.cardText, { textAlign: reportLang === "ar" ? "right" : "left", width: '100%' }]}>
               {reportLang === "ar"
                 ? (summary.visitsTimelineSummaryAr || "لا توجد زيارات مسجلة في آخر 8 أشهر.")
                 : (summary.visitsTimelineSummaryEn || "No visits recorded in the last 8 months.")}
             </Text>
             {(summary.recentVisits || []).map((visit) => (
-              <View key={visit.id} style={styles.visitItem}>
-                <Text style={styles.rowName}>{visit.visitDate} · {visit.chiefComplaint}</Text>
+              <View key={visit.id} style={[styles.visitItem, { alignItems: isRTL ? 'flex-end' : 'flex-start', width: '100%' }]}>
+                <Text style={[styles.rowName, { textAlign: isRTL ? 'right' : 'left' }]}>{visit.visitDate} · {visit.chiefComplaint}</Text>
                 {!!visit.doctorName && (
-                  <Text style={styles.rowMeta}>Dr. {visit.doctorName}{visit.doctorSpecialty ? ` · ${visit.doctorSpecialty}` : ""}</Text>
+                  <Text style={[styles.rowMeta, { textAlign: isRTL ? 'right' : 'left' }]}>
+                    {isRTL ? `د. ${visit.doctorName}` : `Dr. ${visit.doctorName}`}{visit.doctorSpecialty ? ` · ${visit.doctorSpecialty}` : ""}
+                  </Text>
                 )}
                 {(reportLang === "ar" ? (visit.summaryAr || visit.summary) : (visit.summaryEn || visit.summary)) ? (
-                  <Text style={[styles.rowMeta, reportLang === "ar" && { textAlign: "right" }]}>
+                  <Text style={[styles.rowMeta, { textAlign: reportLang === "ar" ? "right" : "left" }]}>
                     {reportLang === "ar" ? (visit.summaryAr || visit.summary) : (visit.summaryEn || visit.summary)}
                   </Text>
                 ) : null}
@@ -116,43 +120,47 @@ export default function VisitSummaryScreen() {
         )}
 
         {/* Chief Complaint */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Chief Complaint</Text>
-          <Text style={styles.cardText}>{summary.chiefComplaint}</Text>
+        <View style={[styles.card, { alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+          <Text style={styles.cardTitle}>{tr("chief_complaint")}</Text>
+          <Text style={[styles.cardText, { textAlign: isRTL ? 'right' : 'left' }]}>{summary.chiefComplaint}</Text>
         </View>
 
         {/* Examination Findings */}
         {summary.examinationFindings && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Examination Findings</Text>
-            <Text style={styles.cardText}>{summary.examinationFindings}</Text>
+          <View style={[styles.card, { alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+            <Text style={styles.cardTitle}>{isRTL ? "نتائج الفحص الطبي" : "Examination Findings"}</Text>
+            <Text style={[styles.cardText, { textAlign: isRTL ? 'right' : 'left' }]}>{summary.examinationFindings}</Text>
           </View>
         )}
 
         {/* Assessment */}
         {summary.assessment && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Assessment</Text>
-            <Text style={styles.cardText}>{summary.assessment}</Text>
+          <View style={[styles.card, { alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+            <Text style={styles.cardTitle}>{tr("assessment")}</Text>
+            <Text style={[styles.cardText, { textAlign: isRTL ? 'right' : 'left' }]}>{summary.assessment}</Text>
           </View>
         )}
 
         {/* Plan */}
         {summary.plan && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Plan</Text>
-            <Text style={styles.cardText}>{summary.plan}</Text>
+          <View style={[styles.card, { alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+            <Text style={styles.cardTitle}>{tr("plan")}</Text>
+            <Text style={[styles.cardText, { textAlign: isRTL ? 'right' : 'left' }]}>{summary.plan}</Text>
           </View>
         )}
 
         {/* Symptoms */}
         {summary.symptoms.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Symptoms</Text>
+          <View style={[styles.card, { alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+            <Text style={styles.cardTitle}>{isRTL ? "الأعراض" : "Symptoms"}</Text>
             {summary.symptoms.map((s, i) => (
-              <View key={i} style={styles.rowItem}>
+              <View key={i} style={[styles.rowItem, { alignItems: isRTL ? 'flex-end' : 'flex-start', width: '100%' }]}>
                 <Text style={styles.rowName}>{s.name}</Text>
-                <Text style={styles.rowMeta}>Severity: {s.severity} • {s.onset}</Text>
+                <Text style={[styles.rowMeta, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  {isRTL 
+                    ? `الشدة: ${s.severity === "Mild" ? "خفيفة" : s.severity === "Moderate" ? "متوسطة" : s.severity === "Severe" ? "شديدة" : s.severity} • ${s.onset}` 
+                    : `Severity: ${s.severity} • ${s.onset}`}
+                </Text>
               </View>
             ))}
           </View>
@@ -160,12 +168,12 @@ export default function VisitSummaryScreen() {
 
         {/* Prescriptions */}
         {summary.prescriptions.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Prescriptions</Text>
+          <View style={[styles.card, { alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+            <Text style={styles.cardTitle}>{isRTL ? "الوصفات الطبية" : "Prescriptions"}</Text>
             {summary.prescriptions.map((p, i) => (
-              <View key={i} style={styles.rowItem}>
+              <View key={i} style={[styles.rowItem, { alignItems: isRTL ? 'flex-end' : 'flex-start', width: '100%' }]}>
                 <Text style={styles.rowName}>{p.medicationName}</Text>
-                <Text style={styles.rowMeta}>{p.dosage} • {p.frequency}</Text>
+                <Text style={[styles.rowMeta, { textAlign: isRTL ? 'right' : 'left' }]}>{p.dosage} • {p.frequency}</Text>
               </View>
             ))}
           </View>
@@ -173,13 +181,17 @@ export default function VisitSummaryScreen() {
 
         {/* Vitals */}
         {summary.vitalSigns.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Vital Signs</Text>
+          <View style={[styles.card, { alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+            <Text style={styles.cardTitle}>{isRTL ? "العلامات الحيوية" : "Vital Signs"}</Text>
             {summary.vitalSigns.map((v, i) => (
-              <View key={i} style={styles.rowItem}>
-                <Text style={styles.rowName}>{v.type}</Text>
-                <Text style={[styles.rowMeta, v.isAbnormal && styles.abnormal]}>
-                  {v.value}{v.value2 ? `/${v.value2}` : ""} {v.unit}
+              <View key={i} style={[styles.rowItem, { alignItems: isRTL ? 'flex-end' : 'flex-start', width: '100%' }]}>
+                <Text style={styles.rowName}>
+                  {isRTL 
+                    ? (v.type === "Blood Pressure" ? "ضغط الدم" : v.type === "Blood Sugar" ? "سكر الدم" : v.type === "Heart Rate" ? "نبض القلب" : v.type === "Temperature" ? "الحرارة" : v.type === "SpO2" ? "الأكسجين" : v.type === "Weight" ? "الوزن" : v.type) 
+                    : v.type}
+                </Text>
+                <Text style={[styles.rowMeta, v.isAbnormal && styles.abnormal, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  {v.value}{v.value2 ? `/${v.value2}` : ""} {v.unit === "C" ? (isRTL ? "م°" : "C") : v.unit}
                 </Text>
               </View>
             ))}
@@ -188,12 +200,16 @@ export default function VisitSummaryScreen() {
 
         {/* Allergies */}
         {summary.allergies.length > 0 && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Allergies</Text>
+          <View style={[styles.card, { alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+            <Text style={styles.cardTitle}>{isRTL ? "الحساسية" : "Allergies"}</Text>
             {summary.allergies.map((a, i) => (
-              <View key={i} style={styles.rowItem}>
+              <View key={i} style={[styles.rowItem, { alignItems: isRTL ? 'flex-end' : 'flex-start', width: '100%' }]}>
                 <Text style={styles.rowName}>{a.allergenName}</Text>
-                <Text style={styles.rowMeta}>{a.severity} • {a.reaction}</Text>
+                <Text style={[styles.rowMeta, { textAlign: isRTL ? 'right' : 'left' }]}>
+                  {isRTL 
+                    ? `الشدة: ${a.severity === "Mild" ? "خفيفة" : a.severity === "Moderate" ? "متوسطة" : a.severity === "Severe" ? "شديدة" : a.severity} • ${a.reaction}` 
+                    : `Severity: ${a.severity} • ${a.reaction}`}
+                </Text>
               </View>
             ))}
           </View>
@@ -201,23 +217,25 @@ export default function VisitSummaryScreen() {
 
         {/* Follow Up */}
         {summary.followUpRequired && (
-          <View style={[styles.card, styles.followUpCard]}>
-            <Text style={styles.cardTitle}>Follow Up Required</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+          <View style={[styles.card, styles.followUpCard, { alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+            <Text style={styles.cardTitle}>{isRTL ? "زيارة متابعة مطلوبة" : "Follow Up Required"}</Text>
+            <View style={{ flexDirection: isRTL ? "row-reverse" : "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <Ionicons name="calendar-outline" size={18} color="#9333EA" />
               <Text style={{ fontSize: 16, fontWeight: "800", color: "#1E293B" }}>
-                {summary.followUpDate}{summary.followUpTime ? ` at ${summary.followUpTime}` : ""}
+                {isRTL 
+                  ? `${summary.followUpDate}${summary.followUpTime ? ` في تمام الساعة ${summary.followUpTime}` : ""}` 
+                  : `${summary.followUpDate}${summary.followUpTime ? ` at ${summary.followUpTime}` : ""}`}
               </Text>
             </View>
-            {summary.followUpNotes && <Text style={styles.cardText}>{summary.followUpNotes}</Text>}
+            {summary.followUpNotes && <Text style={[styles.cardText, { textAlign: isRTL ? 'right' : 'left' }]}>{summary.followUpNotes}</Text>}
           </View>
         )}
 
         {/* Notes */}
         {summary.notes && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Additional Notes</Text>
-            <Text style={styles.cardText}>{summary.notes}</Text>
+          <View style={[styles.card, { alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+            <Text style={styles.cardTitle}>{isRTL ? "ملاحظات إضافية" : "Additional Notes"}</Text>
+            <Text style={[styles.cardText, { textAlign: isRTL ? 'right' : 'left' }]}>{summary.notes}</Text>
           </View>
         )}
       </ScrollView>

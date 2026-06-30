@@ -1,143 +1,45 @@
-# MedBook
+# MedBook (AI Medical Assistant) 🏥
 
-MedBook is a medical assistant platform made of four main parts: an ASP.NET Core backend, a React web dashboard, an Expo mobile app, and a Python FastAPI AI service. The system supports admins, doctors, secretaries, and patients with appointments, profiles, patient records, chat, notifications, reviews, and AI-assisted medical analysis.
+MedBook is a comprehensive healthcare platform featuring a Doctor/Patient mobile application, a Web Dashboard, and a robust ASP.NET Core backend. It incorporates an AI Medical Assistant to analyze medical records, prescriptions, and lab results.
 
-## Project Map
+## 🚀 Live Links & Deployments
 
-```mermaid
-flowchart LR
-    Mobile["DoctorApp\nExpo mobile app"] --> Api["ASP.NET Core API\nbackend/MedicalAssistant"]
-    Web["web\nReact dashboard"] --> Api
-    Api --> Db["SQL Server\nMedicalAssistantDb"]
-    Api --> Ai["server.py\nFastAPI AI service"]
-    Api --> Hub["SignalR\nnotifications"]
-```
+| Component | Technology | Live URL |
+|-----------|------------|----------|
+| **Web Dashboard** | React + Vite | [https://poetic-pithivier-a60d22.netlify.app/](https://poetic-pithivier-a60d22.netlify.app/) (Netlify) <br> *Also available on Vercel* |
+| **Backend API** | ASP.NET Core 8 + EF Core | [http://amrahmed1210-001-site1.itempurl.com/](http://amrahmed1210-001-site1.itempurl.com/) |
+| **Database** | SQL Server | Hosted on SmarterASP.net (`sql1003.site4now.net`) |
+| **Mobile App** | React Native (Expo) | Android APK (Built via Expo EAS) |
 
-## Repository Structure
+---
 
-```text
-E:\AI
-|-- backend/
-|   `-- MedicalAssistant/
-|       |-- MedicalAssistant.Web/             # ASP.NET Core startup project
-|       |-- MedicalAssistant.Presentation/    # Controllers and SignalR hubs
-|       |-- MedicalAssistant.Services/        # Business services and mapping
-|       |-- MedicalAssistant.Services Abstraction/
-|       |-- MedicalAssistant.Persistance/     # EF Core DbContext, migrations, repositories
-|       |-- MedicalAssistant.Domain/          # Entities and repository contracts
-|       |-- MedicalAssistant.Shared/          # DTOs and shared settings
-|       `-- MedicalAssistant.Web Solution.sln
-|-- web/
-|   |-- src/
-|   |   |-- api/          # Axios clients and API wrappers
-|   |   |-- components/   # Layout, UI, doctor, and admin components
-|   |   |-- hooks/        # Reusable React hooks
-|   |   |-- pages/        # Auth, admin, doctor, and secretary pages
-|   |   |-- store/        # Zustand stores
-|   |   `-- lib/          # Shared frontend utilities
-|   |-- e2e/              # Playwright tests
-|   `-- package.json
-|-- DoctorApp/
-|   |-- app/              # Expo Router screens
-|   |-- components/       # Mobile UI components
-|   |-- services/         # Mobile API clients
-|   |-- store/            # Mobile state
-|   |-- __tests__/        # Jest tests
-|   |-- e2e/              # Playwright mobile-web tests
-|   `-- package.json
-|-- MedicalAssistant.Ai/  # Alternate/experimental AI service
-|-- server.py             # Main FastAPI AI service used by the backend
-|-- requirements.txt      # Python deps for server.py
-|-- test_ai.py            # AI service smoke test
-`-- README.md
-```
+## 🛠️ Project Structure
 
-## Tech Stack
+The repository is divided into 3 main components:
+1. **`/backend/MedicalAssistant/`**: The core API providing authentication, data management, and SignalR for real-time notifications.
+2. **`/web/`**: The web application for managing the system, built with React and Vite.
+3. **`/DoctorApp/`**: The mobile application for Doctors and Patients, built with Expo React Native.
 
-| Area | Stack |
-| --- | --- |
-| Backend API | .NET 8, ASP.NET Core, EF Core, SignalR, Swagger |
-| Database | SQL Server / SQL Server Express |
-| Web dashboard | React, Vite, TypeScript, Tailwind CSS, Zustand, Playwright, Vitest |
-| Mobile app | React Native, Expo Router, TypeScript, Zustand, Jest |
-| AI service | Python, FastAPI, Gemini, Pinecone, Pillow |
+## 📝 What Was Accomplished
 
-## Run Locally
+### 1. Backend Deployment (SmarterASP.net)
+- Successfully deployed the ASP.NET Core application to SmarterASP.
+- Configured connection strings to point to the live SQL Server instance.
+- Verified live API endpoints and SignalR Hub connections.
 
-### 1. AI Service
+### 2. Web Deployment (Vercel & Netlify)
+- Configured environment variables (`.env`) to communicate with the production backend (`VITE_API_BASE_URL` & `VITE_SIGNALR_HUB_URL`).
+- Resolved build warnings in SignalR configurations.
+- Successfully built and deployed the production `dist` folder to Vercel/Netlify.
 
-```powershell
-cd E:\AI
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-$env:GEMINI_API_KEY="your-key"
-python server.py
-```
+### 3. Mobile App Deployment (Expo EAS)
+- Updated `constants/api.ts` to route all mobile traffic to the live backend.
+- Configured `eas.json` for Android production builds.
+- Fixed `expo-image-picker` permissions and integration in patient records (`[category].tsx`).
+- Created dynamic localization foundations using `LanguageContext` (Arabic/English toggle) and localized major views (e.g., Medical Records, Login, Register).
+- Ran `eas build -p android --profile production` to generate the final APK.
 
-Default URL: `http://localhost:8000`
+## 🌍 Localization (i18n)
+The mobile app includes a robust dynamic translation system. It leverages `i18n.ts` and React Context to switch seamlessly between English (LTR) and Arabic (RTL) without reloading the app.
 
-Optional smoke test:
-
-```powershell
-python test_ai.py
-```
-
-### 2. Backend API
-
-```powershell
-cd E:\AI\backend\MedicalAssistant
-dotnet restore "MedicalAssistant.Web Solution.sln"
-dotnet ef database update --project MedicalAssistant.Persistance --startup-project MedicalAssistant.Web
-dotnet run --project MedicalAssistant.Web
-```
-
-Default API URL: `http://localhost:5194`
-
-Swagger: `http://localhost:5194/swagger`
-
-### 3. Web Dashboard
-
-```powershell
-cd E:\AI\web
-npm install
-npm run dev
-```
-
-Default URL: `http://localhost:5173`
-
-### 4. Mobile App
-
-```powershell
-cd E:\AI\DoctorApp
-npm install
-npm start
-```
-```powershell
-cd .\MedicalAssistant.Web
-dotnet run --urls "http://0.0.0.0:5194"
-```
-
-Use Expo Go, an emulator, or the Expo web target.
-
-## Useful Commands
-
-| Task | Command |
-| --- | --- |
-| Build backend | `dotnet build "E:\AI\backend\MedicalAssistant\MedicalAssistant.Web Solution.sln"` |
-| Run web tests | `cd E:\AI\web && npm run test` |
-| Run web e2e tests | `cd E:\AI\web && npm run e2e` |
-| Run mobile tests | `cd E:\AI\DoctorApp && npm test` |
-| Run mobile e2e tests | `cd E:\AI\DoctorApp && npm run e2e` |
-
-## Configuration Notes
-
-- Backend configuration lives in `backend/MedicalAssistant/MedicalAssistant.Web/appsettings.json` and `appsettings.Development.json`.
-- The backend calls the AI service through `AIService:Url`, defaulting to `http://localhost:8000`.
-- The backend sends `x-internal-token` to the AI service; keep this value consistent between `Program.cs` and `server.py`.
-- The mobile app derives the local API host from Expo runtime where possible.
-- Move real secrets such as database passwords, JWT keys, API keys, and Cloudinary credentials to environment variables or .NET user-secrets before publishing the repository.
-
-## Cleanup Policy
-
-This repository keeps source code, lockfiles for real Node apps, tests, and database migrations. Generated reports, logs, local virtual environments, build output, Playwright output, model files, and temporary patch/backup files are ignored so the project stays readable.
+*Note: Some specific UI screens are scheduled for complete Arabic translation in future updates.*

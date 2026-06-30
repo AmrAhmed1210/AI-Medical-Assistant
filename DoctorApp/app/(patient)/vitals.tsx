@@ -126,7 +126,7 @@ export default function VitalsScreen() {
       setLoading(true);
       const pid = await getMyPatientId();
       if (!pid) {
-        Toast.show({ type: "error", text1: "Patient ID not found" });
+        Toast.show({ type: "error", text1: isRTL ? "لم يتم العثور على معرف المريض" : "Patient ID not found" });
         setLoading(false);
         return;
       }
@@ -160,7 +160,7 @@ export default function VitalsScreen() {
         triggerAiAdvice(newestVital);
       }
     } catch (e: any) {
-      Toast.show({ type: "error", text1: e.message || "Failed to load vitals" });
+      Toast.show({ type: "error", text1: e.message || (isRTL ? "فشل تحميل القياسات الحيوية" : "Failed to load vitals") });
     } finally {
       setLoading(false);
     }
@@ -182,11 +182,11 @@ export default function VitalsScreen() {
   const handleSave = async () => {
     const numValue = Number(value);
     if (Number.isNaN(numValue) || numValue <= 0) {
-      Toast.show({ type: "error", text1: "Please enter a valid value" });
+      Toast.show({ type: "error", text1: isRTL ? "يرجى إدخال قيمة صالحة" : "Please enter a valid value" });
       return;
     }
     if (currentTypeInfo.hasValue2 && (!value2 || Number(value2) <= 0)) {
-      Toast.show({ type: "error", text1: "Please enter both systolic and diastolic values" });
+      Toast.show({ type: "error", text1: isRTL ? "يرجى إدخال قيمتي الضغط الانقباضي والانبساطي" : "Please enter both systolic and diastolic values" });
       return;
     }
     const activeDisease = chronicDiseases.find((d) => d.isActive);
@@ -213,20 +213,20 @@ export default function VitalsScreen() {
       setSaving(true);
       if (editingId) {
         await updateVitalReading(editingId, payload);
-        Toast.show({ type: "success", text1: "Vital updated successfully" });
+        Toast.show({ type: "success", text1: isRTL ? "تم تحديث القياس بنجاح" : "Vital updated successfully" });
       } else {
         await addVitalReading(patientId!, payload);
         if (assessment.isNormal) {
-          Toast.show({ type: "success", text1: "Vital recorded successfully" });
+          Toast.show({ type: "success", text1: isRTL ? "تم تسجيل القياس بنجاح" : "Vital recorded successfully" });
         } else {
-          Toast.show({ type: "error", text1: assessment.title, text2: "Saved with warning" });
-          Alert.alert(assessment.title, assessment.message);
+          Toast.show({ type: "error", text1: isRTL ? "تنبيه القياسات" : assessment.title, text2: isRTL ? "تم الحفظ مع وجود تحذير" : "Saved with warning" });
+          Alert.alert(isRTL ? "تنبيه القياسات" : assessment.title, isRTL ? "قراءتك تقع خارج النطاق الطبيعي المتوقع. يرجى مراجعة الطبيب المختص." : assessment.message);
           await addNotification({
             id: `vital_${Date.now()}`,
             type: "update",
             icon: "alert-circle",
-            title: assessment.title,
-            message: assessment.message,
+            title: isRTL ? "تنبيه القياسات" : assessment.title,
+            message: isRTL ? "قراءتك تقع خارج النطاق الطبيعي المتوقع. يرجى مراجعة الطبيب المختص." : assessment.message,
             timestamp: Date.now(),
           });
         }
@@ -243,9 +243,9 @@ export default function VitalsScreen() {
     } catch (e: any) {
       const status = e?.status;
       if (status === 500) {
-        Toast.show({ type: "error", text1: "Server error. Please ensure you have a chronic disease record, or contact support." });
+        Toast.show({ type: "error", text1: isRTL ? "خطأ في الخادم. يرجى التأكد من وجود سجل للأمراض المزمنة، أو الاتصال بالدعم." : "Server error. Please ensure you have a chronic disease record, or contact support." });
       } else {
-        Toast.show({ type: "error", text1: e.message || "Failed to save vital" });
+        Toast.show({ type: "error", text1: e.message || (isRTL ? "فشل حفظ القياس الحيوي" : "Failed to save vital") });
       }
     } finally {
       setSaving(false);
@@ -308,20 +308,20 @@ export default function VitalsScreen() {
 
   const handleDelete = async (id: number) => {
     Alert.alert(
-      "Delete Reading",
-      "Are you sure you want to delete this record?",
+      isRTL ? "حذف القياس" : "Delete Reading",
+      isRTL ? "هل أنت متأكد من رغبتك في حذف هذا القياس؟" : "Are you sure you want to delete this record?",
       [
-        { text: "Cancel", style: "cancel" },
+        { text: tr("cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: isRTL ? "حذف" : "Delete",
           style: "destructive",
           onPress: async () => {
             try {
               await deleteVitalReading(id);
-              Toast.show({ type: "success", text1: "Reading deleted" });
+              Toast.show({ type: "success", text1: isRTL ? "تم حذف القياس" : "Reading deleted" });
               await loadData();
             } catch (e: any) {
-              Toast.show({ type: "error", text1: "Failed to delete" });
+              Toast.show({ type: "error", text1: isRTL ? "فشل الحذف" : "Failed to delete" });
             }
           }
         }
@@ -372,25 +372,25 @@ export default function VitalsScreen() {
       {/* ANIMATED LUXURY HEADER */}
       <Animated.View style={[styles.magicHeader, { height: headerHeight, opacity: headerOpacity }]}>
         <LinearGradient colors={["#064E3B", "#059669"]} style={StyleSheet.absoluteFill}>
-          <View style={styles.headerTop}>
+          <View style={[styles.headerTop, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <TouchableOpacity style={styles.glassBtn} onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={24} color="#fff" />
+              <Ionicons name="chevron-back" size={24} color="#fff" style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Vitals Dashboard</Text>
+            <Text style={styles.headerTitle}>{tr("vitals_dashboard")}</Text>
             <TouchableOpacity style={styles.glassBtn} onPress={loadData}>
               <Ionicons name="refresh" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
 
           <View style={styles.heroContent}>
-            <View style={styles.heroTextRow}>
-              <View>
-                <Text style={styles.heroLabel}>Health Summary</Text>
-                <Text style={styles.heroMain}>Biometric Data</Text>
+            <View style={[styles.heroTextRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+              <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+                <Text style={styles.heroLabel}>{isRTL ? "الملخص الصحي" : "Health Summary"}</Text>
+                <Text style={styles.heroMain}>{isRTL ? "البيانات الحيوية" : "Biometric Data"}</Text>
               </View>
-              <View style={styles.premiumTag}>
+              <View style={[styles.premiumTag, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <Sparkles size={12} color="#FDE047" />
-                <Text style={styles.premiumText}>Live Analysis</Text>
+                <Text style={styles.premiumText}>{isRTL ? "تحليل مباشر" : "Live Analysis"}</Text>
               </View>
             </View>
           </View>
@@ -417,41 +417,41 @@ export default function VitalsScreen() {
           {/* AI ADVICE CARD */}
           {(aiAdvice || isAnalyzingAdvice) && (
             <View>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>{tr('ai_diagnostics') ?? 'AI Report'}</Text>
+              <View style={[styles.sectionHeaderRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{tr('ai_diagnostics') ?? (isRTL ? "تقرير الذكاء الاصطناعي" : "AI Report")}</Text>
               </View>
               <View style={styles.aiAdviceWrapper}>
-                <LinearGradient colors={isDark ? ["#1E293B", "#121B2E"] : ["#F5F3FF", "#EDE9FE"]} style={[styles.aiAdviceCard, { borderColor: colors.border }]}>
-                  <View style={styles.aiAdviceHeader}>
+                <LinearGradient colors={isDark ? ["#1E293B", "#121B2E"] : ["#F5F3FF", "#EDE9FE"]} style={[styles.aiAdviceCard, { borderColor: colors.border, alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
+                  <View style={[styles.aiAdviceHeader, { flexDirection: isRTL ? 'row-reverse' : 'row', width: '100%' }]}>
                     <View style={styles.aiSparkleBg}>
                       <Sparkles size={18} color="#7C3AED" />
                     </View>
-                    <Text style={[styles.aiAdviceTitle, { color: colors.text }]}>{isRTL ? "التقرير العام للقياسات" : "Overall Vitals Report"}</Text>
-                    <View style={styles.cardLangToggle}>
+                    <Text style={[styles.aiAdviceTitle, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{isRTL ? "التقرير العام للقياسات" : "Overall Vitals Report"}</Text>
+                    <View style={[styles.cardLangToggle, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                       <TouchableOpacity onPress={() => setAdviceLang("en")} style={[styles.cardLangBtn, adviceLang === "en" && styles.cardLangBtnActive]}>
                         <Text style={[styles.cardLangText, adviceLang === "en" && styles.cardLangTextActive]}>EN</Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => setAdviceLang("ar")} style={[styles.cardLangBtn, adviceLang === "ar" && styles.cardLangBtnActive]}>
-                        <Text style={[styles.cardLangText, adviceLang === "ar" && styles.cardLangTextActive]}>عربي</Text>
+                        <Text style={[styles.cardLangText, adviceLang === "ar" && styles.cardLangTextActive]}>AR</Text>
                       </TouchableOpacity>
                     </View>
                     {isAnalyzingAdvice && <ActivityIndicator size="small" color="#7C3AED" />}
                   </View>
                   {aiAdvice && (
-                    <Text style={[styles.aiAdviceText, { color: colors.textMuted }, adviceLang === 'ar' && { textAlign: 'right' }]}>
+                    <Text style={[styles.aiAdviceText, { color: colors.textMuted }, { textAlign: adviceLang === 'ar' ? 'right' : 'left', width: '100%' }]}>
                       {adviceLang === 'ar' ? aiAdvice.advice_ar : aiAdvice.advice_en}
                     </Text>
                   )}
                   {recommendedDoctors.length > 0 && (
-                    <View style={styles.vitalDoctorList}>
+                    <View style={[styles.vitalDoctorList, { width: '100%', alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                       {recommendedDoctors.map((doctor) => (
                         <TouchableOpacity
                           key={doctor.id}
-                          style={[styles.vitalDoctorChip, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF", borderColor: colors.border }]}
+                          style={[styles.vitalDoctorChip, { backgroundColor: isDark ? "#0F172A" : "#FFFFFF", borderColor: colors.border, width: '100%', alignItems: isRTL ? 'flex-end' : 'flex-start' }]}
                           onPress={() => router.push({ pathname: "/(patient)/doctor-details", params: { id: doctor.id } } as any)}
                         >
-                          <Text style={styles.vitalDoctorName} numberOfLines={1}>Dr. {doctor.name}</Text>
-                          <Text style={styles.vitalDoctorMeta} numberOfLines={1}>{doctor.specialty} • {doctor.reviewCount ? `${doctor.rating.toFixed(1)} ★ (${doctor.reviewCount})` : "New"}</Text>
+                          <Text style={styles.vitalDoctorName} numberOfLines={1}>{isRTL ? `د. ${doctor.name}` : `Dr. ${doctor.name}`}</Text>
+                          <Text style={styles.vitalDoctorMeta} numberOfLines={1}>{doctor.specialty} • {doctor.reviewCount ? `${doctor.rating.toFixed(1)} ★ (${doctor.reviewCount})` : (isRTL ? "جديد" : "New")}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -462,22 +462,22 @@ export default function VitalsScreen() {
           )}
 
           {/* Quick Add Toggle */}
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Latest Health Metrics</Text>
+          <View style={[styles.sectionHeaderRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{isRTL ? "أحدث المؤشرات الصحية" : "Latest Health Metrics"}</Text>
             <TouchableOpacity style={styles.addBtnSmall} onPress={() => setShowAddForm(!showAddForm)}>
-              <LinearGradient colors={["#059669", "#047857"]} style={styles.addBtnSmallGradient}>
+              <LinearGradient colors={["#059669", "#047857"]} style={[styles.addBtnSmallGradient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <Plus size={18} color="#fff" />
-                <Text style={styles.addBtnSmallText}>{showAddForm ? tr("cancel") : "Add New"}</Text>
+                <Text style={styles.addBtnSmallText}>{showAddForm ? tr("cancel") : (isRTL ? "إضافة جديد" : "Add New")}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
 
           {/* Add Form with Glass Style & Premium Feel */}
           {showAddForm && (
-            <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: isDark ? '#1E293B' : '#E0F2FE' }]}>
+            <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: isDark ? '#1E293B' : '#E0F2FE', alignItems: isRTL ? 'flex-end' : 'stretch' }]}>
               <View style={[styles.formIndicator, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
               
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, width: '100%' }}>
                 <Text style={[styles.formTitle, { color: colors.text }]}>{editingId ? (isRTL ? "تعديل القياس" : "Edit Reading") : (isRTL ? "تسجيل قياس جديد" : "New Vital Reading")}</Text>
                 {editingId && (
                   <TouchableOpacity onPress={() => { setEditingId(null); setValue(""); setValue2(""); setNotes(""); setShowAddForm(false); }} style={styles.cancelEditBtn}>
@@ -486,13 +486,13 @@ export default function VitalsScreen() {
                 )}
               </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll} contentContainerStyle={{ paddingRight: 20, gap: 10 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll} contentContainerStyle={{ paddingRight: 20, gap: 10, flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                 {VITAL_TYPES.map((t) => (
                   <TouchableOpacity
                     key={t.key}
                     style={[
                       styles.typeChip, 
-                      { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? "#1E293B" : "#F1F5F9" }, 
+                      { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? "#1E293B" : "#F1F5F9", flexDirection: isRTL ? 'row-reverse' : 'row' }, 
                       selectedType === t.key && styles.typeChipActive
                     ]}
                     onPress={() => { 
@@ -506,32 +506,32 @@ export default function VitalsScreen() {
                     <View style={[styles.typeChipIconWrapper, selectedType === t.key && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
                       <t.icon size={16} color={selectedType === t.key ? "#fff" : t.color} />
                     </View>
-                    <Text style={[styles.typeChipTxt, selectedType === t.key && styles.typeChipTxtActive]}>{isRTL ? t.key : t.key}</Text>
+                    <Text style={[styles.typeChipTxt, selectedType === t.key && styles.typeChipTxtActive]}>{isRTL ? (VITAL_TYPE_AR[t.key] || t.key) : t.key}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
-              <View style={styles.inputRow}>
-                <View style={styles.inputWrap}>
+              <View style={[styles.inputRow, { flexDirection: isRTL ? 'row-reverse' : 'row', width: '100%' }]}>
+                <View style={[styles.inputWrap, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                   <Text style={styles.inputLabel}>{isRTL ? "القيمة" : "Value"} {currentTypeInfo.hasValue2 && (isRTL ? "(الانقباضي)" : "(Systolic)")}</Text>
-                  <View style={[styles.inputPremiumContainer, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                  <View style={[styles.inputPremiumContainer, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? '#1E293B' : '#F1F5F9', flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <TextInput
-                      style={[styles.premiumInputInner, { color: colors.text }]}
+                      style={[styles.premiumInputInner, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}
                       keyboardType="numeric"
                       value={value}
                       onChangeText={(t) => { setValue(t); validateAndSetNormal(t, value2); }}
                       placeholder="0"
                       placeholderTextColor="#CBD5E1"
                     />
-                    <Text style={styles.inputUnitTag}>{currentTypeInfo.unit}</Text>
+                    <Text style={styles.inputUnitTag}>{currentTypeInfo.unit === "C" && isRTL ? "م°" : currentTypeInfo.unit}</Text>
                   </View>
                 </View>
                 {currentTypeInfo.hasValue2 && (
-                  <View style={styles.inputWrap}>
+                  <View style={[styles.inputWrap, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                     <Text style={styles.inputLabel}>{isRTL ? "الانبساطي" : "Diastolic"}</Text>
-                    <View style={[styles.inputPremiumContainer, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                    <View style={[styles.inputPremiumContainer, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: isDark ? '#1E293B' : '#F1F5F9', flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                       <TextInput
-                        style={[styles.premiumInputInner, { color: colors.text }]}
+                        style={[styles.premiumInputInner, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}
                         keyboardType="numeric"
                         value={value2}
                         onChangeText={(t) => { setValue2(t); validateAndSetNormal(value, t); }}
@@ -545,18 +545,20 @@ export default function VitalsScreen() {
               </View>
 
               {!isNormal && value !== "" && (
-                <View style={styles.abnormalBanner}>
+                <View style={[styles.abnormalBanner, { flexDirection: isRTL ? 'row-reverse' : 'row', width: '100%' }]}>
                   <AlertCircle size={18} color="#B91C1C" />
-                  <Text style={styles.abnormalText}>
-                    {assessVitalReading(selectedType, Number(value), currentTypeInfo.hasValue2 ? Number(value2) : undefined).message}
+                  <Text style={[styles.abnormalText, { textAlign: isRTL ? 'right' : 'left', flex: 1 }]}>
+                    {isRTL 
+                      ? "القراءة المدخلة تقع خارج النطاق الطبيعي المتوقع. يرجى مراجعة الطبيب المختص."
+                      : assessVitalReading(selectedType, Number(value), currentTypeInfo.hasValue2 ? Number(value2) : undefined).message}
                   </Text>
                 </View>
               )}
 
-              <View style={styles.inputWrap}>
+              <View style={[styles.inputWrap, { width: '100%', alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                 <Text style={styles.inputLabel}>{isRTL ? "ملاحظات (اختياري)" : "Notes (optional)"}</Text>
                 <TextInput 
-                  style={[styles.premiumInputFull, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: isDark ? '#1E293B' : '#F1F5F9' }]} 
+                  style={[styles.premiumInputFull, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", color: colors.text, borderColor: isDark ? '#1E293B' : '#F1F5F9', textAlign: isRTL ? 'right' : 'left', width: '100%' }]} 
                   value={notes} 
                   onChangeText={setNotes} 
                   placeholder={isRTL ? "مثال: بعد الأكل..." : "e.g., after meal..."} 
@@ -566,7 +568,7 @@ export default function VitalsScreen() {
               </View>
 
               <TouchableOpacity 
-                style={[styles.saveBtn, saving && { opacity: 0.7 }]} 
+                style={[styles.saveBtn, saving && { opacity: 0.7 }, { width: '100%' }]} 
                 onPress={() => {
                   import('expo-haptics').then(Haptics => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium));
                   handleSave();
@@ -574,12 +576,12 @@ export default function VitalsScreen() {
                 disabled={saving} 
                 activeOpacity={0.8}
               >
-                <LinearGradient colors={["#059669", "#047857"]} style={styles.saveBtnGradient}>
+                <LinearGradient colors={["#059669", "#047857"]} style={[styles.saveBtnGradient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                   {saving ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <>
-                      <Sparkles size={18} color="#fff" style={{ marginRight: 8 }} />
+                      <Sparkles size={18} color="#fff" style={{ [isRTL ? "marginLeft" : "marginRight"]: 8 }} />
                       <Text style={styles.saveBtnTxt}>{editingId ? (isRTL ? "تحديث القياس" : "Update Record") : (isRTL ? "حفظ القياس" : "Save Record")}</Text>
                     </>
                   )}
@@ -589,44 +591,44 @@ export default function VitalsScreen() {
           )}
 
           <View style={styles.liveIndicatorRow}>
-            <View style={styles.liveIndicator}>
+            <View style={[styles.liveIndicator, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
               <View style={styles.liveDot} />
-              <Text style={styles.liveText}>Live Sync Active</Text>
+              <Text style={styles.liveText}>{isRTL ? "مزامنة مباشرة نشطة" : "Live Sync Active"}</Text>
             </View>
           </View>
 
-          <View style={styles.latestGrid}>
+          <View style={[styles.latestGrid, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             {VITAL_TYPES.map((t) => {
               const reading = latestVitals[t.key];
               const isAbnormal = reading && !reading.isNormal;
               return (
                 <View key={t.key} style={styles.latestCardWrap}>
-                  <View style={[styles.latestCard, { backgroundColor: colors.surface, borderColor: colors.border }, isAbnormal && styles.latestCardAbnormal]}>
-                    <View style={styles.cardHeaderRow}>
+                  <View style={[styles.latestCard, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: isRTL ? 'flex-end' : 'stretch' }, isAbnormal && styles.latestCardAbnormal]}>
+                    <View style={[styles.cardHeaderRow, { flexDirection: isRTL ? 'row-reverse' : 'row', width: '100%' }]}>
                       <View style={[styles.iconCircle, { backgroundColor: t.bg }]}>
                         <t.icon size={16} color={t.color} />
                       </View>
                       {isAbnormal && <View style={styles.alertDot} />}
                     </View>
 
-                    <Text style={styles.latestType}>{t.key}</Text>
+                    <Text style={[styles.latestType, { textAlign: isRTL ? 'right' : 'left', width: '100%' }]}>{isRTL ? (VITAL_TYPE_AR[t.key] || t.key) : t.key}</Text>
 
                     {reading ? (
-                      <View style={styles.readingContent}>
-                        <View style={styles.valueRow}>
+                      <View style={[styles.readingContent, { width: '100%', alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                        <View style={[styles.valueRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                           <Text style={[styles.latestValue, { color: colors.text }, isAbnormal && styles.latestValueAbnormal]}>
                             {reading.value}{reading.value2 != null ? `/${reading.value2}` : ""}
                           </Text>
-                          <Text style={styles.latestUnit}>{reading.unit}</Text>
+                          <Text style={styles.latestUnit}>{reading.unit === "C" && isRTL ? "م°" : reading.unit}</Text>
                         </View>
-                        <View style={styles.readingMeta}>
+                        <View style={[styles.readingMeta, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                           <Timer size={10} color="#94A3B8" />
                           <Text style={styles.latestDate}>{new Date(reading.recordedAt).toLocaleDateString()}</Text>
                         </View>
                       </View>
                     ) : (
-                      <TouchableOpacity style={styles.addPlaceholder} onPress={() => { setSelectedType(t.key); setShowAddForm(true); }}>
-                        <Text style={styles.addPlaceholderText}>Record</Text>
+                      <TouchableOpacity style={[styles.addPlaceholder, { flexDirection: isRTL ? 'row-reverse' : 'row', width: '100%' }]} onPress={() => { setSelectedType(t.key); setShowAddForm(true); }}>
+                        <Text style={styles.addPlaceholderText}>{isRTL ? "تسجيل" : "Record"}</Text>
                         <Plus size={10} color="#94A3B8" />
                       </TouchableOpacity>
             )}
@@ -637,7 +639,7 @@ export default function VitalsScreen() {
           </View>
 
           {/* History Section by Type Accordion */}
-          <View style={styles.sectionHeaderRow}>
+          <View style={[styles.sectionHeaderRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>{isRTL ? "سجل القياسات السابقة" : "Medical Timeline"}</Text>
             <View style={styles.historyBadgeCount}><Text style={styles.historyBadgeCountText}>{vitals.length}</Text></View>
           </View>
@@ -661,32 +663,32 @@ export default function VitalsScreen() {
                   <View key={t.key} style={{ marginBottom: 12 }}>
                     <TouchableOpacity 
                       onPress={() => toggleType(t.key)}
-                      style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}
+                      style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border, paddingVertical: 12, paddingHorizontal: 16, flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'space-between' }]}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View style={[styles.headerTop, { flexDirection: isRTL ? 'row-reverse' : 'row', paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, alignItems: 'center', gap: 12 }]}>
                         <View style={[styles.iconCircle, { backgroundColor: t.bg, width: 32, height: 32 }]}>
                           <t.icon size={16} color={t.color} />
                         </View>
-                        <Text style={[styles.historyType, { color: colors.text }]}>{t.key} ({typeVitals.length})</Text>
+                        <Text style={[styles.historyType, { color: colors.text }]}>{isRTL ? (VITAL_TYPE_AR[t.key] || t.key) : t.key} ({typeVitals.length})</Text>
                       </View>
                       {isExpanded ? <ChevronUp size={20} color={colors.textMuted} /> : <ChevronDown size={20} color={colors.textMuted} />}
                     </TouchableOpacity>
                     
                     {isExpanded && (
-                      <View style={{ paddingLeft: 16, paddingTop: 8, borderLeftWidth: 2, borderLeftColor: t.color, marginLeft: 16 }}>
+                      <View style={[isRTL ? { paddingRight: 16, borderRightWidth: 2, borderRightColor: t.color, marginRight: 16 } : { paddingLeft: 16, borderLeftWidth: 2, borderLeftColor: t.color, marginLeft: 16 }, { paddingTop: 8 }]}>
                         {visibleVitals.map((v, i) => {
                           const isAbnormal = !v.isNormal;
                           const miniReport = buildVitalMiniReport(v);
                           return (
-                            <View key={v.id || i} style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 8 }, isAbnormal && styles.historyCardAbnormal]}>
-                              <View style={styles.historyTopRow}>
-                                <Text style={[styles.historyDate, { color: colors.textMuted, fontSize: 13 }]}>{new Date(v.recordedAt).toLocaleString()}</Text>
+                            <View key={v.id || i} style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 8, alignItems: isRTL ? 'flex-end' : 'stretch' }, isAbnormal && styles.historyCardAbnormal]}>
+                              <View style={[styles.historyTopRow, { flexDirection: isRTL ? 'row-reverse' : 'row', width: '100%' }]}>
+                                <Text style={[styles.historyDate, { color: colors.textMuted, fontSize: 13, marginTop: 0 }]}>{new Date(v.recordedAt).toLocaleString(isRTL ? 'ar-EG' : 'en-US')}</Text>
                                 <View style={[styles.statusBadge, isAbnormal ? styles.statusBadgeError : styles.statusBadgeSuccess]}>
                                   <Text style={[styles.statusText, isAbnormal ? styles.statusTextError : styles.statusTextSuccess]}>
-                                    {isAbnormal ? "High Alert" : "Normal"}
+                                    {isAbnormal ? (isRTL ? "تنبيه مرتفع" : "High Alert") : (isRTL ? "طبيعي" : "Normal")}
                                   </Text>
                                 </View>
-                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <View style={[styles.headerTop, { flexDirection: isRTL ? 'row-reverse' : 'row', gap: 12, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }]}>
                                   <TouchableOpacity onPress={() => handleEditInit(v)}>
                                     <Edit size={16} color="#64748B" />
                                   </TouchableOpacity>
@@ -695,22 +697,23 @@ export default function VitalsScreen() {
                                   </TouchableOpacity>
                                 </View>
                               </View>
-                              <View style={styles.historyValueRow}>
+                              <View style={[styles.historyValueRow, { flexDirection: isRTL ? 'row-reverse' : 'row', width: '100%', marginTop: 8 }]}>
                                 <Text style={[styles.historyValue, { color: colors.text, fontSize: 18 }, isAbnormal && styles.historyValueAbnormal]}>
                                   {v.value}{v.value2 != null ? ` / ${v.value2}` : ""}
                                 </Text>
-                                <Text style={styles.historyUnit}>{v.unit}</Text>
+                                <Text style={styles.historyUnit}>{v.unit === "C" && isRTL ? "م°" : v.unit}</Text>
                               </View>
                               {v.notes && (
-                                <View style={styles.historyNotesBox}>
+                                <View style={[styles.historyNotesBox, { flexDirection: isRTL ? 'row-reverse' : 'row', width: '100%' }]}>
                                   <Info size={12} color="#64748B" />
-                                  <Text style={styles.historyNotes}>{v.notes}</Text>
+                                  <Text style={[styles.historyNotes, { textAlign: isRTL ? 'right' : 'left', flex: 1 }]}>{v.notes}</Text>
                                 </View>
                               )}
-                              <View style={[styles.vitalMiniReportBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border }]}>
-                                <Text style={styles.vitalMiniReportLabel}>Report / التقرير</Text>
-                                <Text style={[styles.vitalMiniReportText, { color: colors.textMuted }]}>{miniReport.en}</Text>
-                                <Text style={[styles.vitalMiniReportText, { color: colors.textMuted, textAlign: "right" }]}>{miniReport.ar}</Text>
+                              <View style={[styles.vitalMiniReportBox, { backgroundColor: isDark ? "#0F172A" : "#F8FAFC", borderColor: colors.border, width: '100%' }]}>
+                                <Text style={[styles.vitalMiniReportLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{isRTL ? "التقرير الصحي الذكي" : "Report / التقرير"}</Text>
+                                <Text style={[styles.vitalMiniReportText, { color: colors.textMuted }, { textAlign: isRTL ? 'right' : 'left' }]}>
+                                  {isRTL ? miniReport.ar : miniReport.en}
+                                </Text>
                               </View>
                             </View>
                           );
