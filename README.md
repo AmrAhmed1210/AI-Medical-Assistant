@@ -9,7 +9,7 @@ MedBook is a comprehensive healthcare platform featuring a Doctor/Patient mobile
 | **Web Dashboard** | React + Vite | [https://poetic-pithivier-a60d22.netlify.app/](https://poetic-pithivier-a60d22.netlify.app/) (Netlify) <br> *Also available on Vercel* |
 | **Backend API** | ASP.NET Core 8 + EF Core | [http://amrahmed1210-001-site1.itempurl.com/](http://amrahmed1210-001-site1.itempurl.com/) |
 | **Database** | SQL Server | Hosted on SmarterASP.net (`sql1003.site4now.net`) |
-| **Mobile App** | React Native (Expo) | Android APK (Built via Expo EAS) |
+| **Mobile App** | React Native (Expo) | [Download Android APK](https://expo.dev/artifacts/eas/UZexGDLgLq0U2R0-htN0cOIRawn371V-zZmOmLPE_GU.apk) |
 
 ---
 
