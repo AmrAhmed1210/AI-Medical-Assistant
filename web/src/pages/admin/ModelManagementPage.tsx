@@ -1,3 +1,4 @@
+import { useLanguage } from '@/lib/language'
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Cpu, RefreshCw, Zap, Shield, Database, Activity, Loader2 } from 'lucide-react'
@@ -16,6 +17,7 @@ const MOCK_MODELS: ModelVersionDto[] = [
 ]
 
 export default function ModelManagementPage() {
+  const { t } = useLanguage()
   const [models, setModels] = useState<ModelVersionDto[]>(MOCK_MODELS)
   const [loading, setLoading] = useState(true)
   const [reloadingAgent, setReloadingAgent] = useState<string | undefined>()
@@ -59,15 +61,13 @@ export default function ModelManagementPage() {
             <Cpu size={28} strokeWidth={2.5} />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">AI Model Management</h1>
-            <p className="text-slate-500 dark:text-slate-400 font-medium">Monitor and manage deployed AI models</p>
+            <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">{t('aiModelManagement')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">{t('monitorManageModels')}</p>
           </div>
         </div>
         <div className="flex gap-3">
            <Button variant="outline" onClick={loadModels} className="gap-2">
-             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-             Refresh
-           </Button>
+             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />{t('refresh')}</Button>
         </div>
       </div>
 
@@ -76,8 +76,8 @@ export default function ModelManagementPage() {
           <CardContent className="p-6 flex items-center gap-4">
             <div className="p-3 bg-emerald-500 rounded-2xl text-white shadow-lg"><Zap size={20} /></div>
             <div>
-              <p className="text-sm font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">System Status</p>
-              <p className="text-xl font-black text-emerald-950 dark:text-emerald-300">OPTIMAL</p>
+              <p className="text-sm font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">{t('systemStatus')}</p>
+              <p className="text-xl font-black text-emerald-950 dark:text-emerald-300">{t('optimal')}</p>
             </div>
           </CardContent>
         </Card>
@@ -85,8 +85,8 @@ export default function ModelManagementPage() {
           <CardContent className="p-6 flex items-center gap-4">
             <div className="p-3 bg-blue-500 rounded-2xl text-white shadow-lg"><Shield size={20} /></div>
             <div>
-              <p className="text-sm font-bold text-blue-800 dark:text-blue-400 uppercase tracking-wider">Security</p>
-              <p className="text-xl font-black text-blue-950 dark:text-blue-300">ENCRYPTED</p>
+              <p className="text-sm font-bold text-blue-800 dark:text-blue-400 uppercase tracking-wider">{t('security')}</p>
+              <p className="text-xl font-black text-blue-950 dark:text-blue-300">{t('encrypted')}</p>
             </div>
           </CardContent>
         </Card>
@@ -94,8 +94,8 @@ export default function ModelManagementPage() {
           <CardContent className="p-6 flex items-center gap-4">
             <div className="p-3 bg-indigo-500 rounded-2xl text-white shadow-lg"><Database size={20} /></div>
             <div>
-              <p className="text-sm font-bold text-indigo-800 dark:text-indigo-400 uppercase tracking-wider">Storage</p>
-              <p className="text-xl font-black text-indigo-950 dark:text-indigo-300">STABLE</p>
+              <p className="text-sm font-bold text-indigo-800 dark:text-indigo-400 uppercase tracking-wider">{t('storage')}</p>
+              <p className="text-xl font-black text-indigo-950 dark:text-indigo-300">{t('stable')}</p>
             </div>
           </CardContent>
         </Card>
@@ -104,8 +104,8 @@ export default function ModelManagementPage() {
       <Card className="border border-slate-100 dark:border-slate-800 shadow-2xl rounded-3xl overflow-hidden bg-white dark:bg-slate-900">
         <CardHeader className="p-6 border-b border-slate-100 dark:border-slate-800/80 flex flex-row items-center justify-between bg-white/40 dark:bg-slate-900/40">
           <div>
-            <CardTitle className="text-xl font-bold">Deployed Models</CardTitle>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">Inventory of deployed agent models and versions</p>
+            <CardTitle className="text-xl font-bold">{t('deployedModels')}</CardTitle>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">{t('inventoryAgentModels')}</p>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-950 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300">
              <Activity size={14} className="text-blue-500" /> {models.length} Models Found
@@ -115,7 +115,7 @@ export default function ModelManagementPage() {
           {loading && !models.length ? (
             <div className="p-20 flex flex-col items-center justify-center space-y-4">
                <Loader2 className="animate-spin text-blue-500" size={40} />
-               <p className="text-slate-400 font-bold">Initializing Environment...</p>
+               <p className="text-slate-400 font-bold">{t('initializingEnv')}</p>
             </div>
           ) : (
             <ModelVersionTable 

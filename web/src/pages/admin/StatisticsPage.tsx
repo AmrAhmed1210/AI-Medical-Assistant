@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useLanguage } from '@/lib/language'
+import { useEffect, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, 
@@ -14,13 +15,6 @@ import {
   BarChart3, PieChart as PieChartIcon, Zap, Target, ArrowUpRight,
   ChevronRight, Sparkles, Database, Brain
 } from 'lucide-react'
-
-const URGENCY_CONFIG = {
-  LOW:       { label: 'Low Sev', color: '#10b981', bg: 'bg-emerald-500' },
-  MEDIUM:    { label: 'Medium',  color: '#f59e0b', bg: 'bg-amber-500' },
-  HIGH:      { label: 'High Sev', color: '#ef4444', bg: 'bg-rose-500' },
-  EMERGENCY: { label: 'Critical', color: '#7f1d1d', bg: 'bg-red-900' },
-}
 
 const MOCK_STATS: SystemStatsDto = {
   totalUsers: 1420,
@@ -41,6 +35,13 @@ const MOCK_STATS: SystemStatsDto = {
 } as any
 
 export default function AdminStatistics() {
+  const { t } = useLanguage()
+  const URGENCY_CONFIG = useMemo(() => ({
+    LOW:       { label: t('urgencyLow'), color: '#10b981', bg: 'bg-emerald-500' },
+    MEDIUM:    { label: t('urgencyMedium'), color: '#f59e0b', bg: 'bg-amber-500' },
+    HIGH:      { label: t('urgencyHigh'), color: '#ef4444', bg: 'bg-rose-500' },
+    EMERGENCY: { label: t('urgencyEmergency'), color: '#7f1d1d', bg: 'bg-red-900' },
+  }), [t])
   const [stats, setStats] = useState<SystemStatsDto | null>(null)
   const [loading, setLoading] = useState(true)
   const [usingMock, setUsingMock] = useState(false)
@@ -78,21 +79,19 @@ export default function AdminStatistics() {
         <div className="space-y-2">
           <div className="flex items-center gap-3">
              <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl shadow-lg text-blue-600 dark:text-blue-400"><BarChart3 size={24} /></div>
-             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">System Analytics & Statistics</h1>
+             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{t('systemAnalytics')}</h1>
              {usingMock && (
                <div className="ml-4 px-3 py-1 bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-400 text-xs font-bold rounded-lg border border-amber-200 dark:border-amber-900/50">
-                 ⚠️ Demo Data
+                 ⚠️ {t('demoData')}
                </div>
              )}
           </div>
           <p className="text-slate-500 dark:text-slate-400 font-bold ml-14 flex items-center gap-2">
-             <Sparkles size={16} className="text-amber-500" />
-             AI-driven performance metrics and system behavioral analysis
-          </p>
+             <Sparkles size={16} className="text-amber-500" />{t('aiPerformanceMetrics')}</p>
         </div>
         <div className="flex items-center gap-4 bg-white/50 dark:bg-slate-900/40 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 dark:border-slate-800">
            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-           <span className="text-xs font-black uppercase text-slate-600 dark:text-slate-400">Real-time Stream Active</span>
+           <span className="text-xs font-black uppercase text-slate-600 dark:text-slate-400">{t('realTimeStream')}</span>
         </div>
       </div>
 
@@ -101,7 +100,7 @@ export default function AdminStatistics() {
         {/* Navigation Sidebar */}
         <div className="xl:col-span-3 space-y-6">
            <div className="bg-white/60 backdrop-blur-xl border border-white p-2 rounded-[32px] shadow-xl">
-             <div className="p-6 pb-2"><h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Analysis Matrix</h3></div>
+             <div className="p-6 pb-2"><h3 className="text-xs font-black uppercase tracking-widest text-slate-400">{t('analysisMatrix')}</h3></div>
              <div className="space-y-1.5 p-2">
                 {[
                   { id: 'overview', label: 'Overview', icon: Target },
@@ -134,10 +133,10 @@ export default function AdminStatistics() {
              <div className="relative z-10 space-y-6">
                 <Brain size={40} className="text-blue-300" />
                 <div className="space-y-1">
-                   <h4 className="text-2xl font-black tracking-tight">AI Predictive</h4>
-                   <p className="text-sm text-blue-200 font-medium">+18% expected growth next month based on current trends.</p>
+                   <h4 className="text-2xl font-black tracking-tight">{t('aiPredictive')}</h4>
+                   <p className="text-sm text-blue-200 font-medium">{t('expectedGrowth')}</p>
                 </div>
-                <button className="w-full bg-white/10 hover:bg-white/20 py-3 rounded-xl font-bold text-xs transition-colors border border-white/20 uppercase tracking-widest">Generate Report</button>
+                <button className="w-full bg-white/10 hover:bg-white/20 py-3 rounded-xl font-bold text-xs transition-colors border border-white/20 uppercase tracking-widest">{t('generateReport')}</button>
              </div>
              <div className="absolute -bottom-10 -right-10 opacity-10 rotate-12"><Database size={180} /></div>
           </div>
@@ -185,13 +184,12 @@ export default function AdminStatistics() {
                 <Card className="border-0 shadow-2xl rounded-[40px] p-8 overflow-hidden">
                    <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
-                         <h3 className="text-2xl font-black text-slate-800 dark:text-white">Growth Chart</h3>
-                         <p className="text-slate-400 dark:text-slate-500 font-medium">Monthly acquisition of new system entities</p>
+                         <h3 className="text-2xl font-black text-slate-800 dark:text-white">{t('growthChart')}</h3>
+                         <p className="text-slate-400 dark:text-slate-500 font-medium">{t('monthlyAcquisition')}</p>
                       </div>
                       <div className="flex items-center gap-4">
                          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                            <div className="w-3 h-3 rounded-full bg-blue-500" /> New Registries
-                         </div>
+                            <div className="w-3 h-3 rounded-full bg-blue-500" />{t('newRegistries')}</div>
                       </div>
                    </div>
                    <ResponsiveContainer width="100%" height={380}>
@@ -215,8 +213,8 @@ export default function AdminStatistics() {
               {activeTab === 'traffic' && (
                 <Card className="border-0 shadow-2xl rounded-[40px] p-8 overflow-hidden">
                    <div className="mb-10">
-                      <h3 className="text-2xl font-black text-slate-800 dark:text-white">Daily Sessions</h3>
-                      <p className="text-slate-400 dark:text-slate-500 font-medium">Operational load across the weekly spectrum</p>
+                      <h3 className="text-2xl font-black text-slate-800 dark:text-white">{t('dailySessions')}</h3>
+                      <p className="text-slate-400 dark:text-slate-500 font-medium">{t('operationalLoad')}</p>
                    </div>
                    <ResponsiveContainer width="100%" height={380}>
                       <BarChart data={stats?.sessionsPerDay ?? []}>

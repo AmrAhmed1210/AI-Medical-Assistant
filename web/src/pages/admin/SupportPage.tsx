@@ -1,3 +1,4 @@
+import { useLanguage } from '@/lib/language'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, User, MessageSquare, LifeBuoy, FileText, ImageIcon } from 'lucide-react'
@@ -24,6 +25,7 @@ const formatTimeAgo = (timestamp?: string | null) => {
 }
 
 export default function SupportPage() {
+  const { t } = useLanguage()
   const { unreadCounts, clearSessionMessages, incrementSessionMessage, latestMessagePayload } = useNotificationStore()
   
   const [sessions, setSessions] = useState<SessionDto[]>([])
@@ -144,8 +146,8 @@ export default function SupportPage() {
           </div>
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-800 dark:text-white">Support Center</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-450 mt-0.5">Manage user complaints and technical requests</p>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-white">{t('supportCenter')}</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-450 mt-0.5">{t('manageComplaints')}</p>
         </div>
       </div>
 
@@ -156,7 +158,7 @@ export default function SupportPage() {
           animate={{ x: 0, opacity: 1 }}
         >
           <div className="p-4 border-b border-gray-100 dark:border-slate-800 bg-indigo-50/30 dark:bg-indigo-950/20">
-            <p className="text-sm font-semibold text-gray-700 dark:text-slate-200">Support Conversations</p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-slate-200">{t('supportConversations')}</p>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{sessions.length} ticket(s) found</p>
           </div>
           {isLoadingSessions ? <PageLoader /> : (
@@ -164,7 +166,7 @@ export default function SupportPage() {
               {sessions.length === 0 ? (
                 <div className="p-12 text-center text-gray-400 dark:text-slate-500">
                   <LifeBuoy size={40} className="mx-auto mb-3 opacity-20" />
-                  <p className="text-sm">No support tickets</p>
+                  <p className="text-sm">{t('noSupportTickets')}</p>
                 </div>
               ) : sessions.map((s) => (
                 <motion.button
@@ -218,8 +220,8 @@ export default function SupportPage() {
             <div className="flex-1 flex items-center justify-center text-gray-400 bg-gray-50/30 dark:bg-slate-950/20">
               <div className="text-center">
                 <MessageSquare size={64} className="mx-auto mb-4 opacity-10" />
-                <p className="text-lg font-medium text-gray-400 dark:text-slate-500">Select a support ticket to respond</p>
-                <p className="text-sm text-gray-400 dark:text-slate-500 mt-2">View complaints from users and doctors</p>
+                <p className="text-lg font-medium text-gray-400 dark:text-slate-500">{t('selectSupportTicket')}</p>
+                <p className="text-sm text-gray-400 dark:text-slate-500 mt-2">{t('viewComplaints')}</p>
               </div>
             </div>
           ) : (
@@ -236,7 +238,7 @@ export default function SupportPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400 text-[10px] font-bold rounded-full uppercase tracking-wider">Active Ticket</span>
+                  <span className="px-3 py-1 bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400 text-[10px] font-bold rounded-full uppercase tracking-wider">{t('activeTicket')}</span>
                 </div>
               </div>
 
@@ -268,8 +270,8 @@ export default function SupportPage() {
                             <div className="flex items-center gap-2 mb-2 p-2 bg-black/5 dark:bg-white/5 rounded-lg cursor-pointer" onClick={() => window.open(msg.attachmentUrl!, '_blank')}>
                               <FileText size={20} className={isAdmin ? 'text-white' : 'text-indigo-600'} />
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold truncate">{msg.fileName || 'Document'}</p>
-                                <p className="text-[10px] opacity-70">Attachment</p>
+                                <p className="text-xs font-bold truncate">{msg.fileName || t('document')}</p>
+                                <p className="text-[10px] opacity-70">{t('attachment')}</p>
                               </div>
                             </div>
                           ) : null}

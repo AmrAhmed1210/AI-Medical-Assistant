@@ -10,16 +10,10 @@ import type { AppointmentStatus, AppointmentDto, DoctorDetailDto, PatientSummary
 import toast from 'react-hot-toast'
 import { RefreshCw, Calendar, Search, ClipboardList, Plus, Loader2, Settings } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-
-const STATUS_FILTERS: { label: string; value: AppointmentStatus | '' }[] = [
-  { label: 'All', value: '' },
-  { label: 'Pending', value: 'Pending' },
-  { label: 'Confirmed', value: 'Confirmed' },
-  { label: 'Completed', value: 'Completed' },
-  { label: 'Cancelled', value: 'Cancelled' },
-]
+import { useLanguage } from '@/lib/language'
 
 export default function SecretaryDashboard() {
+  const { t, isRTL } = useLanguage()
   const navigate = useNavigate()
   const { appointments, isLoading, fetchSecretaryAppointments, confirm, cancel, updateLocal } = useAppointmentStore()
 
@@ -61,7 +55,7 @@ export default function SecretaryDashboard() {
   useEffect(() => {
     secretaryApi.getMyDoctor()
       .then(setMyDoctor)
-      .catch(() => toast.error('Failed to load doctor info'))
+      .catch(() => toast.error(t('errLoadDoctorInfo')))
   }, [])
 
   useEffect(() => {
@@ -92,7 +86,7 @@ export default function SecretaryDashboard() {
           setPatientResults(patients)
           setShowPatientDropdown(true)
         })
-        .catch(() => toast.error('Failed to search patients'))
+        .catch(() => toast.error(t('errSearchPatients')))
         .finally(() => setPatientSearchLoading(false))
     }, 300)
     return () => clearTimeout(timer)
@@ -101,39 +95,39 @@ export default function SecretaryDashboard() {
   const handleConfirm = async (id: string) => {
     try {
       await confirm(id)
-      toast.success('Appointment confirmed')
-    } catch { toast.error('Failed to confirm appointment') }
+      toast.success(t('apptConfirmed'))
+    } catch { toast.error(t('errConfirmAppt')) }
   }
 
   const handleUnconfirm = async (id: string) => {
     try {
       await appointmentApi.setPending(id)
       updateLocal(id, { status: 'Pending' })
-      toast.success('Appointment moved to pending')
-    } catch { toast.error('Failed to unconfirm appointment') }
+      toast.success(t('apptPending'))
+    } catch { toast.error(t('errUnconfirmAppt')) }
   }
 
   const handleCancel = async (id: string) => {
     try {
       await cancel(id)
-      toast.success('Appointment cancelled')
-    } catch { toast.error('Failed to cancel appointment') }
+      toast.success(t('apptCancelled'))
+    } catch { toast.error(t('errCancelAppt')) }
   }
 
   const handleDelete = async (id: string) => {
     try {
       await appointmentApi.delete(id)
       updateLocal(id, { status: 'Cancelled' })
-      toast.success('Appointment deleted')
-    } catch { toast.error('Failed to delete appointment') }
+      toast.success(t('apptDeleted'))
+    } catch { toast.error(t('errDeleteAppt')) }
   }
 
   const handleNoShow = async (id: string) => {
     try {
       await appointmentApi.noShow(id)
       updateLocal(id, { status: 'NoShow' })
-      toast.success('Marked as no-show')
-    } catch { toast.error('Failed to mark no-show') }
+      toast.success(t('markedNoShow'))
+    } catch { toast.error(t('errMarkNoShow')) }
   }
 
   const openReschedule = (appt: AppointmentDto) => {
@@ -148,17 +142,17 @@ export default function SecretaryDashboard() {
   const handleRescheduleSubmit = async () => {
     if (!rescheduleAppt) return
     if (!rescheduleDate || !rescheduleTime) {
-      toast.error('Please select date and time')
+      toast.error(t('errSelectDateTime'))
       return
     }
     try {
       setRescheduleLoading(true)
       await appointmentApi.reschedule(rescheduleAppt.id, rescheduleDate, rescheduleTime, rescheduleReason)
-      toast.success('Appointment rescheduled')
+      toast.success(t('apptRescheduled'))
       await fetchSecretaryAppointments()
       setRescheduleOpen(false)
     } catch {
-      toast.error('Failed to reschedule')
+      toast.error(t('errReschedule'))
     } finally {
       setRescheduleLoading(false)
     }
@@ -166,7 +160,7 @@ export default function SecretaryDashboard() {
 
   const handleBookSubmit = async () => {
     if (!myDoctor || !bookDate || !bookTime) {
-      toast.error('Please fill all required fields')
+      toast.error(t('errFillRequired'))
       return
     }
     try {
@@ -174,14 +168,14 @@ export default function SecretaryDashboard() {
       let patientId: number
       if (patientMode === 'existing') {
         if (!selectedPatient) {
-          toast.error('Please select a patient')
+          toast.error(t('errSelectPatient'))
           return
         }
         patientId = Number(selectedPatient.id)
         console.log('Booking for existing patient:', { patientId, doctorId: myDoctor.id, date: bookDate, time: bookTime })
       } else {
         if (!newPatientName || !newPatientPhone) {
-          toast.error('Please fill patient name and phone')
+          toast.error(t('errFillNamePhone'))
           return
         }
         console.log('Creating walk-in patient:', { fullName: newPatientName, email: newPatientEmail, phoneNumber: newPatientPhone })
@@ -207,7 +201,7 @@ export default function SecretaryDashboard() {
       console.log('ScheduledAt string:', `${bookDate}T${bookTime}`)
       const result = await appointmentApi.create(appointmentData)
       console.log('Appointment created:', result)
-      toast.success('Appointment booked successfully')
+      toast.success(t('apptBooked'))
       await fetchSecretaryAppointments()
       console.log('Appointments after booking:', appointments)
       setBookOpen(false)
@@ -227,7 +221,7 @@ export default function SecretaryDashboard() {
         console.error('Backend error:', error.response.data)
         toast.error(`Failed to book: ${error.response.data.message || 'Unknown error'}`)
       } else {
-        toast.error('Failed to book appointment')
+        toast.error(t('errBookAppt'))
       }
     } finally {
       setBookLoading(false)
@@ -283,7 +277,7 @@ export default function SecretaryDashboard() {
       .map(([key, dayAppointments]) => ({
         key,
         label: key === 'unknown'
-          ? 'No Date'
+          ? t('noDate')
           : new Date(`${key}T00:00:00`).toLocaleDateString(undefined, {
             weekday: 'short',
             day: '2-digit',
@@ -309,27 +303,35 @@ export default function SecretaryDashboard() {
 
   const selectedDayAppointments = daySections.find((section) => section.key === selectedDayKey)?.appointments ?? []
 
+  const STATUS_FILTERS: { label: string; value: AppointmentStatus | '' }[] = [
+    { label: t('All'), value: '' },
+    { label: t('Pending'), value: 'Pending' },
+    { label: t('Confirmed'), value: 'Confirmed' },
+    { label: t('Completed'), value: 'Completed' },
+    { label: t('Cancelled'), value: 'Cancelled' },
+  ]
+
   return (
-    <div className="space-y-5 p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <div className="space-y-5 p-6" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <div className="relative bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl p-3 shadow-lg">
             <Calendar size={28} className="text-white" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">Secretary Portal</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Manage doctor's appointments</p>
+          <div className={isRTL ? 'text-right' : ''}>
+            <h1 className="text-xl font-bold text-gray-800">{t('secretaryPortal')}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{t('manageDoctorAppts')}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <Button variant="outline" icon={<Settings size={14} />} onClick={() => navigate('/secretary/schedule')} size="sm">
-            Doctor Schedule
+            {t('doctorSchedule')}
           </Button>
           <Button variant="outline" icon={<RefreshCw size={14} />} onClick={fetchSecretaryAppointments} size="sm">
-            Refresh
+            {t('refresh')}
           </Button>
           <Button icon={<Plus size={14} />} onClick={() => setBookOpen(true)} size="sm">
-            Book Appointment
+            {t('bookAppointment')}
           </Button>
         </div>
       </div>
@@ -345,7 +347,7 @@ export default function SecretaryDashboard() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              Active
+              {t('active')}
             </button>
             <button
               onClick={() => setActiveTab('history')}
@@ -355,19 +357,19 @@ export default function SecretaryDashboard() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              History
+              {t('history')}
             </button>
           </div>
 
-          <div className="flex-1 p-2 flex items-center justify-end gap-3 sm:border-l border-gray-100 bg-gray-50/50">
+          <div className={`flex-1 p-2 flex items-center gap-3 sm:border-l border-gray-100 bg-gray-50/50 ${isRTL ? 'justify-start sm:border-r sm:border-l-0' : 'justify-end'}`}>
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={14} className={`absolute top-1/2 -translate-y-1/2 text-gray-400 ${isRTL ? 'right-3' : 'left-3'}`} />
               <input
                 type="text"
-                placeholder="Search patient..."
+                placeholder={t('searchPatient')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-4 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-64 bg-white"
+                className={`${isRTL ? 'pr-8 pl-4 text-right' : 'pl-8 pr-4'} py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-64 bg-white`}
               />
             </div>
           </div>
@@ -390,7 +392,7 @@ export default function SecretaryDashboard() {
 
         {daySections.length === 0 ? (
           <div className="py-20 text-center">
-            {isLoading ? <p>Loading appointments...</p> : <p className="text-gray-400">No appointments found</p>}
+            {isLoading ? <p>{t('loadingAppts')}</p> : <p className="text-gray-400">{t('noApptsFound')}</p>}
           </div>
         ) : (
           <div className="p-4 space-y-4">
@@ -435,24 +437,24 @@ export default function SecretaryDashboard() {
       <Modal
         open={rescheduleOpen}
         onClose={() => setRescheduleOpen(false)}
-        title="Reschedule Appointment"
+        title={t('rescheduleAppointment')}
         footer={
           <>
-            <Button variant="outline" onClick={() => setRescheduleOpen(false)} disabled={rescheduleLoading}>Cancel</Button>
+            <Button variant="outline" onClick={() => setRescheduleOpen(false)} disabled={rescheduleLoading}>{t('cancel')}</Button>
             <Button onClick={handleRescheduleSubmit} disabled={rescheduleLoading}>
               {rescheduleLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Reschedule
+              {t('reschedule')}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Patient</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('patientName')}</label>
             <p className="text-sm text-gray-500">{rescheduleAppt?.patientName}</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">New Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('newDate')}</label>
             <input
               type="date"
               value={rescheduleDate}
@@ -461,7 +463,7 @@ export default function SecretaryDashboard() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">New Time</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('newTime')}</label>
             <input
               type="time"
               value={rescheduleTime}
@@ -470,12 +472,12 @@ export default function SecretaryDashboard() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reason (optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('reasonOptional')}</label>
             <input
               type="text"
               value={rescheduleReason}
               onChange={(e) => setRescheduleReason(e.target.value)}
-              placeholder="e.g. Patient request"
+              placeholder={t('reasonPlaceholder')}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none text-sm"
             />
           </div>
@@ -486,21 +488,21 @@ export default function SecretaryDashboard() {
       <Modal
         open={bookOpen}
         onClose={() => setBookOpen(false)}
-        title="Book New Appointment"
+        title={t('bookNewAppointment')}
         size="lg"
         footer={
           <>
-            <Button variant="outline" onClick={() => setBookOpen(false)} disabled={bookLoading}>Cancel</Button>
+            <Button variant="outline" onClick={() => setBookOpen(false)} disabled={bookLoading}>{t('cancel')}</Button>
             <Button onClick={handleBookSubmit} disabled={bookLoading}>
               {bookLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Book Appointment
+              {t('bookAppointment')}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Patient Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('patientType')}</label>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -511,7 +513,7 @@ export default function SecretaryDashboard() {
                     : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                Existing Patient
+                {t('existingPatient')}
               </button>
               <button
                 type="button"
@@ -522,14 +524,14 @@ export default function SecretaryDashboard() {
                     : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                New Walk-in
+                {t('newWalkIn')}
               </button>
             </div>
           </div>
 
           {patientMode === 'existing' ? (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Search Patient *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('searchPatientByName')} *</label>
               <div className="relative">
                 <input
                   type="text"
@@ -543,7 +545,7 @@ export default function SecretaryDashboard() {
                   onFocus={() => {
                     if (patientResults.length > 0) setShowPatientDropdown(true)
                   }}
-                  placeholder="Search patient by name..."
+                  placeholder={t('searchPatientByName')}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm"
                 />
                 {patientSearchLoading && (
@@ -570,7 +572,7 @@ export default function SecretaryDashboard() {
                 )}
                 {showPatientDropdown && !patientSearchLoading && patientSearchQuery.trim() && patientResults.length === 0 && (
                   <div className="absolute z-[9999] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm text-gray-400">
-                    No patients found
+                    {t('noPatientsFound')}
                   </div>
                 )}
               </div>
@@ -578,32 +580,32 @@ export default function SecretaryDashboard() {
           ) : (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('fullName')} *</label>
                 <input
                   type="text"
                   value={newPatientName}
                   onChange={(e) => setNewPatientName(e.target.value)}
-                  placeholder="Enter patient name"
+                  placeholder={t('enterPatientName')}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')} *</label>
                 <input
                   type="email"
                   value={newPatientEmail}
                   onChange={(e) => setNewPatientEmail(e.target.value)}
-                  placeholder="Enter patient email"
+                  placeholder={t('enterPatientEmail')}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')} *</label>
                 <input
                   type="tel"
                   value={newPatientPhone}
                   onChange={(e) => setNewPatientPhone(e.target.value)}
-                  placeholder="Enter patient phone"
+                  placeholder={t('enterPatientPhone')}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm"
                 />
               </div>
@@ -611,14 +613,14 @@ export default function SecretaryDashboard() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('doctor')}</label>
             <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
-              {myDoctor ? `${myDoctor.fullName} – ${myDoctor.specialty}` : 'Loading doctor...'}
+              {myDoctor ? `${myDoctor.fullName} – ${myDoctor.specialty}` : t('loadingDoctor')}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('date')} *</label>
               <input
                 type="date"
                 value={bookDate}
@@ -627,7 +629,7 @@ export default function SecretaryDashboard() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Time *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('time')} *</label>
               <input
                 type="time"
                 value={bookTime}
@@ -640,22 +642,22 @@ export default function SecretaryDashboard() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('paymentMethod')}</label>
             <select
               value={bookPayment}
               onChange={(e) => setBookPayment(e.target.value)}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm bg-white"
             >
-              <option value="cash">Cash on Arrival</option>
-              <option value="visa">Visa (Online)</option>
+              <option value="cash">{t('cashOnArrival')}</option>
+              <option value="visa">{t('visaOnline')}</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('notes')}</label>
             <textarea
               value={bookNotes}
               onChange={(e) => setBookNotes(e.target.value)}
-              placeholder="Optional notes..."
+              placeholder={t('optionalNotes')}
               rows={3}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-sm resize-none"
             />

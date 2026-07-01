@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Send, AlertTriangle, Activity, User, MessageSquare, Image as ImageIcon, Paperclip, FileText, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { consultApi } from '@/api/consultApi'
+import { useLanguage } from '@/lib/language'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationStore } from '@/store/notificationStore'
 import { useMessagesStore } from '@/store/messagesStore'
@@ -40,6 +41,7 @@ export default function DoctorChat() {
   const { unreadCounts, clearSessionMessages, incrementSessionMessage, latestMessagePayload } = useNotificationStore()
   const { sessions, selectedSession, isLoadingSessions, fetchSessions, openSession, sendMessage, handleIncomingMessage } = useMessagesStore()
   
+  const { t, isRTL } = useLanguage()
   const [message, setMessage] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const selectedSessionIdRef = useRef<number | string | null>(null)
@@ -49,7 +51,7 @@ export default function DoctorChat() {
       await openSession(sessionId)
       clearSessionMessages(Number(sessionId))
     } catch {
-      toast.error('Failed to load conversation')
+      toast.error(t('errLoadConv'))
     }
   }, [openSession, clearSessionMessages])
 
@@ -60,7 +62,7 @@ export default function DoctorChat() {
     try {
       await sendMessage(content)
     } catch {
-      toast.error('Failed to send message')
+      toast.error(t('errMsgSent'))
     }
   }, [message, selectedSession, sendMessage])
 
@@ -71,15 +73,15 @@ export default function DoctorChat() {
     const isImage = file.type.startsWith('image/')
     const type = isImage ? 'image' : 'file'
     
-    const loadingToast = toast.loading(`Uploading ${type}...`)
+    const loadingToast = toast.loading(`{t('uploading')} ${type}...`)
     try {
       const { url, fileName } = await consultApi.uploadFile(file)
       await consultApi.sendMessage(selectedSession.id, isImage ? '[Image]' : `[File: ${fileName}]`, type, url, fileName)
       // Refresh session to show new message
       await openSession(selectedSession.id)
-      toast.success(`${type} sent`, { id: loadingToast })
+      toast.success(`${type} ${t('sent')}`, { id: loadingToast })
     } catch {
-      toast.error(`Failed to upload ${type}`, { id: loadingToast })
+      toast.error(`{t('errUpload')} ${type}`, { id: loadingToast })
     }
   }
 
@@ -131,13 +133,13 @@ export default function DoctorChat() {
 
   const handleDeleteSession = async () => {
     if (!selectedSession) return;
-    if (!window.confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) return;
+    if (!window.confirm(t('confirmDeleteConv'))) return;
     
     try {
       await useMessagesStore.getState().deleteSession(selectedSession.id);
-      toast.success('Conversation deleted successfully');
+      toast.success(t('convDeleted'));
     } catch (e: any) {
-      toast.error('Failed to delete conversation');
+      toast.error(t('errDeleteConv'));
     }
   };
 
@@ -148,8 +150,8 @@ export default function DoctorChat() {
           <MessageSquare size={24} className="text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Conversations</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Connect with your patients in real-time</p>
+          <h1 className="text-xl font-bold text-slate-800">{t('conversations')}</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{t('connectRealtime')}</p>
         </div>
       </div>
 
@@ -161,15 +163,15 @@ export default function DoctorChat() {
           transition={{ duration: 0.3 }}
         >
           <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-            <p className="text-sm font-semibold text-slate-700">Active Conversations</p>
-            <p className="text-xs text-slate-500 mt-1">{sessions.length} session(s)</p>
+            <p className="text-sm font-semibold text-slate-700">{t('activeConvs')}</p>
+            <p className="text-xs text-slate-500 mt-1">{sessions.length} {t('sessionsWord')}</p>
           </div>
           {isLoadingSessions ? <PageLoader /> : (
             <div className="divide-y divide-slate-50">
               {sessions.length === 0 ? (
                 <div className="p-8 text-center text-slate-400">
                   <MessageSquare size={32} className="mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No conversations yet</p>
+                  <p className="text-sm">{t('noConvsYet')}</p>
                 </div>
               ) : sessions.map((s) => (
                 <motion.button
@@ -226,7 +228,7 @@ export default function DoctorChat() {
                 transition={{ duration: 3, repeat: Infinity }}
               >
                 <MessageSquare size={48} className="mx-auto mb-3 opacity-20" />
-                <p className="text-sm">Select a conversation to start</p>
+                <p className="text-sm">{t('selectConv')}</p>
               </motion.div>
             </div>
           ) : (
@@ -239,7 +241,7 @@ export default function DoctorChat() {
                 {hasHighUrgency && (
                   <motion.div className="flex items-center gap-2" animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
                     <AlertTriangle size={16} className="text-red-600" />
-                    <span className="text-sm text-red-600 font-medium">High Urgency</span>
+                    <span className="text-sm text-red-600 font-medium">{t('highUrgency')}</span>
                   </motion.div>
                 )}
                 <div className={cn('flex items-center gap-2', hasHighUrgency && 'ml-auto')}>
@@ -262,7 +264,7 @@ export default function DoctorChat() {
                   <button
                     onClick={handleDeleteSession}
                     className="ml-2 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                    title="Delete Conversation"
+                    title={t("deleteConv")}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -281,7 +283,7 @@ export default function DoctorChat() {
                       transition={{ duration: 0.3, delay: idx * 0.05 }}
                       className={cn(
                         'flex gap-3 max-w-[85%]',
-                        msg.role === 'doctor' ? 'ml-auto flex-row-reverse' : ''
+                        msg.role === 'doctor' ? `ml-auto ${isRTL ? 'flex-row-reverse' : 'flex-row'}` : ''
                       )}
                     >
                       <div className={cn(
@@ -300,10 +302,10 @@ export default function DoctorChat() {
                       <div className={cn(
                         'px-4 py-3 rounded-2xl text-sm shadow-md hover:shadow-lg transition-shadow',
                         msg.role === 'doctor'
-                          ? 'bg-emerald-600 text-white rounded-br-none'
+                          ? `bg-emerald-600 text-white ${isRTL ? 'rounded-bl-none' : 'rounded-br-none'}`
                           : msg.role === 'assistant'
-                            ? 'bg-purple-50 text-slate-800 rounded-bl-none border border-purple-200'
-                            : 'bg-slate-100 text-slate-800 rounded-tl-none'
+                            ? `bg-purple-50 text-slate-800 ${isRTL ? 'rounded-bl-none' : 'rounded-br-none'} border border-purple-200`
+                            : `bg-slate-100 text-slate-800 ${isRTL ? 'rounded-tl-none' : 'rounded-tr-none'}`
                       )}>
                         {msg.messageType === 'image' && msg.attachmentUrl ? (
                           <img 
@@ -319,14 +321,14 @@ export default function DoctorChat() {
                           >
                             <FileText size={20} className={msg.role === 'doctor' ? 'text-white' : 'text-emerald-600'} />
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold truncate">{msg.fileName || 'Document'}</p>
-                              <p className="text-[10px] opacity-70">Attachment</p>
+                              <p className="text-xs font-bold truncate">{msg.fileName || t('document')}</p>
+                              <p className="text-[10px] opacity-70">{t('attachment')}</p>
                             </div>
                           </div>
                         ) : null}
                         <p className="leading-relaxed">{msg.content}</p>
                         <p className={cn('text-[11px] mt-1', msg.role === 'doctor' ? 'text-white/80' : 'text-slate-500')}>
-                          {msg.senderName || (msg.role === 'doctor' ? 'You' : toDisplaySessionTitle(selectedSession.title, selectedSession.id))}
+                          {msg.senderName || (msg.role === 'doctor' ? t('you') : toDisplaySessionTitle(selectedSession.title, selectedSession.id))}
                         </p>
                         <p className={cn('text-[11px] mt-2 font-medium', msg.role === 'doctor' ? 'text-white/70' : 'text-slate-500')}>
                           {formatTimeAgo(msg.timestamp)}
@@ -349,7 +351,7 @@ export default function DoctorChat() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                    placeholder="Type your message..."
+                    placeholder={t("typeMessage")}
                     className="flex-1 px-4 py-3 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400/30 focus:border-emerald-400 transition-all bg-white"
                   />
                   <div className="flex gap-1">

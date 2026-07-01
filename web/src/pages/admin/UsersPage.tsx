@@ -1,3 +1,4 @@
+import { useLanguage } from '@/lib/language'
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -20,6 +21,7 @@ import toast from 'react-hot-toast'
 const PAGE_SIZE = 10
 
 export default function AdminUsers() {
+  const { t } = useLanguage()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | ''>('')
   const [showAddModal, setShowAddModal] = useState(false)
@@ -49,9 +51,9 @@ export default function AdminUsers() {
             <div className="p-6 rounded-3xl bg-rose-50 border-2 border-rose-100 shadow-xl shadow-rose-500/10 inline-block font-black">
                <WifiOff size={48} className="text-rose-500" />
             </div>
-             <h3 className="text-3xl font-black text-slate-900 dark:text-white">Connection Lost</h3>
-            <Button onClick={handleRetry} className="w-full h-14 rounded-2xl">Try Reconnecting</Button>
-            <Button onClick={handleUseMockData} variant="outline" className="w-full h-14 rounded-2xl border-2">Use Demo Data</Button>
+             <h3 className="text-3xl font-black text-slate-900 dark:text-white">{t('connectionLost')}</h3>
+            <Button onClick={handleRetry} className="w-full h-14 rounded-2xl">{t('tryReconnecting')}</Button>
+            <Button onClick={handleUseMockData} variant="outline" className="w-full h-14 rounded-2xl border-2">{t('useDemoData')}</Button>
           </CardContent>
         </Card>
       </div>
@@ -96,14 +98,13 @@ export default function AdminUsers() {
         <div className="space-y-2">
           <div className="flex items-center gap-3">
              <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl shadow-lg text-blue-600"><Layers size={24} /></div>
-             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">User Management</h1>
+             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{t('userManagement')}</h1>
           </div>
-          <p className="text-slate-500 dark:text-slate-400 font-bold ml-14">Manage all doctors, patients and admin accounts in one place</p>
+          <p className="text-slate-500 dark:text-slate-400 font-bold ml-14">{t('manageAllDoctors')}</p>
         </div>
         <div className="flex gap-4">
           <Button variant="primary" onClick={() => setShowAddModal(true)} className="h-14 px-8 rounded-2xl gap-3 shadow-2xl shadow-blue-500/40 text-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-            <UserPlus size={22} /> Add User
-          </Button>
+            <UserPlus size={22} />{t('addUser')}</Button>
         </div>
       </div>
 
@@ -112,14 +113,14 @@ export default function AdminUsers() {
         {/* SIDEBAR FILTERS: Vertical Stacking */}
         <div className="xl:col-span-3 space-y-8">
           <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-white dark:border-slate-800/80 p-2 rounded-[32px] shadow-xl">
-             <div className="p-6 pb-2"><h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Filter by Role</h3></div>
+             <div className="p-6 pb-2"><h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">{t('filterByRole')}</h3></div>
              <div className="space-y-1.5 p-2">
                 {(['', 'Admin', 'Doctor', 'Patient'] as const).map((role) => {
                   const labelMap: Record<string, string> = {
                     '': 'All Users',
                     'Admin': 'Admins',
                     'Doctor': 'Doctors',
-                    'Patient': 'Patients'
+                    'Patient': t('patients')
                   }
                   return (
                   <motion.button
@@ -147,12 +148,12 @@ export default function AdminUsers() {
           {/* Quick Stats Block */}
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 dark:from-slate-900 dark:to-slate-950 border border-slate-700/20 dark:border-slate-800/50 rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden">
              <div className="relative z-10 space-y-4">
-                <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Total Registered Users</p>
+                <p className="text-slate-400 text-xs font-black uppercase tracking-widest">{t('totalRegisteredUsers')}</p>
                 <h4 className="text-5xl font-black tracking-tighter">{total.toLocaleString()}</h4>
                 <div className="h-1.5 w-full bg-slate-700 rounded-full overflow-hidden">
                    <motion.div initial={{width:0}} animate={{width:'75%'}} className="h-full bg-gradient-to-r from-blue-400 to-cyan-400" />
                 </div>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Platform capacity: 75% utilized</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{t('platformCapacity')}</p>
              </div>
              <div className="absolute -bottom-10 -right-10 opacity-10 rotate-12"><Activity size={180} /></div>
           </div>

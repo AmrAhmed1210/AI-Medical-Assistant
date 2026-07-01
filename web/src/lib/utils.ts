@@ -107,7 +107,7 @@ export const STATUS_CONFIG: Record<AppointmentStatus, {
   Rescheduled: { label: 'Rescheduled', color: 'text-purple-700', bg: 'bg-purple-100' },
 }
 
-export const DAY_NAMES_AR = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+export const DAY_NAMES_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت']
 export const DAY_NAMES_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 export function getInitials(name: string) {

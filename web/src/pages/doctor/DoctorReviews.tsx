@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useDoctorStore } from '@/store/doctorStore'
+import { useLanguage } from '@/lib/language'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { PageLoader } from '@/components/ui/LoadingSpinner'
 import { Star, MessageCircle } from 'lucide-react'
@@ -9,6 +10,7 @@ import type { ReviewDto } from '@/lib/types'
 
 export default function DoctorReviews() {
   const { isLoadingProfile } = useDoctorStore()
+  const { t, isRTL } = useLanguage()
   const [reviews, setReviews] = useState<ReviewDto[]>([])
   const [loading, setLoading] = useState(true)
   const [averageRating, setAverageRating] = useState(0)
@@ -29,7 +31,7 @@ export default function DoctorReviews() {
       }
     } catch (error) {
       console.error('Failed to fetch reviews:', error)
-      toast.error('Failed to load reviews')
+      toast.error(t('errLoadReviews'))
     } finally {
       setLoading(false)
     }
@@ -62,8 +64,8 @@ export default function DoctorReviews() {
           <Star size={20} className="text-yellow-500" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Reviews & Ratings</h1>
-          <p className="text-sm text-gray-500">Patient feedback about your practice</p>
+          <h1 className="text-xl font-bold text-gray-800">{t('reviewsAndRatings')}</h1>
+          <p className="text-sm text-gray-500">{t('patientFeedbackDesc')}</p>
         </div>
       </div>
 
@@ -74,13 +76,13 @@ export default function DoctorReviews() {
           {reviews.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Overall Rating</CardTitle>
+                <CardTitle>{t('overallRating')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div>
                     <div className="text-4xl font-bold text-yellow-500">{averageRating}</div>
-                    <div className="text-sm text-gray-600">out of 5</div>
+                    <div className="text-sm text-gray-600">{t('outOf5')}</div>
                   </div>
                   <div>
                     <div className="flex gap-1 mb-2">{renderStars(Math.round(averageRating))}</div>
@@ -93,13 +95,13 @@ export default function DoctorReviews() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Patient Reviews</CardTitle>
+              <CardTitle>{t('patientReviews')}</CardTitle>
             </CardHeader>
             <CardContent>
               {reviews.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <MessageCircle size={32} className="mx-auto mb-2 opacity-50" />
-                  <p>No reviews yet. Great care leads to great reviews!</p>
+                  <p>{t('noReviewsDesc2')}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -108,7 +110,7 @@ export default function DoctorReviews() {
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <h3 className="font-semibold text-gray-800">
-                            {review.patientName || 'Anonymous'}
+                            {review.patientName || t('anonymous')}
                           </h3>
                           <p className="text-xs text-gray-500">
                             {formatDate(review.createdAt)}

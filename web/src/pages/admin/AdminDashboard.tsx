@@ -1,3 +1,4 @@
+import { useLanguage } from '@/lib/language'
 import { useEffect, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { 
@@ -40,13 +41,6 @@ const MOCK_STATS: SystemStatsDto = {
   ]
 } as any
 
-const URGENCY_CONFIG = {
-  LOW:       { label: 'Low', color: '#10b981', bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-900/30' },
-  MEDIUM:    { label: 'Medium', color: '#f59e0b', bg: 'bg-amber-50 dark:bg-amber-950/20', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-900/30' },
-  HIGH:      { label: 'High', color: '#ef4444', bg: 'bg-rose-50 dark:bg-rose-950/20', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-100 dark:border-rose-900/30' },
-  EMERGENCY: { label: 'Emergency', color: '#ef4444', bg: 'bg-red-900/10 dark:bg-red-950/20', text: 'text-red-900 dark:text-red-400', border: 'border-red-200 dark:border-red-900/30' },
-}
-
 const STAT_CONFIG = {
   users:    { gradient: 'from-primary-500 to-primary-600', icon: Users, shadow: 'shadow-primary-500/20' },
   doctors:  { gradient: 'from-emerald-500 to-emerald-600', icon: Stethoscope, shadow: 'shadow-emerald-500/20' },
@@ -55,7 +49,9 @@ const STAT_CONFIG = {
 }
 
 // ── Stat Card Component ───────────────────────────────────────────────
-const StatCard = ({ title, value, icon: Icon, gradient, shadow, index, trend }: any) => (
+const StatCard = ({ title, value, icon: Icon, gradient, shadow, index, trend }: any) => {
+  const { t } = useLanguage()
+  return (
   <motion.div
     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
     transition={{ delay: index * 0.1 }}
@@ -70,7 +66,7 @@ const StatCard = ({ title, value, icon: Icon, gradient, shadow, index, trend }: 
             {trend && (
               <div className={`flex items-center gap-1.5 text-xs font-bold ${trend > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {trend > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-                {Math.abs(trend)}% vs last month
+                {Math.abs(trend)}% {t('vsLastMonth' as any)}
               </div>
             )}
           </div>
@@ -82,8 +78,16 @@ const StatCard = ({ title, value, icon: Icon, gradient, shadow, index, trend }: 
     </Card>
   </motion.div>
 )
+}
 
 export default function AdminDashboard() {
+  const { t } = useLanguage()
+  const URGENCY_CONFIG = useMemo(() => ({
+    LOW:       { label: t('urgencyLow'), color: '#10b981', bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-900/30' },
+    MEDIUM:    { label: t('urgencyMedium'), color: '#f59e0b', bg: 'bg-amber-50 dark:bg-amber-950/20', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-900/30' },
+    HIGH:      { label: t('urgencyHigh'), color: '#ef4444', bg: 'bg-rose-50 dark:bg-rose-950/20', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-100 dark:border-rose-900/30' },
+    EMERGENCY: { label: t('urgencyEmergency'), color: '#ef4444', bg: 'bg-red-900/10 dark:bg-red-950/20', text: 'text-red-900 dark:text-red-400', border: 'border-red-200 dark:border-red-900/30' },
+  }), [t])
   const [stats, setStats] = useState<SystemStatsDto | null>(null)
   const [loading, setLoading] = useState(true)
   const [usingMock, setUsingMock] = useState(false)
@@ -136,7 +140,7 @@ export default function AdminDashboard() {
       color: URGENCY_CONFIG[key as keyof typeof URGENCY_CONFIG]?.color ?? '#64748b',
       config: URGENCY_CONFIG[key as keyof typeof URGENCY_CONFIG] ?? URGENCY_CONFIG.MEDIUM,
     })).filter(item => item.value > 0)
-  }, [stats])
+  }, [stats, URGENCY_CONFIG])
 
   if (loading && !stats) {
     return (
@@ -165,18 +169,17 @@ export default function AdminDashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Admin Dashboard</h1>
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">{t('adminDashboard')}</h1>
             <Badge className="bg-primary-50 dark:bg-primary-950/20 text-primary-600 dark:text-primary-400 border-0 flex gap-1.5 items-center px-3 py-1 text-xs">
-              <Sparkles size={12} fill="currentColor" /> Admin Portal
-            </Badge>
+              <Sparkles size={12} fill="currentColor" />{t('adminPortal')}</Badge>
             {usingMock && (
               <Badge className="bg-amber-100 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 border-0 flex gap-1.5 items-center px-3 py-1 text-xs">
-                ⚠️ Demo Data
+                ⚠️ {t('demoData')}
               </Badge>
             )}
           </div>
           <p className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
-            <Clock size={16} /> Latest intelligence as of {new Date().toLocaleTimeString()}
+            <Clock size={16} /> {t('latestIntelligence')} {new Date().toLocaleTimeString()}
           </p>
         </div>
         <div className="flex gap-3 items-center">
@@ -198,24 +201,23 @@ export default function AdminDashboard() {
             )}
           </div>
           <Button variant="outline" onClick={fetchData} className="rounded-2xl gap-2 bg-white/50 backdrop-blur-sm border-slate-200">
-             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} /> Refresh
-          </Button>
+             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />{t('refresh')}</Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Users" value={stats?.totalUsers ?? 0} icon={STAT_CONFIG.users.icon} gradient={STAT_CONFIG.users.gradient} shadow={STAT_CONFIG.users.shadow} index={0} trend={12} />
-        <StatCard title="Active Doctors" value={stats?.totalDoctors ?? 0} icon={STAT_CONFIG.doctors.icon} gradient={STAT_CONFIG.doctors.gradient} shadow={STAT_CONFIG.doctors.shadow} index={1} trend={5} />
-        <StatCard title="Patients" value={stats?.totalPatients ?? 0} icon={STAT_CONFIG.patients.icon} gradient={STAT_CONFIG.patients.gradient} shadow={STAT_CONFIG.patients.shadow} index={2} trend={8} />
-        <StatCard title="Today's Sessions" value={stats?.sessionsToday ?? 0} icon={STAT_CONFIG.sessions.icon} gradient={STAT_CONFIG.sessions.gradient} shadow={STAT_CONFIG.sessions.shadow} index={3} trend={24} />
+        <StatCard title={t('totalUsers')} value={stats?.totalUsers ?? 0} icon={STAT_CONFIG.users.icon} gradient={STAT_CONFIG.users.gradient} shadow={STAT_CONFIG.users.shadow} index={0} trend={12} />
+        <StatCard title={t('activeDoctors')} value={stats?.totalDoctors ?? 0} icon={STAT_CONFIG.doctors.icon} gradient={STAT_CONFIG.doctors.gradient} shadow={STAT_CONFIG.doctors.shadow} index={1} trend={5} />
+        <StatCard title={t('patients')} value={stats?.totalPatients ?? 0} icon={STAT_CONFIG.patients.icon} gradient={STAT_CONFIG.patients.gradient} shadow={STAT_CONFIG.patients.shadow} index={2} trend={8} />
+        <StatCard title={t('todaysSessions')} value={stats?.sessionsToday ?? 0} icon={STAT_CONFIG.sessions.icon} gradient={STAT_CONFIG.sessions.gradient} shadow={STAT_CONFIG.sessions.shadow} index={3} trend={24} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-2 border-0 shadow-2xl rounded-3xl overflow-hidden">
           <CardHeader className="p-6 border-b border-slate-100 dark:border-slate-800/80 flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-xl font-bold">Session Activity</CardTitle>
-              <p className="text-sm font-medium text-slate-400">System throughput over last 30 intervals</p>
+              <CardTitle className="text-xl font-bold">{t('sessionActivity')}</CardTitle>
+              <p className="text-sm font-medium text-slate-400">{t('systemThroughput')}</p>
             </div>
           </CardHeader>
           <CardContent className="p-6">
@@ -239,7 +241,7 @@ export default function AdminDashboard() {
 
         <Card className="border-0 shadow-2xl rounded-3xl overflow-hidden">
           <CardHeader className="p-6 border-b border-slate-100 dark:border-slate-800/80">
-            <CardTitle className="text-xl font-bold">Case Severity</CardTitle>
+            <CardTitle className="text-xl font-bold">{t('caseSeverity')}</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <ResponsiveContainer width="100%" height={240}>

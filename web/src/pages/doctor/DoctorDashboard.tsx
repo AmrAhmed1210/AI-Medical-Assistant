@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Calendar, Clock, Users, BarChart2, TrendingUp, Eye,
-  Stethoscope, ChevronRight, Zap,
+  Stethoscope, ChevronRight, ChevronLeft, Zap,
 } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useDoctorDashboard } from '@/hooks/useDoctor'
@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '@/constants/config'
 import { useAuthStore } from '@/store/authStore'
 import { useNotificationStore } from '@/store/notificationStore'
+import { useLanguage } from '@/lib/language'
 
 // ─── Theme tokens ──────────────────────────────────────────────────────────────
 const DARK = {
@@ -131,6 +132,7 @@ function StatCard({ title, value, icon, gradient, glowColor, index, tk }: StatCa
 
 // ─── Chart Tooltip ─────────────────────────────────────────────────────────────
 function ChartTooltip({ active, payload, label, tk }: any) {
+  const { t } = useLanguage()
   if (active && payload?.length) {
     return (
       <div className="px-4 py-3 rounded-xl text-sm" style={{
@@ -141,7 +143,7 @@ function ChartTooltip({ active, payload, label, tk }: any) {
         color: tk.tooltipColor,
       }}>
         <p className="font-bold text-indigo-500 mb-1">{label}</p>
-        <p className="font-semibold" style={{ color: tk.tooltipColor }}>{payload[0].value} Sessions</p>
+        <p className="font-semibold" style={{ color: tk.tooltipColor }}>{payload[0].value} {t('sessions')}</p>
       </div>
     )
   }
@@ -157,25 +159,21 @@ export default function DoctorDashboard() {
 
   // Use the global theme store (toggle is in TopBar)
   const { isDark } = useThemeStore()
+  const { t, isRTL } = useLanguage()
 
   const tk = isDark ? DARK : LIGHT
 
   if (isLoading) return <PageLoader />
 
   const stats = [
-    { title: "Today's Appointments", value: dashboard?.todayAppointments ?? 0, icon: <Calendar size={22} />, gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', glowColor: '#6366f1' },
-    { title: 'Pending', value: dashboard?.pendingAppointments ?? 0, icon: <Clock size={22} />, gradient: 'linear-gradient(135deg,#f59e0b,#ef4444)', glowColor: '#f59e0b' },
-    { title: 'Total Patients', value: dashboard?.totalPatients ?? 0, icon: <Users size={22} />, gradient: 'linear-gradient(135deg,#10b981,#059669)', glowColor: '#10b981' },
-    { title: 'Weekly Sessions', value: dashboard?.weekAppointments ?? 0, icon: <BarChart2 size={22} />, gradient: 'linear-gradient(135deg,#3b82f6,#06b6d4)', glowColor: '#3b82f6' },
+    { title: t('todaysAppts'), value: dashboard?.todayAppointments ?? 0, icon: <Calendar size={22} />, gradient: 'linear-gradient(135deg,#6366f1,#8b5cf6)', glowColor: '#6366f1' },
+    { title: t('Pending'), value: dashboard?.pendingAppointments ?? 0, icon: <Clock size={22} />, gradient: 'linear-gradient(135deg,#f59e0b,#ef4444)', glowColor: '#f59e0b' },
+    { title: t('totalPatients'), value: dashboard?.totalPatients ?? 0, icon: <Users size={22} />, gradient: 'linear-gradient(135deg,#10b981,#059669)', glowColor: '#10b981' },
+    { title: t('weeklySessions'), value: dashboard?.weekAppointments ?? 0, icon: <BarChart2 size={22} />, gradient: 'linear-gradient(135deg,#3b82f6,#06b6d4)', glowColor: '#3b82f6' },
   ]
 
   return (
-    <motion.div
-      className="min-h-screen p-6 relative"
-      animate={{ background: tk.page }}
-      transition={{ duration: 0.5 }}
-      style={{ background: tk.page }}
-    >
+    <motion.div dir={isRTL ? "rtl" : "ltr"} className={`min-h-screen p-6 relative ${isRTL ? "rtl" : ""}`} animate={{ background: tk.page }} transition={{ duration: 0.5 }} style={{ background: tk.page }}>
       {/* Dark-mode blobs */}
       <AnimatePresence>
         {isDark && (
@@ -213,8 +211,8 @@ export default function DoctorDashboard() {
               <Stethoscope size={26} className="text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight" style={{ color: tk.title }}>Doctor Dashboard</h1>
-              <p className="text-sm mt-0.5" style={{ color: tk.subtitle }}>Welcome back! Here's your practice overview</p>
+              <h1 className="text-2xl font-black tracking-tight" style={{ color: tk.title }}>{t('doctorDashboard')}</h1>
+              <p className="text-sm mt-0.5" style={{ color: tk.subtitle }}>{t('welcomeDoctor')}</p>
             </div>
           </div>
 
@@ -226,7 +224,7 @@ export default function DoctorDashboard() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
               </span>
-              <span className="text-emerald-400 text-xs font-semibold">Live</span>
+              <span className="text-emerald-400 text-xs font-semibold">{t('live')}</span>
             </div>
           </div>
         </motion.div>
@@ -253,13 +251,13 @@ export default function DoctorDashboard() {
                     style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', boxShadow: '0 4px 14px rgba(99,102,241,0.32)' }}>
                     <Calendar size={18} className="text-white" />
                   </div>
-                  <h2 className="text-base font-bold" style={{ color: tk.title }}>Today's Appointments</h2>
+                  <h2 className="text-base font-bold" style={{ color: tk.title }}>{t('todaysAppts')}</h2>
                 </div>
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                   onClick={() => navigate(ROUTES.DOCTOR_APPOINTMENTS)}
                   className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
                   style={{ background: tk.btnBg, color: tk.btnColor, border: `1px solid ${tk.btnBorder}` }}>
-                  <Eye size={12} /> View All <ChevronRight size={12} />
+                  <Eye size={12} /> {t('viewAll')} {isRTL ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
                 </motion.button>
               </div>
 
@@ -271,8 +269,8 @@ export default function DoctorDashboard() {
                       style={{ background: tk.emptyIconBg, border: `1px solid ${tk.emptyIconBorder}` }}>
                       <Calendar size={28} style={{ color: tk.emptyIconColor }} />
                     </div>
-                    <p className="font-semibold" style={{ color: tk.title }}>No appointments today</p>
-                    <p className="text-sm mt-1" style={{ color: tk.mutedText }}>Enjoy your free time!</p>
+                    <p className="font-semibold" style={{ color: tk.title }}>{t('noApptsToday')}</p>
+                    <p className="text-sm mt-1" style={{ color: tk.mutedText }}>{t('enjoyFreeTime')}</p>
                   </div>
                 ) : dashboard.todayAppointmentsList.slice(0, 5).map((appt, idx) => (
                   <motion.div key={appt.id}
@@ -284,11 +282,11 @@ export default function DoctorDashboard() {
                     style={{ background: tk.rowBg, border: `1px solid ${tk.rowBorder}` }}
                     onMouseEnter={e => {
                       (e.currentTarget as HTMLElement).style.background = tk.rowHoverBg
-                      ;(e.currentTarget as HTMLElement).style.borderColor = tk.rowHoverBorder
+                        ; (e.currentTarget as HTMLElement).style.borderColor = tk.rowHoverBorder
                     }}
                     onMouseLeave={e => {
                       (e.currentTarget as HTMLElement).style.background = tk.rowBg
-                      ;(e.currentTarget as HTMLElement).style.borderColor = tk.rowBorder
+                        ; (e.currentTarget as HTMLElement).style.borderColor = tk.rowBorder
                     }}
                   >
                     <div className="relative flex-shrink-0">
@@ -327,7 +325,7 @@ export default function DoctorDashboard() {
                   style={{ background: 'linear-gradient(135deg,#3b82f6,#06b6d4)', boxShadow: '0 4px 14px rgba(59,130,246,0.32)' }}>
                   <TrendingUp size={18} className="text-white" />
                 </div>
-                <h2 className="text-base font-bold" style={{ color: tk.title }}>Weekly Sessions</h2>
+                <h2 className="text-base font-bold" style={{ color: tk.title }}>Weekly {t('sessions')}</h2>
               </div>
 
               <div className="p-5">
@@ -344,7 +342,7 @@ export default function DoctorDashboard() {
                     <YAxis tick={{ fontSize: 11, fill: tk.axisColor, fontWeight: 500 }} axisLine={false} tickLine={false} />
                     <Tooltip content={<ChartTooltip tk={tk} />} />
                     <Area type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={2.5}
-                      fill="url(#areaGrad)" name="Sessions"
+                      fill="url(#areaGrad)" name={t('sessions')}
                       dot={{ fill: '#6366f1', strokeWidth: 0, r: 4 }}
                       activeDot={{ r: 6, fill: '#818cf8', strokeWidth: 0 }}
                       animationDuration={1400} />
@@ -364,13 +362,13 @@ export default function DoctorDashboard() {
                 style={{ background: 'linear-gradient(135deg,#10b981,#059669)', boxShadow: '0 4px 14px rgba(16,185,129,0.32)' }}>
                 <Zap size={18} className="text-white" />
               </div>
-              <h2 className="text-base font-bold" style={{ color: tk.title }}>Recent AI Reports</h2>
+              <h2 className="text-base font-bold" style={{ color: tk.title }}>{t('recentAiReports')}</h2>
             </div>
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
               onClick={() => navigate(ROUTES.DOCTOR_REPORTS)}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
               style={{ background: tk.btnGreenBg, color: tk.btnGreenColor, border: `1px solid ${tk.btnGreenBorder}` }}>
-              <Eye size={12} /> View All <ChevronRight size={12} />
+              <Eye size={12} /> {t('viewAll')} {isRTL ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
             </motion.button>
           </div>
 

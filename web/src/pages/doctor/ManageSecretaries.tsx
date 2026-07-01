@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { secretaryApi } from '@/api/secretaryApi'
+import { useLanguage } from '@/lib/language'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Users, UserPlus, Trash2, Mail, Lock, ShieldCheck } from 'lucide-react'
@@ -8,6 +9,7 @@ import type { SecretaryDto } from '@/lib/types'
 
 export default function ManageSecretaries() {
   const [secretaries, setSecretaries] = useState<SecretaryDto[]>([])
+  const { t, isRTL } = useLanguage()
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
@@ -22,7 +24,7 @@ export default function ManageSecretaries() {
       console.log('[Staff Data]', data)
       setSecretaries(data)
     } catch {
-      toast.error('Failed to load staff list')
+      toast.error(t('errLoadStaff'))
     } finally {
       setLoading(false)
     }
@@ -35,34 +37,34 @@ export default function ManageSecretaries() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!fullName || !email || !password) {
-      toast.error('Please fill all fields')
+      toast.error(t('fillAllFields'))
       return
     }
 
     setIsSubmitting(true)
     try {
       await secretaryApi.addSecretary({ fullName, email, password })
-      toast.success('Secretary added successfully!')
+      toast.success(t('secAdded'))
       setFullName('')
       setEmail('')
       setPassword('')
       fetchSecretaries()
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to add secretary')
+      toast.error(err.response?.data?.message || t('errAddSec'))
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Are you sure you want to remove this staff member?')) return
+    if (!window.confirm(t('confirmRemoveStaff'))) return
     
     try {
       await secretaryApi.deleteSecretary(id)
-      toast.success('Staff member removed')
+      toast.success(t('staffRemoved'))
       fetchSecretaries()
     } catch {
-      toast.error('Failed to remove staff member')
+      toast.error(t('errRemoveStaff'))
     }
   }
 
@@ -73,8 +75,8 @@ export default function ManageSecretaries() {
           <Users size={28} className="text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Staff Management</h1>
-          <p className="text-sm text-gray-500">Manage your clinic secretaries and staff</p>
+          <h1 className="text-xl font-bold text-gray-800">{t('staffMgmt')}</h1>
+          <p className="text-sm text-gray-500">{t('manageStaffDesc')}</p>
         </div>
       </div>
 
@@ -83,48 +85,48 @@ export default function ManageSecretaries() {
         <Card className="lg:col-span-1 p-6">
           <div className="flex items-center gap-2 mb-6">
             <UserPlus size={20} className="text-primary-600" />
-            <h2 className="font-bold">Add New Secretary</h2>
+            <h2 className="font-bold">{t('addNewSec')}</h2>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">Full Name</label>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t('fullName')}</label>
               <div className="relative">
-                <Users size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Users size={16} className={`absolute ${isRTL ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 text-gray-400`} />
                 <input 
                   type="text" 
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Mona Ahmed"
+                  placeholder={t("egName")}
                   autoComplete="off"
-                  className="w-full pl-10 pr-4 py-2 border rounded-xl focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                  className={`w-full ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} py-2 border rounded-xl focus:ring-2 focus:ring-primary-500/20 outline-none transition-all`}
                 />
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">Email Address</label>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t('emailAddress')}</label>
               <div className="relative">
-                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Mail size={16} className={`absolute ${isRTL ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 text-gray-400`} />
                 <input 
                   type="email" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="mona@example.com"
                   autoComplete="none"
-                  className="w-full pl-10 pr-4 py-2 border rounded-xl focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                  className={`w-full ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} py-2 border rounded-xl focus:ring-2 focus:ring-primary-500/20 outline-none transition-all`}
                 />
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">Password</label>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">{t('password')}</label>
               <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Lock size={16} className={`absolute ${isRTL ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 text-gray-400`} />
                 <input 
                   type="password" 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   autoComplete="new-password"
-                  className="w-full pl-10 pr-4 py-2 border rounded-xl focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+                  className={`w-full ${isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} py-2 border rounded-xl focus:ring-2 focus:ring-primary-500/20 outline-none transition-all`}
                 />
               </div>
             </div>
@@ -141,16 +143,16 @@ export default function ManageSecretaries() {
         {/* List of Staff */}
         <Card className="lg:col-span-2 overflow-hidden">
           <div className="p-4 bg-gray-50 border-b font-bold flex justify-between items-center">
-            <span>Current Staff</span>
+            <span>{t('currentStaff')}</span>
             <span className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-lg">
-              {secretaries.length} Total
+              {secretaries.length} {t('totalWord')}
             </span>
           </div>
           <div className="divide-y">
             {loading ? (
-              <div className="p-10 text-center text-gray-400">Loading...</div>
+              <div className="p-10 text-center text-gray-400">{t('loading')}</div>
             ) : secretaries.length === 0 ? (
-              <div className="p-10 text-center text-gray-400">No staff members added yet</div>
+              <div className="p-10 text-center text-gray-400">{t('noStaffYet')}</div>
             ) : secretaries.map((s) => (
               <div key={s.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                 <div className="flex items-center gap-3">

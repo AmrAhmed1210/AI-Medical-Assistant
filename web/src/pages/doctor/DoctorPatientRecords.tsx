@@ -12,6 +12,7 @@ import axiosInstance from '@/api/axiosInstance'
 import { doctorApi } from '@/api/doctorApi'
 import { useDoctorPatients } from '@/hooks/useDoctor'
 import { usePatientHistory } from '@/hooks/useVisits'
+import { useLanguage } from '@/lib/language'
 import { getAiReportText, hasDistinctArabicReport, parseAiDiagnosisSummary } from '@/lib/aiReport'
 import { Lock, Clock } from 'lucide-react'
 
@@ -29,6 +30,7 @@ const TABS = [
 type TabId = typeof TABS[number]['id']
 
 export default function DoctorPatientRecords() {
+  const { t, isRTL } = useLanguage()
   const { patientId } = useParams<{ patientId: string }>()
   const navigate = useNavigate()
   const pid = patientId ?? '0'
@@ -139,10 +141,10 @@ export default function DoctorPatientRecords() {
         aiDiagnosisSummary: JSON.stringify(normalized)
       })
 
-      toast.success('AI Health Analysis Updated')
+      toast.success(t('aiAnalysisUpdated'))
       fetchAll()
     } catch (e) {
-      toast.error('AI Analysis failed. Check if AI server is running.')
+      toast.error(t('errAiAnalysis'))
       console.error(e)
     } finally {
       setAnalyzing(false)
@@ -211,10 +213,10 @@ export default function DoctorPatientRecords() {
         await patientRecordsApi.createSurgery(pid, surgeryForm as any)
         setSurgeryForm({ surgeryName: '', surgeryDate: '', hospitalName: '', doctorName: '', notes: '' })
       }
-      toast.success('Record added successfully')
+      toast.success(t('recordAdded'))
       setShowForm(false)
       fetchAll()
-    } catch { toast.error('Failed to add record') }
+    } catch { toast.error(t('errAddRecord')) }
     finally { setSaving(false) }
   }
 
@@ -226,8 +228,8 @@ export default function DoctorPatientRecords() {
       else if (type === 'vital') await patientRecordsApi.deleteVital(id)
       else if (type === 'surgery') await patientRecordsApi.deleteSurgery(id)
       else if (type === 'document') await patientRecordsApi.deleteDocument(id)
-      toast.success('Deleted'); fetchAll()
-    } catch { toast.error('Failed to delete') }
+      toast.success(t('deleted')); fetchAll()
+    } catch { toast.error(t('errDelete')) }
   }
 
   const canAdd = !['profile', 'scans', 'visits'].includes(activeTab) || activeTab === 'scans'
@@ -241,7 +243,7 @@ export default function DoctorPatientRecords() {
           <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <Lock size={40} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Access Restricted</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">{t('accessRestricted')}</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
             For privacy and security reasons, you can only access and modify a patient's medical profile on the actual day of their scheduled appointment.
           </p>
@@ -259,7 +261,7 @@ export default function DoctorPatientRecords() {
         <FileText className="w-7 h-7 text-gray-300" />
       </div>
       <p className="text-gray-500 font-medium">{msg}</p>
-      <p className="text-sm text-gray-400 mt-1">No records found.</p>
+      <p className="text-sm text-gray-400 mt-1">{t('noRecordsFound')}</p>
     </div>
   )
 
@@ -269,37 +271,37 @@ export default function DoctorPatientRecords() {
   const renderForm = () => {
     if (activeTab === 'allergies') return (
       <div className="space-y-4">
-        <div><label className={labelCls}>Allergen Name *</label><input className={inputCls} value={allergyForm.allergenName} onChange={e => setAllergyForm(f => ({...f, allergenName: e.target.value}))} /></div>
+        <div><label className={labelCls}>{t('allergenName')}</label><input className={inputCls} value={allergyForm.allergenName} onChange={e => setAllergyForm(f => ({...f, allergenName: e.target.value}))} /></div>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className={labelCls}>Type</label><select className={inputCls} value={allergyForm.allergyType} onChange={e => setAllergyForm(f => ({...f, allergyType: e.target.value}))}><option>Drug</option><option>Food</option><option>Environmental</option><option>Other</option></select></div>
-          <div><label className={labelCls}>Severity</label><select className={inputCls} value={allergyForm.severity} onChange={e => setAllergyForm(f => ({...f, severity: e.target.value}))}><option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option><option value="life_threatening">Life Threatening</option></select></div>
+          <div><label className={labelCls}>{t('type')}</label><select className={inputCls} value={allergyForm.allergyType} onChange={e => setAllergyForm(f => ({...f, allergyType: e.target.value}))}><option>Drug</option><option>Food</option><option>Environmental</option><option>Other</option></select></div>
+          <div><label className={labelCls}>{t('severity')}</label><select className={inputCls} value={allergyForm.severity} onChange={e => setAllergyForm(f => ({...f, severity: e.target.value}))}><option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option><option value="life_threatening">Life Threatening</option></select></div>
         </div>
-        <div><label className={labelCls}>Reaction</label><textarea className={inputCls} rows={2} value={allergyForm.reactionDescription} onChange={e => setAllergyForm(f => ({...f, reactionDescription: e.target.value}))} /></div>
+        <div><label className={labelCls}>{t('reaction')}</label><textarea className={inputCls} rows={2} value={allergyForm.reactionDescription} onChange={e => setAllergyForm(f => ({...f, reactionDescription: e.target.value}))} /></div>
       </div>
     )
     if (activeTab === 'chronic') return (
       <div className="space-y-4">
-        <div><label className={labelCls}>Disease Name *</label><input className={inputCls} value={chronicForm.diseaseName} onChange={e => setChronicForm(f => ({...f, diseaseName: e.target.value}))} /></div>
+        <div><label className={labelCls}>{t('diseaseName')}</label><input className={inputCls} value={chronicForm.diseaseName} onChange={e => setChronicForm(f => ({...f, diseaseName: e.target.value}))} /></div>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className={labelCls}>Type</label><input className={inputCls} value={chronicForm.diseaseType} onChange={e => setChronicForm(f => ({...f, diseaseType: e.target.value}))} /></div>
-          <div><label className={labelCls}>Severity</label><select className={inputCls} value={chronicForm.severity} onChange={e => setChronicForm(f => ({...f, severity: e.target.value}))}><option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option></select></div>
+          <div><label className={labelCls}>{t('type')}</label><input className={inputCls} value={chronicForm.diseaseType} onChange={e => setChronicForm(f => ({...f, diseaseType: e.target.value}))} /></div>
+          <div><label className={labelCls}>{t('severity')}</label><select className={inputCls} value={chronicForm.severity} onChange={e => setChronicForm(f => ({...f, severity: e.target.value}))}><option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option></select></div>
         </div>
-        <div><label className={labelCls}>Doctor Notes</label><textarea className={inputCls} rows={2} value={chronicForm.doctorNotes} onChange={e => setChronicForm(f => ({...f, doctorNotes: e.target.value}))} /></div>
+        <div><label className={labelCls}>{t('doctorNotes')}</label><textarea className={inputCls} rows={2} value={chronicForm.doctorNotes} onChange={e => setChronicForm(f => ({...f, doctorNotes: e.target.value}))} /></div>
       </div>
     )
     if (activeTab === 'medications') return (
       <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
-            <label className={labelCls}>Medication Name *</label>
+            <label className={labelCls}>{t('medicationName')}</label>
             <input className={inputCls} value={medForm.medicationName} onChange={e => setMedForm(f => ({...f, medicationName: e.target.value}))} placeholder="e.g. Panadol" />
           </div>
           <div>
-            <label className={labelCls}>Generic Name</label>
+            <label className={labelCls}>{t('genericName')}</label>
             <input className={inputCls} value={medForm.genericName} onChange={e => setMedForm(f => ({...f, genericName: e.target.value}))} placeholder="e.g. Paracetamol" />
           </div>
           <div>
-            <label className={labelCls}>Form</label>
+            <label className={labelCls}>{t('form')}</label>
             <select className={inputCls} value={medForm.form} onChange={e => setMedForm(f => ({...f, form: e.target.value}))}>
               {["Pill", "Syrup", "Injection", "Inhaler", "Cream", "Drops", "Patch", "Powder"].map(o => <option key={o}>{o}</option>)}
             </select>
@@ -308,53 +310,53 @@ export default function DoctorPatientRecords() {
 
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className={labelCls}>Dosage</label>
+            <label className={labelCls}>{t('dosage')}</label>
             <input className={inputCls} value={medForm.dosage} onChange={e => setMedForm(f => ({...f, dosage: e.target.value}))} placeholder="e.g. 500mg" />
           </div>
           <div>
-            <label className={labelCls}>Frequency</label>
+            <label className={labelCls}>{t('frequency')}</label>
             <select className={inputCls} value={medForm.frequency} onChange={e => setMedForm(f => ({...f, frequency: e.target.value}))}>
-              <option>Daily</option>
-              <option>Specific Days</option>
-              <option>Every Other Day</option>
+              <option>{t('daily')}</option>
+              <option>{t('specificDays')}</option>
+              <option>{t('everyOtherDay')}</option>
             </select>
           </div>
           <div>
-            <label className={labelCls}>Times/Day</label>
+            <label className={labelCls}>{t('timesPerDay')}</label>
             <input type="number" className={inputCls} value={medForm.timesPerDay} onChange={e => setMedForm(f => ({...f, timesPerDay: Number(e.target.value)}))} />
           </div>
         </div>
 
         <div>
-          <label className={labelCls}>Dose Times (comma separated)</label>
+          <label className={labelCls}>{t('doseTimes')}</label>
           <input className={inputCls} value={medForm.doseTimes} onChange={e => setMedForm(f => ({...f, doseTimes: e.target.value}))} placeholder="09:00, 21:00" />
         </div>
 
         {medForm.frequency === 'Specific Days' && (
           <div>
-            <label className={labelCls}>Days of Week</label>
+            <label className={labelCls}>{t('daysOfWeek')}</label>
             <input className={inputCls} value={medForm.daysOfWeek} onChange={e => setMedForm(f => ({...f, daysOfWeek: e.target.value}))} placeholder="Monday, Wednesday, Friday" />
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Start Date</label>
+            <label className={labelCls}>{t('startDate')}</label>
             <input type="date" className={inputCls} value={medForm.startDate} onChange={e => setMedForm(f => ({...f, startDate: e.target.value}))} />
           </div>
           <div>
-            <label className={labelCls}>End Date (Optional)</label>
+            <label className={labelCls}>{t('endDateOpt')}</label>
             <input type="date" className={inputCls} value={medForm.endDate} onChange={e => setMedForm(f => ({...f, endDate: e.target.value}))} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Pills Remaining</label>
+            <label className={labelCls}>{t('pillsRemaining')}</label>
             <input type="number" className={inputCls} value={medForm.pillsRemaining} onChange={e => setMedForm(f => ({...f, pillsRemaining: Number(e.target.value)}))} />
           </div>
           <div>
-            <label className={labelCls}>Refill Threshold</label>
+            <label className={labelCls}>{t('refillThreshold')}</label>
             <input type="number" className={inputCls} value={medForm.refillThreshold} onChange={e => setMedForm(f => ({...f, refillThreshold: Number(e.target.value)}))} />
           </div>
         </div>
@@ -362,35 +364,35 @@ export default function DoctorPatientRecords() {
         <div className="flex items-center gap-4 py-1">
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={medForm.isChronic} onChange={e => setMedForm(f => ({...f, isChronic: e.target.checked}))} className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500" />
-            <span className="text-sm font-medium text-gray-700">Chronic Medication</span>
+            <span className="text-sm font-medium text-gray-700">{t('chronicMedication')}</span>
           </label>
         </div>
 
         <div>
-          <label className={labelCls}>Instructions</label>
+          <label className={labelCls}>{t('instructions')}</label>
           <textarea className={inputCls} rows={2} value={medForm.instructions} onChange={e => setMedForm(f => ({...f, instructions: e.target.value}))} placeholder="Take after meals" />
         </div>
       </div>
     )
     if (activeTab === 'vitals') return (
       <div className="space-y-4">
-        <div><label className={labelCls}>Reading Type</label><select className={inputCls} value={vitalForm.readingType} onChange={e => setVitalForm(f => ({...f, readingType: e.target.value}))}><option>Blood Pressure</option><option>Blood Sugar</option><option>Heart Rate</option><option>Temperature</option><option>SpO2</option><option>Weight</option></select></div>
+        <div><label className={labelCls}>Reading {t('type')}</label><select className={inputCls} value={vitalForm.readingType} onChange={e => setVitalForm(f => ({...f, readingType: e.target.value}))}><option>Blood Pressure</option><option>Blood Sugar</option><option>Heart Rate</option><option>Temperature</option><option>SpO2</option><option>Weight</option></select></div>
         <div className="grid grid-cols-3 gap-3">
-          <div><label className={labelCls}>Value *</label><input type="number" className={inputCls} value={vitalForm.value} onChange={e => setVitalForm(f => ({...f, value: e.target.value}))} /></div>
-          <div><label className={labelCls}>Value 2</label><input type="number" className={inputCls} value={vitalForm.value2} onChange={e => setVitalForm(f => ({...f, value2: e.target.value}))} placeholder="e.g. diastolic" /></div>
-          <div><label className={labelCls}>Unit</label><input className={inputCls} value={vitalForm.unit} onChange={e => setVitalForm(f => ({...f, unit: e.target.value}))} /></div>
+          <div><label className={labelCls}>{t('valueReq')}</label><input type="number" className={inputCls} value={vitalForm.value} onChange={e => setVitalForm(f => ({...f, value: e.target.value}))} /></div>
+          <div><label className={labelCls}>{t('value2')}</label><input type="number" className={inputCls} value={vitalForm.value2} onChange={e => setVitalForm(f => ({...f, value2: e.target.value}))} placeholder="e.g. diastolic" /></div>
+          <div><label className={labelCls}>{t('unit')}</label><input className={inputCls} value={vitalForm.unit} onChange={e => setVitalForm(f => ({...f, unit: e.target.value}))} /></div>
         </div>
-        <div><label className={labelCls}>Notes</label><textarea className={inputCls} rows={2} value={vitalForm.notes} onChange={e => setVitalForm(f => ({...f, notes: e.target.value}))} /></div>
+        <div><label className={labelCls}>{t('notes')}</label><textarea className={inputCls} rows={2} value={vitalForm.notes} onChange={e => setVitalForm(f => ({...f, notes: e.target.value}))} /></div>
       </div>
     )
     if (activeTab === 'surgeries') return (
       <div className="space-y-4">
-        <div><label className={labelCls}>Surgery Name *</label><input className={inputCls} value={surgeryForm.surgeryName} onChange={e => setSurgeryForm(f => ({...f, surgeryName: e.target.value}))} /></div>
+        <div><label className={labelCls}>{t('surgeryName')}</label><input className={inputCls} value={surgeryForm.surgeryName} onChange={e => setSurgeryForm(f => ({...f, surgeryName: e.target.value}))} /></div>
         <div className="grid grid-cols-2 gap-3">
-          <div><label className={labelCls}>Date</label><input type="date" className={inputCls} value={surgeryForm.surgeryDate} onChange={e => setSurgeryForm(f => ({...f, surgeryDate: e.target.value}))} /></div>
-          <div><label className={labelCls}>Hospital</label><input className={inputCls} value={surgeryForm.hospitalName} onChange={e => setSurgeryForm(f => ({...f, hospitalName: e.target.value}))} /></div>
+          <div><label className={labelCls}>{t('date')}</label><input type="date" className={inputCls} value={surgeryForm.surgeryDate} onChange={e => setSurgeryForm(f => ({...f, surgeryDate: e.target.value}))} /></div>
+          <div><label className={labelCls}>{t('hospital')}</label><input className={inputCls} value={surgeryForm.hospitalName} onChange={e => setSurgeryForm(f => ({...f, hospitalName: e.target.value}))} /></div>
         </div>
-        <div><label className={labelCls}>Notes</label><textarea className={inputCls} rows={2} value={surgeryForm.notes} onChange={e => setSurgeryForm(f => ({...f, notes: e.target.value}))} /></div>
+        <div><label className={labelCls}>{t('notes')}</label><textarea className={inputCls} rows={2} value={surgeryForm.notes} onChange={e => setSurgeryForm(f => ({...f, notes: e.target.value}))} /></div>
       </div>
     )
     return null
@@ -448,15 +450,15 @@ export default function DoctorPatientRecords() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {[
-                  { l: 'Full Name', v: patient?.fullName },
-                  { l: 'Email', v: patient?.email },
-                  { l: 'Phone', v: patient?.phoneNumber },
-                  { l: 'Blood Type', v: medProfile?.bloodType },
-                  { l: 'Weight', v: medProfile?.weightKg ? `${medProfile.weightKg} kg` : null },
-                  { l: 'Height', v: medProfile?.heightCm ? `${medProfile.heightCm} cm` : null },
-                  { l: 'Smoking', v: medProfile?.isSmoker ? `Yes (${medProfile.smokingDetails || 'Daily'})` : 'No' },
-                  { l: 'Emergency Contact', v: medProfile?.emergencyContactName },
-                  { l: 'Emergency Phone', v: medProfile?.emergencyContactPhone },
+                  { l: t('fullName'), v: patient?.fullName },
+                  { l: t('email'), v: patient?.email },
+                  { l: t('phone'), v: patient?.phoneNumber },
+                  { l: t('bloodType'), v: medProfile?.bloodType },
+                  { l: t('weightL'), v: medProfile?.weightKg ? `${medProfile.weightKg} kg` : null },
+                  { l: t('height'), v: medProfile?.heightCm ? `${medProfile.heightCm} cm` : null },
+                  { l: t('smoking'), v: medProfile?.isSmoker ? `${t('yes')} (${medProfile.smokingDetails || t('daily')})` : t('no') },
+                  { l: t('emergencyContact'), v: medProfile?.emergencyContactName },
+                  { l: t('emergencyPhone'), v: medProfile?.emergencyContactPhone },
                 ].map((item, i) => (
                   <div key={i} className="p-4 bg-gray-50 dark:bg-slate-900/50 rounded-xl border border-gray-100 dark:border-slate-800/80">
                     <p className="text-xs text-gray-400 dark:text-slate-500 font-semibold mb-1 uppercase tracking-wider">{item.l}</p>
@@ -473,8 +475,8 @@ export default function DoctorPatientRecords() {
                       <Shield className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">AI Health Insights</h3>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">Automated analysis of patient history</p>
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('aiHealthInsights')}</h3>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">{t('automatedAnalysis')}</p>
                     </div>
                   </div>
                   <Button 
@@ -485,7 +487,7 @@ export default function DoctorPatientRecords() {
                     className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
                   >
                     {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                    {analyzing ? 'Analyzing...' : (medProfile?.aiDiagnosisSummary ? 'Refresh Analysis' : 'Generate Analysis')}
+                    {analyzing ? 'Analyzing...' : (medProfile?.aiDiagnosisSummary ? t('refreshAnalysis') : t('generateAnalysis'))}
                   </Button>
                 </div>
                 
@@ -494,7 +496,7 @@ export default function DoctorPatientRecords() {
                     {(() => {
                       const report = parseAiDiagnosisSummary(medProfile.aiDiagnosisSummary)
                       if (!report) {
-                        return <p className="text-sm text-gray-500 italic">Report data is currently being processed or unavailable.</p>
+                        return <p className="text-sm text-gray-500 italic">{t('reportProcessing')}</p>
                       }
 
                       const showArabicFallbackNote = aiLang === 'ar' && !hasDistinctArabicReport(report)
@@ -543,15 +545,15 @@ export default function DoctorPatientRecords() {
                 ) : (
                   <div className="p-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-center">
                     <Sparkles className="w-8 h-8 text-purple-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No health analysis has been generated for this patient yet.</p>
-                    <p className="text-xs text-gray-400 mt-1">Click the button above to analyze the medical history.</p>
+                    <p className="text-sm text-gray-500">{t('noHealthAnalysis')}</p>
+                    <p className="text-xs text-gray-400 mt-1">{t('clickToAnalyze')}</p>
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {activeTab === 'visits' && ((patientHistory?.lastVisits || []).length === 0 ? renderEmpty('No visits history') : (
+          {activeTab === 'visits' && ((patientHistory?.lastVisits || []).length === 0 ? renderEmpty(t('noVisitsHistory')) : (
             <div className="space-y-1">
               {/* Timeline */}
               <div className="relative">
@@ -589,10 +591,10 @@ export default function DoctorPatientRecords() {
                           </div>
                           <div>
                             <p className="font-bold text-sm text-gray-900 dark:text-white">
-                              {v.doctorName ? `Dr. ${v.doctorName}` : 'Unknown Doctor'}
+                              {v.doctorName ? `Dr. ${v.doctorName}` : t('unknownDoctor')}
                             </p>
                             <p className="text-[11px] text-gray-400 dark:text-slate-500">
-                              {v.doctorSpecialty || 'Specialist'}
+                              {v.doctorSpecialty || t('specialist')}
                             </p>
                           </div>
                         </div>
@@ -612,9 +614,9 @@ export default function DoctorPatientRecords() {
                       <div className="px-5 py-4 space-y-3">
                         {/* Chief complaint */}
                         <div className="flex items-start gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500 mt-0.5 shrink-0 w-20">Complaint</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500 mt-0.5 shrink-0 w-20">{t('complaintLabel')}</span>
                           <p className="text-sm text-gray-700 dark:text-slate-300 font-medium leading-relaxed">
-                            {v.chiefComplaint || 'None recorded'}
+                            {v.chiefComplaint || t('noneRecorded')}
                           </p>
                         </div>
 
@@ -625,13 +627,13 @@ export default function DoctorPatientRecords() {
                               <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
                                   <Sparkles className="w-3.5 h-3.5 text-purple-500" />
-                                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest">AI Summary</span>
+                                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest">{t('aiSummary')}</span>
                                 </div>
                                 <button
                                   onClick={() => setExpandedVisits(prev => ({ ...prev, [v.id]: !prev[v.id] }))}
                                   className="text-[10px] font-bold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-300 px-2.5 py-1 rounded-md transition"
                                 >
-                                  {expandedVisits[v.id] ? 'Read Less' : 'Read More'}
+                                  {expandedVisits[v.id] ? t('readLess') : t('readMore')}
                                 </button>
                               </div>
                               {expandedVisits[v.id] && (
@@ -648,7 +650,7 @@ export default function DoctorPatientRecords() {
                           onClick={() => window.open(`/doctor/visits/${v.id}/summary`, '_blank')}
                           className="text-[11px] font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition flex items-center gap-1"
                         >
-                          View Full Details
+                          {t('viewFullDetails')}
                           <ChevronLeft className="w-3 h-3 rotate-180" />
                         </button>
                       </div>
@@ -659,7 +661,7 @@ export default function DoctorPatientRecords() {
             </div>
           ))}
 
-          {activeTab === 'allergies' && (allergies.length === 0 ? renderEmpty('No allergies') : (
+          {activeTab === 'allergies' && (allergies.length === 0 ? renderEmpty(t('noAllergies')) : (
             <div className="space-y-3">
               {allergies.map(a => (
                 <div key={a.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50 rounded-xl hover:shadow-md transition">
@@ -676,7 +678,7 @@ export default function DoctorPatientRecords() {
             </div>
           ))}
 
-          {activeTab === 'chronic' && (chronic.length === 0 ? renderEmpty('No chronic diseases') : (
+          {activeTab === 'chronic' && (chronic.length === 0 ? renderEmpty(t('noChronic')) : (
             <div className="space-y-3">
               {chronic.map(d => (
                 <div key={d.id} className="flex items-center justify-between p-4 bg-white dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50 rounded-xl hover:shadow-md transition">
@@ -693,7 +695,7 @@ export default function DoctorPatientRecords() {
             </div>
           ))}
 
-          {activeTab === 'medications' && (medications.length === 0 ? renderEmpty('No medications') : (
+          {activeTab === 'medications' && (medications.length === 0 ? renderEmpty(t('noMedications')) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {medications.map(m => (
                 <div key={m.id} className="p-4 bg-white dark:bg-slate-800/60 border border-gray-100 dark:border-slate-700/50 rounded-xl hover:shadow-md transition">
@@ -702,7 +704,7 @@ export default function DoctorPatientRecords() {
                       <p className="font-bold text-gray-800 dark:text-white text-lg">{m.medicationName}</p>
                       {m.genericName && <p className="text-xs text-gray-400 dark:text-slate-500 font-medium">{m.genericName}</p>}
                     </div>
-                    {m.isChronic && <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-amber-200 dark:border-amber-800/50">Chronic</span>}
+                    {m.isChronic && <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-amber-200 dark:border-amber-800/50">{t('chronic')}</span>}
                   </div>
                   <div className="space-y-2 mt-4">
                     <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
@@ -720,7 +722,7 @@ export default function DoctorPatientRecords() {
                     )}
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-50 dark:border-slate-700/30 flex justify-between items-center">
-                    <span className="text-[10px] font-medium text-gray-400 dark:text-slate-500">Added: {new Date(m.createdAt).toLocaleDateString()}</span>
+                    <span className="text-[10px] font-medium text-gray-400 dark:text-slate-500">{t('added')}: {new Date(m.createdAt).toLocaleDateString()}</span>
                     <button onClick={() => handleDelete('medication', m.id)} className="p-1.5 text-gray-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
@@ -728,7 +730,7 @@ export default function DoctorPatientRecords() {
             </div>
           ))}
 
-          {activeTab === 'vitals' && (vitals.length === 0 ? renderEmpty('No vitals') : (
+          {activeTab === 'vitals' && (vitals.length === 0 ? renderEmpty(t('noVitals')) : (
             <div className="space-y-3">
               {vitals.map(v => (
                 <div key={v.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-xl hover:shadow-md transition">
@@ -765,7 +767,7 @@ export default function DoctorPatientRecords() {
                     <p className="text-xs text-gray-500 mt-1">{d.documentType} · {new Date(d.uploadedAt).toLocaleDateString()}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {d.fileUrl && <a href={d.fileUrl} target="_blank" rel="noreferrer" className="text-xs text-primary-600 font-medium hover:underline">View</a>}
+                    {d.fileUrl && <a href={d.fileUrl} target="_blank" rel="noreferrer" className="text-xs text-primary-600 font-medium hover:underline">{t('view')}</a>}
                     <button onClick={() => handleDelete('document', d.id)} className="p-2 text-gray-400 hover:text-red-500 transition"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
@@ -790,9 +792,9 @@ export default function DoctorPatientRecords() {
       <Modal open={showForm} onClose={() => setShowForm(false)} title={`Add ${TABS.find(t => t.id === activeTab)?.label || 'Record'}`} size="md"
         footer={
           <>
-            <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowForm(false)}>{t('cancel')}</Button>
             <Button onClick={handleAdd} disabled={saving} className="bg-primary-600 hover:bg-primary-700 text-white">
-              {saving ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Saving...</> : 'Save'}
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('saving')}</> : 'Save'}
             </Button>
           </>
         }

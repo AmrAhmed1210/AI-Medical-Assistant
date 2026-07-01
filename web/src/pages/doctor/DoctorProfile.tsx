@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Camera, Save, Star, Clock, DollarSign, MessageSquare, ThumbsUp } from 'lucide-react'
 import { useDoctorProfile } from '@/hooks/useDoctor'
 import { useDoctorStore } from '@/store/doctorStore'
+import { useLanguage } from '@/lib/language'
 import { doctorApi } from '@/api/doctorApi'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -12,6 +13,7 @@ import toast from 'react-hot-toast'
 
 export default function DoctorProfile() {
   const { profile, isLoading, refresh } = useDoctorProfile()
+  const { t, isRTL } = useLanguage()
   const { updateProfile } = useDoctorStore()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -62,9 +64,9 @@ export default function DoctorProfile() {
     setSaving(true)
     try {
       await updateProfile(form)
-      toast.success('Profile saved successfully')
+      toast.success(t('profileSaved'))
     } catch {
-      toast.error('Failed to save data')
+      toast.error(t('errSaveProfile'))
     } finally {
       setSaving(false)
     }
@@ -77,9 +79,9 @@ export default function DoctorProfile() {
     try {
       await doctorApi.uploadPhoto(file)
       await refresh()
-      toast.success('Photo uploaded successfully')
+      toast.success(t('photoUploaded'))
     } catch {
-      toast.error('Failed to upload photo')
+      toast.error(t('errUploadPhoto'))
     } finally {
       setPhotoUploading(false)
     }
@@ -96,8 +98,8 @@ export default function DoctorProfile() {
           <Camera size={24} className="text-white" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Doctor Profile</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage your personal and professional profile information</p>
+          <h1 className="text-xl font-bold text-gray-900">{t('doctorProfile')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{t('manageProfileDesc')}</p>
         </div>
       </motion.div>
 
@@ -106,7 +108,7 @@ export default function DoctorProfile() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="relative overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-br from-white via-gray-50/50 to-white">
             {/* Decorative background elements */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary-100/30 to-transparent rounded-full -translate-y-16 translate-x-16" />
+            <div className="absolute top-0 w-32 h-32 bg-gradient-to-br from-primary-100/30 to-transparent rounded-full -translate-y-16 rtl:-translate-x-16 ltr:translate-x-16" />
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-blue-100/20 to-transparent rounded-full translate-y-12 -translate-x-12" />
 
             <div className="relative text-center p-8">
@@ -125,7 +127,7 @@ export default function DoctorProfile() {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => fileRef.current?.click()}
                   disabled={photoUploading}
-                  className="absolute -bottom-1 -right-1 w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all duration-200 border-2 border-white"
+                  className={`absolute -bottom-1 ${isRTL ? '-left-1' : '-right-1'} w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all duration-200 border-2 border-white`}
                 >
                   <Camera size={14} />
                 </motion.button>
@@ -134,8 +136,8 @@ export default function DoctorProfile() {
 
               <div className="space-y-3">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-0.5">{form.fullName || 'Doctor Name'}</h3>
-                  <p className="text-primary-600 font-medium text-xs">{profile?.specialty || 'General Practice'}</p>
+                  <h3 className="text-lg font-bold text-gray-900 mb-0.5">{form.fullName || t('doctorName')}</h3>
+                  <p className="text-primary-600 font-medium text-xs">{profile?.specialty || t('generalPractice')}</p>
                 </div>
 
                 <div className="flex items-center justify-center gap-1">
@@ -146,7 +148,7 @@ export default function DoctorProfile() {
                         ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
                         : ((profile as any)?.rating ?? 4.5).toFixed(1)}
                     </span>
-                    <span className="text-xs text-amber-600">({reviews.length} reviews)</span>
+                    <span className="text-xs text-amber-600">({reviews.length} {t('reviewsWord')})</span>
                   </div>
                 </div>
 
@@ -175,7 +177,7 @@ export default function DoctorProfile() {
                     />
                     <div className="w-12 h-6 bg-gray-200 rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-green-400 peer-checked:to-green-500 transition-all duration-300 shadow-inner peer-checked:shadow-green-500/25 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm peer-checked:after:translate-x-[24px] peer-checked:after:shadow-green-500/50" />
                     <span className={`text-sm font-medium transition-colors ${form.isAvailable ? 'text-green-600' : 'text-gray-500'}`}>
-                      {form.isAvailable ? 'Available Now' : 'Not Available'}
+                      {form.isAvailable ? t('availableNow') : t('notAvailable')}
                     </span>
                   </label>
                 </div>
@@ -197,24 +199,24 @@ export default function DoctorProfile() {
                 <div className="p-2 bg-primary-50 rounded-xl">
                   <Save size={20} className="text-primary-600" />
                 </div>
-                Edit Profile
+                {t('editProfile')}
               </CardTitle>
             </CardHeader>
             <div className="px-6 pb-6">
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">{t('fullName')}</label>
                     <input
                       type="text"
                       value={form.fullName}
                       onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))}
                       className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/30 focus:border-primary-400 transition-all duration-200 bg-white shadow-sm hover:border-gray-300"
-                      placeholder="Enter your full name"
+                      placeholder={t("enterFullName")}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Years of Experience</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">{t('yearsExp')}</label>
                     <input
                       type="number"
                       min={0}
@@ -225,7 +227,7 @@ export default function DoctorProfile() {
                     />
                   </div>
                   <div className="space-y-2 md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Consultation Fee ($)</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">{t('consultFee')}</label>
                     <input
                       type="number"
                       min={0}
@@ -238,12 +240,12 @@ export default function DoctorProfile() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Doctor Biography</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">{t('doctorBio')}</label>
                   <textarea
                     rows={5}
                     value={form.bio}
                     onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
-                    placeholder="Write a brief description about your specialization, experience, and approach to patient care..."
+                    placeholder={t("bioPlaceholder")}
                     className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/30 focus:border-primary-400 transition-all duration-200 bg-white shadow-sm hover:border-gray-300 resize-none"
                   />
                 </div>
@@ -278,10 +280,10 @@ export default function DoctorProfile() {
               <div className="p-2 bg-amber-50 rounded-xl">
                 <MessageSquare size={20} className="text-amber-600" />
               </div>
-              Patient Reviews
+              {t('patientReviews')}
               {reviews.length > 0 && (
                 <span className="text-sm font-normal text-gray-500 ml-2">
-                  ({reviews.length} total)
+                  ({reviews.length} {t('totalWord')})
                 </span>
               )}
             </CardTitle>
@@ -294,7 +296,7 @@ export default function DoctorProfile() {
             ) : reviews.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <ThumbsUp size={48} className="mx-auto mb-3 text-gray-300" />
-                <p>No reviews yet. Complete appointments to receive reviews!</p>
+                <p>{t('noReviewsYet')}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -312,7 +314,7 @@ export default function DoctorProfile() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-semibold text-gray-900">
-                            {review.patientName ?? 'Anonymous'}
+                            {review.patientName ?? t('anonymous')}
                           </span>
                           <div className="flex items-center gap-0.5">
                             {Array.from({ length: 5 }).map((_, i) => (

@@ -100,11 +100,11 @@ export default function MedicalRecordsCategory() {
   const [isAiProcessing, setIsAiProcessing] = useState(false);
 
   const DOCUMENT_FOLDERS = [
-    { id: "Blood Test", label: "Blood Tests", icon: "water-outline", color: "#0EA5E9" },
-    { id: "X-Ray", label: "X-Rays / Scans", icon: "scan-outline", color: "#2563EB" },
-    { id: "MRI", label: "MRI / CT", icon: "layers-outline", color: "#0D9488" },
-    { id: "Prescription", label: "Prescriptions", icon: "receipt-outline", color: "#10B981" },
-    { id: "Other", label: "Other", icon: "document-text-outline", color: "#64748B" },
+    { id: "Blood Test", label: tr("blood_tests" as any) || "Blood Tests", icon: "water-outline", color: "#0EA5E9" },
+    { id: "X-Ray", label: tr("xrays_scans" as any) || "X-Rays / Scans", icon: "scan-outline", color: "#2563EB" },
+    { id: "MRI", label: tr("mri_ct" as any) || "MRI / CT", icon: "layers-outline", color: "#0D9488" },
+    { id: "Prescription", label: tr("prescriptions" as any) || "Prescriptions", icon: "receipt-outline", color: "#10B981" },
+    { id: "Other", label: tr("other" as any) || "Other", icon: "document-text-outline", color: "#64748B" },
   ];
 
   const canAdd = true; // Patients should be able to add all record types
@@ -208,7 +208,7 @@ export default function MedicalRecordsCategory() {
 
   const handleAiRefineItem = async (type: string, currentVal: string, setter: (v: string) => void) => {
     if (!currentVal.trim()) {
-      Alert.alert("Input Needed", "Please enter some text first.");
+      Alert.alert(tr("input_needed" as any) || "Input Needed", tr("please_enter_text" as any) || "Please enter some text first.");
       return;
     }
     try {
@@ -217,9 +217,9 @@ export default function MedicalRecordsCategory() {
       const refined = await summarizeMedicalItem(type, currentVal);
       const combinedText = `${refined.summary_en}\n---\n${refined.summary_ar}`;
       setter(combinedText);
-      Toast.show({ type: "success", text1: "Refined by AI" });
+      Toast.show({ type: "success", text1: tr("refined_by_ai" as any) || "Refined by AI" });
     } catch (e) {
-      Alert.alert("AI Error", "Could not refine text.");
+      Alert.alert(tr("ai_error" as any) || "AI Error", tr("could_not_refine" as any) || "Could not refine text.");
     } finally {
       setIsAiProcessing(false);
     }
@@ -227,7 +227,7 @@ export default function MedicalRecordsCategory() {
 
   const handleAiAnalyzeDocument = async () => {
     if (!docUri) {
-      Alert.alert("Input Needed", "Please select an image first.");
+      Alert.alert(tr("input_needed" as any) || "Input Needed", tr("please_select_image" as any) || "Please select an image first.");
       return;
     }
     try {
@@ -256,10 +256,10 @@ export default function MedicalRecordsCategory() {
       if (result.analysis_ar) {
         setDocTitle(`${docType} Analysis`);
         setDocDescription(result.analysis_ar);
-        Toast.show({ type: "success", text1: "AI Analysis Complete" });
+        Toast.show({ type: "success", text1: tr("ai_analysis_complete" as any) || "AI Analysis Complete" });
       }
     } catch (e) {
-      Alert.alert("AI Error", "Could not analyze image at this time.");
+      Alert.alert(tr("ai_error" as any) || "AI Error", tr("could_not_analyze_img" as any) || "Could not analyze image at this time.");
     } finally {
       setIsAiProcessing(false);
     }
@@ -272,7 +272,7 @@ export default function MedicalRecordsCategory() {
       console.log('📝 Saving record for patient:', pid, 'category:', category);
       
       if (pid <= 0) {
-        Alert.alert(tr(isRTL ? "ar" : "en", "error" as any), "Could not identify patient session. Please login again.");
+        Alert.alert(tr("error" as any), tr("session_expired" as any) || "Could not identify patient session. Please login again.");
         return;
       }
 
@@ -305,7 +305,7 @@ export default function MedicalRecordsCategory() {
           res = await createSurgery(pid, payload);
         }
       } else if (category === "vitals") {
-        if (!vitalValue.trim()) { Toast.show({ type: "error", text1: tr(isRTL ? "ar" : "en", "please_enter_value" as any) }); return; }
+        if (!vitalValue.trim()) { Toast.show({ type: "error", text1: tr("please_enter_value" as any) }); return; }
         const payload = { readingType: vitalType, value: parseFloat(vitalValue), unit: vitalUnit, recordedBy: "Patient" };
         console.log('📤 Sending Vital:', payload);
         if (selectedItem) {
@@ -314,7 +314,7 @@ export default function MedicalRecordsCategory() {
           res = await createVital(pid, payload);
         }
       } else if (category === "medications") {
-        if (!medName.trim()) { Toast.show({ type: "error", text1: tr(isRTL ? "ar" : "en", "please_enter_name" as any) }); return; }
+        if (!medName.trim()) { Toast.show({ type: "error", text1: tr("please_enter_name" as any) }); return; }
         const payload = { medicationName: medName, dosage: medDosage, frequency: medFreq, form: "Pill", startDate: new Date().toISOString().split('T')[0], isActive: true, isChronic: false };
         console.log('📤 Sending Medication:', payload);
         if (selectedItem) {
@@ -337,12 +337,12 @@ export default function MedicalRecordsCategory() {
       }
 
       console.log('✅ Save result:', res);
-      Toast.show({ type: "success", text1: selectedItem ? tr(isRTL ? "ar" : "en", "record_updated" as any) : tr(isRTL ? "ar" : "en", "record_added" as any) });
+      Toast.show({ type: "success", text1: selectedItem ? tr("record_updated" as any) : tr("record_added" as any) });
       setShowModal(false);
       fetchData();
     } catch (err: any) {
       console.error("❌ Failed to save record:", err);
-      Alert.alert(tr(isRTL ? "ar" : "en", "error" as any), err.message || tr(isRTL ? "ar" : "en", "could_not_save_record" as any));
+      Alert.alert(tr("error" as any), err.message || tr("could_not_save_record" as any));
     } finally {
       setSaving(false);
     }
@@ -352,11 +352,11 @@ export default function MedicalRecordsCategory() {
   const pickImage = async () => {
     Alert.alert(
       tr("select_image" as any),
-      tr(isRTL ? "ar" : "en", "photo_prompt" as any),
+      tr("photo_prompt" as any),
       [
-        { text: tr(isRTL ? "ar" : "en", "take_photo" as any), onPress: () => handleImageSource(true) },
-        { text: tr(isRTL ? "ar" : "en", "choose_from_gallery" as any), onPress: () => handleImageSource(false) },
-        { text: tr(isRTL ? "ar" : "en", "cancel" as any), style: "cancel" }
+        { text: tr("take_photo" as any), onPress: () => handleImageSource(true) },
+        { text: tr("choose_from_gallery" as any), onPress: () => handleImageSource(false) },
+        { text: tr("cancel" as any), style: "cancel" }
       ]
     );
   };
@@ -366,7 +366,7 @@ export default function MedicalRecordsCategory() {
       if (useCamera) {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert(tr(isRTL ? "ar" : "en", "permission_needed" as any), tr(isRTL ? "ar" : "en", "camera_access_required" as any));
+          Alert.alert(tr("permission_needed" as any), tr("camera_access_required" as any));
           return;
         }
       }
@@ -385,7 +385,7 @@ export default function MedicalRecordsCategory() {
         setDocUri(result.assets[0].uri);
       }
     } catch (e: any) {
-      Toast.show({ type: "error", text1: e.message || tr(isRTL ? "ar" : "en", "failed_pick_image" as any) });
+      Toast.show({ type: "error", text1: e.message || tr("failed_pick_image" as any) });
     }
   };
 
@@ -505,7 +505,7 @@ export default function MedicalRecordsCategory() {
               </View>
             </View>
             {item.fileUrl && (
-              <TouchableOpacity onPress={() => Linking.openURL(item.fileUrl).catch(() => Toast.show({ type: 'error', text1: 'Cannot open document' }))}>
+              <TouchableOpacity onPress={() => Linking.openURL(item.fileUrl).catch(() => Toast.show({ type: 'error', text1: tr("cannot_open_doc" as any) || 'Cannot open document' }))}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
                   <Ionicons name="document-attach-outline" size={16} color={itemColor} />
                   <Text style={[styles.linkTxt, { color: itemColor, marginTop: 0 }]}>{tr("view_document" as any) || "View Document"}</Text>
@@ -520,7 +520,7 @@ export default function MedicalRecordsCategory() {
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Sparkles size={16} color={itemColor} />
-                    <Text style={{ fontSize: 14, fontWeight: '800', color: itemColor }}>AI Analysis Report</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: itemColor }}>{tr("ai_analysis_report" as any) || "AI Analysis Report"}</Text>
                   </View>
                   <Ionicons name={expandedDocs[item.id] ? "chevron-up" : "chevron-down"} size={20} color={itemColor} />
                 </TouchableOpacity>
@@ -548,8 +548,8 @@ export default function MedicalRecordsCategory() {
                 category === "allergies" ? tr("add_allergy" as any) : 
                 category === "chronic" ? tr("add_chronic" as any) :
                 category === "surgeries" ? tr("add_surgery" as any) : 
-                category === "vitals" ? "Add Vital Reading" :
-                category === "medications" ? "Add Medication" : tr("add_document" as any)
+                category === "vitals" ? (tr("add_vital" as any) || "Add Vital Reading") :
+                category === "medications" ? (tr("add_medication" as any) || "Add Medication") : tr("add_document" as any)
               )}
             </Text>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -586,21 +586,21 @@ export default function MedicalRecordsCategory() {
                       {isAiProcessing ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="sparkles" size={18} color="#fff" />}
                     </TouchableOpacity>
                   </View>
-                  <Text style={styles.aiHint}>Use AI to refine and summarize notes</Text>
+                  <Text style={styles.aiHint}>{tr("ai_analysis_desc" as any) || "Use AI to refine and summarize notes"}</Text>
                 </>
               )}
               {category === "vitals" && (
                 <>
-                  <TextInput style={styles.input} placeholder="Reading Type (e.g. BP, Sugar)" value={vitalType} onChangeText={setVitalType} />
-                  <TextInput style={styles.input} placeholder="Value" value={vitalValue} onChangeText={setVitalValue} keyboardType="numeric" />
-                  <TextInput style={styles.input} placeholder="Unit (e.g. mmHg, mg/dL)" value={vitalUnit} onChangeText={setVitalUnit} />
+                  <TextInput style={styles.input} placeholder={tr("reading_type_placeholder" as any) || "Reading Type (e.g. BP, Sugar)"} value={vitalType} onChangeText={setVitalType} />
+                  <TextInput style={styles.input} placeholder={tr("value_placeholder" as any) || "Value"} value={vitalValue} onChangeText={setVitalValue} keyboardType="numeric" />
+                  <TextInput style={styles.input} placeholder={tr("unit_placeholder" as any) || "Unit (e.g. mmHg, mg/dL)"} value={vitalUnit} onChangeText={setVitalUnit} />
                 </>
               )}
               {category === "medications" && (
                 <>
-                  <TextInput style={styles.input} placeholder="Medication Name" value={medName} onChangeText={setMedName} />
-                  <TextInput style={styles.input} placeholder="Dosage (e.g. 500mg)" value={medDosage} onChangeText={setMedDosage} />
-                  <TextInput style={styles.input} placeholder="Frequency (e.g. Once daily)" value={medFreq} onChangeText={setMedFreq} />
+                  <TextInput style={styles.input} placeholder={tr("med_name_placeholder" as any) || "Medication Name"} value={medName} onChangeText={setMedName} />
+                  <TextInput style={styles.input} placeholder={tr("dosage_placeholder" as any) || "Dosage (e.g. 500mg)"} value={medDosage} onChangeText={setMedDosage} />
+                  <TextInput style={styles.input} placeholder={tr("frequency_placeholder" as any) || "Frequency (e.g. Once daily)"} value={medFreq} onChangeText={setMedFreq} />
                 </>
               )}
               {category === "documents" && (
@@ -613,8 +613,8 @@ export default function MedicalRecordsCategory() {
                       </TouchableOpacity>
                     )}
                   </View>
-                  {docUri && <Text style={[styles.aiHint, { color }]}>AI can analyze image to extract title & description</Text>}
-                  <Text style={[styles.inputLabelSmall, { color: colors.textMuted }]}>Select Folder</Text>
+                  {docUri && <Text style={[styles.aiHint, { color }]}>{tr("ai_extract_hint" as any) || "AI can analyze image to extract title & description"}</Text>}
+                  <Text style={[styles.inputLabelSmall, { color: colors.textMuted }]}>{tr("select_folder" as any) || "Select Folder"}</Text>
                   <View style={styles.folderPickerRow}>
                     {DOCUMENT_FOLDERS.map(f => (
                       <TouchableOpacity 
@@ -633,10 +633,10 @@ export default function MedicalRecordsCategory() {
                   </TouchableOpacity>
                   {docUri && (
                     <View style={styles.aiResultBox}>
-                      <Text style={[styles.inputLabelSmall, { color: colors.textMuted }]}>Document Description & AI Analysis</Text>
+                      <Text style={[styles.inputLabelSmall, { color: colors.textMuted }]}>{tr("doc_desc_ai" as any) || "Document Description & AI Analysis"}</Text>
                       <TextInput 
                         style={[styles.input, inputTheme, { height: 180, textAlignVertical: 'top', fontSize: 14 }]} 
-                        placeholder="AI will place the analysis here..." 
+                        placeholder={tr("ai_placeholder" as any) || "AI will place the analysis here..."} 
                         placeholderTextColor={colors.textLight}
                         value={docDescription} 
                         onChangeText={setDocDescription} 
@@ -698,7 +698,7 @@ export default function MedicalRecordsCategory() {
                   <Ionicons name={f.icon as any} size={32} color={f.color} />
                 </View>
                 <Text style={[styles.folderName, { color: colors.text }]}>{f.label}</Text>
-                <Text style={[styles.folderCount, { color: colors.textMuted }]}>{items.filter(it => it.documentType === f.id).length} Files</Text>
+                <Text style={[styles.folderCount, { color: colors.textMuted }]}>{items.filter(it => it.documentType === f.id).length} {tr("files" as any) || "Files"}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -707,7 +707,7 @@ export default function MedicalRecordsCategory() {
             {category === "documents" && selectedFolder && (
               <TouchableOpacity style={styles.backToFolders} onPress={() => setSelectedFolder(null)}>
                 <Ionicons name="chevron-back" size={18} color={color} />
-                <Text style={[styles.backToFoldersTxt, { color }]}>Back to Folders</Text>
+                <Text style={[styles.backToFoldersTxt, { color }]}>{tr("back_to_folders" as any) || "Back to Folders"}</Text>
               </TouchableOpacity>
             )}
             {items.length === 0 || (category === "documents" && items.filter(it => it.documentType === selectedFolder).length === 0) ? (

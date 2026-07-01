@@ -1,3 +1,4 @@
+import { useLanguage } from '@/lib/language'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -77,8 +78,8 @@ export default function DoctorsList() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Our Doctors</h1>
-          <p className="text-slate-600">Find the right doctor for you</p>
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">{t('ourDoctors')}</h1>
+          <p className="text-slate-600">{t('findRightDoctor')}</p>
         </motion.div>
 
         {/* Search and Filters */}
@@ -108,7 +109,7 @@ export default function DoctorsList() {
                 onChange={(e) => setSelectedSpecialty(e.target.value)}
                 className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               >
-                <option value="">All Specialties</option>
+                <option value="">{t('allSpecialties')}</option>
                 {specialties.map(specialty => (
                   <option key={specialty} value={specialty}>{specialty}</option>
                 ))}
@@ -129,8 +130,8 @@ export default function DoctorsList() {
             className="text-center py-16"
           >
             <HeartPulse className="mx-auto text-slate-300 mb-4" size={48} />
-            <h3 className="text-xl font-semibold text-slate-600 mb-2">No doctors found</h3>
-            <p className="text-slate-500">No doctors matched your search criteria</p>
+            <h3 className="text-xl font-semibold text-slate-600 mb-2">{t('noDoctorsFound')}</h3>
+            <p className="text-slate-500">{t('noDoctorsMatched')}</p>
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

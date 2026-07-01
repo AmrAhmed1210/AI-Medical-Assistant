@@ -5,6 +5,7 @@ import { DAY_NAMES_AR } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Clock, Save } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/lib/language'
 
 interface AvailabilityEditorProps {
   availability: AvailabilityDto[]
@@ -22,6 +23,7 @@ const DEFAULT_AVAILABILITY: AvailabilityDto[] = DAY_NAMES_AR.map((dayName, i) =>
 }))
 
 export function AvailabilityEditor({ availability, onSave, isSaving }: AvailabilityEditorProps) {
+  const { t, isRTL } = useLanguage()
   const [slots, setSlots] = useState<AvailabilityDto[]>(
     availability.length > 0 ? availability : DEFAULT_AVAILABILITY
   )
@@ -48,7 +50,7 @@ export function AvailabilityEditor({ availability, onSave, isSaving }: Availabil
         className="flex items-center gap-2 p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200"
       >
         <Clock size={16} className="text-blue-600" />
-        <p className="text-xs text-gray-600"><strong>Tip:</strong> Toggle the checkbox to enable/disable a day, then set your available time slots</p>
+        <p className="text-xs text-gray-600"><strong>{t('toggleTip').split(':')[0]}:</strong> {t('toggleTip').split(':')[1] || t('toggleTip')}</p>
       </motion.div>
 
       <div className="space-y-3">
@@ -76,7 +78,7 @@ export function AvailabilityEditor({ availability, onSave, isSaving }: Availabil
                   onChange={(e) => update(slot.dayOfWeek, 'isAvailable', e.target.checked)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-300 peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-primary-600 peer-checked:to-primary-500 after:content-[''] after:absolute after:top-0.5 after:right-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-[-20px] shadow-sm" />
+                <div className={`w-11 h-6 bg-gray-300 peer-focus:ring-2 peer-focus:ring-primary-300 rounded-full peer peer-checked:bg-gradient-to-r peer-checked:from-primary-600 peer-checked:to-primary-500 after:content-[''] after:absolute after:top-0.5 ${isRTL ? 'after:left-0.5 peer-checked:after:translate-x-[20px]' : 'after:right-0.5 peer-checked:after:translate-x-[-20px]'} after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all shadow-sm`} />
               </motion.label>
               <span className={cn('text-sm font-semibold', slot.isAvailable ? 'text-gray-800' : 'text-gray-500')}>
                 {slot.dayName}
@@ -92,7 +94,7 @@ export function AvailabilityEditor({ availability, onSave, isSaving }: Availabil
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
                   >
-                    <label className="text-xs font-medium text-gray-600 whitespace-nowrap">From</label>
+                    <label className="text-xs font-medium text-gray-600 whitespace-nowrap">{t('fromTime')}</label>
                     <input
                       type="time"
                       value={slot.startTime}
@@ -108,7 +110,7 @@ export function AvailabilityEditor({ availability, onSave, isSaving }: Availabil
                     exit={{ opacity: 0, x: -10 }}
                     transition={{ delay: 0.05 }}
                   >
-                    <label className="text-xs font-medium text-gray-600 whitespace-nowrap">To</label>
+                    <label className="text-xs font-medium text-gray-600 whitespace-nowrap">{t('toTime')}</label>
                     <input
                       type="time"
                       value={slot.endTime}
@@ -124,17 +126,17 @@ export function AvailabilityEditor({ availability, onSave, isSaving }: Availabil
                     exit={{ opacity: 0, x: -10 }}
                     transition={{ delay: 0.1 }}
                   >
-                    <label className="text-xs font-medium text-gray-600 whitespace-nowrap">Slot Duration</label>
+                    <label className="text-xs font-medium text-gray-600 whitespace-nowrap">{t('slotDuration')}</label>
                     <select
                       value={slot.slotDurationMinutes}
                       onChange={(e) => update(slot.dayOfWeek, 'slotDurationMinutes', Number(e.target.value))}
                       className="text-sm border-2 border-primary-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400 bg-white font-medium"
                     >
-                      <option value={15}>15 min</option>
-                      <option value={20}>20 min</option>
-                      <option value={30}>30 min</option>
-                      <option value={45}>45 min</option>
-                      <option value={60}>60 min</option>
+                      <option value={15}>15 {t('minText')}</option>
+                      <option value={20}>20 {t('minText')}</option>
+                      <option value={30}>30 {t('minText')}</option>
+                      <option value={45}>45 {t('minText')}</option>
+                      <option value={60}>60 {t('minText')}</option>
                     </select>
                   </motion.div>
                 </>
@@ -156,7 +158,7 @@ export function AvailabilityEditor({ availability, onSave, isSaving }: Availabil
           loading={isSaving}
           icon={<Save size={16} />}
         >
-          Save Schedule
+          {t('saveSchedule')}
         </Button>
       </motion.div>
     </div>

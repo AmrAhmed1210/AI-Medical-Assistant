@@ -24,7 +24,7 @@ const expoHost = getExpoHost();
 const inferredBaseUrl = expoHost ? `http://${expoHost}:5194` : null;
 
 // The backend is now live on SmarterASP!
-export const BASE_URL = "http://amrahmed1210-001-site1.itempurl.com";
+export const BASE_URL = configuredBaseUrl || inferredBaseUrl || "http://192.168.1.5:5194";
 
 if (__DEV__) {
   console.log("[API] Using backend:", BASE_URL);

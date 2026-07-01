@@ -483,6 +483,14 @@ const translations = {
     find: "Find",
     chat: "Chat",
     ai_bot: "AI Bot",
+    failed_load_visit_summary: "Failed to load visit summary",
+    follow_up_required: "Follow Up Required",
+    additional_notes: "Additional Notes",
+    vital_signs_label: "Vital Signs",
+    past_visits_8m_title: "Past Visits (Last 8 Months)",
+    no_visits_8m: "No visits recorded in the last 8 months.",
+    severity_label: "Severity",
+    at_time: "at",
   },
 
   ar: {
@@ -965,6 +973,14 @@ const translations = {
     find: "البحث",
     chat: "المحادثات",
     ai_bot: "المساعد الذكي",
+    failed_load_visit_summary: "فشل تحميل ملخص الزيارة",
+    follow_up_required: "زيارة متابعة مطلوبة",
+    additional_notes: "ملاحظات إضافية",
+    vital_signs_label: "العلامات الحيوية",
+    past_visits_8m_title: "ملخص الزيارات (آخر 8 أشهر)",
+    no_visits_8m: "لا توجد زيارات مسجلة في آخر 8 أشهر.",
+    severity_label: "الشدة",
+    at_time: "في تمام الساعة",
   },
 } as const;
 

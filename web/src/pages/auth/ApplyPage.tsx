@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import axiosInstance from '@/api/axiosInstance'
 import { toast } from 'react-hot-toast'
+import { useLanguage } from '@/lib/language'
 import {
   User, Mail, Phone, Briefcase, FileText, Upload, ChevronDown,
   CheckCircle2, HeartPulse, X, AlertCircle
@@ -21,6 +22,7 @@ export default function ApplyPage() {
   const [formError, setFormError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+  const { t, isRTL } = useLanguage()
 
   const [form, setForm] = useState({
     name: '',
@@ -53,11 +55,11 @@ export default function ApplyPage() {
     setFileError('')
     if (!f) return
     if (!ALLOWED_TYPES.includes(f.type)) {
-      setFileError('Only PDF, JPG, or PNG files are allowed.')
+      setFileError(t('errInvalidFile'))
       return
     }
     if (f.size > MAX_FILE_SIZE) {
-      setFileError('File must be less than 5 MB.')
+      setFileError(t('errFileTooLarge'))
       return
     }
     setFile(f)
@@ -68,15 +70,15 @@ export default function ApplyPage() {
     setFormError('')
 
     if (!form.specialtyId || form.specialtyId === 0) {
-      setFormError('Please select a specialty.')
+      setFormError(t('errNoSpecialty'))
       return
     }
     if (!file) {
-      setFormError('Please upload your license/credential document.')
+      setFormError(t('errNoLicenseDoc'))
       return
     }
     if (!form.licenseNumber.trim()) {
-      setFormError('License / National ID is required.')
+      setFormError(t('errNoLicense'))
       return
     }
 
@@ -118,7 +120,7 @@ export default function ApplyPage() {
       })
       setStep('success')
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to submit application. Please try again.'
+      const msg = err?.response?.data?.message || t('errSubmitFailed')
       setFormError(msg)
     } finally {
       setIsLoading(false)
@@ -127,7 +129,7 @@ export default function ApplyPage() {
 
   if (step === 'success') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4" dir="ltr">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4" dir={isRTL ? "rtl" : "ltr"}>
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -142,15 +144,15 @@ export default function ApplyPage() {
           >
             <CheckCircle2 size={40} className="text-white" />
           </motion.div>
-          <h1 className="text-2xl font-bold text-white mb-3">Application Received!</h1>
+          <h1 className="text-2xl font-bold text-white mb-3">{t('appReceived')}</h1>
           <p className="text-blue-200/80 text-sm leading-relaxed mb-8">
-            Your application has been received. We will contact you soon at <span className="text-emerald-400 font-semibold">{form.email}</span> after reviewing your documents.
+            {t('appReceivedDesc1')} <span className="text-emerald-400 font-semibold">{form.email}</span> {t('appReceivedDesc2')}
           </p>
           <button
             onClick={() => navigate('/login')}
             className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-xl text-sm hover:opacity-90 transition-opacity"
           >
-            Back to Login
+            {t('backToLogin')}
           </button>
         </motion.div>
       </div>
@@ -158,7 +160,7 @@ export default function ApplyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 py-10 px-4" dir="ltr">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 py-10 px-4" dir={isRTL ? "rtl" : "ltr"}>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <motion.div
@@ -169,8 +171,8 @@ export default function ApplyPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-2xl shadow-xl shadow-emerald-500/30 mb-4">
             <HeartPulse size={28} className="text-white" />
           </div>
-          <h1 className="text-3xl font-extrabold text-white">Apply as a Doctor</h1>
-          <p className="text-blue-300/60 mt-1.5 text-sm">Join our network of healthcare professionals</p>
+          <h1 className="text-3xl font-extrabold text-white">{t('applyAsDoctor')}</h1>
+          <p className="text-blue-300/60 mt-1.5 text-sm">{t('joinNetwork')}</p>
         </motion.div>
 
         <motion.form
@@ -182,26 +184,26 @@ export default function ApplyPage() {
         >
           {/* Name + Email */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Full Name" required>
+            <Field label=t('fullName') required>
               <InputWithIcon icon={<User size={15} />} type="text" required placeholder="Dr. Jane Smith" value={form.name} onChange={set('name')} />
             </Field>
-            <Field label="Email Address" required>
+            <Field label=t('emailAddress') required>
               <InputWithIcon icon={<Mail size={15} />} type="email" required placeholder="you@example.com" value={form.email} onChange={set('email')} />
             </Field>
           </div>
 
           {/* Phone + Experience */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Phone Number" required>
+            <Field label=t('phoneNumber') required>
               <InputWithIcon icon={<Phone size={15} />} type="tel" required placeholder="+1 234 567 8900" value={form.phone} onChange={set('phone')} />
             </Field>
-            <Field label="Years of Experience" required>
+            <Field label=t('yearsExp') required>
               <InputWithIcon icon={<Briefcase size={15} />} type="number" min="0" required placeholder="5" value={form.experience} onChange={set('experience')} />
             </Field>
           </div>
 
           {/* Specialty */}
-          <Field label="Specialty" required>
+          <Field label=t('specialty') required>
             <div className="relative">
               <select
                 required
@@ -209,7 +211,7 @@ export default function ApplyPage() {
                 onChange={e => { setForm(p => ({ ...p, specialtyId: Number(e.target.value) })); setFormError('') }}
                 className="w-full px-4 py-3 text-sm bg-white border border-gray-200 rounded-xl text-gray-900 appearance-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 shadow-sm transition-all"
               >
-                <option value={0}>-- Select Specialty --</option>
+                <option value={0}>selectSpecialty</option>
                 {specialties.length > 0
                   ? specialties.map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
@@ -233,12 +235,12 @@ export default function ApplyPage() {
           </Field>
 
           {/* License Number */}
-          <Field label="License / National ID" required>
+          <Field label=t('licenseId') required>
             <InputWithIcon icon={<FileText size={15} />} type="text" required placeholder="LIC-123456789" value={form.licenseNumber} onChange={set('licenseNumber')} />
           </Field>
 
           {/* Bio */}
-          <Field label="Professional Bio" required>
+          <Field label=t('profBio') required>
             <textarea
               required
               rows={3}
@@ -250,7 +252,7 @@ export default function ApplyPage() {
           </Field>
 
           {/* Message to Admin */}
-          <Field label="Message to Admin (optional)">
+          <Field label=t('msgToAdmin')>
             <textarea
               rows={2}
               placeholder="Any additional information you'd like to share..."
@@ -261,7 +263,7 @@ export default function ApplyPage() {
           </Field>
 
           {/* Profile Photo */}
-          <Field label="Profile Photo (Professional Headshot)">
+          <Field label=t('profilePhoto')>
             <div className="flex items-center gap-4">
               <div 
                 onClick={() => document.getElementById('photo-upload')?.click()}
@@ -289,14 +291,14 @@ export default function ApplyPage() {
                 />
               </div>
               <div className="flex-1">
-                <p className="text-sm text-blue-200/80">Upload a professional photo for your profile.</p>
-                <p className="text-xs text-blue-300/40 mt-1">Recommended: Square image, max 2MB</p>
+                <p className="text-sm text-blue-200/80">{t('uploadPhotoDesc')}</p>
+                <p className="text-xs text-blue-300/40 mt-1">{t('uploadPhotoRec')}</p>
               </div>
             </div>
           </Field>
 
           {/* Document Upload */}
-          <Field label="Documents (PDF, JPG, PNG — max 5 MB)" required>
+          <Field label=t('docsLabel') required>
             <div
               onClick={() => fileRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
@@ -317,8 +319,8 @@ export default function ApplyPage() {
               ) : (
                 <>
                   <Upload size={24} className="text-blue-400/50 mx-auto mb-2" />
-                  <p className="text-sm text-blue-300/60">Click to upload or drag and drop</p>
-                  <p className="text-xs text-blue-300/40 mt-1">PDF, JPG, PNG up to 5 MB</p>
+                  <p className="text-sm text-blue-300/60">{t('uploadOrDrag')}</p>
+                  <p className="text-xs text-blue-300/40 mt-1">{t('uploadDocsRec')}</p>
                 </>
               )}
             </div>
@@ -347,9 +349,9 @@ export default function ApplyPage() {
             className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-xl text-sm shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
           >
             {isLoading ? (
-              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Submitting...</>
+              <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {t('submitting')}</>
             ) : (
-              <><Upload size={16} /> Submit Application</>
+              <><Upload size={16} /> {t('submitApp')}</>
             )}
           </motion.button>
 
@@ -358,7 +360,7 @@ export default function ApplyPage() {
             onClick={() => navigate('/login')}
             className="w-full py-2 text-blue-300/60 text-sm hover:text-blue-200 transition-colors"
           >
-            ← Back to Login
+            ← {t('backToLogin')}
           </button>
         </motion.form>
       </div>
@@ -380,10 +382,10 @@ function Field({ label, required, children }: { label: string; required?: boolea
 function InputWithIcon({ icon, ...props }: { icon: React.ReactNode } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div className="relative">
-      <span className="absolute top-1/2 -translate-y-1/2 left-3.5 text-blue-400/50">{icon}</span>
+      <span className="absolute top-1/2 -translate-y-1/2 {isRTL ? "right-3.5" : "left-3.5"} text-blue-400/50">{icon}</span>
       <input
         {...props}
-        className="w-full pl-10 pr-4 py-3 text-sm bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 shadow-sm transition-all"
+        className="w-full {isRTL ? "pr-10 pl-4" : "pl-10 pr-4"} py-3 text-sm bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 shadow-sm transition-all"
       />
     </div>
   )

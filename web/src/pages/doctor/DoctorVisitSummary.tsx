@@ -1,3 +1,4 @@
+import { useLanguage } from '@/lib/language'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
@@ -20,6 +21,7 @@ import { useVisitSummary } from '@/hooks/useVisits'
 import { Card, Button, SkeletonCard } from '@/components/ui'
 
 export default function DoctorVisitSummary() {
+  const { t, isRTL } = useLanguage()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const visitId = Number(id)
@@ -57,7 +59,7 @@ export default function DoctorVisitSummary() {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
         <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-        <p className="text-gray-500">Visit summary not found</p>
+        <p className="text-gray-500">{t('visitSummaryNotFound')}</p>
       </div>
     )
   }
@@ -72,16 +74,16 @@ export default function DoctorVisitSummary() {
       >
         <Button variant="ghost" className="hover:bg-gray-100" onClick={() => navigate('/doctor/today')}>
           <ChevronLeft className="w-4 h-4 mr-2" />
-          Back
+          {t('back')}
         </Button>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="bg-white shadow-sm border-gray-200 hover:bg-gray-50" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" />
-            Print Report
+            {t('printReport')}
           </Button>
           <Button onClick={handleDownloadPdf} className="shadow-sm">
             <Download className="w-4 h-4 mr-2" />
-            Download PDF
+            {t('downloadPdf')}
           </Button>
         </div>
       </motion.div>
@@ -103,19 +105,19 @@ export default function DoctorVisitSummary() {
                 <FileText className="w-7 h-7 text-primary-600" />
               </div>
               <div>
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight">Visit Summary</h1>
-                <p className="text-gray-500 font-medium mt-1">Final Medical Report & Prescription</p>
+                <h1 className="text-3xl font-black text-gray-900 tracking-tight">{t('visitSummary')}</h1>
+                <p className="text-gray-500 font-medium mt-1">{t('finalMedicalReport')}</p>
               </div>
             </div>
             <div className="text-left sm:text-right bg-gray-50 p-4 rounded-2xl border border-gray-100">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Visit Details</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{t('visitDetails')}</p>
               <div className="flex flex-col gap-1 text-gray-900">
                 <span className="flex items-center gap-2 font-semibold">
                   <Calendar className="w-4 h-4 text-primary-500" />
                   {summary.visitDate}
                 </span>
                 <span className="flex items-center gap-2 font-semibold">
-                  <span className="text-gray-400">ID:</span>
+                  <span className="text-gray-400">{t('idLabel')}</span>
                   #{summary.id}
                 </span>
               </div>
@@ -135,9 +137,9 @@ export default function DoctorVisitSummary() {
                 <div>
                   <h2 className="text-2xl font-black text-gray-900">{summary.patientName}</h2>
                   <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-2">
-                    <span className="text-gray-600 font-medium bg-white px-3 py-1 rounded-lg border border-gray-100 shadow-sm">{summary.patientAge} Years Old</span>
+                    <span className="text-gray-600 font-medium bg-white px-3 py-1 rounded-lg border border-gray-100 shadow-sm">{summary.patientAge} {t('yearsOld')}</span>
                     <span className="flex items-center gap-2 text-gray-600 font-medium bg-white px-3 py-1 rounded-lg border border-gray-100 shadow-sm">
-                      Blood Type: <span className="font-bold text-red-600">{summary.bloodType}</span>
+                      {t('bloodTypeLabel')} <span className="font-bold text-red-600">{summary.bloodType}</span>
                     </span>
                   </div>
                 </div>
@@ -150,7 +152,7 @@ export default function DoctorVisitSummary() {
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
                   <div>
-                    <span className="text-xs font-black text-red-500 block mb-3 uppercase tracking-widest">Known Allergies</span>
+                    <span className="text-xs font-black text-red-500 block mb-3 uppercase tracking-widest">{t('knownAllergies')}</span>
                     <div className="flex flex-wrap gap-2">
                       {summary.allergies.map((a, idx) => (
                         <span
@@ -330,9 +332,9 @@ export default function DoctorVisitSummary() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-gray-50/80 border-b-2 border-gray-100">
-                      <th className="py-5 px-6 font-black text-gray-400 text-xs uppercase tracking-widest">Medication</th>
-                      <th className="py-5 px-6 font-black text-gray-400 text-xs uppercase tracking-widest">Dosage & Freq</th>
-                      <th className="py-5 px-6 font-black text-gray-400 text-xs uppercase tracking-widest">Duration</th>
+                      <th className="py-5 px-6 font-black text-gray-400 text-xs uppercase tracking-widest">{t('medicationTh')}</th>
+                      <th className="py-5 px-6 font-black text-gray-400 text-xs uppercase tracking-widest">{t('dosageFreqTh')}</th>
+                      <th className="py-5 px-6 font-black text-gray-400 text-xs uppercase tracking-widest">{t('durationTh')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y-2 divide-gray-50">
@@ -376,8 +378,8 @@ export default function DoctorVisitSummary() {
       <div className="text-center pt-8 pb-4 print:mt-12 opacity-60 hover:opacity-100 transition-opacity">
         <div className="w-12 h-1 bg-gray-200 mx-auto rounded-full mb-6" />
         <p className="text-sm font-black text-gray-400 tracking-widest uppercase mb-2">MedBook Health Systems</p>
-        <p className="text-xs font-medium text-gray-400">Electronic Patient Management System</p>
-        <p className="text-xs font-medium text-gray-400 mt-1">This summary is auto-generated and does not substitute professional medical advice.</p>
+        <p className="text-xs font-medium text-gray-400">{t('electronicPatientMgmt')}</p>
+        <p className="text-xs font-medium text-gray-400 mt-1">{t('summaryDisclaimer')}</p>
       </div>
     </div>
   )

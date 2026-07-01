@@ -8,8 +8,10 @@ import type { AvailabilityDto, DoctorDetailDto } from '@/lib/types'
 import toast from 'react-hot-toast'
 import { Clock, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useLanguage } from '@/lib/language'
 
 export default function SecretaryDoctorSchedule() {
+  const { t, isRTL } = useLanguage()
   const navigate = useNavigate()
   const [availability, setAvailability] = useState<AvailabilityDto[]>([])
   const [myDoctor, setMyDoctor] = useState<DoctorDetailDto | null>(null)
@@ -26,7 +28,7 @@ export default function SecretaryDoctorSchedule() {
         setIsVisible(doc.isScheduleVisible ?? true)
       }),
     ])
-      .catch(() => toast.error('Failed to load doctor schedule'))
+      .catch(() => toast.error(t('errLoadSchedule')))
       .finally(() => setIsLoading(false))
   }, [])
 
@@ -34,9 +36,9 @@ export default function SecretaryDoctorSchedule() {
     try {
       setIsSaving(true)
       await secretaryApi.updateMyDoctorAvailability(data)
-      toast.success('Doctor schedule saved successfully')
+      toast.success(t('scheduleSavedSuccess'))
     } catch {
-      toast.error('Failed to save schedule')
+      toast.error(t('errSaveScheduleGeneric'))
     } finally {
       setIsSaving(false)
     }
@@ -47,38 +49,38 @@ export default function SecretaryDoctorSchedule() {
     setIsVisible(newValue)
     try {
       await secretaryApi.updateMyDoctorScheduleVisibility(newValue)
-      toast.success(newValue ? 'Schedule is now visible to patients' : 'Schedule is now hidden from patients')
+      toast.success(newValue ? t('scheduleVisibleToPatients') : t('scheduleHiddenFromPatients'))
     } catch {
-      toast.error('Failed to update visibility')
+      toast.error(t('errUpdateVisibility'))
       setIsVisible(!newValue)
     }
   }
 
   return (
-    <div className="space-y-5 p-6">
-      <div className="flex items-center gap-3">
+    <div className="space-y-5 p-6" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
         <Button variant="ghost" size="sm" icon={<ArrowLeft size={18} />} onClick={() => navigate('/secretary/dashboard')}>
-          Back
+          {t('back')}
         </Button>
         <div className="p-2 bg-primary-50 rounded-xl">
           <Clock size={20} className="text-primary-600" />
         </div>
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">Doctor Schedule</h1>
-          <p className="text-sm text-gray-500">Manage your doctor's weekly reception times</p>
+        <div className={isRTL ? 'text-right' : ''}>
+          <h1 className="text-xl font-bold text-gray-800">{t('doctorSchedule')}</h1>
+          <p className="text-sm text-gray-500">{t('manageDoctorReception')}</p>
         </div>
       </div>
 
       <Card className="mb-4">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Weekly Availability</CardTitle>
+        <CardHeader className={`flex flex-row items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <CardTitle>{t('weeklyAvailability')}</CardTitle>
           <Button
             variant={isVisible ? 'success' : 'outline'}
             size="sm"
             onClick={toggleVisibility}
             icon={isVisible ? <Eye size={16} /> : <EyeOff size={16} />}
           >
-            {isVisible ? 'Visible to Patients' : 'Hidden from Patients'}
+            {isVisible ? t('visibleToPatients') : t('hiddenFromPatients')}
           </Button>
         </CardHeader>
         {isLoading ? <PageLoader /> : (

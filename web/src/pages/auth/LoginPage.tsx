@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useNavigate } from 'react-router-dom'
 import { authApi } from '@/api/authApi'
 import toast from 'react-hot-toast'
+import { useLanguage } from '@/lib/language'
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -12,6 +13,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
+
+  const { t, isRTL } = useLanguage()
 
   const logout = useAuthStore(state => state.logout)
   const setAuth = useAuthStore(state => state.setAuth)
@@ -48,11 +51,11 @@ export default function LoginPage() {
       } else if (role === 'secretary') {
         navigate('/secretary/dashboard')
       } else {
-        setError('Access denied. Please use the mobile application.')
+        setError(t('accessDenied'))
         useAuthStore.getState().logout?.()
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Invalid email or password. Please try again.'
+      const msg = err?.response?.data?.message || t('invalidLogin')
       setError(msg)
       toast.error(msg)
     } finally {
@@ -61,7 +64,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden" dir="ltr">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4 relative overflow-hidden" dir={isRTL ? "rtl" : "ltr"}>
       {/* Animated Aesthetic Bubbles (Matching Mobile App) */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-[0]">
         <motion.div
@@ -112,20 +115,20 @@ export default function LoginPage() {
           >
             <HeartPulse size={32} className="text-white" />
           </motion.div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">MedBook Portal</h1>
-          <p className="text-blue-300/70 mt-1 text-sm">Secure staff access</p>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">{t('portalTitle')}</h1>
+          <p className="text-blue-300/70 mt-1 text-sm">{t('secureAccess')}</p>
         </div>
 
         {/* Card */}
         <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-          <h2 className="text-lg font-semibold text-white mb-6">Sign in to your account</h2>
+          <h2 className="text-lg font-semibold text-white mb-6">{t('signInTitle')}</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-blue-200 mb-1.5">Email address</label>
+              <label className="block text-sm font-medium text-blue-200 mb-1.5">{t('emailAddress')}</label>
               <div className="relative">
-                <Mail size={16} className="absolute top-1/2 -translate-y-1/2 left-3.5 text-blue-400/60" />
+                <Mail size={16} className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3.5' : 'left-3.5'} text-blue-400/60`} />
                 <input
                   id="login-email"
                   type="email"
@@ -133,17 +136,17 @@ export default function LoginPage() {
                   autoComplete="off"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError('') }}
-                  placeholder="you@example.com"
-                  className="w-full pl-10 pr-4 py-3 text-sm bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 shadow-sm transition-all"
+                  placeholder={t('emailPlaceholder')}
+                  className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-3 text-sm bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 shadow-sm transition-all`}
                 />
               </div>
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-blue-200 mb-1.5">Password</label>
+              <label className="block text-sm font-medium text-blue-200 mb-1.5">{t('passwordLabel')}</label>
               <div className="relative">
-                <Lock size={16} className="absolute top-1/2 -translate-y-1/2 left-3.5 text-blue-400/60" />
+                <Lock size={16} className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'right-3.5' : 'left-3.5'} text-blue-400/60`} />
                 <input
                   id="login-password"
                   type={showPw ? 'text' : 'password'}
@@ -152,12 +155,12 @@ export default function LoginPage() {
                   value={password}
                   onChange={e => { setPassword(e.target.value); setError('') }}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-11 py-3 text-sm bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 shadow-sm transition-all"
+                  className={`w-full ${isRTL ? 'pr-10 pl-11' : 'pl-10 pr-11'} py-3 text-sm bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 shadow-sm transition-all`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw(!showPw)}
-                  className="absolute top-1/2 -translate-y-1/2 right-3.5 text-blue-400/50 hover:text-blue-300 transition-colors"
+                  className={`absolute top-1/2 -translate-y-1/2 ${isRTL ? 'left-3.5' : 'right-3.5'} text-blue-400/50 hover:text-blue-300 transition-colors`}
                 >
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -186,21 +189,21 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Signing in...
+                  {t('signingInBtn')}
                 </>
-              ) : 'Sign In'}
+              ) : t('signInBtn')}
             </motion.button>
           </form>
         </div>
 
         {/* Apply link */}
         <p className="text-center text-sm text-blue-300/60 mt-6">
-          Are you a doctor?{' '}
+          {t('areYouDoctor')}{' '}
           <button
             onClick={() => navigate('/apply')}
             className="text-emerald-400 hover:text-emerald-300 font-semibold hover:underline transition-colors"
           >
-            Apply to join our platform
+            {t('applyToJoin')}
           </button>
         </p>
       </motion.div>

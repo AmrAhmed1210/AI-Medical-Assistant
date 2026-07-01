@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Search, User, Calendar, ChevronRight, MessageSquare, FileText, Clock } from 'lucide-react'
+import { Search, User, Calendar, ChevronRight, ChevronLeft, MessageSquare, FileText, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useLanguage } from '@/lib/language'
 import toast from 'react-hot-toast'
 import { useDoctorPatients } from '@/hooks/useDoctor'
 import { doctorApi } from '@/api/doctorApi'
@@ -14,6 +15,7 @@ import { formatDate, formatDateTime } from '@/lib/utils'
 
 export default function DoctorPatients() {
   const navigate = useNavigate()
+  const { t, isRTL } = useLanguage()
   const [search, setSearch] = useState('')
   const { patients = [], isLoading: loadingPatients } = useDoctorPatients(search)
   const [selected, setSelected] = useState<PatientSummaryDto | null>(null)
@@ -118,12 +120,12 @@ export default function DoctorPatients() {
         patientEmail: targetPatient.email,
         message: messageText.trim(),
       })
-      toast.success('Message sent')
+      toast.success(t('msgSent'))
       setMessageText('')
       setTargetPatient(null)
       navigate(`/doctor/chat?sessionId=${res.sessionId}`)
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Failed to send message')
+      toast.error(error?.response?.data?.message || t('errMsgSent'))
     } finally {
       setSendingMessage(false)
     }
@@ -154,9 +156,9 @@ export default function DoctorPatients() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-800 dark:text-white">Patients and Appointments</h1>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-white">{t('patientsAndAppts')}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
-            {patients.length} Patient{patients.length !== 1 ? 's' : ''} registered, {appointments.length} Appointment{appointments.length !== 1 ? 's' : ''}
+            {patients.length} {t('registeredPatients')}, {appointments.length} {t('registeredAppts')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -192,7 +194,7 @@ export default function DoctorPatients() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search patient name..."
+              placeholder={t("searchPatientName")}
               className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-400/30 dark:bg-slate-900 dark:border-slate-800 dark:text-white"
             />
           </div>
@@ -204,7 +206,7 @@ export default function DoctorPatients() {
             {groupedByDay.length === 0 ? (
               <div className="text-center py-16">
                 <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-gray-400 font-medium">No appointments scheduled</p>
+                <p className="text-gray-400 font-medium">{t('noApptsScheduled')}</p>
               </div>
             ) : (
               <div className="space-y-6">
@@ -281,7 +283,7 @@ export default function DoctorPatients() {
                                 }
                               }}
                               className={`p-2 rounded-xl transition ${hasAppointmentToday(appt.patientId) ? 'bg-primary-50 text-primary-600 hover:bg-primary-100 dark:bg-primary-950/30 dark:text-primary-400 dark:hover:bg-primary-900/40' : 'bg-gray-100 text-gray-400 cursor-not-allowed opacity-50'}`}
-                              title={hasAppointmentToday(appt.patientId) ? "View Records" : "Records Locked (No appointment today)"}
+                              title={hasAppointmentToday(appt.patientId) ? "View Records" : t("recordsLocked")}
                             >
                               <FileText size={16} />
                             </button>
@@ -295,11 +297,15 @@ export default function DoctorPatients() {
                                 }
                               }}
                               className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:hover:bg-blue-900/40 transition"
-                              title="Send Message"
+                              title={t('sendMessage')}
                             >
                               <MessageSquare size={16} />
                             </button>
-                            <ChevronRight size={16} className="text-gray-300 dark:text-slate-600 ml-1" />
+                                      {isRTL ? (
+            <ChevronLeft size={16} className="text-gray-300 dark:text-slate-600 ml-1" />
+          ) : (
+            <ChevronRight size={16} className="text-gray-300 dark:text-slate-600 ml-1" />
+          )}
                           </div>
                         </div>
                       ))}
@@ -312,14 +318,14 @@ export default function DoctorPatients() {
         ) : (
           /* ===== ALL PATIENTS VIEW ===== */
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left" dir="ltr">
+            <table className="w-full text-sm text-left" dir={isRTL ? "rtl" : "ltr"}>
               <thead>
                 <tr className="bg-gray-50/80 border-b border-gray-100 dark:bg-slate-800/50 dark:border-slate-700/50 backdrop-blur-md">
-                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">Patient name</th>
-                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">Gender and age</th>
-                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">Last visit</th>
-                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">Appointments</th>
-                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">Actions</th>
+                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">{t('patientName')}</th>
+                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">{t('genderAndAge')}</th>
+                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">{t('lastVisit')}</th>
+                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">{t("appointments")}</th>
+                  <th className="px-4 py-4 text-left font-semibold text-gray-600 dark:text-slate-300">{t('actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-slate-800/50">
@@ -411,7 +417,7 @@ export default function DoctorPatients() {
       <Modal
         open={!!selected}
         onClose={() => setSelected(null)}
-        title="Patient Details"
+        title={t("patientDetails")}
         size="md"
       >
         {selected && (
@@ -439,36 +445,36 @@ export default function DoctorPatients() {
 
             <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
               <div>
-                <p className="text-xs text-gray-400">Age</p>
+                <p className="text-xs text-gray-400">{t('age')}</p>
                 <p className="font-medium">
                   {selected.dateOfBirth
                     ? Math.floor(
                       (new Date().getTime() - new Date(selected.dateOfBirth).getTime()) /
                       (365.25 * 24 * 60 * 60 * 1000)
-                    ) + ' years'
+                    ) + ' ' + t('years')
                     : 'Not set'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Gender</p>
+                <p className="text-xs text-gray-400">{t('gender')}</p>
                 <p className="font-medium">{selected.gender || 'Not set'}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Total Appointments</p>
+                <p className="text-xs text-gray-400">{t('totalAppts')}</p>
                 <p className="font-medium">{selected.totalAppointments}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Last Visit</p>
+                <p className="text-xs text-gray-400">{t('lastVisit')}</p>
                 <p className="font-medium">
                   {selected.lastVisit ? formatDate(selected.lastVisit) : 'None'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Blood Type</p>
+                <p className="text-xs text-gray-400 mb-1">{t('bloodType')}</p>
                 <p className="font-medium">{selected.bloodType ?? 'Not set'}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400 mb-1">Allergies</p>
+                <p className="text-xs text-gray-400 mb-1">{t('allergies')}</p>
                 <p className="font-medium">{selected.allergies ?? 'None'}</p>
               </div>
             </div>
@@ -511,19 +517,19 @@ export default function DoctorPatients() {
         onClose={() => {
           if (!sendingMessage) setTargetPatient(null)
         }}
-        title="Send Message"
+        title={t('sendMessage')}
         size="md"
       >
         {targetPatient && (
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Send a direct message to <span className="font-semibold text-gray-800">{targetPatient.fullName}</span>
+              {t('sendDirectMsg')} <span className="font-semibold text-gray-800">{targetPatient.fullName}</span>
             </p>
             <textarea
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               rows={5}
-              placeholder="Write your message..."
+              placeholder={t("writeMsg")}
               className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/30"
             />
             <div className="flex justify-end gap-2">

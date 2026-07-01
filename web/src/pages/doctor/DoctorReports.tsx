@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Brain, AlertTriangle, FileText, Globe } from 'lucide-react'
 import { useDoctorReports } from '@/hooks/useDoctor'
+import { useLanguage } from '@/lib/language'
 import { AIReportCard } from '@/components/doctor/AIReportCard'
 import { Modal } from '@/components/ui/Modal'
 import { UrgencyBadge } from '@/components/ui/Badge'
@@ -17,6 +18,7 @@ const URGENCY_FILTERS: { label: string; value: UrgencyLevel | '' }[] = [
 ]
 
 export default function DoctorReports() {
+  const { t, isRTL } = useLanguage()
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyLevel | ''>('')
   const { reports, isLoading } = useDoctorReports({ urgency: urgencyFilter || undefined })
   const [selected, setSelected] = useState<AIReportDto | null>(null)
@@ -41,8 +43,8 @@ export default function DoctorReports() {
           </div>
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">AI Reports</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{filtered.length} report(s) found</p>
+          <h1 className="text-xl font-bold text-gray-800">{t('aiReports')}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{filtered.length} {t('reportsFound')}</p>
         </div>
       </div>
 
@@ -67,7 +69,7 @@ export default function DoctorReports() {
                   : 'bg-white border border-gray-200 dark:border-slate-800 text-gray-600 hover:border-primary-405'
                 }`}
             >
-              {f.label}
+              {t(f.label)}
             </motion.button>
           ))}
         </div>
@@ -101,8 +103,8 @@ export default function DoctorReports() {
             <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 3, repeat: Infinity }}>
               <Brain size={48} className="mx-auto mb-3 opacity-20" />
             </motion.div>
-            <p className="text-sm font-medium">No reports available</p>
-            <p className="text-xs">Try adjusting your filters</p>
+            <p className="text-sm font-medium">{t('noReportsAvailable')}</p>
+            <p className="text-xs">{t('adjustFilters')}</p>
           </motion.div>
         ) : (
           <motion.div

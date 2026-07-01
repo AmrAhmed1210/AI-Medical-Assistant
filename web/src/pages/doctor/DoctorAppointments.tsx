@@ -3,6 +3,7 @@ import { useAppointmentStore } from '@/store/appointmentStore'
 import { appointmentApi } from '@/api/appointmentApi'
 import { doctorApi } from '@/api/doctorApi'
 import { useAuthStore } from '@/store/authStore'
+import { useLanguage } from '@/lib/language'
 import { useNotificationStore } from '@/store/notificationStore'
 import { AppointmentTable } from '@/components/doctor/AppointmentTable'
 import { Card } from '@/components/ui/Card'
@@ -22,6 +23,7 @@ const STATUS_FILTERS: { label: string; value: AppointmentStatus | '' }[] = [
 export default function DoctorAppointments() {
   const { appointments, isLoading, fetchAppointments, confirm, cancel, complete, clearHistory, updateLocal } = useAppointmentStore()
   const { addNotification } = useNotificationStore()
+  const { t, isRTL } = useLanguage()
   const { token } = useAuthStore()
   
   const [activeTab, setActiveTab] = useState<'active' | 'history'>('active')
@@ -37,48 +39,48 @@ export default function DoctorAppointments() {
   const handleConfirm = async (id: string) => {
     try {
       await confirm(id)
-      toast.success('Appointment confirmed')
-    } catch { toast.error('Failed to confirm appointment') }
+      toast.success(t('apptConfirmed'))
+    } catch { toast.error(t('errConfirmAppt')) }
   }
 
   const handleUnconfirm = async (id: string) => {
     try {
       await appointmentApi.setPending(id)
       updateLocal(id, { status: 'Pending' })
-      toast.success('Appointment moved to pending')
-    } catch { toast.error('Failed to unconfirm appointment') }
+      toast.success(t('apptPending'))
+    } catch { toast.error(t('errUnconfirmAppt')) }
   }
 
   const handleCancel = async (id: string) => {
     try {
       await cancel(id)
-      toast.success('Appointment cancelled')
-    } catch { toast.error('Failed to cancel appointment') }
+      toast.success(t('apptCancelled'))
+    } catch { toast.error(t('errCancelAppt')) }
   }
 
   const handleComplete = async (id: string) => {
     try {
       await complete(id)
-      toast.success('Appointment marked as completed')
-    } catch { toast.error('Failed to complete operation') }
+      toast.success(t('apptCompleted'))
+    } catch { toast.error(t('errCompleteOp')) }
   }
 
   const handleDelete = async (id: string) => {
     try {
       await appointmentApi.delete(id)
       updateLocal(id, { status: 'Cancelled' })
-      toast.success('Appointment deleted')
+      toast.success(t('apptDeleted'))
     } catch {
-      toast.error('Failed to delete appointment')
+      toast.error(t('errDeleteAppt'))
     }
   }
 
   const confirmClearHistory = async () => {
     try {
       await clearHistory()
-      toast.success('History cleared successfully')
+      toast.success(t('historyCleared'))
     } catch {
-      toast.error('Failed to clear history')
+      toast.error(t('errClearHistory'))
     } finally {
       setShowClearHistoryModal(false)
     }
@@ -135,7 +137,7 @@ export default function DoctorAppointments() {
       .map(([key, dayAppointments]) => ({
         key,
         label: key === 'unknown'
-          ? 'No Date'
+          ? t('noDate')
           : new Date(`${key}T00:00:00`).toLocaleDateString(undefined, {
             weekday: 'short',
             day: '2-digit',
@@ -172,8 +174,8 @@ export default function DoctorAppointments() {
             </div>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-800">Appointments</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Manage patient appointments</p>
+            <h1 className="text-xl font-bold text-gray-800">{t('appointments')}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{t('manageAppts')}</p>
           </div>
         </div>
         <Button variant="outline" icon={<RefreshCw size={14} />} onClick={fetchAppointments} size="sm">
@@ -212,7 +214,7 @@ export default function DoctorAppointments() {
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input 
                   type="text" 
-                  placeholder="Search patient, date, status..." 
+                  placeholder={t("searchApptQuery")} 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 pr-4 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none w-64 bg-white"
@@ -238,7 +240,7 @@ export default function DoctorAppointments() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
             >
-              {f.label}
+              {t(f.label)}
             </button>
           ))}
         </div>
@@ -287,7 +289,7 @@ export default function DoctorAppointments() {
             <div className="rounded-2xl border border-gray-100 overflow-hidden bg-white">
               <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
                 <h3 className="text-sm font-semibold text-gray-700">
-                  {daySections.find((section) => section.key === selectedDayKey)?.label ?? 'Appointments'}
+                  {daySections.find((section) => section.key === selectedDayKey)?.label ?? t('appointments')}
                 </h3>
               </div>
               <AppointmentTable
@@ -306,11 +308,11 @@ export default function DoctorAppointments() {
       {showClearHistoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Clear History</h3>
-            <p className="text-sm text-gray-600 mb-6">Are you sure? This will permanently remove all past appointments from your records. This action cannot be undone.</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">{t('clearHistoryBtn')}</h3>
+            <p className="text-sm text-gray-600 mb-6">{t('clearHistoryDesc')}</p>
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowClearHistoryModal(false)}>Cancel</Button>
-              <Button variant="destructive" onClick={confirmClearHistory}>Yes, clear history</Button>
+              <Button variant="outline" onClick={() => setShowClearHistoryModal(false)}>{t('cancel')}</Button>
+              <Button variant="destructive" onClick={confirmClearHistory}>{t('yesClearHistory')}</Button>
             </div>
           </div>
         </div>

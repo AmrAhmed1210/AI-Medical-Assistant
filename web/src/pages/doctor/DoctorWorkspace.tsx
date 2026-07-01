@@ -1,3 +1,4 @@
+import { useLanguage } from '@/lib/language'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -62,6 +63,7 @@ interface WorkspaceFormData {
 }
 
 export default function DoctorWorkspace() {
+  const { t, isRTL } = useLanguage()
   const { visitId } = useParams<{ visitId: string }>()
   const navigate = useNavigate()
   const id = Number(visitId)
@@ -102,7 +104,7 @@ export default function DoctorWorkspace() {
 
   const handleAiAssist = async () => {
     if (!form.chiefComplaint) {
-      toast.error('Please enter the chief complaint first')
+      toast.error(t('errEnterComplaint'))
       return
     }
 
@@ -140,10 +142,10 @@ export default function DoctorWorkspace() {
         assessment: f.assessment ? f.assessment + '\n' + data.assessment_ar : data.assessment_ar,
         plan: f.plan ? f.plan + '\n' + data.plan_ar : data.plan_ar
       }))
-      toast.success('AI suggestions generated successfully')
+      toast.success(t('aiSuggestionsGenerated'))
     } catch (err) {
       console.error(err)
-      toast.error('Failed to get AI assistance')
+      toast.error(t('errAiAssist'))
     } finally {
       setIsAssisting(false)
     }
@@ -165,9 +167,9 @@ export default function DoctorWorkspace() {
         followUpTime: form.followUpTime,
         followUpNotes: form.followUpNotes,
       })
-      toast.success('Draft saved successfully')
+      toast.success(t('draftSaved'))
     } catch {
-      toast.error('Failed to save draft')
+      toast.error(t('errSaveDraft'))
     } finally {
       setIsSaving(false)
     }
@@ -177,10 +179,10 @@ export default function DoctorWorkspace() {
     setIsClosing(true)
     try {
       await visitApi.closeVisit(id)
-      toast.success('Visit closed successfully')
+      toast.success(t('visitClosed'))
       navigate(`/doctor/visits/${id}/summary`)
     } catch {
-      toast.error('Failed to close visit')
+      toast.error(t('errCloseVisit'))
       setIsClosing(false)
     }
   }
@@ -268,12 +270,12 @@ export default function DoctorWorkspace() {
                   ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' 
                   : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
               }`}>
-                {visit?.status === 'open' ? 'In Progress' : 'Closed'}
+                {visit?.status === 'open' ? t('inProgress') : t('closed')}
               </span>
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2 mt-0.5">
               <Stethoscope className="w-3.5 h-3.5" />
-              Visit Workspace
+              {t('visitWorkspace')}
             </p>
           </div>
         </div>
@@ -284,7 +286,7 @@ export default function DoctorWorkspace() {
             className="flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-slate-700 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
           >
             <Save className="w-4 h-4 text-slate-400" />
-            {isSaving ? 'Saving...' : 'Save Draft'}
+            {isSaving ? t('saving') : t('saveDraft')}
           </button>
           <button
             onClick={() => setShowConfirmClose(true)}
@@ -292,7 +294,7 @@ export default function DoctorWorkspace() {
             className="flex items-center gap-2 px-6 py-2.5 rounded-2xl font-bold text-white bg-gradient-primary shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0"
           >
             <Lock className="w-4 h-4" />
-            Finish & Close
+            {t('finishAndClose')}
           </button>
         </div>
       </div>
@@ -310,7 +312,7 @@ export default function DoctorWorkspace() {
               <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
             </div>
             <div>
-              <h4 className="text-red-800 dark:text-red-400 font-bold text-sm">CRITICAL ALERT</h4>
+              <h4 className="text-red-800 dark:text-red-400 font-bold text-sm">{t('criticalAlertHeader')}</h4>
               <p className="text-red-600 dark:text-red-300 text-sm font-medium">{criticalAlert}</p>
             </div>
           </motion.div>
@@ -325,7 +327,7 @@ export default function DoctorWorkspace() {
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800/60 bg-white/50 dark:bg-slate-900/50 shrink-0">
             <h2 className="font-extrabold text-lg text-slate-800 dark:text-slate-200 flex items-center gap-2">
               <User className="w-5 h-5 text-slate-400" />
-              Patient Profile
+              {t('patientProfile')}
             </h2>
           </div>
           
@@ -340,7 +342,7 @@ export default function DoctorWorkspace() {
                 <div className="flex items-center justify-between mb-3 relative z-10">
                   <h3 className="font-bold text-purple-900 dark:text-purple-300 flex items-center gap-2 text-sm uppercase tracking-wider">
                     <Wand2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                    AI Health Report
+                    {t('aiHealthReport')}
                   </h3>
                   <div className="flex bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg p-1 shadow-sm">
                     <button
@@ -367,17 +369,17 @@ export default function DoctorWorkspace() {
             <div className="space-y-4">
               <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
                 <Heart className="w-3.5 h-3.5 text-red-400" />
-                Vital Details
+                {t('vitalDetails')}
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700/50">
-                  <p className="text-xs text-slate-500 font-medium mb-1">Blood Type</p>
-                  <p className="font-extrabold text-red-600 dark:text-red-400 text-lg">{patientHistory?.bloodType || 'Unknown'}</p>
+                  <p className="text-xs text-slate-500 font-medium mb-1">{t('bloodType')}</p>
+                  <p className="font-extrabold text-red-600 dark:text-red-400 text-lg">{patientHistory?.bloodType || t('unknown')}</p>
                 </div>
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-700/50">
-                  <p className="text-xs text-slate-500 font-medium mb-1">Allergies</p>
+                  <p className="text-xs text-slate-500 font-medium mb-1">{t('allergies')}</p>
                   <p className="font-bold text-slate-800 dark:text-slate-200">
-                    {patientHistory?.allergies?.length ? `${patientHistory.allergies.length} Recorded` : 'None'}
+                    {patientHistory?.allergies?.length ? `${patientHistory.allergies.length} Recorded` : t('none')}
                   </p>
                 </div>
               </div>
@@ -385,7 +387,7 @@ export default function DoctorWorkspace() {
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 rounded-xl p-3 flex gap-2">
                   <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-red-700 dark:text-red-300 font-medium">
-                    Life-threatening: {patientHistory?.allergies
+                    {t('lifeThreatening')} {patientHistory?.allergies
                       ?.filter((a: Record<string, string>) => a.severity === 'life_threatening')
                       .map((a: Record<string, string>) => a.allergenName)
                       .join(', ')}
@@ -401,7 +403,7 @@ export default function DoctorWorkspace() {
                 <div>
                   <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-3">
                     <Activity className="w-3.5 h-3.5" />
-                    Chronic Conditions
+                    {t('chronicConditions')}
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {patientHistory?.chronicDiseases?.map((d: Record<string, string>) => (
@@ -418,7 +420,7 @@ export default function DoctorWorkspace() {
                 <div>
                   <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-3">
                     <Pill className="w-3.5 h-3.5" />
-                    Active Medications
+                    {t('activeMedications')}
                   </h3>
                   <div className="space-y-2">
                     {patientHistory?.medications?.map((m: Record<string, string>) => (
@@ -463,7 +465,7 @@ export default function DoctorWorkspace() {
                         onClick={() => window.open(`/doctor/visits/${v.id}/summary`, '_blank')}
                       >
                         <div className="absolute left-[-1px] top-3 w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 ring-4 ring-white dark:ring-slate-900" />
-                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-0.5 hover:underline">{v.visitDate} <span className="text-[10px] text-slate-400 font-normal ml-1">(Click for summary)</span></p>
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mb-0.5 hover:underline">{v.visitDate} <span className="text-[10px] text-slate-400 font-normal ml-1">{t('clickForSummary')}</span></p>
                         {v.doctorName && (
                           <p className="text-[11px] font-semibold text-primary-600 dark:text-primary-400">
                             Dr. {v.doctorName}
@@ -495,7 +497,7 @@ export default function DoctorWorkspace() {
             <section className="space-y-6">
               <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/60 pb-2">
                 <div className="w-8 h-8 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 font-black text-sm">S</div>
-                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">Subjective</h2>
+                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">{t('subjective')}</h2>
               </div>
               
               <div className="space-y-5">
@@ -510,7 +512,7 @@ export default function DoctorWorkspace() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">History of Present Illness</label>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t('hpi')}</label>
                   <textarea
                     className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl p-4 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all placeholder:text-slate-400 resize-none shadow-inner"
                     rows={3}
@@ -526,19 +528,19 @@ export default function DoctorWorkspace() {
             <section className="space-y-6">
               <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/60 pb-2">
                 <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-black text-sm">O</div>
-                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">Objective & Vitals</h2>
+                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">{t('objectiveVitals')}</h2>
               </div>
 
               <div className="bg-slate-50/50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/50 rounded-3xl p-5">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
-                    { key: 'bpSystolic' as const, label: 'Sys BP', icon: Gauge, type: 'bp_systolic', placeholder: '120' },
-                    { key: 'bpDiastolic' as const, label: 'Dia BP', icon: Gauge, type: 'bp_diastolic', placeholder: '80' },
-                    { key: 'heartRate' as const, label: 'Heart Rate', icon: Heart, type: 'heart_rate', placeholder: '72' },
-                    { key: 'temperature' as const, label: 'Temp', icon: Thermometer, type: 'temperature', placeholder: '37.0' },
-                    { key: 'bloodSugar' as const, label: 'Sugar', icon: Droplets, type: 'blood_sugar', placeholder: '90' },
-                    { key: 'weight' as const, label: 'Weight', icon: Weight, type: '', placeholder: '70' },
-                    { key: 'spo2' as const, label: 'SpO2', icon: Wind, type: 'spo2', placeholder: '98' },
+                    { key: 'bpSystolic' as const, label: t('sysBp'), icon: Gauge, type: 'bp_systolic', placeholder: '120' },
+                    { key: 'bpDiastolic' as const, label: t('diaBp'), icon: Gauge, type: 'bp_diastolic', placeholder: '80' },
+                    { key: 'heartRate' as const, label: t('heartRate'), icon: Heart, type: 'heart_rate', placeholder: '72' },
+                    { key: 'temperature' as const, label: t('temp'), icon: Thermometer, type: 'temperature', placeholder: '37.0' },
+                    { key: 'bloodSugar' as const, label: t('sugar'), icon: Droplets, type: 'blood_sugar', placeholder: '90' },
+                    { key: 'weight' as const, label: t('weightL'), icon: Weight, type: '', placeholder: '70' },
+                    { key: 'spo2' as const, label: t('spo2'), icon: Wind, type: 'spo2', placeholder: '98' },
                   ].map((field) => {
                     const status = field.type ? getVitalStatus(field.type, form[field.key]) : 'neutral'
                     const Icon = field.icon
@@ -573,7 +575,7 @@ export default function DoctorWorkspace() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Examination Findings</label>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t('examinationFindings')}</label>
                 <textarea
                   className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl p-4 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all placeholder:text-slate-400 resize-none shadow-inner"
                   rows={3}
@@ -589,7 +591,7 @@ export default function DoctorWorkspace() {
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-2">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-black text-sm">A</div>
-                  <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">Assessment</h2>
+                  <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">{t('assessment')}</h2>
                 </div>
                 <button
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-purple-600 bg-purple-50 hover:bg-purple-100 dark:text-purple-400 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 transition-colors disabled:opacity-50"
@@ -597,7 +599,7 @@ export default function DoctorWorkspace() {
                   disabled={isAssisting}
                 >
                   {isAssisting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
-                  AI Analyze
+                  {t('aiAnalyze')}
                 </button>
               </div>
 
@@ -616,11 +618,11 @@ export default function DoctorWorkspace() {
             <section className="space-y-6">
               <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/60 pb-2">
                 <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-sm">P</div>
-                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">Plan & Prescriptions</h2>
+                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-200">{t('planPrescriptions')}</h2>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Treatment Plan</label>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">{t('treatmentPlan')}</label>
                 <textarea
                   className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50 rounded-2xl p-4 text-sm text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all placeholder:text-slate-400 resize-none shadow-inner"
                   rows={3}
@@ -634,10 +636,10 @@ export default function DoctorWorkspace() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-bold text-slate-700 dark:text-slate-300 text-sm flex items-center gap-2">
                     <Pill className="w-4 h-4 text-blue-500" />
-                    Medications Rx
+                    {t('medicationsRx')}
                   </h3>
                   <button onClick={handleAddPrescription} className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1">
-                    <Plus className="w-3.5 h-3.5" /> Add Drug
+                    <Plus className="w-3.5 h-3.5" /> {t('addDrug')}
                   </button>
                 </div>
                 
@@ -724,7 +726,7 @@ export default function DoctorWorkspace() {
                       checked={form.followUpRequired}
                       onChange={(e) => setForm((f) => ({ ...f, followUpRequired: e.target.checked }))}
                     />
-                    <span className="font-bold text-slate-800 dark:text-slate-200">Schedule Follow-up</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{t('scheduleFollowUp')}</span>
                   </label>
                   
                   <AnimatePresence>
@@ -732,7 +734,7 @@ export default function DoctorWorkspace() {
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-3 overflow-hidden">
                         <div className="flex flex-wrap items-center gap-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Date</span>
+                            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('date')}</span>
                             <input
                               type="date"
                               min={new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0]}
@@ -742,7 +744,7 @@ export default function DoctorWorkspace() {
                             />
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">Time</span>
+                            <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('time')}</span>
                             <input
                               type="time"
                               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2 text-sm font-bold text-slate-800 dark:text-slate-200 outline-none"
@@ -787,7 +789,7 @@ export default function DoctorWorkspace() {
               <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-5">
                 <Lock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="font-extrabold text-xl text-slate-900 dark:text-white mb-2">Lock & Close Visit</h3>
+              <h3 className="font-extrabold text-xl text-slate-900 dark:text-white mb-2">{t('lockAndCloseVisit')}</h3>
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 leading-relaxed">
                 This will finalize the medical record. You won't be able to edit these notes afterwards.
               </p>
@@ -796,7 +798,7 @@ export default function DoctorWorkspace() {
                   className="flex-1 px-4 py-3 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors"
                   onClick={() => setShowConfirmClose(false)}
                 >
-                  Go Back
+                  {t('goBack')}
                 </button>
                 <button
                   className="flex-1 px-4 py-3 rounded-2xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:opacity-50"

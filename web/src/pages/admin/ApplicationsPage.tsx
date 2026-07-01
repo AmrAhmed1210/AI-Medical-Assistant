@@ -1,3 +1,4 @@
+import { useLanguage } from '@/lib/language'
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { adminApi } from '@/api/adminApi'
@@ -28,6 +29,7 @@ interface DoctorApplication {
 type TabStatus = 'Pending' | 'Approved' | 'Rejected'
 
 export default function ApplicationsPage() {
+  const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState<TabStatus>('Pending')
   const [applications, setApplications] = useState<DoctorApplication[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -100,8 +102,8 @@ export default function ApplicationsPage() {
           </div>
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-800 dark:text-white">Doctor Applications</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Review and manage applicants</p>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-white">{t('doctorApplications')}</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">{t('reviewManageApplicants')}</p>
         </div>
       </div>
 
@@ -127,7 +129,7 @@ export default function ApplicationsPage() {
         {/* List */}
         <div className="divide-y divide-gray-50 dark:divide-slate-800/60">
           {isLoading ? (
-            <div className="py-16 text-center text-gray-400 dark:text-slate-500 text-sm">Loading applications...</div>
+            <div className="py-16 text-center text-gray-400 dark:text-slate-500 text-sm">{t('loadingApplications')}</div>
           ) : applications.length === 0 ? (
             <div className="py-16 text-center">
               <Users size={40} className="mx-auto text-gray-200 dark:text-slate-800 mb-3" />
@@ -163,9 +165,8 @@ export default function ApplicationsPage() {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-2xl w-full max-w-md p-6"
             >
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Reject Application</h3>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
-                You are about to reject <span className="font-semibold text-gray-700 dark:text-slate-350">{rejectModal.name}'s</span> application.
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{t('rejectApplication')}</h3>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">{t('youAreAboutToReject')}<span className="font-semibold text-gray-700 dark:text-slate-350">{rejectModal.name}'s</span> application.
               </p>
               <textarea
                 rows={3}
@@ -178,9 +179,7 @@ export default function ApplicationsPage() {
                 <button
                   onClick={() => setRejectModal(null)}
                   className="flex-1 py-2.5 border border-gray-200 dark:border-slate-800 rounded-xl text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition"
-                >
-                  Cancel
-                </button>
+                >{t('cancel')}</button>
                 <button
                   onClick={handleRejectConfirm}
                   disabled={actionLoading !== null}
@@ -256,34 +255,31 @@ function ApplicationRow({
               </div>
 
               <div>
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1">Bio</p>
+                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1">{t('bio')}</p>
                 <p className="text-sm text-gray-600 dark:text-slate-350 leading-relaxed">{app.bio || '—'}</p>
               </div>
 
               {app.message && (
                 <div>
                   <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1 flex items-center gap-1">
-                    <MessageSquare size={12} /> Message to Admin
-                  </p>
+                    <MessageSquare size={12} />{t('messageToAdmin')}</p>
                   <p className="text-sm text-gray-600 dark:text-slate-300 italic bg-gray-50 dark:bg-slate-950/60 rounded-xl px-3 py-2">{app.message}</p>
                 </div>
               )}
 
               {app.documentUrl && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Document</p>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{t('document')}</p>
                   {app.documentUrl.startsWith('data:') ? (
                     <a
                       href={app.documentUrl}
                       download={`application-${app.id}-doc`}
                       className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
                     >
-                      <FileText size={14} /> Download Document
-                    </a>
+                      <FileText size={14} />{t('downloadDocument')}</a>
                   ) : (
                     <a href={app.documentUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium">
-                      <Eye size={14} /> View Document
-                    </a>
+                      <Eye size={14} />{t('viewDocument')}</a>
                   )}
                 </div>
               )}
@@ -307,9 +303,7 @@ function ApplicationRow({
                     disabled={actionLoading}
                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 border border-red-200 dark:border-red-900/40 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-50 transition-all"
                   >
-                    <XCircle size={15} />
-                    Reject
-                  </button>
+                    <XCircle size={15} />{t('reject')}</button>
                 </div>
               )}
             </div>

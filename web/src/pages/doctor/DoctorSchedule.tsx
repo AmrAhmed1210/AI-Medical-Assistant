@@ -1,4 +1,5 @@
 import { useDoctorStore } from '@/store/doctorStore'
+import { useLanguage } from '@/lib/language'
 import { useEffect, useState } from 'react'
 import { AvailabilityEditor } from '@/components/doctor/AvailabilityEditor'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -8,6 +9,7 @@ import toast from 'react-hot-toast'
 import { Clock, Eye, EyeOff } from 'lucide-react'
 
 export default function DoctorSchedule() {
+  const { t, isRTL } = useLanguage()
   const { availability, profile, fetchAvailability, updateAvailability, updateScheduleVisibility, fetchProfile, isLoadingProfile } = useDoctorStore()
   const [isVisible, setIsVisible] = useState(profile?.isScheduleVisible ?? true)
 
@@ -23,9 +25,9 @@ export default function DoctorSchedule() {
   const handleSave = async (data: typeof availability) => {
     try {
       await updateAvailability(data)
-      toast.success('Schedule saved successfully')
+      toast.success(t('scheduleSaved'))
     } catch {
-      toast.error('Failed to save schedule')
+      toast.error(t('errSaveSchedule'))
     }
   }
 
@@ -36,14 +38,14 @@ export default function DoctorSchedule() {
           <Clock size={20} className="text-primary-600" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Schedule</h1>
-          <p className="text-sm text-gray-500">Manage your weekly reception times</p>
+          <h1 className="text-xl font-bold text-gray-800">{t('schedule')}</h1>
+          <p className="text-sm text-gray-500">{t('manageWeeklyTimes')}</p>
         </div>
       </div>
 
       <Card className="mb-4">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Weekly Availability</CardTitle>
+          <CardTitle>{t('weeklyAvailability')}</CardTitle>
           <Button
             variant={isVisible ? 'success' : 'outline'}
             size="sm"
@@ -51,11 +53,11 @@ export default function DoctorSchedule() {
               const newValue = !isVisible
               setIsVisible(newValue)
               await updateScheduleVisibility(newValue)
-              toast.success(newValue ? 'Schedule is now visible to patients' : 'Schedule is now hidden from patients')
+              toast.success(newValue ? t('scheduleVisible') : t('scheduleHidden'))
             }}
             icon={isVisible ? <Eye size={16} /> : <EyeOff size={16} />}
           >
-            {isVisible ? 'Visible to Patients' : 'Hidden from Patients'}
+            {isVisible ? t('visibleToPatients') : t('hiddenFromPatients')}
           </Button>
         </CardHeader>
         {isLoadingProfile ? <PageLoader /> : (

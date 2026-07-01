@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { visitApi } from '@/api/visitApi'
+import { useLanguage } from '@/lib/language'
 import { doctorApi } from '@/api/doctorApi'
 import { Card, Button, SkeletonCard } from '@/components/ui'
 import type { AppointmentDto } from '@/lib/types'
@@ -32,6 +33,7 @@ const item = {
 
 export default function DoctorToday() {
   const navigate = useNavigate()
+  const { t, isRTL } = useLanguage()
   const [startingVisitId, setStartingVisitId] = useState<string | null>(null)
   const [appointments, setAppointments] = useState<AppointmentDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -44,7 +46,7 @@ export default function DoctorToday() {
       const data = await doctorApi.getAppointments()
       setAppointments(data)
     } catch {
-      toast.error('Failed to load appointments')
+      toast.error(t('errLoadAppts'))
     } finally {
       setIsLoading(false)
     }
@@ -64,10 +66,10 @@ export default function DoctorToday() {
         appointmentId: Number(appt.id),
         chiefComplaint: '',
       })
-      toast.success('Visit started successfully')
+      toast.success(t('visitStarted'))
       navigate(`/doctor/workspace/${visit.id}`)
     } catch {
-      toast.error('Failed to start visit')
+      toast.error(t('errStartVisit'))
       setStartingVisitId(null)
     } finally {
       setIsCreating(false)
@@ -117,7 +119,7 @@ export default function DoctorToday() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10">
           <motion.div variants={item} className="space-y-2">
             <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Today's <span className="text-primary-600 dark:text-primary-400">Visits</span>
+              {t('todays')} <span className="text-primary-600 dark:text-primary-400">{t('visits')}</span>
             </h1>
             <p className="text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2">
               <Calendar className="w-4 h-4" />
@@ -130,7 +132,7 @@ export default function DoctorToday() {
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-primary-500 transition-colors" />
               <input 
                 type="text"
-                placeholder="Search patient..."
+                placeholder={t("searchPatient")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pr-12 pl-5 py-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/60 rounded-2xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all placeholder:text-slate-400 dark:text-white"
@@ -138,7 +140,7 @@ export default function DoctorToday() {
             </div>
             <div className="bg-primary-50 text-primary-700 px-5 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 whitespace-nowrap">
               <Activity className="w-4 h-4" />
-              {todayAppointments.length} Today
+              {todayAppointments.length} {t('todayWord')}
             </div>
           </motion.div>
         </div>
@@ -156,7 +158,7 @@ export default function DoctorToday() {
               <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-slate-100 dark:border-slate-700">
                 <CheckCircle2 className="w-10 h-10 text-emerald-400 dark:text-emerald-500" />
               </div>
-              <h3 className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">No Appointments Today</h3>
+              <h3 className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">No Appointments {t('todayWord')}</h3>
               <p className="text-slate-500 dark:text-slate-500 max-w-sm">
                 You have a clear schedule for today.
               </p>
@@ -220,7 +222,7 @@ export default function DoctorToday() {
                               className="w-full lg:w-auto flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white font-bold py-3 px-8 rounded-2xl shadow-sm transition-all disabled:opacity-70"
                             >
                               <Stethoscope className="w-5 h-5" />
-                              {startingVisitId === appt.id ? 'Starting...' : 'Start Visit'}
+                              {startingVisitId === appt.id ? t('starting') : t('startVisit')}
                             </button>
                           ) : isCompleted ? (
                             <button
@@ -232,7 +234,7 @@ export default function DoctorToday() {
                             </button>
                           ) : (
                             <div className="w-full lg:w-auto text-center text-sm text-slate-500 font-medium px-6 py-3 bg-slate-50 dark:bg-slate-800 rounded-2xl">
-                              {isCancelled ? 'Cancelled' : 'Awaiting confirmation'}
+                              {isCancelled ? t('cancelled') : t('awaitingConfirm')}
                             </div>
                           )}
                         </div>

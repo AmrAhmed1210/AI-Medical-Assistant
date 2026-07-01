@@ -1,3 +1,4 @@
+import { useLanguage } from '@/lib/language'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -116,7 +117,7 @@ export default function DoctorDetails() {
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
           <HeartPulse className="mx-auto text-slate-300 dark:text-slate-700 mb-4" size={48} />
-          <h3 className="text-xl font-semibold text-slate-600 dark:text-slate-400 mb-2">Doctor not found</h3>
+          <h3 className="text-xl font-semibold text-slate-600 dark:text-slate-400 mb-2">{t('doctorNotFound')}</h3>
           <button 
             onClick={() => navigate('/doctors')}
             className="text-emerald-600 hover:text-emerald-700 font-medium"
@@ -183,7 +184,7 @@ export default function DoctorDetails() {
                 )}
                 <div className="flex items-center gap-1">
                   <CheckCircle size={16} />
-                  <span>Licensed & Certified</span>
+                  <span>{t('licensedCertified')}</span>
                 </div>
               </div>
             </motion.div>
@@ -197,7 +198,7 @@ export default function DoctorDetails() {
             >
               {doctor.consultFee && (
                 <div className="bg-white/20 backdrop-blur-sm rounded-xl px-6 py-3 text-center">
-                  <p className="text-sm text-white/70">Consultation Fee</p>
+                  <p className="text-sm text-white/70">{t('consultationFee')}</p>
                   <p className="text-xl font-bold">${doctor.consultFee}</p>
                 </div>
               )}
@@ -227,7 +228,7 @@ export default function DoctorDetails() {
               {doctor.bio ? (
                 <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{doctor.bio}</p>
               ) : (
-                <p className="text-slate-500 dark:text-slate-400">Biography not available at this moment</p>
+                <p className="text-slate-500 dark:text-slate-400">{t('bioNotAvailable')}</p>
               )}
             </motion.div>
 
@@ -295,7 +296,7 @@ export default function DoctorDetails() {
               transition={{ delay: 0.5 }}
               className="bg-white dark:bg-slate-900/60 dark:border dark:border-slate-800/80 rounded-2xl shadow-sm p-6"
             >
-              <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-3 text-sm">Contact Information</h3>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-3 text-sm">{t('contactInfo')}</h3>
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
                   <Mail size={18} className="text-slate-400 dark:text-slate-500" />
@@ -307,7 +308,7 @@ export default function DoctorDetails() {
                 </div>
                 <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
                   <MapPin size={18} className="text-slate-400 dark:text-slate-500" />
-                  <span className="text-sm">Riyadh, Saudi Arabia</span>
+                  <span className="text-sm">{t('location') || 'Riyadh, Saudi Arabia'}</span>
                 </div>
               </div>
             </motion.div>
@@ -320,7 +321,7 @@ export default function DoctorDetails() {
                 transition={{ delay: 0.6 }}
                 className="bg-white dark:bg-slate-900/60 dark:border dark:border-slate-800/80 rounded-2xl shadow-sm p-6"
               >
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-3 text-sm">Experience</h3>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-3 text-sm">{t('experience')}</h3>
                 <div className="flex items-center gap-3">
                   <Award size={18} className="text-emerald-600 dark:text-emerald-400" />
                   <span className="text-slate-600 dark:text-slate-300">{doctor.yearsExperience} yrs experience</span>
@@ -342,11 +343,11 @@ export default function DoctorDetails() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle size={16} className="text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-slate-600 dark:text-slate-300">Arabic</span>
+                  <span className="text-slate-600 dark:text-slate-300">{t('arabic')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle size={16} className="text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-slate-600 dark:text-slate-300">English</span>
+                  <span className="text-slate-600 dark:text-slate-300">{t('english')}</span>
                 </div>
               </div>
             </motion.div>
