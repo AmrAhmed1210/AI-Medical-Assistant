@@ -294,9 +294,13 @@ public sealed class ChatController : ControllerBase
                                         diagnosedDate = parsed;
                                 }
 
+                                var nameEn = d.TryGetProperty("diseaseName", out var dn) ? dn.GetString() ?? "" : "";
+                                var nameAr = d.TryGetProperty("diseaseNameAr", out var dnar) ? dnar.GetString() ?? "" : "";
+                                var finalName = string.IsNullOrWhiteSpace(nameAr) ? nameEn : (string.IsNullOrWhiteSpace(nameEn) ? nameAr : $"{nameAr} ({nameEn})");
+
                                 var entity = new MedicalAssistant.Domain.Entities.PatientModule.ChronicDiseaseMonitor
                                 {
-                                    DiseaseName = d.TryGetProperty("diseaseName", out var dn) ? dn.GetString() ?? "" : "",
+                                    DiseaseName = finalName,
                                     DiseaseType = d.TryGetProperty("diseaseType", out var dt) ? dt.GetString() ?? "" : "",
                                     Severity = d.TryGetProperty("severity", out var sv) ? sv.GetString() ?? "Moderate" : "Moderate",
                                     DiagnosedDate = diagnosedDate,
@@ -318,9 +322,13 @@ public sealed class ChatController : ControllerBase
                         {
                             try
                             {
+                                var nameEn = m.TryGetProperty("medicationName", out var mn) ? mn.GetString() ?? "" : "";
+                                var nameAr = m.TryGetProperty("medicationNameAr", out var mnar) ? mnar.GetString() ?? "" : "";
+                                var finalName = string.IsNullOrWhiteSpace(nameAr) ? nameEn : (string.IsNullOrWhiteSpace(nameEn) ? nameAr : $"{nameAr} ({nameEn})");
+
                                 var entity = new MedicalAssistant.Domain.Entities.PatientModule.MedicationTracker
                                 {
-                                    MedicationName = m.TryGetProperty("medicationName", out var mn) ? mn.GetString() ?? "" : "",
+                                    MedicationName = finalName,
                                     GenericName = m.TryGetProperty("genericName", out var gn) ? gn.GetString() : null,
                                     Dosage = m.TryGetProperty("dosage", out var ds) ? ds.GetString() ?? "" : "",
                                     Form = m.TryGetProperty("form", out var fm) ? fm.GetString() ?? "Tablet" : "Tablet",
@@ -346,9 +354,13 @@ public sealed class ChatController : ControllerBase
                         {
                             try
                             {
+                                var nameEn = a.TryGetProperty("allergenName", out var an) ? an.GetString() ?? "" : "";
+                                var nameAr = a.TryGetProperty("allergenNameAr", out var anar) ? anar.GetString() ?? "" : "";
+                                var finalName = string.IsNullOrWhiteSpace(nameAr) ? nameEn : (string.IsNullOrWhiteSpace(nameEn) ? nameAr : $"{nameAr} ({nameEn})");
+
                                 var entity = new MedicalAssistant.Domain.Entities.PatientModule.AllergyRecord
                                 {
-                                    AllergenName = a.TryGetProperty("allergenName", out var an) ? an.GetString() ?? "" : "",
+                                    AllergenName = finalName,
                                     AllergyType = a.TryGetProperty("allergyType", out var at) ? at.GetString() ?? "Other" : "Other",
                                     Severity = a.TryGetProperty("severity", out var sv) ? sv.GetString() ?? "Moderate" : "Moderate",
                                     ReactionDescription = a.TryGetProperty("reactionDescription", out var rd) ? rd.GetString() : null,

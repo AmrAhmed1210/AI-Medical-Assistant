@@ -78,11 +78,13 @@ namespace MedicalAssistant.Presentation.Controllers
             return Ok(dto);
         }
 
-        // POST /api/patients/{id}/medications  (Doctor)
+        // POST /api/patients/{id}/medications  (Doctor, Patient)
         [HttpPost("patients/{id:int}/medications")]
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Patient")]
         public async Task<IActionResult> Create(int id, [FromBody] CreateMedicationTrackerDto dto)
         {
+            if (!IsDoctor() && !IsOwnPatient(id)) return Forbid();
+
             var doctorIdClaim = User.FindFirst("DoctorId")?.Value;
             int? doctorId = int.TryParse(doctorIdClaim, out var did) ? did : null;
 
