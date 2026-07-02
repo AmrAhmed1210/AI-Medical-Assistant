@@ -224,13 +224,6 @@ public class Program
                     context.SaveChanges();
                     logger.LogInformation("Admin user seeded successfully.");
                 }
-                else if (adminUser.FullName == "Hassan Mohamed")
-                {
-                    // Update existing seeded user to "Admin"
-                    adminUser.FullName = "Admin";
-                    context.SaveChanges();
-                    logger.LogInformation("Admin user name updated from Hassan Mohamed to Admin.");
-                }
             }
             catch (Exception ex)
             {
