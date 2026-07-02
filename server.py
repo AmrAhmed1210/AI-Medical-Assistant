@@ -183,7 +183,7 @@ async def summarize_surgery(data: SurgeryInput):
         content = response.text.strip()
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
-            result = json.loads(json_match.group())
+            result = json.loads(json_match.group(), strict=False)
             return {
                 "summary_en": strip_markdown(result.get("summary_en", "Surgery recorded.")),
                 "summary_ar": strip_markdown(result.get("summary_ar", "تم تسجيل العملية."))
@@ -204,26 +204,90 @@ async def ask_endpoint(data: AskRequest):
             # map roles to 'user' and 'model'
             role = "user" if msg.role.lower() == "user" else "model"
             chat_history.append({"role": role, "parts": [msg.content]})
-            
+
+    # ── Extract original user question from the combined contextPrompt ──
+    # The mobile app injects English context blocks like:
+    #   [Platform doctor recommendations context ...]
+    #   [System Context: ...]
+    #   [Conversation safety rule: ...]
+    # We split these out so language detection works on the ORIGINAL question only.
+    raw_question = data.question
+    original_question = raw_question
+    internal_context_parts = []
+
+    # Split on context markers injected by the app
+    context_split = re.split(r'\n\n\[', raw_question, maxsplit=1)
+    if len(context_split) > 1:
+        original_question = context_split[0].strip()
+        internal_context_parts.append("[" + context_split[1])
+
+    # Detect language from the ORIGINAL question only (not the injected English context)
+    arabic_chars = sum(1 for c in original_question if '\u0600' <= c <= '\u06FF')
+    total_chars = max(len(original_question.strip()), 1)
+    is_arabic = (arabic_chars / total_chars) > 0.2  # Lowered threshold from 0.3 to 0.2 for better detection
+    detected_lang = "ar" if is_arabic else "en"
+
+    # Build internal context string
+    context_block = "\n".join(internal_context_parts).strip()
+
     try:
         chat = model.start_chat(history=chat_history)
-        # Note: chat.send_message doesn't go through our retry wrapper,
-        # but /ask is user-initiated so a single retry is acceptable
+
+        # ── Language enforcement ──
+        if is_arabic:
+            lang_instruction = (
+                "🔴 تعليمات اللغة — إلزامية:\n"
+                "يجب أن يكون ردك بالكامل باللغة العربية.\n"
+                "المريض يتحدث العربية. أجب بالعربية فقط.\n"
+                "لا ترد بالإنجليزية أبداً إلا للمصطلحات الطبية أو أسماء الأدوية.\n"
+                "السياق الداخلي المرفق أدناه مكتوب بالإنجليزية لأغراض تقنية — تجاهل لغته وأجب بالعربية."
+            )
+        else:
+            lang_instruction = (
+                "🔴 LANGUAGE INSTRUCTION — MANDATORY:\n"
+                "You MUST respond entirely in English.\n"
+                "The patient is speaking English. Respond in English only."
+            )
+
+        # ── Build the structured prompt ──
         prompt = f"""
-        You are an advanced, professional medical AI assistant.
-        The user is asking: {data.question}
-        
-        CRITICAL RULES:
-        1. STRICTLY MEDICAL: You are a medical assistant. You are ONLY allowed to answer medical, health, and wellness related questions. If the user asks about programming (like Python), tech, math, general knowledge, or anything outside the medical field, you MUST politely apologize and state that you are a specialized medical assistant and can only help with health-related matters.
-        2. Always respond in the SAME language the user is speaking.
-        3. Keep it professional, empathetic, and highly informative.
-        4. DO NOT use markdown symbols like # or *. Return beautiful plain text with elegant spacing and emojis where appropriate.
-        5. ACTIVE INQUIRY: If the user complains of pain, tiredness, or any symptoms, DO NOT just give a final diagnosis. Instead, ALWAYS end your response by asking 1 or 2 relevant follow-up questions to gather more details. Keep investigating until you have a clear picture.
-        6. Once you have a clear picture, provide safe advice and ALWAYS conclude with a recommendation to see a doctor.
-        7. NEVER say or imply that you are a doctor. Say you are an AI medical assistant.
-        8. If the user's message indicates they are perfectly healthy with no problems, do NOT recommend any doctors or specialties, just encourage a healthy lifestyle.
-        9. If the prompt includes platform doctor recommendations context AND the user has a medical issue, use ONLY those doctors when suggesting doctors, prioritize matching specialty and highest rating/review count, and do not invent doctors.
-        """
+{lang_instruction}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🩺 ROLE: You are an advanced, professional medical AI assistant.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 PATIENT'S QUESTION:
+{original_question}
+
+"""
+        # Add internal context if present (doctor recommendations, patient medical profile, etc.)
+        if context_block:
+            prompt += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 INTERNAL CONTEXT (use this data to personalize your response):
+{context_block}
+
+IMPORTANT: The above context contains the patient's medical history, chronic diseases, medications, allergies, and/or doctor recommendations from the platform database.
+You MUST use this information to give personalized, relevant medical advice.
+If the patient asks about symptoms, CHECK their chronic diseases and medications for possible connections.
+If doctor recommendations are provided AND the patient has a medical issue, suggest those specific doctors.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+
+        prompt += f"""
+CRITICAL RULES:
+1. STRICTLY MEDICAL: You are ONLY allowed to answer medical, health, and wellness questions. If the user asks about non-medical topics (programming, tech, math, etc.), politely apologize and say you are a specialized medical assistant.
+2. {'أجب باللغة العربية فقط. لا تستخدم الإنجليزية إلا للمصطلحات الطبية وأسماء الأدوية.' if is_arabic else 'Respond in English only.'}
+3. Keep it professional, empathetic, and highly informative.
+4. DO NOT use markdown symbols like # or *. Return beautiful plain text with elegant spacing and emojis where appropriate.
+5. ACTIVE INQUIRY: If the user complains of pain, tiredness, or any symptoms, DO NOT give a final diagnosis. ALWAYS end your response by asking 1-2 relevant follow-up questions to gather more details.
+6. Once you have a clear picture, provide safe advice and ALWAYS recommend seeing a doctor.
+7. NEVER say or imply that you are a doctor. Say you are an AI medical assistant.
+8. If the user is perfectly healthy with no problems, do NOT recommend doctors, just encourage a healthy lifestyle.
+9. If platform doctor recommendations are in the context AND the user has a medical issue, use ONLY those doctors, prioritize by specialty match and rating. Do not invent doctor names.
+10. If the patient's medical profile is in the context, USE IT to personalize your response. Mention relevant chronic diseases, medications, or allergies when applicable.
+"""
         response = chat.send_message(prompt)
         return {
             "query": data.question,
@@ -232,12 +296,13 @@ async def ask_endpoint(data: AskRequest):
             "is_medical": True,
             "found_in_database": False,
             "low_confidence": False,
-            "language": "ar" if any("\u0600" <= c <= "\u06FF" for c in data.question) else "en",
+            "language": detected_lang,
             "disclaimer": "This is an AI response and should not replace professional medical advice."
         }
     except Exception as e:
         print(f"DEBUG: Error in /ask: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/analyze-history", dependencies=[Depends(verify_internal_token)])
 async def analyze_history(data: PatientHistoryInput):
@@ -293,7 +358,7 @@ async def analyze_history(data: PatientHistoryInput):
             
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
-            result = json.loads(json_match.group())
+            result = json.loads(json_match.group(), strict=False)
             analysis_en = strip_markdown(result.get("en", "No English report generated."))
             analysis_ar = strip_markdown(result.get("ar", "لم يتم إنشاء تقرير بالعربية."))
             if not analysis_ar.strip() or analysis_ar.strip() == analysis_en.strip():
@@ -609,10 +674,34 @@ async def parse_medical_profile(data: MedicalProfileInput):
     if not data.text or not data.text.strip():
         raise HTTPException(status_code=400, detail="Text is required")
 
+    # Detect language from the input text
+    arabic_chars = sum(1 for c in data.text if '\u0600' <= c <= '\u06FF')
+    total_chars = max(len(data.text.strip()), 1)
+    is_arabic = (arabic_chars / total_chars) > 0.2  # Lowered threshold from 0.3 to 0.2 for better detection
+    detected_lang = "ar" if is_arabic else "en"
+
+    # Language instruction
+    if is_arabic:
+        lang_instruction = (
+            "🔴 تعليمات اللغة — إلزامية:\n"
+            "المريض يتحدث العربية. يجب أن تكون الحقول العربية (summary_ar, follow_up_ar) هي الأساسية والأكثر تفصيلاً.\n"
+            "الحقول الإنجليزية (summary_en, follow_up_en) يجب أن تكون موجودة ولكن يمكن أن تكون مختصرة.\n"
+            "استخدم العربية في جميع التفسيرات والأسئلة المتابعة.\n"
+        )
+    else:
+        lang_instruction = (
+            "🔴 LANGUAGE INSTRUCTION — MANDATORY:\n"
+            "The patient is speaking English. The English fields (summary_en, follow_up_en) must be primary and most detailed.\n"
+            "The Arabic fields (summary_ar, follow_up_ar) should exist but can be brief.\n"
+            "Use English for all explanations and follow-up questions.\n"
+        )
+
     prompt = f"""
+    {lang_instruction}
+
     You are a medical data extraction AI. Analyze the following patient description and extract all medical information mentioned.
     The patient may write in Arabic, English, or a mix of both. You MUST understand both languages perfectly.
-    
+
     Patient says: "{data.text.strip()}"
     
     Extract and return ONLY a valid JSON object with these arrays:
@@ -630,6 +719,7 @@ async def parse_medical_profile(data: MedicalProfileInput):
       "medications": [
         {{
           "medicationName": "Brand name if mentioned, otherwise generic name",
+          "medicationNameAr": "اسم الدواء بالعربية",
           "genericName": "Generic/scientific name",
           "dosage": "e.g., 500mg",
           "form": "Tablet | Capsule | Syrup | Injection | Cream | Inhaler | Drops | Other",
@@ -676,7 +766,7 @@ async def parse_medical_profile(data: MedicalProfileInput):
 
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
-            result = json.loads(json_match.group())
+            result = json.loads(json_match.group(), strict=False)
             # Ensure all required keys exist
             result.setdefault("chronic_diseases", [])
             result.setdefault("medications", [])
@@ -735,7 +825,7 @@ async def pre_visit_summary(data: PreVisitInput):
             
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
-            result = json.loads(json_match.group())
+            result = json.loads(json_match.group(), strict=False)
             return {
                 "summary_en": strip_markdown(result.get("summary_en", "Patient is ready.")),
                 "summary_ar": strip_markdown(result.get("summary_ar", "المريض جاهز للزيارة."))
@@ -773,7 +863,7 @@ async def personalized_tip(data: PersonalizedTipInput):
             
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         if json_match:
-            result = json.loads(json_match.group())
+            result = json.loads(json_match.group(), strict=False)
             return {
                 "tip_en": strip_markdown(result.get("tip_en", "Stay hydrated and take short walks throughout your day.")),
                 "tip_ar": strip_markdown(result.get("tip_ar", "حافظ على شرب الماء وامشِ قليلاً خلال يومك."))

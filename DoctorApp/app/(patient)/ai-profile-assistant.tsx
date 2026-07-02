@@ -277,12 +277,18 @@ export default function AIProfileAssistantScreen() {
   ];
 
   /* ── silent AI fallback ── */
-  const runSilentAI = async (text: string) => {
+  const runSilentAI = async (text: string): Promise<{ summary?: string; followUp?: string }> => {
     try {
       const result = await parseMedicalProfile(text, true);
-      if (result && (result.chronic_diseases.length > 0 || result.medications.length > 0 || result.allergies.length > 0))
+      if (result && (result.chronic_diseases.length > 0 || result.medications.length > 0 || result.allergies.length > 0)) {
         await loadData();
+        // Return the summary and follow-up to display
+        const summary = isAr ? result.summary_ar : result.summary_en;
+        const followUp = isAr ? result.follow_up_ar : result.follow_up_en;
+        return { summary, followUp };
+      }
     } catch {}
+    return {};
   };
 
   /* ──────────────── STATE MACHINE ──────────────── */
@@ -296,7 +302,12 @@ export default function AIProfileAssistantScreen() {
       "DISEASE","MED","ALLERGY","SURGERY","VITAL","GENERAL","YES","NO",
       "DRUG","FOOD","OTHER","CONFIRM_DEL","CANCEL_DEL","MALE","FEMALE",
     ].includes(val) || val.startsWith("ITEM_") || val.startsWith("DEL_");
-    if (!isKnownChip) runSilentAI(label);
+    
+    // Run silent AI and display results if not a known chip
+    let aiResult: { summary?: string; followUp?: string } = {};
+    if (!isKnownChip) {
+      aiResult = await runSilentAI(label);
+    }
 
     try {
       setIsLoading(true);
@@ -304,6 +315,14 @@ export default function AIProfileAssistantScreen() {
 
       /* ── HOME / AFTER_ACTION ── */
       if (intent === "home" || intent === "after_action") {
+        // Display AI summary if available
+        if (aiResult.summary) {
+          next.push(addMsg(aiResult.summary, "assistant"));
+        }
+        if (aiResult.followUp) {
+          next.push(addMsg(aiResult.followUp, "assistant", homeChips()));
+        }
+        
         if (val === "ADD") {
           next.push(addMsg(t("ماذا تريد أن تضيف؟", "What do you want to add?"), "assistant", catChips()));
           pushState({ intent: "add", step: 0, messages: next });
@@ -315,8 +334,10 @@ export default function AIProfileAssistantScreen() {
           pushState({ intent: "delete", step: 0, messages: next });
         } else if (val === "SETUP") { startOnboarding(); }
         else if (val === "HOME") { goHome(); }
-        else {
+        else if (!aiResult.summary && !aiResult.followUp) {
           next.push(addMsg(t("اختر من الخيارات المتاحة", "Choose from the options below"), "assistant", homeChips()));
+          pushState({ messages: next });
+        } else {
           pushState({ messages: next });
         }
         return;
